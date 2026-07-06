@@ -1,5 +1,5 @@
 # Ariadne Engineering Chronicle
-## Session 005
+## Checkpoint 006
 **Date:** 2026-07-06
 
 ## Objective
