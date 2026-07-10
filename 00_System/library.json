@@ -2669,5 +2669,1187 @@
     "processed_path": "Processed/My Hosting2026-07-10T17_57_18+07_00.md",
     "wiki_path": "Wiki/Infrastructure.md",
     "indexed_at": "2026-07-10 17:58:29"
+  },
+  {
+    "source_name": "🔊 Translate Thai-English2026-07-10T19_58_05+07_00.md",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "translation",
+      "language"
+    ],
+    "reason": "The source is a Thai-English translation document.",
+    "tags": [
+      "translation",
+      "thai",
+      "english"
+    ],
+    "links": [],
+    "map_entry": "Thai to English translation resource.",
+    "summary": "This document provides translations of Thai text into English, useful for reference or linguistic study.",
+    "review_path": "Review/🔊 Translate Thai-English2026-07-10T19_58_05+07_00.review.md",
+    "processed_path": "Processed/🔊 Translate Thai-English2026-07-10T19_58_05+07_00.md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-10 20:00:22"
+  },
+  {
+    "source_name": "AI Experts on Threads2026-07-10T19_48_41+07_00.md",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "Influencer following strategies",
+      "Threads platform usage",
+      "AI expert community"
+    ],
+    "reason": "The document discusses how to follow AI experts on Threads to stay updated on AI news and research.",
+    "tags": [
+      "ai",
+      "threads",
+      "influencers",
+      "social media"
+    ],
+    "links": [
+      "https://arxiv.org/abs/2406.19277?utm_source=chatgpt.com",
+      "https://en.wikipedia.org/wiki/Yann_LeCun?utm_source=chatgpt.com",
+      "https://en.wikipedia.org/wiki/Jane_Manchun_Wong?utm_source=chatgpt.com",
+      "https://www.huffingtonpost.es/tecnologia/zuckerberg-foto-jefe-ia-meta-silenciar-rumores-publica-threads-nadie-f202603.html?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Threads AI experts guide – concise description of source.",
+    "summary": "This article offers a strategy for building an effective influencer network on Threads to stay updated with AI research and news. It lists key accounts, explains how to seed the algorithm, and provides practical tips on engagement and curation.",
+    "review_path": "Review/AI Experts on Threads2026-07-10T19_48_41+07_00.review.md",
+    "processed_path": "Processed/AI Experts on Threads2026-07-10T19_48_41+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-10 20:01:14"
+  },
+  {
+    "source_name": "AMD Amuse Overview2026-07-10T19_49_17+07_00.md",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "installation steps",
+      "system prerequisites",
+      "GPU drivers",
+      "Vulkan support",
+      "ROCm optional",
+      "Python environment",
+      "download artifacts",
+      "extraction & install script",
+      "GPU detection check"
+    ],
+    "reason": "The document provides a detailed guide for installing AMD Amuse 2.7.6 on Linux, covering hardware and software prerequisites, driver setup, optional ROCm usage, Python virtual environment creation, downloading binaries from GitHub, running the installer, and verifying GPU detection.",
+    "tags": [
+      "ai",
+      "infrastructure",
+      "amuse",
+      "gpu",
+      "linux"
+    ],
+    "links": [
+      "https://github.com/amd/amuse/releases/tag/v2.7.6"
+    ],
+    "map_entry": "AMD Amuse 2.7.6 installation guide for Linux (KDE Neon / Ubuntu) including system prerequisites, driver and Vulkan setup, optional ROCm support, Python virtual environment creation, download instructions, installer execution, and GPU verification.",
+    "summary": "This document is a step‑by‑step installation guide for AMD Amuse 2.7.6 on KDE Neon/Ubuntu Linux laptops with an AMD GPU. It covers necessary system prerequisites such as kernel version, AMD GPU drivers (open‑source or proprietary), optional ROCm installation, Vulkan SDK requirements, and FFmpeg libraries. It provides commands to create a Python virtual environment for scripting, how to download the release tarball from GitHub, extraction, running the install script that places binaries and config files, and finally verifying that the GPU is detected by Amuse. The guide also includes Windows instructions as an optional note.",
+    "review_path": "Review/AMD Amuse Overview2026-07-10T19_49_17+07_00.review.md",
+    "processed_path": "Processed/AMD Amuse Overview2026-07-10T19_49_17+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-10 20:02:13"
+  },
+  {
+    "source_name": "Asian Arowana Overview2026-07-10T19_52_29+07_00.md",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Aquarium Care",
+      "Conservation Status",
+      "CITES Regulations",
+      "Species Characteristics"
+    ],
+    "reason": "The document details personal aquarium hobby information about Asian Arowana.",
+    "tags": [
+      "aquarium",
+      "fish",
+      "conservation",
+      "carnivore",
+      "CITES"
+    ],
+    "links": [
+      "CITES",
+      "Aquarium Guide"
+    ],
+    "map_entry": "Asian Arowana overview with care, conservation, and legal notes.",
+    "summary": "This document provides an in‑depth look at the Asian Arowana, covering its size, lifespan, dietary needs, tank requirements, behavioral traits, and regulatory status. It highlights the fish’s cultural significance as a symbol of wealth, outlines practical aquarium maintenance such as water parameters and filtration, and stresses the importance of secure lids due to their jumping ability. Conservation concerns are discussed with emphasis on habitat loss and CITES Appendix II regulations that govern trade.",
+    "review_path": "Review/Asian Arowana Overview2026-07-10T19_52_29+07_00.review.md",
+    "processed_path": "Processed/Asian Arowana Overview2026-07-10T19_52_29+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-10 20:02:46"
+  },
+  {
+    "source_name": "Babylon 5 description2026-07-10T19_53_26+07_00.md",
+    "primary_topic": "Archive",
+    "subtopics": [
+      "Babylon 5",
+      "ChatGPT conversation"
+    ],
+    "reason": "Document captures a user and ChatGPT dialogue about Babylon 5, useful for archival reference.",
+    "tags": [
+      "clippings",
+      "Babylon 5",
+      "ChatGPT"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a227ac2-9428-83ec-a3e3-5a4a1dc0b5d0"
+    ],
+    "map_entry": "Document: ChatGPT conversation on Babylon 5 description",
+    "summary": "This document contains a 12‑message dialogue between a user and ChatGPT discussing the television series Babylon 5, including misinterpretations and attempts to describe the show’s plot. It serves as an informal archival record of conversational content.",
+    "review_path": "Review/Babylon 5 description2026-07-10T19_53_26+07_00.review.md",
+    "processed_path": "Processed/Babylon 5 description2026-07-10T19_53_26+07_00.md",
+    "wiki_path": "Wiki/Archive.md",
+    "indexed_at": "2026-07-10 20:03:44"
+  },
+  {
+    "source_name": "Channel Growth Advice2026-07-10T19_57_40+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Audience Engagement",
+      "Career Transition",
+      "Metrics vs Fulfillment",
+      "Platform Comparison"
+    ],
+    "reason": "The document discusses personal reflections on YouTube channel growth, comparing metrics to emotional fulfillment.",
+    "tags": [
+      "content creation",
+      "youtube",
+      "career transition",
+      "audience engagement"
+    ],
+    "links": [
+      "YouTube",
+      "Facebook"
+    ],
+    "map_entry": "Reflection on YouTube channel growth and its contrast with Facebook, focusing on retirement and personal success beyond numbers.",
+    "summary": "The text reflects on the shift from career metrics to personal fulfillment in creating a YouTube channel after retirement. It contrasts the intimate demands of Facebook with YouTube's distance, emphasizes audience connection over subscriber counts, discusses fears of not reaching large channels, and concludes that success is measured by meaningful impact rather than financial or numerical goals.",
+    "review_path": "Review/Channel Growth Advice2026-07-10T19_57_40+07_00.review.md",
+    "processed_path": "Processed/Channel Growth Advice2026-07-10T19_57_40+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:04:18"
+  },
+  {
+    "source_name": "Explaining Thumbnail Spam Increase2026-07-10T19_47_58+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "thumbnail strategy",
+      "spam & unsolicited offers",
+      "audience visibility"
+    ],
+    "reason": "The text discusses how recent thumbnail changes are linked to a spike in spam marketing messages, indicating altered audience reach.",
+    "tags": [
+      "content-creation",
+      "youtube",
+      "marketing",
+      "spam"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a19a7d4-5af8-83ec-a9b1-b328e514b7e7"
+    ],
+    "map_entry": "ChatGPT conversation about spike in unsolicited offers after thumbnail redesign.",
+    "summary": "The conversation outlines a hypothesis that changing thumbnails increased visibility to an audience segment frequented by automated marketing bots, leading to a fivefold rise in spam messages. It emphasizes keeping the claim observational and encourages further data collection to confirm causation.",
+    "review_path": "Review/Explaining Thumbnail Spam Increase2026-07-10T19_47_58+07_00.review.md",
+    "processed_path": "Processed/Explaining Thumbnail Spam Increase2026-07-10T19_47_58+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:04:39"
+  },
+  {
+    "source_name": "Exploring Novelty with AI2026-07-10T19_52_13+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Retirement in Thailand",
+      "AI collaboration",
+      "Novelty exploration"
+    ],
+    "reason": "The document discusses the author’s retirement experience in Thailand and their use of AI as a collaborator to explore novelty.",
+    "tags": [
+      "retirement",
+      "Thailand",
+      "AI",
+      "novelty",
+      "personal reflection"
+    ],
+    "links": [],
+    "map_entry": "Exploring Novelty with AI (retirement perspective)",
+    "summary": "This text reflects on living retired life in Thailand, exploring the concept of novelty through AI collaboration and personal introspection.",
+    "review_path": "Review/Exploring Novelty with AI2026-07-10T19_52_13+07_00.review.md",
+    "processed_path": "Processed/Exploring Novelty with AI2026-07-10T19_52_13+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 20:05:34"
+  },
+  {
+    "source_name": "Foreign Land Ownership in Thailand2026-07-10T19_56_42+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Property Rights Stack",
+      "Land Ownership",
+      "Condominium Ownership",
+      "Leasehold",
+      "Superficies",
+      "Usufruct",
+      "Thai Spouse Ownership",
+      "Nominee Companies"
+    ],
+    "reason": "The document explains how foreigners can navigate Thai property law, detailing layers of ownership and the various legal mechanisms available for land, buildings, leases, and usage rights.",
+    "tags": [
+      "property",
+      "Thailand",
+      "foreigners",
+      "real estate",
+      "legal"
+    ],
+    "links": [
+      "https://www.thaicopyright.com/legal-land/",
+      "https://visa.treasury.go.th/en/"
+    ],
+    "map_entry": "Guide to foreign property acquisition in Thailand – a layered approach to ownership and legal structures.",
+    "summary": "This guide provides a comprehensive overview of the different mechanisms foreigners can use to acquire or occupy property in Thailand, from direct condominium ownership within quota limits to leaseholds, usufructs, superficies arrangements, and the role of spouse ownership and nominee companies. It introduces a \"Property Rights Stack\" metaphor to help readers decide which layers—land, building, usage, income, inheritance—are essential for their personal or investment goals, offering practical insights into legal nuances and emerging regulatory scrutiny.",
+    "review_path": "Review/Foreign Land Ownership in Thailand2026-07-10T19_56_42+07_00.review.md",
+    "processed_path": "Processed/Foreign Land Ownership in Thailand2026-07-10T19_56_42+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 20:07:19"
+  },
+  {
+    "source_name": "How can I help, Wazza_2026-07-10T19_57_23+07_00.md",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "chatbot interface",
+      "daily AI assistance",
+      "conversation UI"
+    ],
+    "reason": "The document is a description of ChatGPT’s user‑facing page and its role as an everyday AI chatbot, fitting within the AI & LLMs category.",
+    "tags": [
+      "ai",
+      "llms",
+      "chatbot",
+      "assistant"
+    ],
+    "links": [
+      "https://chatgpt.com/"
+    ],
+    "map_entry": "ChatGPT user interface page – brief description of the chat service for everyday use.",
+    "summary": "The document provides a concise overview of ChatGPT, positioning it as an advanced AI chatbot available through a web interface. It highlights the platform’s purpose to assist users with a variety of tasks such as idea generation, problem solving, and learning, framing it as a versatile everyday AI companion.",
+    "review_path": "Review/How can I help, Wazza_2026-07-10T19_57_23+07_00.review.md",
+    "processed_path": "Processed/How can I help, Wazza_2026-07-10T19_57_23+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-10 20:07:43"
+  },
+  {
+    "source_name": "IOI Detection in Images2026-07-10T19_47_06+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI image generation",
+      "photographic style transfer"
+    ],
+    "reason": "The user requests instructions to transform a real street photo into a Cyberpunk 2077 style using an AI model.",
+    "tags": [
+      "ai",
+      "image-generation",
+      "style-transfer"
+    ],
+    "links": [],
+    "map_entry": "Guide on converting street photos to cyberpunk aesthetic with Stable Diffusion. Includes environment setup, dependencies, and example script.",
+    "summary": "This document provides a step‑by‑step guide for creating a Cyberpunk 2077 styled version of a real street image. It covers Python environment setup, required packages, and a complete code snippet that loads an input photo, runs it through Stable Diffusion with appropriate scheduler settings, and saves the stylized output. The approach focuses on leveraging AI-driven image generation techniques to transform photographic content into a cyberpunk aesthetic.",
+    "review_path": "Review/IOI Detection in Images2026-07-10T19_47_06+07_00.review.md",
+    "processed_path": "Processed/IOI Detection in Images2026-07-10T19_47_06+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:08:33"
+  },
+  {
+    "source_name": "Music Learning Games2026-07-10T19_56_18+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "audio isolation",
+      "bass transcription",
+      "music analysis",
+      "software tools",
+      "audio processing"
+    ],
+    "reason": "The document explains how to isolate a bass track from a song and transcribe its notes, which is relevant to music content creation workflows.",
+    "tags": [
+      "music",
+      "bass",
+      "transcription",
+      "audio isolation",
+      "Spleeter",
+      "Moises.ai",
+      "slowdown",
+      "note identification"
+    ],
+    "links": [
+      "https://github.com/deezer/spleeter",
+      "https://moises.ai/"
+    ],
+    "map_entry": "Guide on isolating and transcribing bass lines from a track using Spleeter, Moises.ai, and DAWs.",
+    "summary": "This guide walks through obtaining audio from YouTube, separating the bass stem with tools such as Spleeter or Moises.ai, slowing it down, looping sections, detecting notes via pitch‑finding plugins, and writing tabs. It provides practical steps for musicians to isolate complex mixes, identify individual notes, and build transcriptions efficiently.",
+    "review_path": "Review/Music Learning Games2026-07-10T19_56_18+07_00.review.md",
+    "processed_path": "Processed/Music Learning Games2026-07-10T19_56_18+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:09:32"
+  },
+  {
+    "source_name": "Order Discrepancy Resolution2026-07-10T19_51_30+07_00.md",
+    "primary_topic": "Business",
+    "subtopics": [
+      "e-commerce dispute resolution",
+      "Alibaba platform",
+      "product order discrepancy"
+    ],
+    "reason": "The user is seeking guidance on how to handle an order discrepancy with a seller on Alibaba and wants advice on steps and documentation.",
+    "tags": [
+      "Alibaba",
+      "order_discrepancy",
+      "customer_service"
+    ],
+    "links": [
+      "Alibaba"
+    ],
+    "map_entry": "User requested instructions for resolving an order discrepancy involving SanDisk flash drives received in wrong quantity from an Alibaba seller.",
+    "summary": "The user encountered a product mismatch on Alibaba, receiving three 32GB drives instead of two 16GB drives. The assistant advised keeping evidence (sealed blister packs), contacting the seller politely, using Thai translation if needed, waiting for response, and opening a dispute if no reply within ten days. It highlighted steps to document and communicate effectively.",
+    "review_path": "Review/Order Discrepancy Resolution2026-07-10T19_51_30+07_00.review.md",
+    "processed_path": "Processed/Order Discrepancy Resolution2026-07-10T19_51_30+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-10 20:10:15"
+  },
+  {
+    "source_name": "Power Plant Selloff TL;DR2026-07-10T19_52_43+07_00.md",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "anomalous observations",
+      "human perception limits",
+      "global AI sensor network"
+    ],
+    "reason": "The discussion focuses on how AI and large language models could help analyze global sensor data to investigate unexplained phenomena.",
+    "tags": [
+      "unexplained-phenomena",
+      "physics-limits",
+      "ai-sensor-network",
+      "perception-limitations"
+    ],
+    "links": [],
+    "map_entry": "Discussion about unexplained phenomena and the potential of a planetary-scale AI-enabled sensor network.",
+    "summary": "The conversation explores how existing physical theories are largely successful yet incomplete, how anomalous observations may arise from mundane causes, the limits of human perception, and how an integrated AI system processing data from thousands of cameras and sensors could turn isolated reports into repeatable evidence or provide ordinary explanations. It highlights that while AI could uncover genuine anomalies, it also risks filtering out rare phenomena as noise.",
+    "review_path": "Review/Power Plant Selloff TL;DR2026-07-10T19_52_43+07_00.review.md",
+    "processed_path": "Processed/Power Plant Selloff TL;DR2026-07-10T19_52_43+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-10 20:10:49"
+  },
+  {
+    "source_name": "Rephrasing Emotive YouTube Content2026-07-10T19_55_59+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "tourism economy",
+      "manufacturing industry",
+      "expat perspective",
+      "content strategy"
+    ],
+    "reason": "The document centers on Thailand’s tourism versus manufacturing and its impact on expats’ YouTube content.",
+    "tags": [
+      "travel",
+      "expat",
+      "content-creation",
+      "manufacturing"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a24d7cd-24f4-83ec-91f3-1697855ce11f"
+    ],
+    "map_entry": "Rephrasing emotive YouTube content discussion focusing on Thailand’s hidden manufacturing side versus its tourism image.",
+    "summary": "This conversation explores how to shift a Thai-focused YouTube channel from the conventional beach‑tourism narrative to highlight the country’s industrial backbone, appealing to expats and viewers interested in authentic, emotional storytelling. It considers both economic realities and creative content strategies for 2026.",
+    "review_path": "Review/Rephrasing Emotive YouTube Content2026-07-10T19_55_59+07_00.review.md",
+    "processed_path": "Processed/Rephrasing Emotive YouTube Content2026-07-10T19_55_59+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 20:11:25"
+  },
+  {
+    "source_name": "Restless Legs Syndrome Explained2026-07-10T19_46_19+07_00.md",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Restless Leg Syndrome",
+      "Habitual movement/fidgeting"
+    ],
+    "reason": "The conversation explains that the user's foot rocking may be a habitual motor activity without discomfort rather than true Restless Leg Syndrome, outlining key differences, when to seek medical advice, and related considerations such as calorie burn and monitoring.",
+    "tags": [
+      "health",
+      "RLS",
+      "habit",
+      "fidgeting",
+      "self-monitoring"
+    ],
+    "links": [],
+    "map_entry": "User reports constant foot rocking with no pain or urge; discussion distinguishes benign fidgeting from RLS and advises observation and potential GP review if symptoms change.",
+    "summary": "The chat clarifies that while restless leg syndrome involves an uncomfortable urge to move, the user’s continuous foot rocking appears to be a simple habit or fidgeting behavior lacking distress. It explains the diagnostic criteria for RLS, contrasts it with normal motor habits, notes that such movements likely burn few calories and may not be captured by activity trackers, and recommends monitoring patterns and consulting a GP only if symptoms become bothersome or disruptive.",
+    "review_path": "Review/Restless Legs Syndrome Explained2026-07-10T19_46_19+07_00.review.md",
+    "processed_path": "Processed/Restless Legs Syndrome Explained2026-07-10T19_46_19+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-10 20:12:02"
+  },
+  {
+    "source_name": "Society's Illusion of Choice2026-07-10T19_53_38+07_00.md",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "societal constructs",
+      "choice illusion",
+      "authenticity"
+    ],
+    "reason": "The conversation explores how society presents a limited menu of life choices that ultimately feel imposed, discussing the need to question those options and seek authentic self-determination.",
+    "tags": [
+      "philosophy",
+      "society",
+      "choice",
+      "authenticity"
+    ],
+    "links": [],
+    "map_entry": "Society's Illusion of Choice - chat conversation about perceived societal options versus personal authenticity",
+    "summary": "This document features a dialogue where the speaker reflects on how society offers a curated menu of life paths—education, career, consumerism—that often feel predetermined. It encourages examining deeper questions such as what one truly values and who they are without external labels, ultimately highlighting the importance of authentic self-discovery over following societal expectations.",
+    "review_path": "Review/Society's Illusion of Choice2026-07-10T19_53_38+07_00.review.md",
+    "processed_path": "Processed/Society's Illusion of Choice2026-07-10T19_53_38+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-10 20:12:35"
+  },
+  {
+    "source_name": "Steampunk Cathedral Vision2026-07-10T19_49_02+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "image generation",
+      "creative prompts"
+    ],
+    "reason": "The document discusses generating a detailed visual prompt for creating a steampunk cathedral image.",
+    "tags": [
+      "art",
+      "prompt",
+      "imagegeneration"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a1faa03-b3b0-83ec-9798-6a652aa69883"
+    ],
+    "map_entry": "ChatGPT prompt to generate a steampunk cathedral image",
+    "summary": "This document is a ChatGPT conversation where the user requested a detailed cinematic photograph description of a steampunk cathedral built from obsolete technology. The assistant provided an elaborate visual prompt and generated an image based on that prompt, illustrating content creation via AI-driven image generation.",
+    "review_path": "Review/Steampunk Cathedral Vision2026-07-10T19_49_02+07_00.review.md",
+    "processed_path": "Processed/Steampunk Cathedral Vision2026-07-10T19_49_02+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:13:29"
+  },
+  {
+    "source_name": "Thai Gold vs Global Gold2026-07-10T19_47_25+07_00.md",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "web development",
+      "data visualization",
+      "API integration"
+    ],
+    "reason": "The document discusses building a dashboard to compare Thai and global gold prices using web technologies.",
+    "tags": [
+      "webdev",
+      "chartjs",
+      "api",
+      "gold",
+      "cros"
+    ],
+    "links": [
+      "Chart.js",
+      "CoinGecko API",
+      "GitHub"
+    ],
+    "map_entry": "Project guide for creating an HTML/JS dashboard that visualizes Thai and global gold price data via APIs, including a CORS proxy example.",
+    "summary": "This document explains how to build a lightweight web-based dashboard to compare Thai gold prices with global gold prices. It outlines the folder structure (index.html, dashboard.js, README, optional proxy.php), provides sample code using Chart.js for rendering time‑series charts, and details API endpoints (Thai real‑time data JSON and CoinGecko price). The guide includes steps for handling CORS via a simple PHP proxy, instructions to set up the project locally or on a web server, and notes on extending the UI. It serves as a practical reference for developers looking to prototype real‑time gold price comparisons.",
+    "review_path": "Review/Thai Gold vs Global Gold2026-07-10T19_47_25+07_00.review.md",
+    "processed_path": "Processed/Thai Gold vs Global Gold2026-07-10T19_47_25+07_00.md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-10 20:15:05"
+  },
+  {
+    "source_name": "Thailand Consumers vs Facebook2026-07-10T19_53_02+07_00.md",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Consumer Protection",
+      "Digital Platforms Accountability",
+      "Fraud Prevention"
+    ],
+    "reason": "The document discusses a consumer advocacy body threatening legal action against Meta for fraud on Facebook, highlighting issues of platform responsibility and scam prevention.",
+    "tags": [
+      "consumer protection",
+      "digital platforms",
+      "scams",
+      "Thailand",
+      "Facebook"
+    ],
+    "links": [
+      "https://www.bangkokpost.com/thailand/general/3265820/thai-consumers-council-to-sue-facebook",
+      "https://www.tcc.or.th/proposal/scams-on-facebook/?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Thailand Consumers Council threatens lawsuit against Meta over widespread scams on Facebook in Thailand.",
+    "summary": "The Thailand Consumers Council, a statutory consumer advocacy body, has announced plans to sue Meta Platforms (Facebook) due to rampant fraud activity affecting Thai consumers on the platform. The council argues that Facebook’s inadequate merchant verification, lack of robust complaint mechanisms, and insufficient removal of fraudulent accounts expose users to significant financial losses. Meta defends itself as merely a discovery platform, citing extensive moderation efforts and cooperation with authorities but claiming it cannot guarantee scam-free activity. This dispute reflects a broader trend of regulators holding digital platforms accountable for harms occurring on their networks. If successful, the lawsuit could compel Facebook Marketplace in Thailand to adopt stricter verification and compliance procedures, potentially reducing scams but also altering the free‑wheeling commerce model that previously thrived on the platform.",
+    "review_path": "Review/Thailand Consumers vs Facebook2026-07-10T19_53_02+07_00.review.md",
+    "processed_path": "Processed/Thailand Consumers vs Facebook2026-07-10T19_53_02+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-10 20:15:36"
+  },
+  {
+    "source_name": "Thailand Content Ideas2026-07-10T19_57_07+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Cost of Living in Thailand",
+      "Retirement in Thailand",
+      "Why I Moved to Thailand / Why I'm Leaving Thailand",
+      "Thai Street Food Tours",
+      "Night Market Walkthroughs",
+      "Condo Tours",
+      "House Building in Thailand",
+      "Pattaya Walking Street",
+      "Bangkok Nightlife",
+      "Thai Visa Updates",
+      "Thai Immigration Experiences",
+      "Thai Girlfriend/Wife Stories",
+      "Dating in Thailand",
+      "Culture Shock Moments",
+      "Things Foreigners Get Wrong About Thailand",
+      "Healthcare and Hospitals in Thailand",
+      "Motorbike Adventures",
+      "Island Hopping & Beach Reviews",
+      "Thai Festivals (Songkran, Loy Krathong)",
+      "Day in the Life in Thailand",
+      "How Much I Spend in a Day/Week/Month",
+      "Shopping Mall Tours",
+      "7-Eleven Reviews",
+      "Thai Restaurant Reviews",
+      "Pattaya vs Phuket vs Chiang Mai Comparisons",
+      "Border Runs and Visa Runs",
+      "Thai Property Market Updates",
+      "Foreigners Buying Land",
+      "Expat News and Thailand Current Events",
+      "Hidden Gems Nobody Knows About",
+      "Temple Tours",
+      "Village Life in Isaan",
+      "Driving in Thailand",
+      "Thai Language Learning",
+      "Thai Women Explained",
+      "Scams to Avoid",
+      "Safety in Thailand",
+      "Digital Nomad Life",
+      "Thailand Has Changed"
+    ],
+    "reason": "Document catalogs common and emerging themes for Thai YouTube content, expanding an earlier ten-item list to 40+ topics, with suggestions on niche positioning.",
+    "tags": [
+      "youtube",
+      "content-creation",
+      "thai-videos",
+      "travel",
+      "expat"
+    ],
+    "links": [],
+    "map_entry": "Thailand Content Ideas – expanded list of recurring YouTube themes and niche strategies.",
+    "summary": "The article provides a comprehensive taxonomy of 40+ recurring Thai YouTube content themes, from cost‑of‑living and retirement to street food tours, visas, culture shock, healthcare, motorbike adventures, festivals, day‑in‑the‑life vignettes, shopping malls, property markets, hidden gems, digital nomad life, safety, scams, and more. It also highlights a strategic niche—combining Thailand, meaning, retirement, technology, and authentic daily life—as a less crowded area for creators seeking depth beyond mainstream topics.",
+    "review_path": "Review/Thailand Content Ideas2026-07-10T19_57_07+07_00.review.md",
+    "processed_path": "Processed/Thailand Content Ideas2026-07-10T19_57_07+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 20:16:31"
+  },
+  {
+    "source_name": "Turtle Video Captions2026-07-10T19_51_56+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "social media captions",
+      "creative writing"
+    ],
+    "reason": "The document focuses on generating a witty caption for a short turtle video intended to be shared on Patreon.",
+    "tags": [
+      "patreon",
+      "turtles",
+      "caption",
+      "social media"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a1fed0c-27fc-83ec-a67c-dd320f2888ac"
+    ],
+    "map_entry": "Turtle Video Captions - brief Q&A on writing a witty Patreon caption for a 20‑second clip of two turtles at a small zoo.",
+    "summary": "The user requested help creating a playful caption for a short video they filmed of two turtles in a small zoo near their lunch spot. ChatGPT offered several humorous and lighthearted options tailored to a Patreon audience.",
+    "review_path": "Review/Turtle Video Captions2026-07-10T19_51_56+07_00.review.md",
+    "processed_path": "Processed/Turtle Video Captions2026-07-10T19_51_56+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:16:58"
+  },
+  {
+    "source_name": "Upload Issue Diagnosis2026-07-10T19_50_48+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "YouTube Studio",
+      "Upload Troubleshooting",
+      "Backend Issues"
+    ],
+    "reason": "The document discusses troubleshooting upload problems in YouTube Studio, which is directly related to content creation workflows.",
+    "tags": [
+      "upload",
+      "youtube",
+      "troubleshooting",
+      "backend",
+      "video"
+    ],
+    "links": [],
+    "map_entry": "Diagnostic narrative on YouTube upload failures due to backend issues.",
+    "summary": "This document details how the author traced video and custom thumbnail upload failures to a transient YouTube backend problem, using VPN tests and observing spontaneous recovery.",
+    "review_path": "Review/Upload Issue Diagnosis2026-07-10T19_50_48+07_00.review.md",
+    "processed_path": "Processed/Upload Issue Diagnosis2026-07-10T19_50_48+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:17:34"
+  },
+  {
+    "source_name": "YouTube Search and Ranking2026-07-10T19_46_48+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "YouTube content strategy",
+      "theme planning",
+      "title frameworks",
+      "thumbnail design"
+    ],
+    "reason": "The document outlines a structured approach for creating consistent YouTube videos without overlap.",
+    "tags": [
+      "youtube",
+      "content strategy",
+      "video titles",
+      "thumbnail design"
+    ],
+    "links": [],
+    "map_entry": "Playbook for maintaining freshness and reducing topic overlap in YouTube content.",
+    "summary": "This playbook provides a systematic method for selecting themes, emotional tones, title templates, and thumbnail archetypes to keep a YouTube channel engaging while avoiding repetition.",
+    "review_path": "Review/YouTube Search and Ranking2026-07-10T19_46_48+07_00.review.md",
+    "processed_path": "Processed/YouTube Search and Ranking2026-07-10T19_46_48+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 20:18:33"
+  },
+  {
+    "source_name": "📸 Thai Image Translation2026-07-10T22_01_00+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "translation",
+      "signage",
+      "menu localization"
+    ],
+    "reason": "The document discusses translating Thai signage images into English, offering tone customization and tourist-friendly menu adaptations.",
+    "tags": [
+      "translation",
+      "localization",
+      "menus",
+      "signage"
+    ],
+    "links": [],
+    "map_entry": "ChatGPT conversation on converting Thai signage and menus to English for foreign readers, with guidance on style and cultural adaptation.",
+    "summary": "This conversation details how ChatGPT provided translated versions of Thai sign images into English, explaining customization options for tone and layout suitable for Western tourists. It includes examples of banner translations, menu adaptations, unit cost inquiries, and suggestions for making signage more approachable while maintaining cultural accuracy.",
+    "review_path": "Review/📸 Thai Image Translation2026-07-10T22_01_00+07_00.review.md",
+    "processed_path": "Processed/📸 Thai Image Translation2026-07-10T22_01_00+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:14:49"
+  },
+  {
+    "source_name": "🔊 English _ Thai Teacher2026-07-10T22_01_16+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Thai culture",
+      "Social media content"
+    ],
+    "reason": "The text is a social media post about an anecdote of missing containers in Thailand and gives copy suggestions.",
+    "tags": [
+      "thailand",
+      "socialmedia",
+      "storytelling"
+    ],
+    "links": [],
+    "map_entry": "A Facebook/Threads ready snippet that humorously addresses the Great Thai Container Migration and suggests content for social media.",
+    "summary": "The document includes a brief humorous reply to 'Cody' about glass bowls joining plastic containers in Thailand’s mythical migration, and provides short punchy copy for Facebook and Threads platforms. It highlights Thai cultural practices of sharing food and the playful idea of lost items migrating, making it suitable for travel‑and‑expat storytelling on social media.",
+    "review_path": "Review/🔊 English _ Thai Teacher2026-07-10T22_01_16+07_00.review.md",
+    "processed_path": "Processed/🔊 English _ Thai Teacher2026-07-10T22_01_16+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 22:15:20"
+  },
+  {
+    "source_name": "1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "agent workflows",
+      "single‑goal agents",
+      "multi‑agent coordination",
+      "task estimation",
+      "human judgment"
+    ],
+    "reason": "The article explains how to choose between single‑agent and multi‑agent setups for complex tasks, introduces tools like Ringer and CodeX, and discusses strategy around task decomposition, estimation, and human oversight.",
+    "tags": [
+      "ai",
+      "llms",
+      "agents",
+      "workflow",
+      "productivity"
+    ],
+    "links": [
+      "https://github.com/OpenClaw/ringer",
+      "https://openai.com/blog/fable-5",
+      "https://www.wikiwand.com/en/Prompt_engineering"
+    ],
+    "map_entry": "Article outlining agent workflow strategies, tool comparisons (Ringer, CodeX), and best practices for task estimation and human oversight.",
+    "summary": "The document reviews key concepts around using agents to automate tasks, detailing when single‑goal agents like Ringer are suitable versus when a multi‑agent team is required. It discusses estimating task size, separating concerns, verifying results, and the importance of human judgment. Practical advice includes setting up local environments for sensitive data, using prompt templates, and leveraging tools like CodeX and GitHub Actions to execute code locally. The piece also highlights the evolving nature of agent technologies and provides a quick‑use “one‑minute agent test” tool to decide between agent types.",
+    "review_path": "Review/1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].review.md",
+    "processed_path": "Processed/1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-10 22:15:44"
+  },
+  {
+    "source_name": "AI Task Classification2026-07-10T22_13_01+07_00.md",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "task classification",
+      "agent workflows"
+    ],
+    "reason": "The document discusses how to decide whether a task needs AI and what type of agent setup is appropriate.",
+    "tags": [
+      "ai",
+      "llms",
+      "agents",
+      "workflow"
+    ],
+    "links": [],
+    "map_entry": "Document outlining Nate’s four-question test for determining the correct AI deployment strategy, focusing on memory limits and validation concerns.",
+    "summary": "This source explains that most AI failures stem from misclassifying tasks rather than technology limitations. It presents a concise framework to decide whether work should be handled by simple LLM chat, single or multi‑agent teams, or left to human judgment, emphasizing the importance of memory constraints and evaluation methods in multi‑agent systems.",
+    "review_path": "Review/AI Task Classification2026-07-10T22_13_01+07_00.review.md",
+    "processed_path": "Processed/AI Task Classification2026-07-10T22_13_01+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-10 22:16:03"
+  },
+  {
+    "source_name": "ASI and Deep Thought2026-07-10T22_02_17+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Philosophy",
+      "AI & LLMs"
+    ],
+    "reason": "The article centers on the author's experience living in Thailand and reflects on philosophical themes using Douglas Adams' Deep Thought analogy.",
+    "tags": [
+      "travel",
+      "expat",
+      "Thailand",
+      "AI",
+      "philosophy",
+      "Douglas Adams"
+    ],
+    "links": [
+      "Deep Thought",
+      "Siam 42"
+    ],
+    "map_entry": "Article discussing how an AI metaphor intersects with life as a Thai expat, blending humor and insight.",
+    "summary": "The piece opens with Douglas Adams' Deep Thought and the quest for life's answer. The narrator then connects that search to their personal journey of moving to Thailand in pursuit of simplicity, work‑life balance, and meaning. A playful observation ties Thailand's old name, Siam, to the number 42. They juxtapose this with modern AI developments (Deep Thought as a metaphor) and ponder questions about what truly matters in life, ending on a light‑hearted note that while Thailand isn't the ultimate answer, it offers something comforting—simple joys, sunshine, and fewer alarms.",
+    "review_path": "Review/ASI and Deep Thought2026-07-10T22_02_17+07_00.review.md",
+    "processed_path": "Processed/ASI and Deep Thought2026-07-10T22_02_17+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 22:16:50"
+  },
+  {
+    "source_name": "Beauty filter request2026-07-10T22_06_55+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI image editing",
+      "Style guides",
+      "Website design"
+    ],
+    "reason": "The document discusses using AI for beauty retouching and creating a visual style guide for a website.",
+    "tags": [
+      "ai",
+      "image editing",
+      "beauty retouching",
+      "website design"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a2d1c64-87a8-83ec-9859-b3fde5e3f1fb"
+    ],
+    "map_entry": "Beauty filter request conversation with AI for image enhancement and style guide creation.",
+    "summary": "This document captures a user’s discussion with an AI assistant about applying beauty filters to a portrait using DALL‑E, explaining the prompt details, and planning a style‑guide section for a client website. The exchange covers image editing techniques, the concept of a “Shania” makeup style, and how to showcase these transformations on a site through mood boards and before/after visual cards.",
+    "review_path": "Review/Beauty filter request2026-07-10T22_06_55+07_00.review.md",
+    "processed_path": "Processed/Beauty filter request2026-07-10T22_06_55+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:17:23"
+  },
+  {
+    "source_name": "Cheap Living Myths Thailand2026-07-10T22_11_11+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "YouTube content strategy",
+      "Thailand expat lifestyle",
+      "community engagement"
+    ],
+    "reason": "The conversation outlines positioning and engagement tactics for a YouTube channel focused on Thailand expat living.",
+    "tags": [
+      "YouTube",
+      "expat",
+      "Thailand",
+      "content strategy",
+      "engagement"
+    ],
+    "links": [],
+    "map_entry": "Advice on using contextual commentary to enhance authority for a Thailand travel & expat channel.",
+    "summary": "This discussion presents a strategy for an established YouTuber covering Thailand expat life: move from myth‑busting to providing nuanced context, engage in comment threads on popular Thai videos, collaborate with other channels, and maintain consistent, authentic content. The goal is to establish authority as a seasoned voice, attract new viewers seeking reliable information, and build long‑term subscriber loyalty.",
+    "review_path": "Review/Cheap Living Myths Thailand2026-07-10T22_11_11+07_00.review.md",
+    "processed_path": "Processed/Cheap Living Myths Thailand2026-07-10T22_11_11+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 22:17:57"
+  },
+  {
+    "source_name": "EV Adoption Perspectives2026-07-10T22_08_31+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Electric Vehicles",
+      "Cultural Adaptation",
+      "Personal Reflection",
+      "Transportation Habits"
+    ],
+    "reason": "The document outlines a 9–11 minute reflection video about an electric car experience in Thailand and the insights it spurred on cultural differences and personal assumptions.",
+    "tags": [
+      "EV",
+      "transportation",
+      "culture",
+      "Thailand",
+      "expat",
+      "reflection",
+      "travel"
+    ],
+    "links": [],
+    "map_entry": "Video concept: Reflecting on how an EV encounter in Thailand influenced perspective on transportation and culture.",
+    "summary": "The document details a contemplative, first‑person video that uses an electric vehicle observed at a traffic light as a catalyst for exploring the narrator’s cultural assumptions while living in Thailand. It covers observations about Western EV narratives, contrasts them with local transportation norms such as bicycles and scooters, and delves into how being abroad reshapes one’s certainty toward understanding different practices. The piece is framed as a travel‑and‑expat experience that encourages viewers to question their own habits and broaden perspective.",
+    "review_path": "Review/EV Adoption Perspectives2026-07-10T22_08_31+07_00.review.md",
+    "processed_path": "Processed/EV Adoption Perspectives2026-07-10T22_08_31+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 22:18:40"
+  },
+  {
+    "source_name": "Face Adjustment Request2026-07-10T22_08_11+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "image editing",
+      "face balance"
+    ],
+    "reason": "The document details instructions for adjusting face brightness and tones in a photo.",
+    "tags": [
+      "image editing",
+      "photo balance",
+      "face adjustment"
+    ],
+    "links": [],
+    "map_entry": "Face Adjustment Request - user’s discussion with ChatGPT about balancing male and female face brightness in an image.",
+    "summary": "This document records a user conversation requesting adjustments to the male face’s brightness and the female skin tone in a photo. It highlights discrepancies between skin tones (Caucasian vs dark‑skinned) and seeks guidance on correcting these differences to achieve visual balance.",
+    "review_path": "Review/Face Adjustment Request2026-07-10T22_08_11+07_00.review.md",
+    "processed_path": "Processed/Face Adjustment Request2026-07-10T22_08_11+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:19:10"
+  },
+  {
+    "source_name": "Gemma 4 Desktop Exploration2026-07-10T22_02_48+07_00.md",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "local AI architecture",
+      "LLM workflows",
+      "vision models",
+      "metadata handling",
+      "file operations"
+    ],
+    "reason": "The document describes building a local AI-powered photo archivist using LLMs and vision models.",
+    "tags": [
+      "ai",
+      "llms",
+      "vision",
+      "metadata",
+      "local"
+    ],
+    "links": [
+      "https://github.com/ggerganov/llama.cpp",
+      "https://ultralytics.com"
+    ],
+    "map_entry": "Gemma 4 Desktop Exploration - concise description of the source.",
+    "summary": "This document provides a step‑by‑step guide to creating an automated photo archival system that runs entirely on local hardware. It covers setting up a Llama‑3 based local LLM server, integrating a YOLOv8 vision model for object detection, reading and writing EXIF/IPTC metadata via exiftool, and orchestrating these components in a simple Python script that processes images in batches, writes titles, keywords, descriptions, renames files, and organizes them into success or review folders. The workflow demonstrates how to combine LLMs with tool‑calling and file operations for practical, offline AI projects.",
+    "review_path": "Review/Gemma 4 Desktop Exploration2026-07-10T22_02_48+07_00.review.md",
+    "processed_path": "Processed/Gemma 4 Desktop Exploration2026-07-10T22_02_48+07_00.md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-10 22:19:59"
+  },
+  {
+    "source_name": "Image-to-video generation tips2026-07-10T22_04_42+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Image-to-Video Generation",
+      "ComfyUI Workflow"
+    ],
+    "reason": "User requests a concise, valid JSON summary of the image‑to‑video generation guidance for ComfyUI.",
+    "tags": [
+      "comfyui",
+      "wan",
+      "image-to-video",
+      "workflow"
+    ],
+    "links": [],
+    "map_entry": "Summary of minimal image-to-video workflow using WAN 2.2 in ComfyUI.",
+    "summary": "The user needs a single, focused pipeline that takes one still image and produces a short animated video. The recommended approach is to load the image into ComfyUI, feed it through the WAN 2.2 Image‑to‑Video node (setting FPS, duration, and model path), and then pipe the output frames into a Video Save/Encode node to write an MP4 file. No additional nodes or enhancements are required. This concise workflow eliminates distractions and ensures reliable video generation on the available GPU.",
+    "review_path": "Review/Image-to-video generation tips2026-07-10T22_04_42+07_00.review.md",
+    "processed_path": "Processed/Image-to-video generation tips2026-07-10T22_04_42+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:20:42"
+  },
+  {
+    "source_name": "Lop Buri Photography Tips2026-07-10T22_06_17+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Photography guide",
+      "Lop Buri attractions",
+      "Timing and lighting tips",
+      "Map coordinates",
+      "Practical travel advice"
+    ],
+    "reason": "Document provides new guidance on photographing Lop Buri locations, focusing on timing, angles, and logistical details.",
+    "tags": [
+      "travel",
+      "photography",
+      "lop-buri",
+      "guide"
+    ],
+    "links": [
+      "Phra Prang Sam Yot map",
+      "Sarn Phra Karn map",
+      "King Narai’s Palace map",
+      "Wat Phra Si Rattana Mahathat map"
+    ],
+    "map_entry": "Lop Buri – photography itinerary guide with map links, best times, and shooting tips for two days.",
+    "summary": "This document outlines a two‑day photography schedule in Lop Buri, Thailand, including key sites, optimal lighting times, camera gear recommendations, practical travel advice, and Google‑Maps coordinates for each location. It serves as a concise resource for photographers seeking fresh angles and efficient planning.",
+    "review_path": "Review/Lop Buri Photography Tips2026-07-10T22_06_17+07_00.review.md",
+    "processed_path": "Processed/Lop Buri Photography Tips2026-07-10T22_06_17+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 22:21:29"
+  },
+  {
+    "source_name": "Mall Time-lapse Music Prompt2026-07-10T22_03_29+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "music composition",
+      "Suno prompts",
+      "time-lapse video"
+    ],
+    "reason": "The document contains instructions for generating music prompts tailored to a mall time‑lap video, a form of creative audio production.",
+    "tags": [
+      "music",
+      "audio",
+      "suno",
+      "prompt",
+      "time-lapse",
+      "video"
+    ],
+    "links": [],
+    "map_entry": "Mall Time‑lapse Music Prompt – ChatGPT conversation with three versions of music prompts for the AI music generator Suno.",
+    "summary": "The document provides three distinct prompt variations for generating upbeat, slightly weary background tracks at specific BPMs (108–110) suitable for a mall time‑lap video. Each version outlines instrumentation, mood, and structure to guide Suno in creating a continuous, cinematic soundtrack.",
+    "review_path": "Review/Mall Time-lapse Music Prompt2026-07-10T22_03_29+07_00.review.md",
+    "processed_path": "Processed/Mall Time-lapse Music Prompt2026-07-10T22_03_29+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:21:55"
+  },
+  {
+    "source_name": "Medication Clarification Request2026-07-10T22_05_35+07_00.md",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Medication",
+      "Clarification Request",
+      "Dosage",
+      "Side Effects"
+    ],
+    "reason": "Document contains a patient’s formal request for detailed information about medication usage and potential adverse reactions.",
+    "tags": [
+      "health",
+      "medication"
+    ],
+    "links": [
+      "Pharmacy Guidelines",
+      "Prescription Information"
+    ],
+    "map_entry": "Medication Clarification Request2026-07-10T22_05_35+07_00.md – A patient’s inquiry seeking dosage, timing, food interactions, and side effect details for a prescribed medication.",
+    "summary": "The document is a concise request from the patient to their healthcare provider asking for clarification on how much of the medication should be taken each day, whether it can be taken with meals, what possible side effects to watch for, and if there are any interactions with other medications. The patient also briefly mentions recent symptoms that prompted this inquiry.",
+    "review_path": "Review/Medication Clarification Request2026-07-10T22_05_35+07_00.review.md",
+    "processed_path": "Processed/Medication Clarification Request2026-07-10T22_05_35+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-10 22:22:30"
+  },
+  {
+    "source_name": "Nikola Tesla Overview2026-07-10T22_02_34+07_00.md",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "Nikola Tesla",
+      "Atmospheric Electricity",
+      "Energy Harvesting"
+    ],
+    "reason": "The document discusses engineering projects related to extracting power from the ionosphere and Tesla's work in this area.",
+    "tags": [
+      "Tesla",
+      "ionosphere",
+      "energy harvesting",
+      "electricity"
+    ],
+    "links": [
+      "Nikola Tesla Wikipedia",
+      "Ionosphere Wikipedia",
+      "Schumann Resonance Wikipedia"
+    ],
+    "map_entry": "Document analyzing Nikola Tesla’s attempts to harvest energy from Earth's atmosphere and the feasibility of modern projects tapping the ionospheric electric circuit.",
+    "summary": "The article reviews the concept of using the global atmospheric electrical circuit as an energy source, examines Tesla's historical experiments, and evaluates contemporary proposals for capturing ionospheric power. It explains that while the ionosphere presents a large voltage difference, the available current density is extremely low, making practical power extraction challenging. Modern projects such as high‑altitude platforms and resonant antenna arrays are discussed but remain in experimental stages due to economic and technical constraints.",
+    "review_path": "Review/Nikola Tesla Overview2026-07-10T22_02_34+07_00.review.md",
+    "processed_path": "Processed/Nikola Tesla Overview2026-07-10T22_02_34+07_00.md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-10 22:23:08"
+  },
+  {
+    "source_name": "OpenWebUI Search Issue2026-07-10T22_01_32+07_00.md",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "model hosting",
+      "GPU constraints"
+    ],
+    "reason": "The conversation focuses on setting up AI infrastructure, comparing OpenWebUI, Ollama, LM Studio and GPU limitations.",
+    "tags": [
+      "ai",
+      "infrastructure",
+      "gpu"
+    ],
+    "links": [],
+    "map_entry": "OpenWebUI Search Issue2026-07-10T22_01_32+07_00.md - Overview of local AI tool setup and GPU constraints.",
+    "summary": "The document discusses building a low‑cost AI lab with an MSI 1050 Ti laptop, installing OpenWebUI and Ollama for LLM serving, exploring LM Studio as an alternative model manager, and addressing how limited VRAM affects image generation. It covers troubleshooting, comparing different frameworks, and the practical trade‑offs between local GPU resources.",
+    "review_path": "Review/OpenWebUI Search Issue2026-07-10T22_01_32+07_00.review.md",
+    "processed_path": "Processed/OpenWebUI Search Issue2026-07-10T22_01_32+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-10 22:23:38"
+  },
+  {
+    "source_name": "Physiotherapy for Joint Pain2026-07-10T22_05_56+07_00.md",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "orthopedic specialists",
+      "physiotherapy options",
+      "hospital recommendations",
+      "travel advice"
+    ],
+    "reason": "The user seeks specific medical and travel guidance for neck and shoulder pain treatment near Phutthamonthon Sai 5.",
+    "tags": [
+      "health",
+      "physiotherapy",
+      "orthopedics",
+      "travel"
+    ],
+    "links": [
+      "https://www.samitivejnakhonpathom.com/en/orthopaedics-sports-medicine/",
+      "https://www.nphospital.org/thailand/eng/index.html",
+      "https://en.wikipedia.org/wiki/Sirikit_Nursing_Home",
+      "https://www.bangkokhospital.com/en/bangkok-bone-brain/center-clinic/bih-orthopedics-center/bangkok-orthopedic-center/overview"
+    ],
+    "map_entry": "User request for orthopedic and physiotherapy recommendations near Phutthamonthon Sai 5, including travel considerations.",
+    "summary": "The user is located on the western side of Bangkok at Phutthamonthon Sai 5 with neck and shoulder pain likely osteoarthritis. The response provides a list of nearby hospitals and clinics (Samitivej Nakhon Pathom, Nakhon Pathom General Hospital, Siriraj-affiliated Medical Center in Salaya, and Bangkok Hospital) that offer orthopedic specialist care and on-site physiotherapy. It includes travel advice such as driving distances, public transport options, and tips for booking early‑morning joint pain clinics. The reply also advises how to prepare for the appointment, what information to bring, and considerations for potential surgical or conservative treatment paths.",
+    "review_path": "Review/Physiotherapy for Joint Pain2026-07-10T22_05_56+07_00.review.md",
+    "processed_path": "Processed/Physiotherapy for Joint Pain2026-07-10T22_05_56+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-10 22:24:19"
+  },
+  {
+    "source_name": "Recreate Image with Prompt2026-07-10T22_10_30+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Prompt Engineering",
+      "AI Image Generation"
+    ],
+    "reason": "The document provides detailed instructions for generating an image prompt using AI tools.",
+    "tags": [
+      "prompt engineering",
+      "ai-image-generation",
+      "lucid-origin",
+      "leonardo-ai"
+    ],
+    "links": [
+      "https://lucidorigin.com",
+      "https://www.leonardo.ai"
+    ],
+    "map_entry": "Recreate Image with Prompt - guide to generate Lucid Origin image prompts without reference images",
+    "summary": "This document outlines how to craft a detailed language prompt for Leonardo AI's Lucid Origin engine, specifying subject details, studio setup, camera settings, and negative prompt constraints to achieve a realistic corporate portrait.",
+    "review_path": "Review/Recreate Image with Prompt2026-07-10T22_10_30+07_00.review.md",
+    "processed_path": "Processed/Recreate Image with Prompt2026-07-10T22_10_30+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:24:55"
+  },
+  {
+    "source_name": "Thailand Chaos Generator Search2026-07-10T22_03_10+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "HTML",
+      "JavaScript",
+      "Random selection",
+      "Theme generation"
+    ],
+    "reason": "The document offers a single-file web page that randomly selects three themes from a predefined array, useful for brainstorming or generating creative content.",
+    "tags": [
+      "html",
+      "javascript",
+      "random",
+      "thailand"
+    ],
+    "links": [],
+    "map_entry": "Thailand Chaos Generator – a minimal HTML/JS file that picks 3 random Thai-themed topics out of an array of 23.",
+    "summary": "This document contains the complete code for Thailand Chaos Generator: a self‑contained HTML page with JavaScript that defines an array of 23 themes, shuffles them, and displays three randomly chosen themes when a button is pressed.",
+    "review_path": "Review/Thailand Chaos Generator Search2026-07-10T22_03_10+07_00.review.md",
+    "processed_path": "Processed/Thailand Chaos Generator Search2026-07-10T22_03_10+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:25:36"
+  },
+  {
+    "source_name": "Top Thailand YouTube Themes2026-07-10T22_01_46+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Collaboration Requests",
+      "Clarifying Intent",
+      "Privacy in Public Groups",
+      "Finding Vloggers"
+    ],
+    "reason": "The document discusses strategies for content creators to handle collaboration requests within a community group, focusing on communication and privacy.",
+    "tags": [
+      "content creation",
+      "collaboration",
+      "vlogging",
+      "privacy",
+      "Bangkok",
+      "YouTube",
+      "community support"
+    ],
+    "links": [
+      "https://www.youtube.com/user/MertonSmith",
+      "https://www.facebook.com/groups/bangkokvloggers"
+    ],
+    "map_entry": "Guidance on how to respond to a Facebook group member asking for a vlogger collaborator in Rambuttri Alley, with emphasis on clarifying needs and maintaining privacy.",
+    "summary": "The response offers a friendly yet structured approach: ask the user whether they seek an existing local vlogger or want a collaboration partner, request their channel link for context, and provide quick search tips. It also advises respecting group rules by keeping personal info out of public posts and suggests direct messaging for sensitive details.",
+    "review_path": "Review/Top Thailand YouTube Themes2026-07-10T22_01_46+07_00.review.md",
+    "processed_path": "Processed/Top Thailand YouTube Themes2026-07-10T22_01_46+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:26:14"
+  },
+  {
+    "source_name": "Vlog - AI Image Liability Thailand2026-07-10T22_10_46+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI-generated imagery",
+      "deepfakes",
+      "Thai law",
+      "responsible use",
+      "practical rules"
+    ],
+    "reason": "The document outlines how AI image creation can be used legally and unilaterally in Thailand, highlighting distinctions between enhancement and fabrication, and offers practical guidance for content creators.",
+    "tags": [
+      "ai",
+      "deepfake",
+      "thailand-law",
+      "image-editing"
+    ],
+    "links": [
+      "Anti-Fake News Centre",
+      "Computer Crimes Act"
+    ],
+    "map_entry": "Vlog script on AI image liability in Thailand with practical usage rules.",
+    "summary": "The vlog explores the legal landscape surrounding AI-generated images and deepfakes in Thailand, contrasting legitimate enhancement work such as photo restoration or thumbnail creation with deceptive practices that could harm reputations. It explains Thai law’s focus on fabricated imagery presented as real evidence, offers a tiered \"AI ladder\" to gauge risk levels, and presents a simple rule of thumb for creators: enhance existing reality or clearly label fiction. The content emphasizes responsible AI use, transparency, and cultural context in the Thai setting.",
+    "review_path": "Review/Vlog - AI Image Liability Thailand2026-07-10T22_10_46+07_00.review.md",
+    "processed_path": "Processed/Vlog - AI Image Liability Thailand2026-07-10T22_10_46+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 22:27:26"
   }
 ]
