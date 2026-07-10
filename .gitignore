@@ -57,6 +57,14 @@ Review/**
 !Review/
 !Review/README.md
 
+Wiki/**
+!Wiki/
+!Wiki/README.md
+!Wiki/Concepts/
+!Wiki/Concepts/README.md
+!Wiki/Sources/
+!Wiki/Sources/README.md
+
 # ----------------------------------------------------------
 # Public KnowledgeVault
 # These folders are intentionally version controlled
@@ -65,7 +73,6 @@ Review/**
 # 00_System/
 # docs/
 # Projects/
-# Wiki/
 
 # ----------------------------------------------------------
 # Operating System Files
