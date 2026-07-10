@@ -1,69 +1,146 @@
 # ==========================================================
-# KnowledgeVault - Git Ignore
+# Project Ariadne
+# KnowledgeVault Template
+#
+# This repository provides the structure and framework for
+# an Ariadne KnowledgeVault while excluding user-specific
+# knowledge and personal data.
 # ==========================================================
 
 # ----------------------------------------------------------
-# Obsidian local workspace
+# Obsidian
+# Keep only the folder and README
 # ----------------------------------------------------------
 
-.obsidian/workspace.json
+.obsidian/**
+!.obsidian/
+!.obsidian/README.md
 
 # ----------------------------------------------------------
-# Ignore private knowledge contents
-# Keep folder structure and README.md files
+# Private KnowledgeVault folders
+# Keep directory structure only
 # ----------------------------------------------------------
 
 Archive/**
+!Archive/
 !Archive/README.md
 
+Entities/**
+!Entities/
+!Entities/README.md
+
+Failed/**
+!Failed/
+!Failed/README.md
+
 Inbox/**
+!Inbox/
 !Inbox/README.md
 
 Journal/**
+!Journal/
 !Journal/README.md
 
+Log/**
+!Log/
+!Log/README.md
+
+People/**
+!People/
+!People/README.md
+
 Processed/**
+!Processed/
 !Processed/README.md
 
 Review/**
+!Review/
 !Review/README.md
 
-People/**
-!People/README.md
-
-Entities/**
-!Entities/README.md
-
-Sources/**
-!Sources/README.md
-
-Concepts/**
-!Concepts/README.md
-
-Log/**
-!Log/README.md
-
 # ----------------------------------------------------------
-# Everything under Projects is PUBLIC
+# Public KnowledgeVault
+# These folders are intentionally version controlled
 # ----------------------------------------------------------
 
-# (No ignore rules)
+# 00_System/
+# docs/
+# Projects/
+# Wiki/
 
 # ----------------------------------------------------------
-# System files
+# Operating System Files
 # ----------------------------------------------------------
 
-Thumbs.db
 .DS_Store
+Thumbs.db
+Desktop.ini
+
+# ----------------------------------------------------------
+# Temporary / Backup Files
+# ----------------------------------------------------------
+
 *.tmp
+*.temp
 *.bak
+*.old
+*.orig
+*.swp
+*.swo
+*~
+
+# ----------------------------------------------------------
+# Logs
+# ----------------------------------------------------------
+
 *.log
 
 # ----------------------------------------------------------
-# AI generated caches (future)
+# Databases / Cache
 # ----------------------------------------------------------
 
 *.db
 *.sqlite
 *.sqlite3
 *.cache
+
+# ----------------------------------------------------------
+# Python
+# ----------------------------------------------------------
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ----------------------------------------------------------
+# Node.js
+# ----------------------------------------------------------
+
+node_modules/
+
+# ----------------------------------------------------------
+# Visual Studio Code
+# ----------------------------------------------------------
+
+.vscode/
+
+# ----------------------------------------------------------
+# JetBrains IDEs
+# ----------------------------------------------------------
+
+.idea/
+
+# ----------------------------------------------------------
+# Build / Distribution
+# ----------------------------------------------------------
+
+dist/
+build/
+
+# ----------------------------------------------------------
+# Environment Files
+# ----------------------------------------------------------
+
+.env
+.env.*
+!.env.example
