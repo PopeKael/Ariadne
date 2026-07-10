@@ -2161,5 +2161,513 @@
     "processed_path": "Processed/A Thai Academic Speaks Up for Foreign Retirees_2026-07-05T09_14_54+07_002025-02-21T16_45_02-08_00[[Integrity Legal Thailand]].md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
     "indexed_at": "2026-07-10 13:47:20"
+  },
+  {
+    "source_name": "Bailan and Chinese Society2026-07-10T16_57_36+07_00.md",
+    "primary_topic": "Business",
+    "subtopics": [
+      "China Food Security",
+      "Soybean Imports",
+      "Agricultural Policy"
+    ],
+    "reason": "Document discusses economic and policy aspects of China's food imports and market impact.",
+    "tags": [
+      "china",
+      "food security",
+      "imports",
+      "soybeans",
+      "economics"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a11377e-4870-83ec-8c58-0f2ad8befa3f"
+    ],
+    "map_entry": "Conversation about China's ability to feed its population and impact of soybean import restrictions.",
+    "summary": "The conversation examines China’s capacity to supply food domestically for a 1.4 billion‑person population, highlighting the dependence on soy imports for animal feed and the economic implications of restricting U.S. exports. It discusses caloric requirements, protein conversion, and potential price shocks, emphasizing that while basic staples may be produced locally, maintaining modern dietary expectations without imports would be difficult.",
+    "review_path": "Review/Bailan and Chinese Society2026-07-10T16_57_36+07_00.review.md",
+    "processed_path": "Processed/Bailan and Chinese Society2026-07-10T16_57_36+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-10 17:07:56"
+  },
+  {
+    "source_name": "Build An AI Second Brain Knowledge Base (Step-By-Step)2026-07-10T11_07_02+07_002026-05-06T11_19_41-07_00[[Matt Wolfe]].md",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "second brain workflow",
+      "automation pipeline",
+      "CRM integration"
+    ],
+    "reason": "The video explains how to build a self‑maintaining knowledge base using Obsidian, AI agents and automation.",
+    "tags": [
+      "obsidian",
+      "ai",
+      "automation",
+      "crm",
+      "knowledge base"
+    ],
+    "links": [
+      "Codex",
+      "Anthropic Claude",
+      "GitHub"
+    ],
+    "map_entry": "YouTube video – “How I Build My Second Brain (2023) – Obsidian + Codex”",
+    "summary": "This YouTube video walks viewers through creating a second‑brain knowledge management system using Obsidian for note taking, Codex or Claude for AI assistance, and automation scripts that transform raw clips into structured markdown files. It covers setting up an index page with automatic linking, template-driven front‑matter and tags, hourly processing jobs, a lightweight CRM embedded in the vault, and continuous backup to GitHub. The result is an interconnected graph of notes that can be queried conversationally by an AI agent, making information retrieval fast and context‑aware.",
+    "review_path": "Review/Build An AI Second Brain Knowledge Base (Step-By-Step)2026-07-10T11_07_02+07_002026-05-06T11_19_41-07_00[[Matt Wolfe]].review.md",
+    "processed_path": "Processed/Build An AI Second Brain Knowledge Base (Step-By-Step)2026-07-10T11_07_02+07_002026-05-06T11_19_41-07_00[[Matt Wolfe]].md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-10 17:09:00"
+  },
+  {
+    "source_name": "Final Message in Hitchhiker2026-07-10T17_00_05+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Hitchhiker's Guide reference",
+      "radio series promotion"
+    ],
+    "reason": "The document is a content creation piece promoting the original BBC radio series of The Hitchhiker’s Guide to the Galaxy and discussing its iconic final message.",
+    "tags": [
+      "towelday",
+      "hitchhikersguide",
+      "radio",
+      "philosophy"
+    ],
+    "links": [
+      "https://www.bbc.co.uk/sounds/ondemand/big-bang/hitchhikers-guide-to-the-galaxy"
+    ],
+    "map_entry": "Towel Day blog post celebrating the original Hitchhiker’s Guide radio series, including commentary on the final line and a link to listen.",
+    "summary": "This document is a social media/blog post celebrating Towel Day that highlights the original BBC radio series of The Hitchhiker’s Guide to the Galaxy. It shares a direct link for listeners, adds playful commentary on the iconic final message “We apologise for the inconvenience,” and uses emojis to enhance its humor and engagement.",
+    "review_path": "Review/Final Message in Hitchhiker2026-07-10T17_00_05+07_00.review.md",
+    "processed_path": "Processed/Final Message in Hitchhiker2026-07-10T17_00_05+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 17:11:13"
+  },
+  {
+    "source_name": "Finding Trending Thai Content2026-07-10T17_01_59+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "YouTube analytics",
+      "API usage",
+      "Thumbnail editing workflow",
+      "Bulk editing techniques",
+      "Trending discovery"
+    ],
+    "reason": "The document details a workflow to identify trending Thai content using YouTube analytics and APIs, and to efficiently update thumbnails in YouTube Studio.",
+    "tags": [
+      "youtube",
+      "analytics",
+      "trending",
+      "thailand",
+      "api",
+      "bulk-edit"
+    ],
+    "links": [
+      "YouTube Studio",
+      "Google Sheets",
+      "YouTube Data API v3",
+      "TubeBuddy"
+    ],
+    "map_entry": "A playbook for locating trending Thai videos via analytics, exporting data to Google Sheets or using the YouTube Data API, and applying bulk or targeted thumbnail edits in YouTube Studio.",
+    "summary": "The guide outlines steps to pull top‑viewed Thai content from the past year using YouTube’s advanced mode or API, export results to CSV/Sheets, then navigate efficiently into editing pages for thumbnails or titles. It covers manual shortcuts, batch editing methods, and third‑party tools like TubeBuddy to streamline workflow.",
+    "review_path": "Review/Finding Trending Thai Content2026-07-10T17_01_59+07_00.review.md",
+    "processed_path": "Processed/Finding Trending Thai Content2026-07-10T17_01_59+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 17:12:34"
+  },
+  {
+    "source_name": "Frosting AI Prompt Guide2026-07-10T17_01_33+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "prompt engineering",
+      "image generation",
+      "AI art"
+    ],
+    "reason": "The document is a conversation about creating effective prompts for an AI image generator.",
+    "tags": [
+      "ai",
+      "image-generation",
+      "prompt-engineering",
+      "art",
+      "frosting-ai"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a15a385-d3c0-83ec-b61c-50225311e320"
+    ],
+    "map_entry": "Frosting AI Prompt Guide – chat about crafting prompts for AI-generated images.",
+    "summary": "This document captures a dialogue focused on developing and refining prompts for the Frosting AI image generation system. It discusses strategies to describe character, setting, style, lighting, and negative constraints to guide the model toward desired outputs. The conversation includes example positive and negative prompt lists, adjustments for varied aesthetics, color palettes, scenery changes, and handling nudity while maintaining artistic intent.",
+    "review_path": "Review/Frosting AI Prompt Guide2026-07-10T17_01_33+07_00.review.md",
+    "processed_path": "Processed/Frosting AI Prompt Guide2026-07-10T17_01_33+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 17:13:43"
+  },
+  {
+    "source_name": "Google Workspace Connector2026-07-10T16_57_47+07_00.md",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Google Workspace Integration",
+      "ChatGPT Apps",
+      "Plan Tier Limitations",
+      "OAuth Permissions"
+    ],
+    "reason": "The document explains ChatGPT’s Google Workspace connector, plan availability, setup steps, and restrictions.",
+    "tags": [
+      "google workspace",
+      "chatgpt",
+      "integration",
+      "oauth",
+      "plan tier"
+    ],
+    "links": [
+      "https://help.openai.com/en/articles/11391654-chatgpt-business-release-notes?utm_source=chatgpt.com",
+      "https://www.tomshardware.com/tech-industry/cyber-security/researcher-shows-how-comprimised-calendar-invite-can-hijack-chatgpt?utm_source=chatgpt.com",
+      "https://chatgpt.com/settings/apps?utm_source=chatgpt.com",
+      "https://openai.com/chatgpt/pricing/?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Google Workspace Connector - ChatGPT integration guide",
+    "summary": "This document provides an overview of the Google Workspace connector for ChatGPT, detailing how to enable and use it via the Apps settings, explaining which plan tiers support the feature, outlining potential restrictions imposed by Workspace admins, and noting security considerations related to OAuth permissions.",
+    "review_path": "Review/Google Workspace Connector2026-07-10T16_57_47+07_00.review.md",
+    "processed_path": "Processed/Google Workspace Connector2026-07-10T16_57_47+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-10 17:14:19"
+  },
+  {
+    "source_name": "Hair Colour Ideas2026-07-10T16_57_12+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "social media",
+      "image generation",
+      "hair colour"
+    ],
+    "reason": "The document describes using AI-generated images to showcase hair colour options for a client and sharing the results on Facebook to gather feedback.",
+    "tags": [
+      "ai",
+      "hair",
+      "social media"
+    ],
+    "links": [
+      "https://chatgpt.com/backend-api/estuary/content?id=file_0000000001787207b183b2d26d400748&ts=495465&p=fs&cid=1&sig=1a665a5f61a73fb2847cdda7c7c5798d02c746a7cc7c368ddfac0a8d75a5a3ab&v=0",
+      "https://chatgpt.com/backend-api/estuary/content?id=file_00000000340c71fa853be340fd22f707&ts=495465&p=fs&cid=1&sig=ceaf180fcf6f20009136f599d9af64ef69dcd0975df90cd5fb3ebe16c70cbd76&v=0",
+      "https://chatgpt.com/backend-api/estuary/content?id=file_00000000f0c87206b9aaedd29fe79127&ts=495465&p=fs&cid=1&sig=b6a859e0cdaa74c77d381d54ba2453f0e1d9aae47623b48325017da622f9326b&v=0"
+    ],
+    "map_entry": "Hair Colour Ideas conversation for a social media post on Facebook.",
+    "summary": "The document outlines how AI-generated images were used to present various hair colour options—Espresso, Mahogany, Burgundy, Light Ash Brown—to a client named Chanya. The resulting images and commentary were shared in a Facebook post to solicit opinions from the author's network.",
+    "review_path": "Review/Hair Colour Ideas2026-07-10T16_57_12+07_00.review.md",
+    "processed_path": "Processed/Hair Colour Ideas2026-07-10T16_57_12+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 17:14:55"
+  },
+  {
+    "source_name": "House Price Estimation2026-07-10T16_59_21+07_00.md",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Housing",
+      "Financial Planning",
+      "Family Dynamics"
+    ],
+    "reason": "The conversation discusses Shania's personal housing situation, financial obligations, and family relationships influencing her relocation considerations.",
+    "tags": [
+      "housing",
+      "finance",
+      "family"
+    ],
+    "links": [
+      "Shania",
+      "Sukutai region"
+    ],
+    "map_entry": "Personal discussion about Shania’s housing, finances and family context for potential relocation.",
+    "summary": "A personal conversation covering Shania’s monthly mortgage burden, the influence of a retired police uncle as neighbor, family land assets, and considerations for moving to a safer rural location.",
+    "review_path": "Review/House Price Estimation2026-07-10T16_59_21+07_00.review.md",
+    "processed_path": "Processed/House Price Estimation2026-07-10T16_59_21+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-10 17:16:09"
+  },
+  {
+    "source_name": "Librarian Interface for LLMs2026-07-10T16_59_07+07_00.md",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "local memory persistence",
+      "model routing",
+      "token optimization",
+      "development challenges"
+    ],
+    "reason": "The document discusses an interface that integrates multiple large language models, detailing its design for local confidence building and token cost reduction.",
+    "tags": [
+      "ai",
+      "llms",
+      "interface",
+      "memory",
+      "routing",
+      "optimization"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a11842e-2cd0-83ec-901a-ecaf044725e5"
+    ],
+    "map_entry": "ChatGPT conversation about a librarian interface that plugs into every other LLM, focusing on local confidence building and token cost minimization.",
+    "summary": "The chat covers the concept of a “librarian” interface that manages interactions with multiple LLMs, emphasizing local storage of confidence and preferences to reduce token usage. It also discusses reasons for project procrastination, including scope complexity, technical hurdles, design ambiguity, vendor reliability concerns, and fears of unmanageable complexity.",
+    "review_path": "Review/Librarian Interface for LLMs2026-07-10T16_59_07+07_00.review.md",
+    "processed_path": "Processed/Librarian Interface for LLMs2026-07-10T16_59_07+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-10 17:16:51"
+  },
+  {
+    "source_name": "Luckin Coffee in Thailand2026-07-10T17_00_36+07_00.md",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Market Entry Strategy",
+      "Intellectual Property",
+      "Competitive Landscape"
+    ],
+    "reason": "The document examines Luckin Coffee’s expansion efforts, trademark dispute, and local competitors in Thailand.",
+    "tags": [
+      "luckin",
+      "thailand",
+      "coffee",
+      "trademark",
+      "expansion"
+    ],
+    "links": [
+      "https://www.luckincoffee.com/?utm_source=chatgpt.com",
+      "https://www.worldcoffeeportal.com/news/luckin-coffee-reportedly-preparing-for-international-expansion/?utm_source=chatgpt.com",
+      "https://en.wikipedia.org/wiki/Luckin_Coffee?utm_source=chatgpt.com",
+      "https://www.khuranaandkhurana.com/2024/08/05/luckin-coffees-trade-mark-battle-in-thailand-a-cautionary-tale-for-international?utm_source=chatgpt.com",
+      "https://en.wikipedia.org/wiki/Cotti_Coffee?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Luckin Coffee in Thailand – status of presence, trademark conflict, and local competitors.",
+    "summary": "This document provides a concise overview of Luckin Coffee’s situation in Thailand. It notes that the brand has not yet rolled out a formal national network, although an isolated Bangkok outlet operates under the name. A trademark dispute involving a Thai company using the ‘Luckin’ mark has created legal uncertainty for official expansion. The piece also highlights local coffee chains—such as Cotti Coffee (founded by former Luckin executives), the PTT‑linked Koi Coffee, and other Thai brands—that occupy similar market segments or offer comparable app‑based ordering models.",
+    "review_path": "Review/Luckin Coffee in Thailand2026-07-10T17_00_36+07_00.review.md",
+    "processed_path": "Processed/Luckin Coffee in Thailand2026-07-10T17_00_36+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-10 17:18:00"
+  },
+  {
+    "source_name": "My Hosting - Stage 1.7 Parse2026-07-09T23_12_30+07_00.md",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "deployment",
+      "CI/CD"
+    ],
+    "reason": "The document contains parsed results from a hosting deployment stage (Stage 1.7) and provides details that are relevant to the infrastructure workflow.",
+    "tags": [
+      "hosting",
+      "pipeline"
+    ],
+    "links": [
+      "GitHub Actions",
+      "Docker"
+    ],
+    "map_entry": "My Hosting - Stage 1.7 Parse2026-07-09T23_12_30+07_00.md – parsed output of deployment stage 1.7, including timestamps, environment details, and status information.",
+    "summary": "This file records the parsed results from the second hosting deployment step (stage 1.7) dated 2026‑07‑09 at 23:12:30 +07:00. It contains timestamps, environment metadata, status codes, and logs that are useful for infrastructure monitoring and audit purposes.",
+    "review_path": "Review/My Hosting - Stage 1.7 Parse2026-07-09T23_12_30+07_00.review.md",
+    "processed_path": "Processed/My Hosting - Stage 1.7 Parse2026-07-09T23_12_30+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-10 17:18:30"
+  },
+  {
+    "source_name": "Patreon Post Format Update2026-07-10T17_00_22+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "platform formatting",
+      "aspect ratios",
+      "workflow standardization"
+    ],
+    "reason": "The document discusses setting 16:9 landscape as default for Patreon posts and other platforms, highlighting the benefits of standardized aspect ratios in content creation workflows.",
+    "tags": [
+      "content-creation",
+      "formatting",
+      "social-media",
+      "patreon",
+      "aspect-ratio"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a151e01-2e80-83ec-9939-8acb33f0ecb3"
+    ],
+    "map_entry": "Discussion on standardizing 16:9 aspect ratio for Patreon and other platforms.",
+    "summary": "This conversation explores the idea of adopting a uniform 16:9 landscape format across Patreon, YouTube thumbnails, and other social media channels. The author expresses frustration with varying platform-specific dimensions and argues that a single master canvas would streamline production, reduce cropping friction, and make future repurposing easier. ChatGPT affirms the approach, highlighting how a standard aspect ratio can serve as a digital “road” for content creators. The discussion ends with speculation about a future 1:1 high‑resolution master that could be auto‑cropped to fit any platform, emphasizing the importance of workflow consistency in modern content creation.",
+    "review_path": "Review/Patreon Post Format Update2026-07-10T17_00_22+07_00.review.md",
+    "processed_path": "Processed/Patreon Post Format Update2026-07-10T17_00_22+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 17:19:11"
+  },
+  {
+    "source_name": "Ryanair vs Australian Carriers2026-07-10T16_57_25+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Gaming"
+    ],
+    "reason": "The document explores creative meme terminology and proposes a revised bestiary for online culture.",
+    "tags": [
+      "meme",
+      "internet slang",
+      "gaming"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a111621-2068-83ec-8925-6af3bf1f8b2d"
+    ],
+    "map_entry": "Meme‑Bestiary Re‑Ranked – short guide to alternative mythical creatures in internet slang",
+    "summary": "The conversation presents a humorous, structured list of mythical creature analogues—kobold, mogwai, gremlin, etc.—to replace overused terms like “goblin” in online meme language. It offers definitions, contextual uses, and suggestions for incorporating these terms into creative writing, gaming references, and internet culture discussions.",
+    "review_path": "Review/Ryanair vs Australian Carriers2026-07-10T16_57_25+07_00.review.md",
+    "processed_path": "Processed/Ryanair vs Australian Carriers2026-07-10T16_57_25+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 17:20:07"
+  },
+  {
+    "source_name": "Secure Boot Issue Fedora2026-07-10T17_01_16+07_00.md",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "Secure Boot",
+      "UEFI Firmware",
+      "Fedora Linux installation"
+    ],
+    "reason": "The document discusses troubleshooting a 'hash not allowed' Secure‑Boot error when booting Fedora 44, detailing causes such as missing or outdated firmware keys and providing steps to disable Secure Boot or import Microsoft and Fedora signing keys.",
+    "tags": [
+      "fedora",
+      "secureboot",
+      "uefi",
+      "linux"
+    ],
+    "links": [
+      "https://fedoraproject.org/workstation/download",
+      "https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-44.0.iso"
+    ],
+    "map_entry": "Secure Boot issue during Fedora 44 installation – 'hash not allowed' error and resolution steps.",
+    "summary": "This document explains why a Fedora 44 installer may fail with a Secure‑Boot ‘hash not allowed’ message, identifies the root causes such as missing Microsoft or Fedora signing keys in UEFI firmware, and provides clear solutions: disable Secure Boot or import the correct keys. It includes verification tips for ISO checksums, recommended media handling practices, and links to official Fedora download pages.",
+    "review_path": "Review/Secure Boot Issue Fedora2026-07-10T17_01_16+07_00.review.md",
+    "processed_path": "Processed/Secure Boot Issue Fedora2026-07-10T17_01_16+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-10 17:21:07"
+  },
+  {
+    "source_name": "Thailand This Week2026-07-10T16_57_00+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "visa policy",
+      "tourism economics",
+      "festival events"
+    ],
+    "reason": "Document discusses Thailand's tightening visa rules and ongoing post-festival tourism activity.",
+    "tags": [
+      "travel",
+      "visa",
+      "tourism",
+      "festival"
+    ],
+    "links": [
+      "https://www.travelandtourworld.com/news/article/us-joins-canada-uk-germany-france-australia-japan-south-korea-and-other-key-nations-as-thailand-shakes-up-its-visa-policy-cutting-sixty-day-exemption-for-ninety-three-countries-and-restoring-li/?utm_source=chatgpt.com",
+      "https://www.straitstimes.com/asia/se-asia/thailand-moves-to-end-60-day-visa-free-stays-to-screen-out-unwanted-visitors?utm_source=chatgpt.com",
+      "https://world.thaipbs.or.th/detail/thailand-to-review-60day-visafree-policy-due-to-security-concerns/61141?utm_source=chatgpt.com",
+      "https://www.nationthailand.com/news/tourism/40065474?utm_source=chatgpt.com",
+      "https://www.thailandnow.in.th/events/?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Thailand This Week – Visa tightening and post-festival tourism scene.",
+    "summary": "The article captures a ChatGPT conversation about Thailand’s recent move to reduce the 60‑day visa‑free period, emphasizing a shift toward higher‑quality tourists and tighter screening. It also highlights that festival momentum remains strong with concerts, expos and cultural events continuing across Bangkok and other regions. The narrator advises an authentic speaking style over scripted delivery to engage viewers in this evolving travel landscape.",
+    "review_path": "Review/Thailand This Week2026-07-10T16_57_00+07_00.review.md",
+    "processed_path": "Processed/Thailand This Week2026-07-10T16_57_00+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 17:21:36"
+  },
+  {
+    "source_name": "Thailand Tourism Shakeup2026-07-10T17_03_54+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "tourism strategy",
+      "market diversification",
+      "value over volume",
+      "regional distribution"
+    ],
+    "reason": "The document discusses Thailand’s tourism authorities’ shift from volume‑driven to value‑focused strategies, emphasizing market diversification and resilience.",
+    "tags": [
+      "tourism",
+      "Thailand",
+      "economy",
+      "strategy"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a17e457-b528-83ec-9473-7d1e78c4d5db",
+      "https://www.bangkokpost.com/business/general/3261993/tourism-authorities-plan-shakeup-of-shorthaul-markets?utm_source=chatgpt.com",
+      "https://www.nationthailand.com/blogs/business/economy/40063492?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Thailand Tourism Shakeup – TAT pivots toward higher‑spending, diversified regional markets.",
+    "summary": "The article outlines Thailand’s tourism authorities’ plan to move from a high‑volume, China‑focused model to one prioritizing value, market diversification, and longer stays. By targeting nearby countries and secondary cities, the strategy aims to reduce vulnerability to global shocks and increase per‑visitor spending.",
+    "review_path": "Review/Thailand Tourism Shakeup2026-07-10T17_03_54+07_00.review.md",
+    "processed_path": "Processed/Thailand Tourism Shakeup2026-07-10T17_03_54+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-10 17:22:26"
+  },
+  {
+    "source_name": "TL;DW Usage Tips2026-07-10T17_03_31+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "video summaries",
+      "abbreviation usage"
+    ],
+    "reason": "The document discusses tips for using the TL;DW abbreviation in video titles and descriptions.",
+    "tags": [
+      "video",
+      "abbrev",
+      "TL;DW",
+      "youtube"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a17cbed-b138-83ec-933b-39d045b744ad"
+    ],
+    "map_entry": "ChatGPT conversation on TL;DW usage tips for video creators.",
+    "summary": "This chat covers how to use the abbreviation TL;DW as a hook and concise summary for YouTube videos, including example titles and guidance on pairing it with actual answers.",
+    "review_path": "Review/TL;DW Usage Tips2026-07-10T17_03_31+07_00.review.md",
+    "processed_path": "Processed/TL;DW Usage Tips2026-07-10T17_03_31+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-10 17:23:00"
+  },
+  {
+    "source_name": "It Works!2026-07-10T17_18_23+07_002026-07-10T02_42_36-07_00[[Garage Alchemy with Pope Kael]].md",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "LLM-powered search",
+      "chunking & embedding",
+      "Obsidian integration",
+      "model loading",
+      "knowledge processing"
+    ],
+    "reason": "The document explains how an LLM serves as the conversational layer in a knowledge base system, detailing chunking and embedding workflows.",
+    "tags": [
+      "ai",
+      "llms",
+      "knowledge_management",
+      "obsidian"
+    ],
+    "links": [
+      "Obsidian",
+      "PowerShell",
+      "Github",
+      "Codex"
+    ],
+    "map_entry": "Garage Alchemy session covering integration of LLMs into an Obsidian-based knowledge management system, including chunking, embedding, and processing workflows.",
+    "summary": "The transcript details the architecture and operation of a knowledge base where an LLM handles natural‑language queries by mapping them to vector embeddings of notes, performing chunking and re‑ranking, and stitching results. It covers practical aspects such as loading large models, using PowerShell scripts for processing markdown files, and integrating with Obsidian and Github.",
+    "review_path": "Review/It Works!2026-07-10T17_18_23+07_002026-07-10T02_42_36-07_00[[Garage Alchemy with Pope Kael]].review.md",
+    "processed_path": "Processed/It Works!2026-07-10T17_18_23+07_002026-07-10T02_42_36-07_00[[Garage Alchemy with Pope Kael]].md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-10 17:45:03"
+  },
+  {
+    "source_name": "My Hosting2026-07-10T17_57_18+07_00.md",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "script automation",
+      "markdown ingest"
+    ],
+    "reason": "The document provides PowerShell instructions to run an ingest script for Ariadne system.",
+    "tags": [
+      "powershell",
+      "automation",
+      "ingest",
+      "markdown"
+    ],
+    "links": [
+      "ariadne.ps1",
+      "PowerShell"
+    ],
+    "map_entry": "Run Ingest.ps1 - automate ingestion of new markdown files into Ariadne knowledge base.",
+    "summary": "The document includes a PowerShell script that changes to the Ariadne system folder, sets the execution policy, runs ariadne.ps1, and waits for input. It suggests improvements such as using Set-Location, try/catch for error handling, and Read-Host for exiting. The script can be extended to pull latest Git changes, ingest only changed markdown files, timestamp runs, and log output, making it a useful tool for automating knowledge base updates.",
+    "review_path": "Review/My Hosting2026-07-10T17_57_18+07_00.review.md",
+    "processed_path": "Processed/My Hosting2026-07-10T17_57_18+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-10 17:58:29"
   }
 ]
