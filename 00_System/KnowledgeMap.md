@@ -1,4 +1,4 @@
-> Last updated: 2026-07-11 16:25:27
+> Last updated: 2026-07-11 16:53:20
 
 ## Business
 Purpose: The article discusses the pressure and challenges faced by Westpac brokers due to unrealistic sales targets, highlighting workplace dynamics within a financial institution.
@@ -20,6 +20,10 @@ Purpose: The article discusses the pressure and challenges faced by Westpac brok
 
 ## Travel & Expat Experience
 Purpose: Document discusses expatriate experiences in Thailand, fitting under Travel & Expat Experience.
+- Personal account of Thai public hospital experience and discussion on cost of living for expats.
+- ChatGPT exchange providing photography-focused spots in Lop Buri.
+- Advice on dating, handling unexpected children, and integrating into Thai family structures for expats.
+- Reflective exploration of Thailand as a metaphorical answer to life's big question, interwoven with AI's quest for deeper meanings.
 - Document explores how moving abroad for early retirement translates into a tangible per-day cost of freedom, using a case study from Sydney to Thailand.
 - Guide outlining pillars, title skeletons, thumbnail moods, and rotation system for a Thailand-based travel vlog.
 - WAZZA profile page showcasing Thai expat lifestyle, AI interests, and community links.
@@ -83,6 +87,7 @@ Purpose: It discusses using large language models to build personal knowledge ba
 
 ## Knowledge Management
 Purpose: The article discusses design principles for personal knowledge bases, aligning with Knowledge Management.
+- README for the Processed folder – a staging area for ingested content before quality‑control and export to the KnowledgeVault.
 - Guide on finding pictures of flowering rice and overview of seed saving and pollination.
 - Discussion on Thai cannabis legislation and its comparison with alcohol laws, focusing on medical vs recreational use and public health impact.
 - Markdown Plugin Benefits - concise description of the source.
@@ -94,6 +99,12 @@ Purpose: The article discusses design principles for personal knowledge bases, a
 
 ## Content Creation
 Purpose: The document describes generating and translating images, fitting under Content Creation.
+- Turtle Video Captions - 20‑second clip captions for Patreon
+- Instructions on turning a static image into an animated video via manual keyframing or programmatic frame creation, including sample Python code and FFmpeg command.
+- Photo Experiment AI – demonstrates side‑by‑side clean‑shaven vs bearded portrait using AI.
+- Hair Colour Ideas - Example Facebook Post
+- Guide detailing how to construct positive and negative prompts for Frosting AI to produce stylized images, covering scene composition, lighting, clothing removal, and variation techniques.
+- Strategies for expanding audience reach by active participation in Thailand-related content ecosystems.
 - Planning guide for a Thai gender‑affirming surgery video series featuring A4 script cards and dual‑camera setup.
 - Guide on creating AI-generated drone footage from ground level to aerial view via prompt design.
 - Explains that filming YouTube content within Thailand is treated as work under local law, requiring proper visa status and a work permit.
@@ -144,6 +155,7 @@ Purpose: The document covers the development, peak, and decline of arcade gaming
 
 ## Archive
 Purpose: The document introduces Ariadne, a librarian character and outlines her role within a storytelling community.
+- Myonal 50 mg drug info – classification as a centrally acting antispasmodic muscle relaxant.
 - Vehicle Classification Discussion - 2026-07-09 12.15.md
 - Image category statistics for a folder with 120 images, split into invoices, receipts, screenshots, and family photos.
 - A historical analysis of Tesla’s wireless power ambitions and the real physics of the ionosphere, debunking free‑energy myths.
@@ -152,6 +164,9 @@ Purpose: The document introduces Ariadne, a librarian character and outlines her
 
 ## Personal
 Purpose: The document discusses a personal experience of losing all life savings due to a fraudulent phone call.
+- Conversation providing insights into Restless Legs Syndrome, habitual foot rocking behaviors, and the minimal calorie impact of such movements.
+- Personal audio translation earbuds with AI attention filter and Ariadne project overview.
+- Asian Arowana Overview: species facts, care guide, cultural symbolism and conservation status.
 - ChatGPT conversation about a study linking cannabis compounds to potential brain-protective effects in older adults.
 - Summary of the Retired Engineers Chaos Board highlighting retirement scheduling and AI development integration.
 - Physiotherapy for Joint Pain – ChatGPT conversation recommending orthopedic specialists near Phutthamonthon Sai 5, Bangkok.
@@ -163,6 +178,8 @@ Purpose: The document discusses a personal experience of losing all life savings
 
 ## Infrastructure
 Purpose: The content reviews an existing product category—home batteries—and does not introduce a wholly new field of study.
+- Ingest.ps1 – a PowerShell launcher for running Ariadne’s ingestion process with robust error handling, logging, and optional git pull features.
+- Article detailing NSW’s decision to scrap temporary 40 km/h speed limit reductions around construction sites after hours.
 - ChatGPT conversation about troubleshooting Facebook scraping failures caused by Cloudflare Under Attack mode.
 - Telstra outage exposes Australia's vulnerability to attacks on critical infrastructure.
 - Video summary: China's thorium reactor breakthrough and its impact on global industrial energy costs.
@@ -181,6 +198,8 @@ Purpose: The content reviews an existing product category—home batteries—and
 
 ## Philosophy
 Purpose: The document discusses occult philosophy and conspiracy theories linking Crowley and Epstein, fitting within Philosophy.
+- Claude's analysis on new evidence linking Epstein to occult books, with implications for conspiracy theories.
+- Gemini conversation analyzing the overlap between Crowley's occult philosophy and Epstein's criminal transgressions.
 - A commentary on speculative ideas surrounding the existence of extraterrestrial civilizations, exploring concepts like the zoo hypothesis, dark forest theory, panspermia, and potential post‑biological stages.
 - Explores how AI amplifies existing information challenges; stresses that trust hinges on human critical thinking, not autonomous AI behavior.
 - Michio Kaku's YouTube interview exploring physics concepts, simulation theory, AI advancements, and existential questions about humanity.
@@ -193,6 +212,8 @@ Purpose: The document discusses occult philosophy and conspiracy theories linkin
 
 ## Projects
 Purpose: The document provides a step‑by‑step guide for building a local photo‑archiving tool that uses CLIP, an LLM, and metadata manipulation.
+- Transcript of Mo Gawdat's talk on quantum‑AI project ideas and F A C R I P pillars.
+- Python Run-Length Encoding – concise code snippet with explanation.
 - Thailand Chaos Generator – single‑page HTML/JS theme selector
 - Thai Gold vs Global Gold Dashboard – a minimal repository skeleton that demonstrates how to fetch live gold price data from Thai and global sources, handle CORS via a PHP proxy if needed, and visualize the results in a browser using Chart.js.
 - Ariadne Project Session – Infrastructure status update and roadmap for transforming KnowledgeMap.md into a dynamic knowledge graph.

@@ -5486,5 +5486,704 @@
     "processed_path": "Processed/Zoo Hypothesis Comment Ideas2026-07-11T16_09_21+07_00.md",
     "wiki_path": "Wiki/Philosophy.md",
     "indexed_at": "2026-07-11 16:25:27"
+  },
+  {
+    "source_name": "ASI and Deep Thought2026-07-10T22_02_17+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a27aa5c-1e70-83ec-b433-a5cd8d067773",
+    "source_url": "https://chatgpt.com/c/6a27aa5c-1e70-83ec-b433-a5cd8d067773",
+    "youtube_video_id": null,
+    "page_title": "ASI and Deep Thought",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "14806346973231a0f508b22a9afe3adc0ff73a6e3d90169324d534439b7c66c5",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Thailand Life Philosophy",
+      "AI and Deep Thought Parallels",
+      "Meaning of Pursuit"
+    ],
+    "source_language": "en",
+    "reason": "The document reflects on why people move to Thailand, tying in philosophical questions about life’s meaning and parallels with AI seeking answers.",
+    "tags": [
+      "Thailand",
+      "Philosophy",
+      "Deep Thought",
+      "AI"
+    ],
+    "links": [
+      "Hitchhiker's Guide to the Galaxy",
+      "Deep Thought"
+    ],
+    "map_entry": "Reflective exploration of Thailand as a metaphorical answer to life's big question, interwoven with AI's quest for deeper meanings.",
+    "summary": "The post begins with a reference to Douglas Adams’ 'The Hitchhiker's Guide to the Galaxy', using the famed answer 42 to launch a musings about whether Thailand could be humanity’s sought-after solution. It delves into what expats actually chase—freedom, sunshine, less busyness—and contrasts that with AI’s pursuit of ever-bigger models and data centers labeled as 'Deep Thought'. The author humorously imagines building such an AI in physical warehouses resembling the mythical Vogon fleet, then brings the discussion back to everyday human desires. The piece blends travel experiences with philosophical reflections, inviting readers to consider whether life’s answers lie in exotic destinations or simple pleasures like coffee and sunshine.",
+    "review_path": "Review/ASI and Deep Thought2026-07-10T22_02_17+07_00.review.md",
+    "processed_path": "Processed/ASI and Deep Thought2026-07-10T22_02_17+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 16:42:05"
+  },
+  {
+    "source_name": "Asian Arowana Overview2026-07-10T19_52_29+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a20ef00-5244-83ec-b618-db350795a125",
+    "source_url": "https://chatgpt.com/c/6a20ef00-5244-83ec-b618-db350795a125",
+    "youtube_video_id": null,
+    "page_title": "Asian Arowana Overview",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "286de541272fdb3553168266568377988425cd8c47c47b86d7581069fade17ef",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "species description",
+      "care requirements",
+      "cultural significance",
+      "conservation concerns"
+    ],
+    "source_language": "en",
+    "reason": "Document provides an overview of Asian Arowana with care, cultural context and conservation info.",
+    "tags": [
+      "aquarium",
+      "fish",
+      "hobby",
+      "species",
+      "care"
+    ],
+    "links": [],
+    "map_entry": "Asian Arowana Overview: species facts, care guide, cultural symbolism and conservation status.",
+    "summary": "This document presents a comprehensive overview of the Asian Arowana (Scleropages formosus), covering its physical characteristics, size, behavior such as strong jumping ability, diet, required large aquarium setup, lifespan, cultural significance in Southeast Asia as a symbol of prosperity, and its endangered status due to habitat loss and overcollection.",
+    "review_path": "Review/Asian Arowana Overview2026-07-10T19_52_29+07_00.review.md",
+    "processed_path": "Processed/Asian Arowana Overview2026-07-10T19_52_29+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-11 16:42:25"
+  },
+  {
+    "source_name": "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
+    "document_id": "youtube:bjUkTgoM9fc",
+    "source_url": "https://www.youtube.com/watch?v=bjUkTgoM9fc",
+    "youtube_video_id": "bjUkTgoM9fc",
+    "page_title": "Attention",
+    "channel_author": "- \"[[Garage Alchemy with Pope Kael]]",
+    "publication_date": "2026-07-05",
+    "content_sha256": "e256de79b710de906e152910b785218ff1d7bbaaa7b1530e82d5a272e6d5b39f",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "translation",
+      "attention filtering",
+      "AI personal assistant",
+      "Ariadne project"
+    ],
+    "source_language": "en",
+    "reason": "The transcript discusses a new approach to using translation earbuds and AI filters to manage information overload, introducing the Ariadne project as a solution.",
+    "tags": [
+      "ai",
+      "personal",
+      "attention",
+      "translators"
+    ],
+    "links": [
+      "Google Translator"
+    ],
+    "map_entry": "Personal audio translation earbuds with AI attention filter and Ariadne project overview.",
+    "summary": "The speaker explores how translation earbuds can be improved by adding an AI-driven attention filter that only conveys relevant information, reducing noise and aiding personal productivity. He introduces the Ariadne project, a framework for guiding users through information overload, emphasizing the need for personalized AI that protects human judgment rather than replacing it. The discussion highlights practical challenges of current tools like Google Translate and envisions future conversational modes that selectively respond to user context.",
+    "review_path": "Review/Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].review.md",
+    "processed_path": "Processed/Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-11 16:43:04"
+  },
+  {
+    "source_name": "Cheap Living Myths Thailand2026-07-10T22_11_11+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a2ecff4-2468-83ec-a052-d9c8e0cb4751",
+    "source_url": "https://chatgpt.com/c/6a2ecff4-2468-83ec-a052-d9c8e0cb4751",
+    "youtube_video_id": null,
+    "page_title": "Cheap Living Myths Thailand",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "e03bfb33c35af169fc44ddb639f1ad470fdef619c65d439a4a8b235ef0abc57d",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Engagement strategy",
+      "Collaborations",
+      "Commenting tactics",
+      "Brand positioning"
+    ],
+    "source_language": "en",
+    "reason": "Document outlines how to grow a Thailand travel/expat channel via engagement, collaborations and thoughtful comments.",
+    "tags": [
+      "youtube",
+      "engagement",
+      "collaboration",
+      "comments",
+      "branding",
+      "travel"
+    ],
+    "links": [
+      "Aussie Nomad Life",
+      "Thailand Vloggers",
+      "YouTube Algorithm"
+    ],
+    "map_entry": "Strategies for expanding audience reach by active participation in Thailand-related content ecosystems.",
+    "summary": "This discussion highlights a pragmatic approach to channel growth focused on targeted engagement rather than debating. It emphasizes the power of collaborations, the influence of consistent comment participation, and positioning oneself as an experienced voice offering nuanced context to prevailing narratives about Thailand.",
+    "review_path": "Review/Cheap Living Myths Thailand2026-07-10T22_11_11+07_00.review.md",
+    "processed_path": "Processed/Cheap Living Myths Thailand2026-07-10T22_11_11+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:43:45"
+  },
+  {
+    "source_name": "Controversial road rule axed for millions of Aussie drivers from today_ 'Unnecessary'.md",
+    "document_id": "url:https://au.news.yahoo.com/controversial-road-rule-axed-for-millions-of-aussie-drivers-from-today-unnecessary-223913786.html?link_source=ta_first_comment&taid=6a44508ff7f4100001c94cf7&guccounter=1",
+    "source_url": "https://au.news.yahoo.com/controversial-road-rule-axed-for-millions-of-aussie-drivers-from-today-unnecessary-223913786.html?link_source=ta_first_comment&taid=6a44508ff7f4100001c94cf7&guccounter=1",
+    "youtube_video_id": null,
+    "page_title": "Controversial road rule axed for millions of Aussie drivers from today: 'Unnecessary",
+    "channel_author": "- \"[[Joe Attanasio]]",
+    "publication_date": "2026-07-01",
+    "content_sha256": "9149ba9d1ff1480959db660f1de96c2a8f6f464b734f1a7e4012da2458742603",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "Road safety legislation",
+      "Construction site speed limits",
+      "Traffic flow regulation"
+    ],
+    "source_language": "en",
+    "reason": "The article discusses the abolition of a temporary 40 km/h speed limit reduction law for construction sites after hours in New South Wales.",
+    "tags": [
+      "traffic",
+      "law",
+      "roadworks",
+      "NSW",
+      "speed limits"
+    ],
+    "links": [
+      "https://au.news.yahoo.com/defiant-albo-defends-tax-backflip-223837590.html",
+      "https://au.news.yahoo.com/controversial-licence-change-sparks-warning-to-aussie-drivers-shouldnt-fool-ourselves-050940396.html",
+      "https://au.news.yahoo.com/millions-of-aussie-drivers-warned-of-road-rule-change-with-961-fines-just-days-away-222809406.html",
+      "https://www.dailytelegraph.com.au/news/nsw/annoying-roadworks-speed-limit-rule-finally-scrapped-for-nsw-drivers/news-story/157557b299a80666887739d7b3875eda"
+    ],
+    "map_entry": "Article detailing NSW’s decision to scrap temporary 40 km/h speed limit reductions around construction sites after hours.",
+    "summary": "The piece explains New South Wales’ removal of a law that previously required motorists to reduce speed by 40 km/h at roadworks even outside working hours. The change aims to keep traffic moving while maintaining worker safety, with signs and restrictions only applying during active construction times. The article cites government statements, related legislation changes, and broader July 1 reforms across Australia.",
+    "review_path": "Review/Controversial road rule axed for millions of Aussie drivers from today_ 'Unnecessary'.review.md",
+    "processed_path": "Processed/Controversial road rule axed for millions of Aussie drivers from today_ 'Unnecessary'.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-11 16:44:28"
+  },
+  {
+    "source_name": "Correspondence.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a6e330620881918b85fc8b9a8b0fc0-correspondence/c/6a3c04c9-7150-83ec-9e91-57b7d1a559f4",
+    "source_url": "https://chatgpt.com/g/g-p-69a6e330620881918b85fc8b9a8b0fc0-correspondence/c/6a3c04c9-7150-83ec-9e91-57b7d1a559f4",
+    "youtube_video_id": null,
+    "page_title": "Correspondence",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-06-24",
+    "content_sha256": "dfaff0602033ca03f321e72291f3f2e620a430d7ea9eca671f6d2e32ec1dfbc9",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Dating in Thailand",
+      "Family Integration",
+      "Cultural Adaptation"
+    ],
+    "source_language": "en",
+    "reason": "Provides guidance on navigating relationships and family dynamics while living abroad.",
+    "tags": [
+      "expat",
+      "relationships",
+      "culture",
+      "family"
+    ],
+    "links": [],
+    "map_entry": "Advice on dating, handling unexpected children, and integrating into Thai family structures for expats.",
+    "summary": "The discussion explores how an expatriate can evaluate a partner who brings existing children into the relationship, balancing expectations with cultural norms in Thailand. It highlights practical considerations such as shared responsibilities, long‑term support roles, and adapting to family‑centric living arrangements.",
+    "review_path": "Review/Correspondence.review.md",
+    "processed_path": "Processed/Correspondence.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 16:44:46"
+  },
+  {
+    "source_name": "Frosting AI Prompt Guide2026-07-10T17_01_33+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a15a385-d3c0-83ec-b61c-50225311e320",
+    "source_url": "https://chatgpt.com/c/6a15a385-d3c0-83ec-b61c-50225311e320",
+    "youtube_video_id": null,
+    "page_title": "Frosting AI Prompt Guide",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "35527683a6e9ab344f90dd957ddb33a58bce648e1b86b20f2dffedf0b3dc0272",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI Prompt Engineering",
+      "Image Generation"
+    ],
+    "source_language": "en",
+    "reason": "The guide provides detailed instructions on crafting prompts for AI image generation, which is a form of content creation using artificial intelligence.",
+    "tags": [
+      "ai",
+      "image-generation",
+      "prompt-engineering"
+    ],
+    "links": [
+      "Frosting AI",
+      "Stable Diffusion"
+    ],
+    "map_entry": "Guide detailing how to construct positive and negative prompts for Frosting AI to produce stylized images, covering scene composition, lighting, clothing removal, and variation techniques.",
+    "summary": "The document offers a step-by-step approach to creating effective prompts for the Frosting AI image generation platform. It explains how to use detailed tags for subjects, environments, lighting, and artistic style; includes negative prompt usage to avoid unwanted elements; and provides strategies for achieving varied outputs such as removing clothing while maintaining aesthetic consistency.",
+    "review_path": "Review/Frosting AI Prompt Guide2026-07-10T17_01_33+07_00.review.md",
+    "processed_path": "Processed/Frosting AI Prompt Guide2026-07-10T17_01_33+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:45:58"
+  },
+  {
+    "source_name": "Hair Colour Ideas2026-07-10T16_57_12+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a1066de-5a5c-83ec-8367-9694c1dc055f",
+    "source_url": "https://chatgpt.com/c/6a1066de-5a5c-83ec-8367-9694c1dc055f",
+    "youtube_video_id": null,
+    "page_title": "Hair Colour Ideas",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "7d920a83d5e6d858eaa9c91ceb46faf84fabb446242249be4fbad832b008183c",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "hair color",
+      "beauty advice",
+      "social media marketing"
+    ],
+    "source_language": "en",
+    "reason": "The document provides guidance on generating hair colour options and drafting a Facebook post for a hairstylist.",
+    "tags": [
+      "hair",
+      "beauty",
+      "salon",
+      "color",
+      "facebook",
+      "socialmedia"
+    ],
+    "links": [],
+    "map_entry": "Hair Colour Ideas - Example Facebook Post",
+    "summary": "This conversation offers instructions to generate various hair colour options based on a reference image, labels them for presentation, and crafts an elegant explanation for a Facebook post that invites community feedback.",
+    "review_path": "Review/Hair Colour Ideas2026-07-10T16_57_12+07_00.review.md",
+    "processed_path": "Processed/Hair Colour Ideas2026-07-10T16_57_12+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:46:40"
+  },
+  {
+    "source_name": "Lop Buri Photography Tips2026-07-10T22_06_17+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a2e14ad-8328-83ec-b408-5035d67ae405",
+    "source_url": "https://chatgpt.com/c/6a2e14ad-8328-83ec-b408-5035d67ae405",
+    "youtube_video_id": null,
+    "page_title": "Lop Buri Photography Tips",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "3709a8fd408f476be1135b4945da6fe5d3641689745fc6ac9bc965a97e9e1298",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Photography",
+      "Tourist itinerary"
+    ],
+    "source_language": "en",
+    "reason": "The document offers photographic recommendations and travel tips for Lop Buri.",
+    "tags": [
+      "travel",
+      "photography"
+    ],
+    "links": [],
+    "map_entry": "ChatGPT exchange providing photography-focused spots in Lop Buri.",
+    "summary": "The conversation supplies a list of key locations—including Phra Prang Sam Yot, King Narai's Palace, Wat Phra Si Rattana Mahathat, and others—along with suggested times for shooting. It highlights the contrast between ancient Khmer ruins and modern surroundings, monkey encounters, street scenes near the railway station, seasonal sunflower fields, hilltop viewpoints at Wat Khao Wong Phrachan, and abandoned military areas—all aimed to keep a photographer engaged over a two‑day visit.",
+    "review_path": "Review/Lop Buri Photography Tips2026-07-10T22_06_17+07_00.review.md",
+    "processed_path": "Processed/Lop Buri Photography Tips2026-07-10T22_06_17+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 16:47:07"
+  },
+  {
+    "source_name": "My Hosting2026-07-10T17_57_18+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-hosting/c/6a50ce0c-64d0-83ec-94bd-dd6272bbe5ea",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-hosting/c/6a50ce0c-64d0-83ec-94bd-dd6272bbe5ea",
+    "youtube_video_id": null,
+    "page_title": "My Hosting",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "d3cd2fe9e2cef0df0a52a3dcf98e41965ba1a09c46da873aecbda46828f50db0",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "PowerShell scripting",
+      "Automation",
+      "Error handling",
+      "Logging"
+    ],
+    "source_language": "en",
+    "reason": "The document presents a PowerShell script that automates the ingestion of markdown files into the Ariadne system, detailing execution policy settings, error handling, and optional Git integration.",
+    "tags": [
+      "powershell",
+      "automation",
+      "ingest",
+      "execution_policy"
+    ],
+    "links": [],
+    "map_entry": "Ingest.ps1 – a PowerShell launcher for running Ariadne’s ingestion process with robust error handling, logging, and optional git pull features.",
+    "summary": "This document outlines a PowerShell script designed to automate the ingestion of markdown files into the Ariadne knowledge system. It changes directory to the target folder, bypasses execution policy restrictions, executes the main ingest script (ariadne.ps1), and includes detailed error handling and optional logging. Suggestions for improving robustness, such as adding parameters, automatic git pulls, incremental file processing, and enhanced logging, are also provided.",
+    "review_path": "Review/My Hosting2026-07-10T17_57_18+07_00.review.md",
+    "processed_path": "Processed/My Hosting2026-07-10T17_57_18+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-11 16:47:40"
+  },
+  {
+    "source_name": "Myonal 50mg Drug Info2026-07-11T12_18_17+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a3150d5-4a3c-83ec-9933-9759a4b1a930",
+    "source_url": "https://chatgpt.com/c/6a3150d5-4a3c-83ec-9933-9759a4b1a930",
+    "youtube_video_id": null,
+    "page_title": "Myonal 50mg Drug Info",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "d2524f1fe137da918e9e420c5e75c30699602c5af3593dcb2396fd15364bbd96",
+    "primary_topic": "Archive",
+    "subtopics": [
+      "Medical Drugs",
+      "Eperisone",
+      "Myonal"
+    ],
+    "source_language": "en",
+    "reason": "The document is a concise drug information clipping about Myonal 50 mg.",
+    "tags": [
+      "medicine",
+      "druginfo",
+      "clippings"
+    ],
+    "links": [
+      "https://www.vinmec.com/eng/blog/myonal-drugs-uses-dosages-and-side-effects-en?utm_source=chatgpt.com",
+      "https://www.doctoroncall.com.my/medicine/en/drugs/myonal-50mg-tablet-10s-strip?utm_source=chatgpt.com",
+      "https://www.mims.com/thailand/drug/info/myonal?type=full&utm_source=chatgpt.com"
+    ],
+    "map_entry": "Myonal 50 mg drug info – classification as a centrally acting antispasmodic muscle relaxant.",
+    "summary": "This document provides an overview of Myonal 50 mg (eperisone hydrochloride), identifying its therapeutic class, typical uses, common side effects, and referencing reputable sources for further information.",
+    "review_path": "Review/Myonal 50mg Drug Info2026-07-11T12_18_17+07_00.review.md",
+    "processed_path": "Processed/Myonal 50mg Drug Info2026-07-11T12_18_17+07_00.md",
+    "wiki_path": "Wiki/Archive.md",
+    "indexed_at": "2026-07-11 16:48:11"
+  },
+  {
+    "source_name": "New chat.md",
+    "document_id": "url:https://gemini.google.com/app/be05d06242db36c4",
+    "source_url": "https://gemini.google.com/app/be05d06242db36c4",
+    "youtube_video_id": null,
+    "page_title": "New chat",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-01",
+    "content_sha256": "d3e94bab6b9eac266ec49f31a42d1b1753dfbf8eaf26d72d6194e0870e9699b2",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "Occult philosophy",
+      "Conspiracy theory analysis"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses occult philosophical ideas and their use in conspiracy narratives, fitting within Philosophy.",
+    "tags": [
+      "philosophy",
+      "conspiracy",
+      "occult"
+    ],
+    "links": [],
+    "map_entry": "Gemini conversation analyzing the overlap between Crowley's occult philosophy and Epstein's criminal transgressions.",
+    "summary": "This Gemini reply explores how Crowley’s intentional transgression and secretive structures parallel the real‑world criminal secrecy of Epstein, examining narrative architecture, symbolic contagion, and hyperactive agency detection in conspiracy theory frameworks.",
+    "review_path": "Review/New chat.review.md",
+    "processed_path": "Processed/New chat.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-11 16:48:33"
+  },
+  {
+    "source_name": "Photo Experiment AI2026-07-11T12_17_00+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a309d8f-8d60-83ec-8176-4cc477619202",
+    "source_url": "https://chatgpt.com/c/6a309d8f-8d60-83ec-8176-4cc477619202",
+    "youtube_video_id": null,
+    "page_title": "Photo Experiment AI",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "b2b5e30876b5824eafa6ec48a6e73f67b986ee8add48ee22d12ccda9706110c4",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "image generation",
+      "AI photo editing"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses an AI-generated image experiment for content creation.",
+    "tags": [
+      "ai",
+      "image-generation",
+      "content-creation",
+      "clippings"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a309d8f-8d60-83ec-8176-4cc477619202"
+    ],
+    "map_entry": "Photo Experiment AI – demonstrates side‑by‑side clean‑shaven vs bearded portrait using AI.",
+    "summary": "This document details a ChatGPT conversation where an image is processed to create two versions: one with a neutral background and the other with a beard added. It showcases AI-based photo editing as a content creation technique.",
+    "review_path": "Review/Photo Experiment AI2026-07-11T12_17_00+07_00.review.md",
+    "processed_path": "Processed/Photo Experiment AI2026-07-11T12_17_00+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:48:59"
+  },
+  {
+    "source_name": "Python Run-Length Encoding 🐍 • Open WebUI2026-07-09T13_08_54+07_00.md",
+    "document_id": "url:http://localhost:3000/c/7232d1fa-7dc4-44b1-9646-e2520bb579b4",
+    "source_url": "http://localhost:3000/c/7232d1fa-7dc4-44b1-9646-e2520bb579b4",
+    "youtube_video_id": null,
+    "page_title": "Python Run-Length Encoding 🐍 • Open WebUI",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-09",
+    "content_sha256": "01e0a505bd954fef23ef7d5986c32842a62a8fd5d414052320eea8978faa4119",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "Python",
+      "Run-length encoding"
+    ],
+    "source_language": "en",
+    "reason": "The document contains a Python implementation of run‑length encoding.",
+    "tags": [
+      "python",
+      "rle",
+      "algorithm"
+    ],
+    "links": [
+      "http://localhost:3000/c/7232d1fa-7dc4-44b1-9646-e2520bb579b4"
+    ],
+    "map_entry": "Python Run-Length Encoding – concise code snippet with explanation.",
+    "summary": "The document provides a Python function that performs run‑length encoding on a string, converting consecutive identical characters into the character followed by its count (e.g., \"aaabbc\" → \"a3b2c1\"). It includes an example implementation, edge‑case handling for empty strings, and usage examples.",
+    "review_path": "Review/Python Run-Length Encoding 🐍 • Open WebUI2026-07-09T13_08_54+07_00.review.md",
+    "processed_path": "Processed/Python Run-Length Encoding 🐍 • Open WebUI2026-07-09T13_08_54+07_00.md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-11 16:49:21"
+  },
+  {
+    "source_name": "Qwen Studio.md",
+    "document_id": "url:https://chat.qwen.ai/c/c829c8fe-7e6f-4f70-b98c-ddb7af0ae878",
+    "source_url": "https://chat.qwen.ai/c/c829c8fe-7e6f-4f70-b98c-ddb7af0ae878",
+    "youtube_video_id": null,
+    "page_title": "Qwen Studio",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-06-25",
+    "content_sha256": "51dee72ee4d2700dd60dedc239f697b17b30192896cef6fbfae9a43ea14924be",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "keyframing camera movement",
+      "overlay animated elements",
+      "programmatic frame generation",
+      "ffmpeg zoompan"
+    ],
+    "source_language": "en",
+    "reason": "The document explains practical methods to animate a still image using both video editors and code, covering keyframing techniques, overlay effects, and FFmpeg utilities.",
+    "tags": [
+      "video editing",
+      "animation",
+      "compositing",
+      "python",
+      "ffmpeg",
+      "aftereffects",
+      "blender"
+    ],
+    "links": [
+      "After Effects",
+      "Blender Video Sequence Editor",
+      "FFmpeg",
+      "Python OpenCV"
+    ],
+    "map_entry": "Instructions on turning a static image into an animated video via manual keyframing or programmatic frame creation, including sample Python code and FFmpeg command.",
+    "summary": "This document details how to animate a still image. It describes creating subtle camera pans or zooms in editors like After Effects or Blender by key‑framing scale/camera properties, adding particle layers or text overlays for dynamic effects, and color grading the final footage. For those preferring code, it provides a Python script that loads an image, applies a gentle zoom and fades text each frame, then stitches frames into MP4 with OpenCV/FFmpeg. A one‑liner FFmpeg filter is also shown to quickly generate a 5‑second zoom. The material serves as a concise guide for both manual compositing workflows and automated animation pipelines.",
+    "review_path": "Review/Qwen Studio.review.md",
+    "processed_path": "Processed/Qwen Studio.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:49:57"
+  },
+  {
+    "source_name": "README.md",
+    "document_id": "sha256:6bdfc6d833b6606f17c9a5c0ae7e4bebf0ce0fa6842d980e9f7f96b9dcec6d4f",
+    "source_url": null,
+    "youtube_video_id": null,
+    "page_title": "Processed",
+    "channel_author": null,
+    "publication_date": null,
+    "content_sha256": "6bdfc6d833b6606f17c9a5c0ae7e4bebf0ce0fa6842d980e9f7f96b9dcec6d4f",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "insertion pipeline",
+      "staging area",
+      "data curation",
+      "metadata extraction"
+    ],
+    "source_language": "en",
+    "reason": "The README explains the purpose, contents, and workflow of the Processed folder within Ariadne’s knowledge ingestion system.",
+    "tags": [
+      "knowledge-management",
+      "processing-pipeline",
+      "data-curation"
+    ],
+    "links": [
+      "Ariadne Pipeline",
+      "Inbox"
+    ],
+    "map_entry": "README for the Processed folder – a staging area for ingested content before quality‑control and export to the KnowledgeVault.",
+    "summary": "The document provides an overview of the Processed folder in the Ariadne repository. It explains its role as an intermediate workspace where captured documents are converted, enriched with metadata, summarized, and stored temporarily before being reviewed and moved into permanent knowledge structures such as the Wiki or KnowledgeVault. The README outlines typical contents (markdown, OCR output, metadata), lifecycle steps (capture → process → review → export → archive), what should not be included, repository behavior, and best practices for keeping the folder lean and automated.",
+    "review_path": "Review/README.review.md",
+    "processed_path": "Processed/README.md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-11 16:50:20"
+  },
+  {
+    "source_name": "Restless Legs Syndrome Explained2026-07-10T19_46_19+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a17f168-9334-83ec-8d96-c5f49ea2936b",
+    "source_url": "https://chatgpt.com/c/6a17f168-9334-83ec-8d96-c5f49ea2936b",
+    "youtube_video_id": null,
+    "page_title": "Restless Legs Syndrome Explained",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "d9aa9d376643873db138a5a831cbaf17052e7fc5d314d2dfaf6ec088d810ea84",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Restless Legs Syndrome",
+      "Habitual movement",
+      "Energy expenditure",
+      "Health tracking"
+    ],
+    "source_language": "en",
+    "reason": "Explains Restless Legs Syndrome symptoms, distinguishes them from habitual foot rocking without discomfort, and discusses calorie burn implications for wearable trackers.",
+    "tags": [
+      "health",
+      "RLS",
+      "movement",
+      "calories",
+      "NEAT"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a17f168-9334-83ec-8d96-c5f49ea2936b"
+    ],
+    "map_entry": "Conversation providing insights into Restless Legs Syndrome, habitual foot rocking behaviors, and the minimal calorie impact of such movements.",
+    "summary": "The text clarifies that while restless leg sensations often involve discomfort, a person may experience only automatic foot rocking without pain. It explains that such movement falls under self-stimulating habits or NEAT, offering little caloric burn for typical health watches, and highlights distinguishing factors from true RLS symptoms.",
+    "review_path": "Review/Restless Legs Syndrome Explained2026-07-10T19_46_19+07_00.review.md",
+    "processed_path": "Processed/Restless Legs Syndrome Explained2026-07-10T19_46_19+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-11 16:50:58"
+  },
+  {
+    "source_name": "Second opinion request.md",
+    "document_id": "url:https://claude.ai/chat/5d479a54-2442-410c-90a6-869a9eae6e9f",
+    "source_url": "https://claude.ai/chat/5d479a54-2442-410c-90a6-869a9eae6e9f",
+    "youtube_video_id": null,
+    "page_title": "Second opinion request",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-01",
+    "content_sha256": "11196309998105a03f553cfaab5d24953f79d6d955eddeb1beae386990fc5c48",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "Occult Philosophy",
+      "Conspiracy Theories"
+    ],
+    "source_language": "en",
+    "reason": "The conversation discusses evidence linking Jeffrey Epstein to occult literature and potential conspiracies involving Aleister Crowley.",
+    "tags": [
+      "occult",
+      "epstein",
+      "crowley",
+      "conspiracy"
+    ],
+    "links": [],
+    "map_entry": "Claude's analysis on new evidence linking Epstein to occult books, with implications for conspiracy theories.",
+    "summary": "This document captures a Claude AI response providing a second opinion on the alleged connection between Jeffrey Epstein and Aleister Crowley's occult influence. The reply highlights newly surfaced documentation of Epstein purchasing Israel Regardie’s occult texts, noting that while this does not confirm ritual participation, it transitions the link from speculative pattern‑matching to documented reading. Other previously claimed evidence (e.g., Baal bank-transfer and occult blood tests) are debunked or remain unverified. The response advises maintaining the three‑layer structure of inference but updates confidence regarding a direct connection to be less absolute.",
+    "review_path": "Review/Second opinion request.review.md",
+    "processed_path": "Processed/Second opinion request.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-11 16:51:26"
+  },
+  {
+    "source_name": "The Truth about Thai Hospitals - 2026-07-09 12.45.md",
+    "document_id": "sha256:374ee45337fd77d220f6ec2fa970e2e1e8c90c6fbb0e10abf236e0861522596f",
+    "source_url": null,
+    "youtube_video_id": null,
+    "page_title": "The Truth about Thai Hospitals",
+    "channel_author": null,
+    "publication_date": null,
+    "content_sha256": "374ee45337fd77d220f6ec2fa970e2e1e8c90c6fbb0e10abf236e0861522596f",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Healthcare",
+      "Cost of Living",
+      "Fitness"
+    ],
+    "source_language": "en",
+    "reason": "The document covers living in Thailand, focusing on healthcare experiences and cost‑of‑living perceptions.",
+    "tags": [
+      "travel",
+      "expat",
+      "healthcare",
+      "cost-of-living",
+      "fitness"
+    ],
+    "links": [],
+    "map_entry": "Personal account of Thai public hospital experience and discussion on cost of living for expats.",
+    "summary": "The video shares a firsthand look at navigating Thai public hospitals, reflects on managing fitness amid a shoulder injury, and explains the creator’s approach to discussing cost of living without detailed breakdowns.",
+    "review_path": "Review/The Truth about Thai Hospitals - 2026-07-09 12.45.review.md",
+    "processed_path": "Processed/The Truth about Thai Hospitals - 2026-07-09 12.45.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 16:52:01"
+  },
+  {
+    "source_name": "Turtle Video Captions2026-07-10T19_51_56+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a1fed0c-27fc-83ec-a67c-dd320f2888ac",
+    "source_url": "https://chatgpt.com/c/6a1fed0c-27fc-83ec-a67c-dd320f2888ac",
+    "youtube_video_id": null,
+    "page_title": "Turtle Video Captions",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-10",
+    "content_sha256": "065603af0fead86aedf5b6f49da72825078688370f6192de204936638b1e82bf",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "video captions",
+      "social media"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses creating captions for a short video clip to post on Patreon.",
+    "tags": [
+      "content creation",
+      "patreon",
+      "captions"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a1fed0c-27fc-83ec-a67c-dd320f2888ac"
+    ],
+    "map_entry": "Turtle Video Captions - 20‑second clip captions for Patreon",
+    "summary": "This document contains a ChatGPT conversation that provides several concise, humorous caption options for a short turtle video to be shared on Patreon. It emphasizes engaging language and calls to action suitable for social media audiences.",
+    "review_path": "Review/Turtle Video Captions2026-07-10T19_51_56+07_00.review.md",
+    "processed_path": "Processed/Turtle Video Captions2026-07-10T19_51_56+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:52:22"
+  },
+  {
+    "source_name": "Why I Believe AI Has Already Surpassed Me2026-07-05T20_00_45+07_002026-07-04T14_15_41-07_00[[Mo Gawdat]].md",
+    "document_id": "youtube:CPEKsE69-JM",
+    "source_url": "https://www.youtube.com/watch?v=CPEKsE69-JM",
+    "youtube_video_id": "CPEKsE69-JM",
+    "page_title": "Why I Believe AI Has Already Surpassed Me",
+    "channel_author": "- \"[[Mo Gawdat]]",
+    "publication_date": "2026-07-05",
+    "content_sha256": "fb0c848cfcee02f2c7248227c38c57232b0b6225ebb5acf46a04b12906aa8d36",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "Quantum Augmented Decision Systems",
+      "F A C R I P Blueprint",
+      "Ethical Governance in Quantum AI",
+      "Quantum Key Distribution for Data Privacy",
+      "Quantum Auditing and Traceability",
+      "Quantum Federated Learning",
+      "Quantum Reality Lens",
+      "Quantum Idea Engine"
+    ],
+    "source_language": "en",
+    "reason": "The transcript introduces unique quantum‑AI project concepts aligned with Mo Gawdat’s F A C R I P framework.",
+    "tags": [
+      "quantum computing",
+      "artificial intelligence",
+      "projects",
+      "ethics",
+      "FACRIP"
+    ],
+    "links": [
+      "Mo Gawdat Quantum AI Talk"
+    ],
+    "map_entry": "Transcript of Mo Gawdat's talk on quantum‑AI project ideas and F A C R I P pillars.",
+    "summary": "The transcript presents a series of quantum‑enhanced project concepts inspired by Mo Gawdat’s F A C R I P framework. It outlines how quantum computing can augment decision systems, enforce privacy through QKD, and enable ethical governance via traceable quantum auditing. The discussion highlights specific proposals such as QuantaBrain for probabilistic confidence bounds, a Quantum Idea Engine for generative design, and a Quantum Reality Lens that fuses sensor data with deep learning. These ideas illustrate a roadmap where AI scales beyond human limitations while embedding accountability, privacy, and democratic access to compute power.",
+    "review_path": "Review/Why I Believe AI Has Already Surpassed Me2026-07-05T20_00_45+07_002026-07-04T14_15_41-07_00[[Mo Gawdat]].review.md",
+    "processed_path": "Processed/Why I Believe AI Has Already Surpassed Me2026-07-05T20_00_45+07_002026-07-04T14_15_41-07_00[[Mo Gawdat]].md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-11 16:53:20"
   }
 ]
