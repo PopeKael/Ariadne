@@ -1,46 +1,60 @@
-# Failed
+# Processed
 
 ## Purpose
 
-The **Failed** folder contains files that could not be successfully processed by Ariadne.
+The **Processed** folder contains files that have successfully completed Ariadne's ingestion and initial processing pipeline.
 
-Rather than discarding these files, Ariadne moves them here for investigation, correction, and possible reprocessing.
+These files have been captured, analysed, indexed, and enriched with metadata, making them ready for review, verification, and knowledge extraction.
 
-This ensures that no captured knowledge is lost due to processing errors.
+This folder represents Ariadne's working library rather than its permanent knowledge base.
 
-## Typical reasons for failure
+## Typical contents
 
-Files may appear here for a variety of reasons, including:
+Examples include:
 
-- Unsupported file formats
-- Corrupted or incomplete files
-- OCR failures
-- Metadata extraction errors
-- Parsing or conversion problems
-- Missing dependencies
-- Unexpected processing exceptions
+- Processed Markdown documents
+- OCR output
+- Extracted metadata
+- AI-generated summaries
+- Converted source material
+- Normalised documents
+- Processing manifests
 
 ## Workflow
 
-Files placed in this folder should be reviewed to determine the cause of the failure.
+Documents typically move through the following lifecycle:
 
-Once the issue has been resolved, the file may be:
+1. Captured in the **Inbox**.
+2. Processed and converted into a standard format.
+3. Stored temporarily in **Processed**.
+4. Reviewed and verified for quality.
+5. Extracted into the Wiki and other KnowledgeVault structures.
+6. Archived or retained as required.
 
-- Reprocessed through the ingestion pipeline.
-- Returned to the Inbox for another processing attempt.
-- Archived if no further action is required.
-- Removed if the file is invalid or no longer needed.
+The Processed folder acts as the staging area between raw information and curated knowledge.
+
+## What does *not* belong here?
+
+This folder should not contain permanent Wiki articles or original source documents.
+
+It exists to support the processing pipeline and should contain only intermediate working material.
+
+## Repository
+
+The contents of this folder are intentionally excluded from the public repository.
+
+Only this README file is included so that the directory structure is preserved when the project is cloned.
+
+Each user's KnowledgeVault will populate this folder automatically as documents are processed.
 
 ## Design Principle
 
-Ariadne is designed to preserve information whenever possible.
+Ariadne separates the processing of knowledge from the knowledge itself.
 
-Processing failures should never result in silent data loss.
-
-Every failed file represents an opportunity for the system to improve and for the knowledge to be recovered.
+Keeping processed material isolated allows the system to validate, refine, and enrich information before it becomes part of the permanent KnowledgeVault.
 
 ---
 
 **In short:**
 
-The **Failed** folder is Ariadne's recovery queue, ensuring that no captured knowledge is forgotten simply because something went wrong during processing.
+The **Processed** folder is Ariadne's workbench, where captured information is prepared before becoming trusted knowledge.

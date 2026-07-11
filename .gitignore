@@ -151,3 +151,4 @@ build/
 .env
 .env.*
 !.env.example
+Reports/Ariadne/

@@ -9,10 +9,11 @@ $Inbox     = Join-Path $Vault "Inbox"
 $Review    = Join-Path $Vault "Review"
 $Processed = Join-Path $Vault "Processed"
 $Failed    = Join-Path $Vault "Failed"
+$Duplicates = Join-Path $Vault "Archive\Duplicates"
 $Wiki      = Join-Path $Vault "Wiki"
 $Logs      = Join-Path $Vault "Logs"
 
-foreach ($Folder in @($Review, $Processed, $Failed, $Wiki, $Logs)) {
+foreach ($Folder in @($Review, $Processed, $Failed, $Duplicates, $Wiki, $Logs)) {
     if (!(Test-Path $Folder)) {
         New-Item -ItemType Directory -Path $Folder | Out-Null
     }
@@ -67,6 +68,160 @@ function Write-AriadneLog {
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $Line = "$Timestamp [$Level] $Message"
     Add-Content -LiteralPath $LogPath -Value $Line -Encoding utf8
+}
+
+function Get-NormalizedMarkdownContent {
+    param([string]$Content)
+
+    # Deliberately limited normalization: line endings, trailing whitespace, and
+    # trailing blank lines should not create a new content identity.
+    $Lines = (($Content -replace "`r`n?", "`n") -split "`n", -1) | ForEach-Object { $_.TrimEnd() }
+    return (($Lines -join "`n").TrimEnd("`n"))
+}
+
+function Get-Sha256Hex {
+    param([string]$Content)
+
+    $Sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $Bytes = [System.Text.Encoding]::UTF8.GetBytes($Content)
+        return ([System.BitConverter]::ToString($Sha256.ComputeHash($Bytes))).Replace("-", "").ToLowerInvariant()
+    } finally {
+        $Sha256.Dispose()
+    }
+}
+
+function Get-FrontMatterValue {
+    param([string]$Content, [string[]]$Keys)
+
+    $FrontMatter = [regex]::Match($Content, '(?ms)^---\s*$\r?\n(.*?)^---\s*$')
+    if (!$FrontMatter.Success) { return $null }
+    foreach ($Key in $Keys) {
+        $Pattern = ("(?im)^{0}\s*:\s*(.+?)\s*$" -f [regex]::Escape($Key))
+        $Match = [regex]::Match($FrontMatter.Groups[1].Value, $Pattern)
+        if ($Match.Success) { return $Match.Groups[1].Value.Trim().Trim([char]34, [char]39) }
+    }
+    return $null
+}
+
+function Get-CanonicalSourceUrl {
+    param([string]$Url)
+
+    if ([string]::IsNullOrWhiteSpace($Url)) { return $null }
+    try {
+        $Uri = [System.Uri]$Url
+        $Builder = [System.UriBuilder]$Uri
+        $Builder.Fragment = ""
+        $Parameters = [System.Web.HttpUtility]::ParseQueryString($Uri.Query)
+        foreach ($Key in @($Parameters.AllKeys)) {
+            if ($Key -match '^(utm_.+|fbclid|gclid)$') { $Parameters.Remove($Key) }
+        }
+        $Builder.Query = $Parameters.ToString()
+        return $Builder.Uri.AbsoluteUri.TrimEnd('/')
+    } catch {
+        return $Url.Trim()
+    }
+}
+
+function Get-SourceIdentity {
+    param([string]$Content)
+
+    $FrontMatterUrl = Get-FrontMatterValue -Content $Content -Keys @('source_url', 'canonical_url', 'url', 'link')
+    $Urls = @([regex]::Matches($Content, 'https?://[^\s\]>)"]+') | ForEach-Object { $_.Value.TrimEnd('.', ',', ';', ':') })
+    $SourceUrl = if ($FrontMatterUrl) { $FrontMatterUrl } elseif ($Urls.Count -gt 0) { $Urls[0] } else { $null }
+    $CanonicalUrl = Get-CanonicalSourceUrl -Url $SourceUrl
+    $YouTubeMatch = [regex]::Match(($Urls + @($CanonicalUrl) -join "`n"), '(?i)(?:youtube\.com/(?:watch\?[^\s]*?v=|shorts/|embed/|live/)|youtu\.be/)([A-Za-z0-9_-]{11})')
+    $YouTubeVideoId = if ($YouTubeMatch.Success) { $YouTubeMatch.Groups[1].Value } else { $null }
+    $PageTitle = Get-FrontMatterValue -Content $Content -Keys @('title', 'page_title')
+    if ([string]::IsNullOrWhiteSpace($PageTitle)) {
+        $Heading = [regex]::Match($Content, '(?m)^#\s+(.+?)\s*$')
+        if ($Heading.Success) { $PageTitle = $Heading.Groups[1].Value.Trim() }
+    }
+    $ChannelAuthor = Get-FrontMatterValue -Content $Content -Keys @('channel', 'author', 'creator', 'publisher')
+    $PublicationDate = Get-FrontMatterValue -Content $Content -Keys @('publication_date', 'published_date', 'date', 'published')
+    $ContentSha256 = Get-Sha256Hex -Content (Get-NormalizedMarkdownContent -Content $Content)
+    $DocumentId = if ($YouTubeVideoId) { "youtube:$YouTubeVideoId" } elseif ($CanonicalUrl) { "url:$CanonicalUrl" } else { "sha256:$ContentSha256" }
+
+    return [pscustomobject][ordered]@{
+        document_id      = $DocumentId
+        source_url       = $CanonicalUrl
+        youtube_video_id = $YouTubeVideoId
+        page_title       = $PageTitle
+        channel_author   = $ChannelAuthor
+        publication_date = $PublicationDate
+        content_sha256   = $ContentSha256
+    }
+}
+
+function Get-EntryDocumentId {
+    param($Entry)
+
+    if ($Entry.document_id) { return $Entry.document_id }
+    $ProcessedPath = if ($Entry.processed_path) { Join-Path $Vault $Entry.processed_path } else { $null }
+    if ($ProcessedPath -and (Test-Path -LiteralPath $ProcessedPath)) {
+        return (Get-SourceIdentity -Content (Get-Content -LiteralPath $ProcessedPath -Raw)).document_id
+    }
+    if ($Entry.content_sha256) { return "sha256:$($Entry.content_sha256)" }
+    return $null
+}
+
+function Find-ExistingDocument {
+    param([string]$DocumentId)
+
+    foreach ($Entry in @(Get-LibraryEntries)) {
+        if ((Get-EntryDocumentId -Entry $Entry) -eq $DocumentId) { return $Entry }
+    }
+    return $null
+}
+
+function Get-AvailablePath {
+    param([string]$Directory, [string]$FileName)
+
+    $Candidate = Join-Path $Directory $FileName
+    if (!(Test-Path -LiteralPath $Candidate)) { return $Candidate }
+    return Join-Path $Directory ("{0}-{1}{2}" -f [System.IO.Path]::GetFileNameWithoutExtension($FileName), (Get-Date -Format 'yyyyMMdd-HHmmss'), [System.IO.Path]::GetExtension($FileName))
+}
+
+function Write-DuplicateReport {
+    param($SourceIdentity, $ExistingEntry, [string]$SourceName)
+
+    $ReportPath = Get-AvailablePath -Directory $Duplicates -FileName ("{0}.duplicate.md" -f [System.IO.Path]::GetFileNameWithoutExtension($SourceName))
+    @"
+# Ariadne Duplicate Document
+
+Detected: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+
+Incoming Source:
+$SourceName
+
+Document ID:
+$($SourceIdentity.document_id)
+
+Matching Original:
+$($ExistingEntry.source_name)
+
+Original Processed Path:
+$($ExistingEntry.processed_path)
+
+Source URL:
+$($SourceIdentity.source_url)
+
+YouTube Video ID:
+$($SourceIdentity.youtube_video_id)
+
+Page Title:
+$($SourceIdentity.page_title)
+
+Channel/Author:
+$($SourceIdentity.channel_author)
+
+Publication Date:
+$($SourceIdentity.publication_date)
+
+Normalized Markdown SHA-256:
+$($SourceIdentity.content_sha256)
+"@ | Out-File -LiteralPath $ReportPath -Encoding utf8
+    return $ReportPath
 }
 
 function Get-KnowledgeMapBody {
@@ -126,7 +281,7 @@ function Test-AriadneResponse {
         }
     }
 
-    $RequiredFields = @("primary_topic", "subtopics", "is_new_topic", "reason", "tags", "links", "map_entry", "summary")
+    $RequiredFields = @("primary_topic", "subtopics", "source_language", "is_new_topic", "reason", "tags", "links", "map_entry", "summary")
     foreach ($Field in $RequiredFields) {
         if ($null -eq $Parsed.$Field) {
             return @{
@@ -146,6 +301,12 @@ function Test-AriadneResponse {
         return @{
             IsValid = $false
             FailureReason = "Invalid primary_topic: $($Parsed.primary_topic)"
+        }
+    }
+    if ($Parsed.source_language -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.source_language)) {
+        return @{
+            IsValid = $false
+            FailureReason = "source_language is missing or not a non-empty string"
         }
     }
     if ($Parsed.reason -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.reason)) {
@@ -275,7 +436,7 @@ function ConvertTo-AriadneReply {
 }
 
 function Get-AriadneSchemaExample {
-    return '{"primary_topic":"AI & LLMs","subtopics":["agent workflows","local models"],"is_new_topic":false,"reason":"The document discusses AI tools and model behavior.","tags":["ai","llms"],"links":["Codex","Claude Code"],"map_entry":"Example document - concise description of the source.","summary":"This document discusses AI tools, model behavior, and practical workflow implications. It compares approaches and highlights relevant concepts. The source is useful as a reference for future retrieval."}'
+    return '{"primary_topic":"AI & LLMs","subtopics":["agent workflows","local models"],"source_language":"en","is_new_topic":false,"reason":"The document discusses AI tools and model behavior.","tags":["ai","llms"],"links":["Codex","Claude Code"],"map_entry":"Example document - concise description of the source.","summary":"This document discusses AI tools, model behavior, and practical workflow implications. It compares approaches and highlights relevant concepts. The source is useful as a reference for future retrieval."}'
 }
 
 function Get-AllowedPrimaryTopicsText {
@@ -325,7 +486,7 @@ Do not add markdown fences.
 Do not add explanations.
 Do not change language away from English.
 Use exactly these keys and no others:
-primary_topic, subtopics, is_new_topic, reason, tags, links, map_entry, summary
+primary_topic, subtopics, source_language, is_new_topic, reason, tags, links, map_entry, summary
 primary_topic must be one of these exact values:
 $AllowedTopicText
 Here is a valid example shape:
@@ -372,6 +533,31 @@ function Convert-ToWikiFileName {
     return "$Safe.md"
 }
 
+function Resolve-ExistingWikiLinks {
+    param([string[]]$Candidates)
+
+    # Ingest never creates concept pages. It only turns an exact model suggestion
+    # into a link when a matching wiki page already exists.
+    $Pages = @{}
+    Get-ChildItem -LiteralPath $Wiki -Recurse -File -Filter *.md | ForEach-Object {
+        if ($_.Name -ne "README.md") {
+            $Pages[$_.BaseName.Trim().ToLowerInvariant()] = $_.BaseName
+        }
+    }
+
+    $Resolved = [System.Collections.Generic.List[string]]::new()
+    foreach ($Candidate in @($Candidates)) {
+        if ([string]::IsNullOrWhiteSpace($Candidate)) { continue }
+        $Key = $Candidate.Trim().ToLowerInvariant()
+        if ($Pages.ContainsKey($Key)) {
+            $Target = "[[{0}]]" -f $Pages[$Key]
+            if (-not $Resolved.Contains($Target)) { $Resolved.Add($Target) }
+        }
+    }
+
+    return @($Resolved)
+}
+
 function Normalize-LibraryEntry {
     param($Entry)
 
@@ -408,8 +594,16 @@ function Normalize-LibraryEntry {
 
     return [pscustomobject][ordered]@{
         source_name     = $Entry.source_name
+        document_id     = $Entry.document_id
+        source_url      = $Entry.source_url
+        youtube_video_id = $Entry.youtube_video_id
+        page_title      = $Entry.page_title
+        channel_author  = $Entry.channel_author
+        publication_date = $Entry.publication_date
+        content_sha256  = $Entry.content_sha256
         primary_topic   = $PrimaryTopic
         subtopics       = @($Subtopics)
+        source_language = if ($Entry.source_language) { $Entry.source_language } else { "en" }
         reason          = $Entry.reason
         tags            = @($Entry.tags)
         links           = @($Entry.links)
@@ -458,8 +652,10 @@ function Save-LibraryEntries {
 function Update-LibraryEntry {
     param(
         [string]$SourceName,
+        $SourceIdentity,
         [string]$PrimaryTopic,
         [string[]]$Subtopics,
+        [string]$SourceLanguage,
         [string]$Reason,
         [string[]]$Tags,
         [string[]]$Links,
@@ -485,8 +681,16 @@ function Update-LibraryEntry {
 
     $Record = [ordered]@{
         source_name     = $SourceName
+        document_id     = $SourceIdentity.document_id
+        source_url      = $SourceIdentity.source_url
+        youtube_video_id = $SourceIdentity.youtube_video_id
+        page_title      = $SourceIdentity.page_title
+        channel_author  = $SourceIdentity.channel_author
+        publication_date = $SourceIdentity.publication_date
+        content_sha256  = $SourceIdentity.content_sha256
         primary_topic   = $PrimaryTopic
         subtopics       = @($Subtopics)
+        source_language = $SourceLanguage
         reason          = $Reason
         tags            = @($Tags)
         links           = @($Links)
@@ -521,7 +725,8 @@ function Update-WikiPage {
     $SourceLink = "[[Processed/$ProcessedFileName]]"
     $ReviewLink = "[[Review/$ReviewFileName]]"
     $TagLine = if ($Tags.Count -gt 0) { $Tags -join ", " } else { "None" }
-    $LinkLine = if ($Links.Count -gt 0) { $Links -join ", " } else { "None" }
+    $ResolvedLinks = @(Resolve-ExistingWikiLinks -Candidates $Links)
+    $LinkLine = if ($ResolvedLinks.Count -gt 0) { $ResolvedLinks -join ", " } else { "None" }
     $SourceMarker = "Source: $SourceName"
 
     if (Test-Path $WikiPath) {
@@ -564,6 +769,7 @@ Write-AriadneLog -Level "INFO" -Message "Ariadne started"
 $ProcessedThisRun = 0
 $SucceededThisRun = 0
 $FailedThisRun = 0
+$DuplicatesThisRun = 0
 
 try {
     $InboxItems = Get-ChildItem $Inbox -Filter *.md
@@ -573,14 +779,30 @@ try {
 
     $AllowedTopicText = Get-AllowedPrimaryTopicsText
 
-    $InboxItems | ForEach-Object {
+    foreach ($InboxItem in $InboxItems) {
         try {
-            $Document      = Get-Content -LiteralPath $_.FullName -Raw
+            $Document      = Get-Content -LiteralPath $InboxItem.FullName -Raw
+            $SourceIdentity = Get-SourceIdentity -Content $Document
+            $ExistingDocument = Find-ExistingDocument -DocumentId $SourceIdentity.document_id
+
+            if ($ExistingDocument) {
+                $DuplicateReport = Write-DuplicateReport -SourceIdentity $SourceIdentity -ExistingEntry $ExistingDocument -SourceName $InboxItem.Name
+                $DuplicateDestination = Get-AvailablePath -Directory $Duplicates -FileName $InboxItem.Name
+                Move-Item -LiteralPath $InboxItem.FullName -Destination $DuplicateDestination
+                Write-Host "Duplicate: $($InboxItem.Name) matches $($ExistingDocument.source_name)"
+                Write-Host "Moved    : $DuplicateDestination"
+                Write-Host "Report   : $DuplicateReport"
+                Write-AriadneLog -Level "INFO" -Message "Duplicate skipped: $($InboxItem.Name) DocumentId=$($SourceIdentity.document_id) Original=$($ExistingDocument.source_name)"
+                $ProcessedThisRun++
+                $DuplicatesThisRun++
+                continue
+            }
+
             $KnowledgeMap  = Get-Content $KnowledgeMapPath -Raw
             $AriadnePrompt = Get-Content $AriadnePromptPath -Raw
 
-            Write-Host "Processing: $($_.Name)"
-            Write-AriadneLog -Level "INFO" -Message "Processing: $($_.Name)"
+            Write-Host "Processing: $($InboxItem.Name)"
+            Write-AriadneLog -Level "INFO" -Message "Processing: $($InboxItem.Name)"
 
             $Prompt = @"
 $AriadnePrompt
@@ -595,12 +817,12 @@ $KnowledgeMap
 $Document
 "@
 
-            $ModelResult = Invoke-AriadneModel -Prompt $Prompt -DocumentName $_.Name
+            $ModelResult = Invoke-AriadneModel -Prompt $Prompt -DocumentName $InboxItem.Name
             $RawReply = $ModelResult.RawReply
             $Parsed = $ModelResult.Parsed
             $FailureReason = $ModelResult.FailureReason
 
-            $ReviewFile = Join-Path $Review ($_.BaseName + ".review.md")
+            $ReviewFile = Join-Path $Review ($InboxItem.BaseName + ".review.md")
 
             if ($Parsed) {
                 Update-KnowledgeMap -Topic $Parsed.primary_topic -Reason $Parsed.reason -MapEntry $Parsed.map_entry
@@ -612,13 +834,37 @@ $Document
 # Ariadne Review
 
 Source:
-$($_.Name)
+$($InboxItem.Name)
 
 Processed:
 $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 
+Document ID:
+$($SourceIdentity.document_id)
+
+Source URL:
+$($SourceIdentity.source_url)
+
+YouTube Video ID:
+$($SourceIdentity.youtube_video_id)
+
+Page Title:
+$($SourceIdentity.page_title)
+
+Channel/Author:
+$($SourceIdentity.channel_author)
+
+Publication Date:
+$($SourceIdentity.publication_date)
+
+Normalized Markdown SHA-256:
+$($SourceIdentity.content_sha256)
+
 Primary Topic:
 $($Parsed.primary_topic)$NewTag
+
+Source Language:
+$($Parsed.source_language)
 
 Subtopics:
 $SubtopicLine
@@ -642,21 +888,23 @@ $($Parsed.summary)
                     -MapEntry $Parsed.map_entry `
                     -Tags @($Parsed.tags) `
                     -Links @($Parsed.links) `
-                    -SourceName $_.Name `
-                    -ProcessedFileName $_.Name `
-                    -ReviewFileName ($_.BaseName + ".review.md")
+                    -SourceName $InboxItem.Name `
+                    -ProcessedFileName $InboxItem.Name `
+                    -ReviewFileName ($InboxItem.BaseName + ".review.md")
 
                 Update-LibraryEntry `
-                    -SourceName $_.Name `
+                    -SourceName $InboxItem.Name `
+                    -SourceIdentity $SourceIdentity `
                     -PrimaryTopic $Parsed.primary_topic `
                     -Subtopics @($Parsed.subtopics) `
+                    -SourceLanguage $Parsed.source_language `
                     -Reason $Parsed.reason `
                     -Tags @($Parsed.tags) `
                     -Links @($Parsed.links) `
                     -Summary $Parsed.summary `
                     -MapEntry $Parsed.map_entry `
-                    -ReviewFileName ($_.BaseName + ".review.md") `
-                    -ProcessedFileName $_.Name `
+                    -ReviewFileName ($InboxItem.BaseName + ".review.md") `
+                    -ProcessedFileName $InboxItem.Name `
                     -WikiFileName $WikiFileName
 
                 Write-Host "Filed under: $($Parsed.primary_topic)$NewTag"
@@ -667,10 +915,31 @@ $($Parsed.summary)
 # Ariadne Review (UNPARSED -- Knowledge Map not updated)
 
 Source:
-$($_.Name)
+$($InboxItem.Name)
 
 Processed:
 $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+
+Document ID:
+$($SourceIdentity.document_id)
+
+Source URL:
+$($SourceIdentity.source_url)
+
+YouTube Video ID:
+$($SourceIdentity.youtube_video_id)
+
+Page Title:
+$($SourceIdentity.page_title)
+
+Channel/Author:
+$($SourceIdentity.channel_author)
+
+Publication Date:
+$($SourceIdentity.publication_date)
+
+Normalized Markdown SHA-256:
+$($SourceIdentity.content_sha256)
 
 Failure Reason:
 $FailureReason
@@ -687,25 +956,25 @@ $RawReply
             }
 
             $Destination = if ($Parsed) {
-                Join-Path $Processed $_.Name
+                Join-Path $Processed $InboxItem.Name
             } else {
-                Join-Path $Failed $_.Name
+                Join-Path $Failed $InboxItem.Name
             }
-            Move-Item -LiteralPath $_.FullName -Destination $Destination -Force
+            Move-Item -LiteralPath $InboxItem.FullName -Destination $Destination -Force
 
             Write-Host "Saved : $ReviewFile"
             Write-Host "Moved : $Destination"
             Write-Host ""
             if ($Parsed) {
-                Write-AriadneLog -Level "INFO" -Message "Moved to Processed: $($_.Name)"
+                Write-AriadneLog -Level "INFO" -Message "Moved to Processed: $($InboxItem.Name)"
                 $SucceededThisRun++
             } else {
-                Write-AriadneLog -Level "INFO" -Message "Moved to Failed: $($_.Name)"
+                Write-AriadneLog -Level "INFO" -Message "Moved to Failed: $($InboxItem.Name)"
                 $FailedThisRun++
             }
             $ProcessedThisRun++
         } catch {
-            Write-AriadneLog -Level "ERROR" -Message "Unexpected exception while processing $($_.Name): $($_.Exception.Message)"
+            Write-AriadneLog -Level "ERROR" -Message "Unexpected exception while processing $($InboxItem.Name): $($_.Exception.Message)"
             throw
         }
     }
@@ -713,10 +982,13 @@ $RawReply
     Write-AriadneLog -Level "ERROR" -Message "Unexpected exception: $($_.Exception.Message)"
     throw
 } finally {
-    Write-AriadneLog -Level "INFO" -Message "Run complete. Processed=$ProcessedThisRun Succeeded=$SucceededThisRun Failed=$FailedThisRun"
+    Write-AriadneLog -Level "INFO" -Message "Run complete. Processed=$ProcessedThisRun Succeeded=$SucceededThisRun Failed=$FailedThisRun Duplicates=$DuplicatesThisRun"
 }
 
 Write-Host "Processed $ProcessedThisRun document(s) this run."
+if ($DuplicatesThisRun -gt 0) {
+    Write-Host "Skipped $DuplicatesThisRun duplicate document(s); see Archive/Duplicates for reports."
+}
 if ($MaxItemsPerRun -gt 0 -and (Get-ChildItem $Inbox -Filter *.md | Measure-Object).Count -gt 0) {
     Write-Host "Paused after $MaxItemsPerRun items. Run Ariadne again to continue."
 }
