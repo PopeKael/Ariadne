@@ -10,8 +10,9 @@ $Review    = Join-Path $Vault "Review"
 $Processed = Join-Path $Vault "Processed"
 $Failed    = Join-Path $Vault "Failed"
 $Wiki      = Join-Path $Vault "Wiki"
+$Logs      = Join-Path $Vault "Logs"
 
-foreach ($Folder in @($Review, $Processed, $Failed, $Wiki)) {
+foreach ($Folder in @($Review, $Processed, $Failed, $Wiki, $Logs)) {
     if (!(Test-Path $Folder)) {
         New-Item -ItemType Directory -Path $Folder | Out-Null
     }
@@ -21,6 +22,8 @@ $KnowledgeMapPath  = Join-Path $System "KnowledgeMap.md"
 $AriadnePromptPath = Join-Path $System "AriadnePrompt.md"
 $LibraryPath       = Join-Path $System "library.json"
 $MaxItemsPerRun    = 0
+$LogPath           = Join-Path $Logs "Ariadne.log"
+$MaxLogSizeBytes   = 2MB
 $AllowedPrimaryTopics = @(
     "AI & LLMs",
     "Infrastructure",
@@ -34,6 +37,37 @@ $AllowedPrimaryTopics = @(
     "Archive",
     "Travel & Expat Experience"
 )
+
+function Rotate-AriadneLogIfNeeded {
+    if (!(Test-Path $LogPath)) {
+        return
+    }
+
+    $LogFile = Get-Item -LiteralPath $LogPath
+    if ($LogFile.Length -le $MaxLogSizeBytes) {
+        return
+    }
+
+    $RotatedPath = "$LogPath.1"
+    if (Test-Path $RotatedPath) {
+        Remove-Item -LiteralPath $RotatedPath -Force
+    }
+
+    Move-Item -LiteralPath $LogPath -Destination $RotatedPath -Force
+    New-Item -ItemType File -Path $LogPath -Force | Out-Null
+}
+
+function Write-AriadneLog {
+    param(
+        [string]$Level,
+        [string]$Message
+    )
+
+    Rotate-AriadneLogIfNeeded
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $Line = "$Timestamp [$Level] $Message"
+    Add-Content -LiteralPath $LogPath -Value $Line -Encoding utf8
+}
 
 function Get-KnowledgeMapBody {
     param($RawContent)
@@ -85,46 +119,130 @@ function Update-KnowledgeMap {
 function Test-AriadneResponse {
     param($Parsed)
 
-    if ($null -eq $Parsed) { return $false }
+    if ($null -eq $Parsed) {
+        return @{
+            IsValid = $false
+            FailureReason = "Parsed response is null"
+        }
+    }
 
     $RequiredFields = @("primary_topic", "subtopics", "is_new_topic", "reason", "tags", "links", "map_entry", "summary")
     foreach ($Field in $RequiredFields) {
         if ($null -eq $Parsed.$Field) {
-            return $false
+            return @{
+                IsValid = $false
+                FailureReason = "Missing required field: $Field"
+            }
         }
     }
 
-    if ($Parsed.primary_topic -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.primary_topic)) { return $false }
-    if ($AllowedPrimaryTopics -notcontains $Parsed.primary_topic) { return $false }
-    if ($Parsed.reason -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.reason)) { return $false }
-    if ($Parsed.map_entry -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.map_entry)) { return $false }
-    if ($Parsed.summary -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.summary)) { return $false }
-    if ($Parsed.is_new_topic -isnot [bool]) { return $false }
-    if ($Parsed.subtopics -is [string]) { return $false }
-    if ($Parsed.tags -is [string]) { return $false }
-    if ($Parsed.links -is [string]) { return $false }
+    if ($Parsed.primary_topic -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.primary_topic)) {
+        return @{
+            IsValid = $false
+            FailureReason = "primary_topic is missing or not a non-empty string"
+        }
+    }
+    if ($AllowedPrimaryTopics -notcontains $Parsed.primary_topic) {
+        return @{
+            IsValid = $false
+            FailureReason = "Invalid primary_topic: $($Parsed.primary_topic)"
+        }
+    }
+    if ($Parsed.reason -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.reason)) {
+        return @{
+            IsValid = $false
+            FailureReason = "reason is missing or not a non-empty string"
+        }
+    }
+    if ($Parsed.map_entry -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.map_entry)) {
+        return @{
+            IsValid = $false
+            FailureReason = "map_entry is missing or not a non-empty string"
+        }
+    }
+    if ($Parsed.summary -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.summary)) {
+        return @{
+            IsValid = $false
+            FailureReason = "summary is missing or not a non-empty string"
+        }
+    }
+    if ($Parsed.is_new_topic -isnot [bool]) {
+        return @{
+            IsValid = $false
+            FailureReason = "is_new_topic is not a boolean"
+        }
+    }
+    if ($Parsed.subtopics -is [string]) {
+        return @{
+            IsValid = $false
+            FailureReason = "subtopics must be an array, not a string"
+        }
+    }
+    if ($Parsed.tags -is [string]) {
+        return @{
+            IsValid = $false
+            FailureReason = "tags must be an array, not a string"
+        }
+    }
+    if ($Parsed.links -is [string]) {
+        return @{
+            IsValid = $false
+            FailureReason = "links must be an array, not a string"
+        }
+    }
 
     $SubtopicList = @($Parsed.subtopics)
     $TagList = @($Parsed.tags)
     $LinkList = @($Parsed.links)
     foreach ($Subtopic in $SubtopicList) {
-        if ($Subtopic -isnot [string]) { return $false }
+        if ($Subtopic -isnot [string]) {
+            return @{
+                IsValid = $false
+                FailureReason = "subtopics contains non-string value"
+            }
+        }
     }
     foreach ($Tag in $TagList) {
-        if ($Tag -isnot [string]) { return $false }
+        if ($Tag -isnot [string]) {
+            return @{
+                IsValid = $false
+                FailureReason = "tags contains non-string value"
+            }
+        }
     }
     foreach ($Link in $LinkList) {
-        if ($Link -isnot [string]) { return $false }
+        if ($Link -isnot [string]) {
+            return @{
+                IsValid = $false
+                FailureReason = "links contains non-string value"
+            }
+        }
     }
 
-    if ($Parsed.map_entry -match '[\r\n]') { return $false }
-    if ($Parsed.summary -match '(^|\n)\s*#') { return $false }
+    if ($Parsed.map_entry -match '[\r\n]') {
+        return @{
+            IsValid = $false
+            FailureReason = "map_entry contains newline"
+        }
+    }
+    if ($Parsed.summary -match '(^|\n)\s*#') {
+        return @{
+            IsValid = $false
+            FailureReason = "summary contains markdown heading"
+        }
+    }
 
-    return $true
+    return @{
+        IsValid = $true
+        FailureReason = $null
+    }
 }
 
 function ConvertTo-AriadneReply {
-    param([string]$RawReply)
+    param(
+        [string]$RawReply,
+        [string]$AttemptLabel = "Attempt"
+    )
 
     $Candidate = $RawReply.Trim()
     $Candidate = $Candidate -replace '^```json\s*', '' -replace '^```\s*', '' -replace '\s*```$', ''
@@ -133,14 +251,27 @@ function ConvertTo-AriadneReply {
     try {
         $Parsed = $Candidate | ConvertFrom-Json
     } catch {
-        $Parsed = $null
+        Write-AriadneLog -Level "WARNING" -Message "Invalid JSON ($AttemptLabel)"
+        return @{
+            Parsed = $null
+            FailureReason = "Invalid JSON"
+        }
     }
 
-    if (Test-AriadneResponse -Parsed $Parsed) {
-        return $Parsed
+    $ValidationResult = Test-AriadneResponse -Parsed $Parsed
+    if ($ValidationResult.IsValid) {
+        return @{
+            Parsed = $Parsed
+            FailureReason = $null
+        }
     }
 
-    return $null
+    Write-AriadneLog -Level "WARNING" -Message "$($ValidationResult.FailureReason) ($AttemptLabel)"
+
+    return @{
+        Parsed = $null
+        FailureReason = $ValidationResult.FailureReason
+    }
 }
 
 function Get-AriadneSchemaExample {
@@ -170,16 +301,20 @@ function Invoke-AriadneModel {
         -Body $Body
 
     $RawReply = $Response.response.Trim()
-    $Parsed = ConvertTo-AriadneReply -RawReply $RawReply
+    $ReplyResult = ConvertTo-AriadneReply -RawReply $RawReply -AttemptLabel "Attempt 1"
+    $Parsed = $ReplyResult.Parsed
+    $FailureReason = $ReplyResult.FailureReason
     if ($Parsed) {
         return @{
             Parsed = $Parsed
             RawReply = $RawReply
+            FailureReason = $null
         }
     }
 
     $SchemaExample = Get-AriadneSchemaExample
     $AllowedTopicText = Get-AllowedPrimaryTopicsText
+    Write-AriadneLog -Level "INFO" -Message "Retrying model response for $DocumentName"
     $RetryPrompt = @"
 $Prompt
 
@@ -213,11 +348,15 @@ $RawReply
         -Body $RetryBody
 
     $RetryRawReply = $RetryResponse.response.Trim()
-    $RetryParsed = ConvertTo-AriadneReply -RawReply $RetryRawReply
+    $RetryReplyResult = ConvertTo-AriadneReply -RawReply $RetryRawReply -AttemptLabel "Attempt 2"
+    $RetryParsed = $RetryReplyResult.Parsed
+    $RetryFailureReason = $RetryReplyResult.FailureReason
 
     return @{
         Parsed = $RetryParsed
         RawReply = $RetryRawReply
+        FailureReason = $RetryFailureReason
+        InitialFailureReason = $FailureReason
     }
 }
 
@@ -420,24 +559,30 @@ Purpose: $Reason
 Write-Host ""
 Write-Host "Ariadne Prompt loaded."
 Write-Host ""
+Write-AriadneLog -Level "INFO" -Message "Ariadne started"
 
 $ProcessedThisRun = 0
-$InboxItems = Get-ChildItem $Inbox -Filter *.md
-if ($MaxItemsPerRun -gt 0) {
-    $InboxItems = $InboxItems | Select-Object -First $MaxItemsPerRun
-}
+$SucceededThisRun = 0
+$FailedThisRun = 0
 
-$AllowedTopicText = Get-AllowedPrimaryTopicsText
+try {
+    $InboxItems = Get-ChildItem $Inbox -Filter *.md
+    if ($MaxItemsPerRun -gt 0) {
+        $InboxItems = $InboxItems | Select-Object -First $MaxItemsPerRun
+    }
 
-$InboxItems | ForEach-Object {
+    $AllowedTopicText = Get-AllowedPrimaryTopicsText
 
-    $Document      = Get-Content -LiteralPath $_.FullName -Raw
-    $KnowledgeMap  = Get-Content $KnowledgeMapPath -Raw
-    $AriadnePrompt = Get-Content $AriadnePromptPath -Raw
+    $InboxItems | ForEach-Object {
+        try {
+            $Document      = Get-Content -LiteralPath $_.FullName -Raw
+            $KnowledgeMap  = Get-Content $KnowledgeMapPath -Raw
+            $AriadnePrompt = Get-Content $AriadnePromptPath -Raw
 
-    Write-Host "Processing: $($_.Name)"
+            Write-Host "Processing: $($_.Name)"
+            Write-AriadneLog -Level "INFO" -Message "Processing: $($_.Name)"
 
-    $Prompt = @"
+            $Prompt = @"
 $AriadnePrompt
 
 Allowed primary topics:
@@ -450,19 +595,20 @@ $KnowledgeMap
 $Document
 "@
 
-    $ModelResult = Invoke-AriadneModel -Prompt $Prompt -DocumentName $_.Name
-    $RawReply = $ModelResult.RawReply
-    $Parsed = $ModelResult.Parsed
+            $ModelResult = Invoke-AriadneModel -Prompt $Prompt -DocumentName $_.Name
+            $RawReply = $ModelResult.RawReply
+            $Parsed = $ModelResult.Parsed
+            $FailureReason = $ModelResult.FailureReason
 
-    $ReviewFile = Join-Path $Review ($_.BaseName + ".review.md")
+            $ReviewFile = Join-Path $Review ($_.BaseName + ".review.md")
 
-    if ($Parsed) {
-        Update-KnowledgeMap -Topic $Parsed.primary_topic -Reason $Parsed.reason -MapEntry $Parsed.map_entry
+            if ($Parsed) {
+                Update-KnowledgeMap -Topic $Parsed.primary_topic -Reason $Parsed.reason -MapEntry $Parsed.map_entry
 
-        $NewTag = if ($Parsed.is_new_topic) { " (new topic)" } else { "" }
-        $SubtopicLine = if (@($Parsed.subtopics).Count -gt 0) { $Parsed.subtopics -join ", " } else { "None" }
+                $NewTag = if ($Parsed.is_new_topic) { " (new topic)" } else { "" }
+                $SubtopicLine = if (@($Parsed.subtopics).Count -gt 0) { $Parsed.subtopics -join ", " } else { "None" }
 
-        $Header = @"
+                $Header = @"
 # Ariadne Review
 
 Source:
@@ -487,35 +633,37 @@ $($Parsed.links -join ", ")
 
 $($Parsed.summary)
 "@
-        $Header | Out-File -LiteralPath $ReviewFile -Encoding utf8
+                $Header | Out-File -LiteralPath $ReviewFile -Encoding utf8
 
-        $WikiFileName = Update-WikiPage `
-            -Topic $Parsed.primary_topic `
-            -Reason $Parsed.reason `
-            -Summary $Parsed.summary `
-            -MapEntry $Parsed.map_entry `
-            -Tags @($Parsed.tags) `
-            -Links @($Parsed.links) `
-            -SourceName $_.Name `
-            -ProcessedFileName $_.Name `
-            -ReviewFileName ($_.BaseName + ".review.md")
+                $WikiFileName = Update-WikiPage `
+                    -Topic $Parsed.primary_topic `
+                    -Reason $Parsed.reason `
+                    -Summary $Parsed.summary `
+                    -MapEntry $Parsed.map_entry `
+                    -Tags @($Parsed.tags) `
+                    -Links @($Parsed.links) `
+                    -SourceName $_.Name `
+                    -ProcessedFileName $_.Name `
+                    -ReviewFileName ($_.BaseName + ".review.md")
 
-        Update-LibraryEntry `
-            -SourceName $_.Name `
-            -PrimaryTopic $Parsed.primary_topic `
-            -Subtopics @($Parsed.subtopics) `
-            -Reason $Parsed.reason `
-            -Tags @($Parsed.tags) `
-            -Links @($Parsed.links) `
-            -Summary $Parsed.summary `
-            -MapEntry $Parsed.map_entry `
-            -ReviewFileName ($_.BaseName + ".review.md") `
-            -ProcessedFileName $_.Name `
-            -WikiFileName $WikiFileName
+                Update-LibraryEntry `
+                    -SourceName $_.Name `
+                    -PrimaryTopic $Parsed.primary_topic `
+                    -Subtopics @($Parsed.subtopics) `
+                    -Reason $Parsed.reason `
+                    -Tags @($Parsed.tags) `
+                    -Links @($Parsed.links) `
+                    -Summary $Parsed.summary `
+                    -MapEntry $Parsed.map_entry `
+                    -ReviewFileName ($_.BaseName + ".review.md") `
+                    -ProcessedFileName $_.Name `
+                    -WikiFileName $WikiFileName
 
-        Write-Host "Filed under: $($Parsed.primary_topic)$NewTag"
-    } else {
-        $Header = @"
+                Write-Host "Filed under: $($Parsed.primary_topic)$NewTag"
+                Write-AriadneLog -Level "INFO" -Message "Filed under: $($Parsed.primary_topic)$NewTag"
+                Write-AriadneLog -Level "INFO" -Message "Saved review: $([System.IO.Path]::GetFileName($ReviewFile))"
+            } else {
+                $Header = @"
 # Ariadne Review (UNPARSED -- Knowledge Map not updated)
 
 Source:
@@ -524,26 +672,48 @@ $($_.Name)
 Processed:
 $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 
+Failure Reason:
+$FailureReason
+
 ---
 
 $RawReply
 "@
-        $Header | Out-File -LiteralPath $ReviewFile -Encoding utf8
+                $Header | Out-File -LiteralPath $ReviewFile -Encoding utf8
 
-        Write-Host "WARNING: model reply was not valid JSON. Review file written, Knowledge Map left untouched."
+                Write-Host "WARNING: model reply was not valid JSON. Review file written, Knowledge Map left untouched."
+                Write-AriadneLog -Level "ERROR" -Message "Failed after retry: $FailureReason"
+                Write-AriadneLog -Level "INFO" -Message "Saved review: $([System.IO.Path]::GetFileName($ReviewFile))"
+            }
+
+            $Destination = if ($Parsed) {
+                Join-Path $Processed $_.Name
+            } else {
+                Join-Path $Failed $_.Name
+            }
+            Move-Item -LiteralPath $_.FullName -Destination $Destination -Force
+
+            Write-Host "Saved : $ReviewFile"
+            Write-Host "Moved : $Destination"
+            Write-Host ""
+            if ($Parsed) {
+                Write-AriadneLog -Level "INFO" -Message "Moved to Processed: $($_.Name)"
+                $SucceededThisRun++
+            } else {
+                Write-AriadneLog -Level "INFO" -Message "Moved to Failed: $($_.Name)"
+                $FailedThisRun++
+            }
+            $ProcessedThisRun++
+        } catch {
+            Write-AriadneLog -Level "ERROR" -Message "Unexpected exception while processing $($_.Name): $($_.Exception.Message)"
+            throw
+        }
     }
-
-    $Destination = if ($Parsed) {
-        Join-Path $Processed $_.Name
-    } else {
-        Join-Path $Failed $_.Name
-    }
-    Move-Item -LiteralPath $_.FullName -Destination $Destination -Force
-
-    Write-Host "Saved : $ReviewFile"
-    Write-Host "Moved : $Destination"
-    Write-Host ""
-    $ProcessedThisRun++
+} catch {
+    Write-AriadneLog -Level "ERROR" -Message "Unexpected exception: $($_.Exception.Message)"
+    throw
+} finally {
+    Write-AriadneLog -Level "INFO" -Message "Run complete. Processed=$ProcessedThisRun Succeeded=$SucceededThisRun Failed=$FailedThisRun"
 }
 
 Write-Host "Processed $ProcessedThisRun document(s) this run."
@@ -551,3 +721,4 @@ if ($MaxItemsPerRun -gt 0 -and (Get-ChildItem $Inbox -Filter *.md | Measure-Obje
     Write-Host "Paused after $MaxItemsPerRun items. Run Ariadne again to continue."
 }
 Write-Host "Finished."
+Write-AriadneLog -Level "INFO" -Message "Ariadne finished"

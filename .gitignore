@@ -41,9 +41,9 @@ Journal/**
 !Journal/
 !Journal/README.md
 
-Log/**
-!Log/
-!Log/README.md
+Logs/**
+!Logs/
+!Logs/README.md
 
 People/**
 !People/

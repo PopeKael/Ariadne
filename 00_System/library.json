@@ -3851,5 +3851,432 @@
     "processed_path": "Processed/Vlog - AI Image Liability Thailand2026-07-10T22_10_46+07_00.md",
     "wiki_path": "Wiki/Content Creation.md",
     "indexed_at": "2026-07-10 22:27:26"
+  },
+  {
+    "source_name": "Menu Recreation Request2026-07-09T00_05_05+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "menu design",
+      "graphic design",
+      "AI assistance"
+    ],
+    "reason": "The document discusses creating a printable menu with playful wording, design guidelines, and pricing for a service.",
+    "tags": [
+      "menu",
+      "design",
+      "AI",
+      "printing",
+      "business services"
+    ],
+    "links": [
+      "Canva",
+      "Adobe InDesign"
+    ],
+    "map_entry": "Menu Recreation Request – A guide on designing an A4 portrait menu using AI and graphic tools.",
+    "summary": "This document provides a step-by-step approach to recreating a restaurant menu in an eye-catching A4 format, including playful item titles, design tips for fonts, colors, icons, QR codes, export options, and suggested pricing for a business offering this service. It combines creative copy with practical layout guidance, making it useful for content creators and small‑business owners who want to refresh their menus quickly.",
+    "review_path": "Review/Menu Recreation Request2026-07-09T00_05_05+07_00.review.md",
+    "processed_path": "Processed/Menu Recreation Request2026-07-09T00_05_05+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 10:27:04"
+  },
+  {
+    "source_name": "Python Run-Length Encoding 🐍 • Open WebUI2026-07-09T13_08_54+07_00.md",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "Python",
+      "Algorithms"
+    ],
+    "reason": "The document provides an example Python implementation of run‑length encoding, a common coding exercise.",
+    "tags": [
+      "coding",
+      "python",
+      "encoding"
+    ],
+    "links": [],
+    "map_entry": "Python run-length encoding example from Open WebUI.",
+    "summary": "This source contains a concise Python function that performs run‑length encoding on a string, converting repeated characters into a character followed by its count. The implementation handles empty strings and is case-sensitive.",
+    "review_path": "Review/Python Run-Length Encoding 🐍 • Open WebUI2026-07-09T13_08_54+07_00.review.md",
+    "processed_path": "Processed/Python Run-Length Encoding 🐍 • Open WebUI2026-07-09T13_08_54+07_00.md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-11 10:27:28"
+  },
+  {
+    "source_name": "Real Aussie Expat Life - 2026-07-09 12.46.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "fitness and wellness",
+      "public healthcare",
+      "cost of living",
+      "food culture"
+    ],
+    "reason": "The document focuses on an Australian expat’s daily life in Thailand, covering fitness challenges, hospital experiences, budgeting, and food habits.",
+    "tags": [
+      "expat",
+      "Thailand",
+      "fitness",
+      "healthcare",
+      "budgeting",
+      "food"
+    ],
+    "links": [],
+    "map_entry": "Real Aussie Expat Life - 2026-07-09 12.46.md",
+    "summary": "An Australian expat shares his experience in Thailand, detailing a shoulder injury during fitness routines, reviews of public hospitals, everyday cost insights, and candid discussions on food preferences, providing a practical guide for fellow travelers.",
+    "review_path": "Review/Real Aussie Expat Life - 2026-07-09 12.46.review.md",
+    "processed_path": "Processed/Real Aussie Expat Life - 2026-07-09 12.46.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 10:27:50"
+  },
+  {
+    "source_name": "Run length encoding function - 2026-07-09 12.57.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "algorithms",
+      "string manipulation",
+      "python"
+    ],
+    "reason": "The document provides a coding example and explanation for implementing run‑length encoding in Python.",
+    "tags": [
+      "python",
+      "algorithm",
+      "rle"
+    ],
+    "links": [],
+    "map_entry": "Run length encoding function - concise description of the source.",
+    "summary": "This document explains how to implement run‑length encoding on strings in Python, offering both manual loop and itertools.groupby approaches. It covers edge cases, time/space complexity, Unicode support, and includes test cases.",
+    "review_path": "Review/Run length encoding function - 2026-07-09 12.57.review.md",
+    "processed_path": "Processed/Run length encoding function - 2026-07-09 12.57.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 10:28:14"
+  },
+  {
+    "source_name": "Run-Length Encoding - String C... • Open WebUI2026-07-09T13_09_05+07_00.md",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "string processing",
+      "run-length encoding",
+      "python coding"
+    ],
+    "reason": "The document explains a run‑length encoding function, a string compression technique.",
+    "tags": [
+      "python",
+      "compression",
+      "strings",
+      "coding"
+    ],
+    "links": [],
+    "map_entry": "Python RLE implementation – compresses consecutive characters into count+char format.",
+    "summary": "This snippet defines and demonstrates a Python function that performs run-length encoding on an input string (e.g., 'aaabbc' → 'a3b2c1'). It includes input validation, iterative counting, and output construction.",
+    "review_path": "Review/Run-Length Encoding - String C... • Open WebUI2026-07-09T13_09_05+07_00.review.md",
+    "processed_path": "Processed/Run-Length Encoding - String C... • Open WebUI2026-07-09T13_09_05+07_00.md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-11 10:28:37"
+  },
+  {
+    "source_name": "Your gaming PC gets throttled by Windows 11's hidden security layer, and disabling it takes 30 seconds2026-07-07T20_35_51+07_002026-07-05T13_00_22Z[[Jasmine Mannan]].md",
+    "primary_topic": "Gaming",
+    "subtopics": [
+      "Performance",
+      "Windows 11 Security",
+      "Core Isolation",
+      "VBS"
+    ],
+    "reason": "The document discusses how Windows 11’s core isolation and virtualization-based security layer introduces CPU scheduling penalties that cause micro‑stutters in modern games, and explains how disabling memory integrity can improve gameplay stability.",
+    "tags": [
+      "gaming",
+      "windows11",
+      "vbs",
+      "core isolation",
+      "performance"
+    ],
+    "links": [
+      "https://www.xda-developers.com/signs-your-gpu-isnt-responsible-for-fps-issues/",
+      "https://www.xda-developers.com/debloating-windows-11-handheld-gaming/"
+    ],
+    "map_entry": "Gaming PC throttled by Windows 11’s core isolation; disabling memory integrity fixes micro‑stutters.",
+    "summary": "The article explains that Windows 11, by default, activates core isolation and virtualization-based security (VBS) to sandbox kernel-mode drivers. While this protects against malware, it forces driver calls through a hypervisor layer, adding CPU latency spikes that manifest as sudden frame-time jitters in high-end gaming rigs. The author notes that disabling the memory integrity toggle under Windows Security → Device Security → Core Isolation Details eliminates these stutters—though average FPS may remain similar, low‑end frame drops drop sharply. It cautions users about sacrificing a layer of enterprise-grade security and advises gamers with secure home networks to weigh risk versus smoother gameplay.",
+    "review_path": "Review/Your gaming PC gets throttled by Windows 11's hidden security layer, and disabling it takes 30 seconds2026-07-07T20_35_51+07_002026-07-05T13_00_22Z[[Jasmine Mannan]].review.md",
+    "processed_path": "Processed/Your gaming PC gets throttled by Windows 11's hidden security layer, and disabling it takes 30 seconds2026-07-07T20_35_51+07_002026-07-05T13_00_22Z[[Jasmine Mannan]].md",
+    "wiki_path": "Wiki/Gaming.md",
+    "indexed_at": "2026-07-11 10:29:06"
+  },
+  {
+    "source_name": "Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Healthcare costs in Thailand",
+      "Public vs Private Hospitals",
+      "Personal medical experiences",
+      "Content creation for expats"
+    ],
+    "reason": "The video discusses personal encounters with Thai public hospitals, compares costs to private care and Australian experiences, and outlines plans for community-focused content on Patreon/Discord.",
+    "tags": [
+      "healthcare",
+      "travel",
+      "expats",
+      "Thailand",
+      "public hospitals",
+      "private insurance"
+    ],
+    "links": [],
+    "map_entry": "Mushi Mushi 2026-07-05 – Thailand hospital experiences and content plans.",
+    "summary": "The video is a personal account of the host’s dealings with public health care in Thailand, noting costs for general treatment versus private facilities, and recounts an earlier knee arthroscopy experience in Australia that led to out‑of‑pocket bills. He highlights the differences between public hospitals’ sliding‑scale fees and the hidden charges of private insurers. The discussion also covers future content plans: community‑centric “tribe” videos shared on Patreon and Discord, alongside regular Sunday feel‑good uploads for casual viewers. The host emphasizes the importance of being aware of true medical costs while encouraging audience interaction to refine his content.",
+    "review_path": "Review/Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].review.md",
+    "processed_path": "Processed/Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 10:41:54"
+  },
+  {
+    "source_name": "Release v0.0.9--context-conduit-topaz.md",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "control-plane connectivity",
+      "mTLS authentication",
+      "prefixed gateway routes",
+      "structured health checks",
+      "diagnostics and support"
+    ],
+    "reason": "The document discusses the release of a tunnel client with enhanced enterprise gateway compatibility, mTLS control‑plane access, and operator diagnostics.",
+    "tags": [
+      "tunnel-client",
+      "gateway",
+      "mtls",
+      "health-checks",
+      "diagnostics"
+    ],
+    "links": [
+      "https://persistent.oaistatic.com/tunnel-client/v0.0.9--context-conduit-topaz/"
+    ],
+    "map_entry": "Release notes for tunnel-client v0.0.9 focusing on enterprise gateway compatibility, control-plane connectivity, and day‑2 support.",
+    "summary": "The release of tunnel‑client v0.0.9 introduces significant infrastructure improvements for enterprises using the OpenAI API gateway. Key enhancements include optional prefixed routes for workspaces or tenants, support for client‑side mTLS authentication to secure control‑plane connections, explicit MCP session termination messages, and structured health checks that probe /healthz and /readyz endpoints. Diagnostics are enhanced with richer MCP status reporting and protected control‑plane headers. These updates aim to improve day‑2 operations, enable more robust operator monitoring, and streamline deployment in complex gateway environments.",
+    "review_path": "Review/Release v0.0.9--context-conduit-topaz.review.md",
+    "processed_path": "Processed/Release v0.0.9--context-conduit-topaz.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-11 10:42:22"
+  },
+  {
+    "source_name": "Second opinion request.md",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "verification methods",
+      "document analysis",
+      "conspiracy theory critique"
+    ],
+    "reason": "The document is an AI-generated analysis evaluating claims from the Epstein files, focusing on how language models assess evidence and speculation.",
+    "tags": [
+      "ai",
+      "llms",
+      "analysis",
+      "conspiracy",
+      "verification"
+    ],
+    "links": [
+      "Epstein Files Transparency Act releases",
+      "Bloomberg 18k email cache",
+      "DOJ releases"
+    ],
+    "map_entry": "Second opinion response analyzing alleged occult connections in Epstein’s emails using AI verification techniques.",
+    "summary": "This document presents a second opinion on the claim that Jeffrey Epstein was involved with occult practices, referencing the Epstein Files Transparency Act releases (Bloomberg and DOJ). It evaluates verified evidence, inference, and speculation using an AI framework, noting documented book purchases while debunking other rumors. The analysis clarifies what is confirmed versus unverified, providing a structured critique of conspiracy assertions.",
+    "review_path": "Review/Second opinion request.review.md",
+    "processed_path": "Processed/Second opinion request.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-11 10:42:51"
+  },
+  {
+    "source_name": "Suvarnabhumi Airport says crew member’s luggage cleared security screening before Australia heroin arrest.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "airport security",
+      "baggage screening",
+      "heroin smuggling"
+    ],
+    "reason": "The article details an incident involving a Thai airline crew member’s luggage being cleared by airport X‑ray screening before departure, subsequent heroin smuggling allegations in Australia, and the operational context of international flight security procedures.",
+    "tags": [
+      "travel",
+      "aviation-security",
+      "baggage-screening",
+      "heroin-smuggling"
+    ],
+    "links": [
+      "https://www.khaosodenglish.com/news/2026/06/29/suvarnabhumi-airport-says-crew-members-luggage-cleared-security-screening-before-australia-heroin-arrest/?brid=YWdncwEEXd5c1FWePE3_tYiSrzEC"
+    ],
+    "map_entry": "Suvarnabhumi Airport says crew member’s luggage cleared security screening before Australia heroin arrest",
+    "summary": "The piece reports that a Thai airline cabin crew member, arrested in Melbourne for allegedly carrying ~1 kg of heroin, had her baggage undergo standard X‑ray screening at Suvarnabhumi Airport and was cleared prior to departure. It highlights the airport’s adherence to ICAO standards, explains why outbound flights focus on explosive detection while inbound arrivals employ canine units for narcotics, and notes the Australian Federal Police charges related to drug importation.",
+    "review_path": "Review/Suvarnabhumi Airport says crew member’s luggage cleared security screening before Australia heroin arrest.review.md",
+    "processed_path": "Processed/Suvarnabhumi Airport says crew member’s luggage cleared security screening before Australia heroin arrest.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 10:43:13"
+  },
+  {
+    "source_name": "WAZZA2026-07-02T20_31_00+07_00.md",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Social media presence",
+      "Streaming platforms",
+      "Retirement in Thailand",
+      "AI and technology interest"
+    ],
+    "reason": "The document presents a personal branding hub for Warren Gerdes, linking his social media and streaming channels while living in Nakhon Pathom, Thailand.",
+    "tags": [
+      "ai",
+      "tech",
+      "retirement",
+      "travel",
+      "socialmedia",
+      "streaming"
+    ],
+    "links": [
+      "https://warren.dia.net.au/",
+      "https://www.youtube.com/@pope_kael",
+      "https://www.patreon.com/chanyawazza",
+      "https://discord.gg/PFENZwaqZy",
+      "https://www.facebook.com/PopeKael",
+      "https://www.facebook.com/chanya.khamjeen",
+      "https://www.instagram.com/warrengerdes/",
+      "https://threads.com/@warrengerdes",
+      "https://x.com/PopeKael",
+      "https://www.linkedin.com/in/warrengerdes/",
+      "https://suno.com/@popekael",
+      "https://www.tiktok.com/@alice_beauty",
+      "https://www.tiktok.com/@popekael",
+      "https://www.twitch.tv/popekael",
+      "https://kick.com/popekael",
+      "https://www.dia.net.au/",
+      "https://popekael.substack.com/",
+      "https://paypal.me/WarrenGerdes",
+      "https://buymeacoffee.com/warrengerdes",
+      "https://warren.dia.net.au/images/wazza-og.png"
+    ],
+    "map_entry": "Personal branding hub linking Warren Gerdes’ social media and streaming platforms while residing in Nakhon Pathom, Thailand.",
+    "summary": "The WAZZA page is a concise personal branding directory for Warren Gerdes, showcasing his online presence across YouTube, Patreon, Discord, Facebook, Instagram, Threads, X, LinkedIn, Suno Music, TikTok, Twitch, Kick, and Substack. It also lists monetization options like PayPal and Buy Me A Coffee, and highlights his interest in AI, technology, retirement, and living in Thailand. The document serves as a quick reference for followers to connect with or support him through various channels.",
+    "review_path": "Review/WAZZA2026-07-02T20_31_00+07_00.review.md",
+    "processed_path": "Processed/WAZZA2026-07-02T20_31_00+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-11 10:43:45"
+  },
+  {
+    "source_name": "Clarity Rewrite2026-07-10T17_01_43+07_00.md",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Immigration",
+      "Document Management"
+    ],
+    "reason": "The document discusses a personal immigration issue involving photocopies of documents.",
+    "tags": [
+      "immigration",
+      "documents",
+      "personal"
+    ],
+    "links": [],
+    "map_entry": "Clarity Rewrite - ChatGPT conversation with rewrite for clarity regarding immigration documentation.",
+    "summary": "The conversation clarifies that Immigration has taken and filed photocopies of the user’s Yellow Book over six years. Last year, a slight delay occurred because copies of the partner’s Blue Book—linked to the Yellow Book—also had to be provided.",
+    "review_path": "Review/Clarity Rewrite2026-07-10T17_01_43+07_00.review.md",
+    "processed_path": "Processed/Clarity Rewrite2026-07-10T17_01_43+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-11 11:01:48"
+  },
+  {
+    "source_name": "Facebook Engagement Tips2026-07-10T19_46_03+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Social Media Engagement",
+      "Facebook Algorithm",
+      "Hook Writing"
+    ],
+    "reason": "The document discusses strategies for boosting engagement on Facebook posts.",
+    "tags": [
+      "facebook",
+      "social media",
+      "engagement",
+      "copywriting"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a17efef-8574-83ec-82c7-69ada344daf9"
+    ],
+    "map_entry": "ChatGPT conversation about how to craft engaging Facebook posts for a friend named Roy.",
+    "summary": "This document is a ChatGPT exchange providing practical advice on writing Facebook posts that attract attention and interaction. It explains why long, thoughtful content tends to be skimmed and offers techniques such as sharp hooks, concise paragraphs, and provocative headlines to capture interest. The discussion highlights the impact of Facebook's algorithm on visibility and suggests tailoring messages toward readers likely already sympathetic while still appealing broadly. The guidance is aimed at improving engagement for a user’s friend, Roy, who seeks to reach a wider audience.",
+    "review_path": "Review/Facebook Engagement Tips2026-07-10T19_46_03+07_00.review.md",
+    "processed_path": "Processed/Facebook Engagement Tips2026-07-10T19_46_03+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 11:02:10"
+  },
+  {
+    "source_name": "Facebook Reminder Puns2026-07-10T16_59_44+07_00.md",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "social media communication",
+      "humor in travel posts",
+      "Facebook feed dynamics"
+    ],
+    "reason": "The document provides playful Facebook post suggestions aimed at travelers, focusing on timing and humor for event reminders.",
+    "tags": [
+      "travel",
+      "socialmedia",
+      "humor",
+      "facebook"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a12634c-7400-83ec-9810-a375e227447f"
+    ],
+    "map_entry": "Facebook Reminder Puns – humorous post captions for travel events",
+    "summary": "The document offers light‑hearted Facebook caption ideas to alert fellow travelers about event reminders, noting the platform’s slow feed and adding sci‑fi references for comedic effect.",
+    "review_path": "Review/Facebook Reminder Puns2026-07-10T16_59_44+07_00.review.md",
+    "processed_path": "Processed/Facebook Reminder Puns2026-07-10T16_59_44+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 11:02:35"
+  },
+  {
+    "source_name": "Surreal Comedy Portrait2026-07-10T19_48_15+07_00.md",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI-generated images",
+      "prompt engineering"
+    ],
+    "reason": "The document documents a user’s instructions to ChatGPT for generating surreal AI‑created portrait images, including the resulting image URLs.",
+    "tags": [
+      "ai",
+      "image-generation",
+      "surrealart",
+      "prompt-engineering"
+    ],
+    "links": [
+      "https://chatgpt.com/backend-api/estuary/content?id=file_0000000027007208a8006fe4db2dc971&ts=495468&p=fs&cid=1&sig=100295874658c5bdb96e124696ab625808404a866dc27893bcd1a794545e2ce1&v=0",
+      "https://chatgpt.com/backend-api/estuary/content?id=file_00000000313072088313519227f7a3f1&ts=495468&p=fs&cid=1&sig=0d5f9d4ceec66e2a86970b31615e178c7f0a0ba4103f4dfdcbbdb74525f036af&v=0"
+    ],
+    "map_entry": "Surreal Comedy Portrait – ChatGPT conversation generating AI images",
+    "summary": "User requests a surreal comedy portrait image from ChatGPT. The system provides two generated images via links, first showing miniature chaos on an oversized hoodie and second a 16×9 version with a giant couple and tiny army.",
+    "review_path": "Review/Surreal Comedy Portrait2026-07-10T19_48_15+07_00.review.md",
+    "processed_path": "Processed/Surreal Comedy Portrait2026-07-10T19_48_15+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 11:03:04"
+  },
+  {
+    "source_name": "Video Transcript Breakdown2026-07-10T22_01_58+07_00.md",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "Religion and Governance",
+      "History of Islamic Institutions",
+      "Secularisation Challenges",
+      "Modernist Movements",
+      "Psychological Aspects"
+    ],
+    "reason": "The document explores how religion shapes political structures in the Middle East and why secularisation is difficult.",
+    "tags": [
+      "religion",
+      "MiddleEast",
+      "secularization",
+      "history",
+      "identity",
+      "politics"
+    ],
+    "links": [
+      "Historical context",
+      "Modernist movements"
+    ],
+    "map_entry": "Analysis of religious influence on governance and challenges to secularism in Middle Eastern societies.",
+    "summary": "The text examines how entrenched religious frameworks underpin political systems in the Middle East, tracing their historical development from tribal codes through Islamic legal traditions to modern oil‑state dynamics. It highlights that secularisation is not a simple switch but a complex process involving identity, economic structures, and psychological attachment. The document also outlines active reform movements within Islam that reinterpret doctrine to align with contemporary values, offering insight into gradual change rather than abrupt ideological replacement.",
+    "review_path": "Review/Video Transcript Breakdown2026-07-10T22_01_58+07_00.review.md",
+    "processed_path": "Processed/Video Transcript Breakdown2026-07-10T22_01_58+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-11 11:03:45"
   }
 ]
