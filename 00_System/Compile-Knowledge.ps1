@@ -5,8 +5,9 @@
 param(
     [string]$Vault = "D:\Downloads\KnowledgeVault",
     [string]$OutputDirectory,
-    [ValidateSet('Report', 'Proposal', 'Apply')]
-    [string]$Mode = 'Report'
+    [ValidateSet('Report', 'Proposal', 'Apply', 'Promote')]
+    [string]$Mode = 'Report',
+    [string[]]$ApprovedCandidates = @()
 )
 
 $Wiki = Join-Path $Vault "Wiki"
@@ -35,8 +36,8 @@ function New-ExistingLinkProposal {
         [string]$TargetPath
     )
 
-    $TargetTitle = [System.IO.Path]::GetFileNameWithoutExtension($TargetPath)
-    $Link = "[[${TargetTitle}]]"
+    $TargetLink = $TargetPath -replace '\.md$', ''
+    $Link = "[[${TargetLink}]]"
     if ($Page.Content -match [regex]::Escape($Link)) { return $null }
 
     $NewLine = if ($Page.Content -match "`r`n") { "`r`n" } else { "`n" }
@@ -49,7 +50,7 @@ function New-ExistingLinkProposal {
             return $null
         }
         $ExistingLinks = @($ExistingLines | ForEach-Object { ([regex]::Match($_, '\[\[([^\]|#]+)')).Groups[1].Value.Trim() })
-        $AllLinks = @($ExistingLinks + $TargetTitle | Sort-Object -Unique)
+        $AllLinks = @($ExistingLinks + $TargetLink | Sort-Object -Unique)
         $Replacement = "## Related Concepts$NewLine$NewLine" + (($AllLinks | ForEach-Object { "- [[$_]]" }) -join $NewLine) + $NewLine
         $Before = $Page.Content
         $After = $Page.Content.Substring(0, $Section.Index) + $Replacement + $Page.Content.Substring($Section.Index + $Section.Length)
@@ -144,13 +145,32 @@ function Add-PromotionEvidence {
             document_ids = [System.Collections.Generic.HashSet[string]]::new()
             stable_identifiers = [System.Collections.Generic.HashSet[string]]::new()
             related_existing_nodes = [System.Collections.Generic.HashSet[string]]::new()
+            source_documents = @{}
         }
     }
     $Candidate = $Candidates[$Key]
     $Candidate.evidence_count++
     [void]$Candidate.document_ids.Add([string]$Entry.document_id)
+    $Candidate.source_documents[[string]$Entry.document_id] = [string]$Entry.source_name
     if ($StableIdentifier) { [void]$Candidate.stable_identifiers.Add($StableIdentifier) }
     if ($Entry.wiki_path) { [void]$Candidate.related_existing_nodes.Add([string]$Entry.wiki_path) }
+}
+
+function Get-NodeId {
+    param([string]$Namespace, [string]$Name)
+    $Input = "$Namespace|$(Get-CanonicalKey $Name)"
+    $Sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $Hash = [System.BitConverter]::ToString($Sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Input))).Replace('-', '').ToLowerInvariant()
+        return "node:$($Namespace.ToLowerInvariant()):$($Hash.Substring(0, 16))"
+    } finally { $Sha256.Dispose() }
+}
+
+function ConvertTo-NodeFileName {
+    param([string]$Name)
+    $Safe = $Name.Trim()
+    foreach ($Character in [System.IO.Path]::GetInvalidFileNameChars()) { $Safe = $Safe.Replace($Character, '-') }
+    return (($Safe -replace '\s+', ' ').Trim() + '.md')
 }
 
 if (!(Test-Path -LiteralPath $Wiki)) { throw "Wiki directory not found: $Wiki" }
@@ -191,15 +211,29 @@ $DuplicateGroups = @($Pages.Values | Group-Object { Get-CanonicalKey $_.Title } 
     ForEach-Object { [pscustomobject]@{ canonical_key = $_.Name; pages = @($_.Group.RelativePath | Sort-Object) } })
 
 $NodeRegistry = @{}
-foreach ($Registry in @(
-    [pscustomobject]@{ namespace = 'Wiki/Concepts'; path = (Join-Path $Wiki 'Concepts') },
-    [pscustomobject]@{ namespace = 'People'; path = (Join-Path $Vault 'People') },
-    [pscustomobject]@{ namespace = 'Entities'; path = (Join-Path $Vault 'Entities') }
-)) {
+$NamespacePaths = @{
+    'Wiki/Concepts' = (Join-Path $Wiki 'Concepts')
+    'People' = (Join-Path $Vault 'People')
+    'Entities' = (Join-Path $Vault 'Entities')
+}
+foreach ($Registry in @($NamespacePaths.GetEnumerator() | ForEach-Object {
+    [pscustomobject]@{ namespace = $_.Key; path = $_.Value }
+})) {
     if (Test-Path -LiteralPath $Registry.path) {
         Get-ChildItem -LiteralPath $Registry.path -Recurse -File -Filter *.md | Where-Object { $_.Name -ne 'README.md' } | ForEach-Object {
             $NodeRegistry["$($Registry.namespace)|$(Get-CanonicalKey $_.BaseName)"] = $_.FullName
         }
+    }
+}
+
+# The compiler writes only Wiki pages, but existing People and Entities are valid
+# link targets. Qualified links keep namespaces unambiguous.
+$KeyToLinkTarget = @{}
+foreach ($Key in $KeyToPage.Keys) { $KeyToLinkTarget[$Key] = $KeyToPage[$Key] }
+foreach ($RegistryKey in $NodeRegistry.Keys) {
+    $Parts = $RegistryKey -split '\|', 2
+    if ($Parts[0] -in @('People', 'Entities')) {
+        $KeyToLinkTarget[$Parts[1]] = "$($Parts[0])/$([System.IO.Path]::GetFileNameWithoutExtension($NodeRegistry[$RegistryKey]))"
     }
 }
 
@@ -212,8 +246,14 @@ if (Test-Path -LiteralPath $LibraryPath) {
             $SourcePage = $_.wiki_path -replace '^Wiki/', ''
             foreach ($Candidate in @($_.links)) {
                 $Key = Get-CanonicalKey $Candidate
-                if ($KeyToPage.ContainsKey($Key) -and $SourcePage -and $SourcePage -ne $KeyToPage[$Key]) {
-                    [pscustomobject]@{ source = $SourcePage; target = $KeyToPage[$Key]; suggested_by = $_.source_name }
+                if ($KeyToLinkTarget.ContainsKey($Key) -and $SourcePage -and $SourcePage -ne $KeyToLinkTarget[$Key]) {
+                    [pscustomobject]@{ source = $SourcePage; target = $KeyToLinkTarget[$Key]; suggested_by = $_.source_name }
+                }
+            }
+            foreach ($Candidate in @($_.subtopics) + @(ConvertTo-PromotionName -Value $_.channel_author)) {
+                $Key = Get-CanonicalKey $Candidate
+                if ($KeyToLinkTarget.ContainsKey($Key) -and $SourcePage -and $SourcePage -ne $KeyToLinkTarget[$Key]) {
+                    [pscustomobject]@{ source = $SourcePage; target = $KeyToLinkTarget[$Key]; suggested_by = "$($_.source_name) (structured node reference)" }
                 }
             }
         } | Sort-Object source, target -Unique)
@@ -274,6 +314,9 @@ $PromotionCandidates = @($PromotionEvidence.Values | Where-Object { $_.document_
         distinct_source_count = $_.document_ids.Count
         stable_identifiers = @($_.stable_identifiers | Sort-Object)
         related_existing_nodes = @($_.related_existing_nodes | Sort-Object)
+        source_documents = @($_.source_documents.GetEnumerator() | Sort-Object Key | ForEach-Object {
+            [pscustomobject]@{ document_id = $_.Key; source_name = $_.Value }
+        })
         confidence = [math]::Round([math]::Min($Confidence, 0.9), 2)
     }
 } | Sort-Object recommended_namespace, candidate_name)
@@ -281,6 +324,53 @@ $PromotionCandidates = @($PromotionEvidence.Values | Where-Object { $_.document_
 $Proposals = @($SuggestedLinks | ForEach-Object {
     New-ExistingLinkProposal -Page $Pages[$_.source] -TargetPath $_.target
 } | Where-Object { $_ })
+
+$Promoted = @()
+if ($Mode -eq 'Promote') {
+    if ($ApprovedCandidates.Count -eq 0) {
+        throw 'Promote requires explicit approval: pass one or more exact candidate names with -ApprovedCandidates.'
+    }
+    foreach ($ApprovedName in $ApprovedCandidates) {
+        $Matches = @($PromotionCandidates | Where-Object { $_.candidate_name -ieq $ApprovedName })
+        if ($Matches.Count -ne 1) {
+            throw "Approved candidate '$ApprovedName' did not match exactly one current promotion candidate."
+        }
+        $Candidate = $Matches[0]
+        $RegistryKey = "$($Candidate.recommended_namespace)|$(Get-CanonicalKey $Candidate.candidate_name)"
+        if ($NodeRegistry.ContainsKey($RegistryKey)) {
+            Write-Warning "Skipped existing canonical node: $($Candidate.candidate_name)"
+            continue
+        }
+        $Directory = $NamespacePaths[$Candidate.recommended_namespace]
+        if (!(Test-Path -LiteralPath $Directory)) { throw "Canonical namespace directory not found: $Directory" }
+        $RecordPath = Join-Path $Directory (ConvertTo-NodeFileName -Name $Candidate.candidate_name)
+        if (Test-Path -LiteralPath $RecordPath) { throw "Refusing to overwrite existing node record: $RecordPath" }
+
+        $StableIdentifiers = if ($Candidate.stable_identifiers.Count) { ($Candidate.stable_identifiers | ForEach-Object { "- $_" }) -join "`n" } else { '- None' }
+        $SourceDocuments = ($Candidate.source_documents | ForEach-Object { "- $($_.document_id) — $($_.source_name)" }) -join "`n"
+        @"
+# $($Candidate.candidate_name)
+
+NodeId: $(Get-NodeId -Namespace $Candidate.recommended_namespace -Name $Candidate.candidate_name)
+
+Namespace: $($Candidate.recommended_namespace)
+
+Stable Identifiers:
+$StableIdentifiers
+
+Created: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+
+Evidence Summary: $($Candidate.evidence_count) references across $($Candidate.distinct_source_count) distinct source documents; compiler confidence $($Candidate.confidence).
+
+## Source Documents
+
+$SourceDocuments
+"@ | Out-File -LiteralPath $RecordPath -Encoding utf8 -NoNewline
+
+        $Promoted += [pscustomobject]@{ candidate_name = $Candidate.candidate_name; namespace = $Candidate.recommended_namespace; node_id = (Get-NodeId -Namespace $Candidate.recommended_namespace -Name $Candidate.candidate_name); record_path = $RecordPath }
+        $NodeRegistry[$RegistryKey] = $RecordPath
+    }
+}
 
 $Applied = @()
 if ($Mode -eq 'Apply') {
@@ -301,7 +391,7 @@ $AfterGraph = Get-GraphAnalysis -Pages $Pages -KeyToPage $KeyToPage
 
 $Report = [ordered]@{
     generated_at = (Get-Date -Format 'o')
-    mode = switch ($Mode) { 'Proposal' { 'proposal-only' } 'Apply' { 'applied' } default { 'report-only' } }
+    mode = switch ($Mode) { 'Proposal' { 'proposal-only' } 'Apply' { 'applied' } 'Promote' { 'promoted' } default { 'report-only' } }
     scope = 'Wiki markdown pages excluding README.md'
     summary = [ordered]@{
         pages = $Pages.Count; links_added = $Applied.Count; pages_modified = @($Applied.page | Sort-Object -Unique).Count
@@ -310,6 +400,7 @@ $Report = [ordered]@{
         sparse_pages = $Sparse.Count; duplicate_concept_groups = $DuplicateGroups.Count
         graph_density_before = $BeforeGraph.density; graph_density_after = $AfterGraph.density
         promotion_candidates = $PromotionCandidates.Count
+        nodes_promoted = $Promoted.Count
     }
     orphan_pages = $AfterGraph.orphans
     sparse_pages = $Sparse
@@ -320,6 +411,7 @@ $Report = [ordered]@{
     link_proposals = $Proposals
     applied_links = $Applied
     promotion_candidates = $PromotionCandidates
+    promoted_nodes = $Promoted
 }
 
 if ($Mode -eq 'Proposal') {
@@ -398,6 +490,7 @@ Mode: $($Report.mode).
 | Duplicate concept groups | $($Report.summary.duplicate_concept_groups) |
 | Unresolved wiki links | $($Report.summary.unresolved_links) |
 | Promotion candidates | $($Report.summary.promotion_candidates) |
+| Nodes promoted | $($Report.summary.nodes_promoted) |
 
 ## Recommended Existing Links
 
@@ -422,6 +515,10 @@ $(if ($PromotionCandidates.Count) { ($PromotionCandidates | ForEach-Object {
 "@
 }) -join "`n" } else { 'None. Candidates require evidence from at least three distinct document IDs.' })
 
+## Promoted Nodes
+
+$(if ($Promoted.Count) { ($Promoted | ForEach-Object { "- ``$($_.candidate_name)`` → ``$($_.namespace)`` (`$($_.node_id)`)" }) -join "`n" } else { 'None.' })
+
 ## Orphan Pages
 
 $(if ($Orphans.Count) { ($Orphans | ForEach-Object { "- ``$_``" }) -join "`n" } else { 'None.' })
@@ -435,6 +532,22 @@ $(if ($Sparse.Count) { ($Sparse | ForEach-Object { "- ``$($_.page)`` — $($_.so
 Promotion candidates are report-only and use `library.json` evidence across distinct document IDs. The compiler never creates, modifies, renames, merges, or deletes canonical nodes.
 "@
 $Markdown | Out-File -LiteralPath $MarkdownPath -Encoding utf8 -NoNewline
+
+if ($Mode -eq 'Promote') {
+    $PromotionReportPath = Join-Path $OutputDirectory "promotion-$Stamp.md"
+    @"
+# Ariadne Promotion Report
+
+Generated: $($Report.generated_at)
+
+Approved candidates: $($ApprovedCandidates -join ', ')
+
+## Nodes Created
+
+$(if ($Promoted.Count) { ($Promoted | ForEach-Object { "- ``$($_.candidate_name)`` → ``$($_.namespace)`` — NodeId: ``$($_.node_id)`` — Record: ``$($_.record_path)``" }) -join "`n" } else { 'None. No node records were created.' })
+"@ | Out-File -LiteralPath $PromotionReportPath -Encoding utf8 -NoNewline
+    Write-Host "Promotion report written: $PromotionReportPath"
+}
 
 Write-Host "Knowledge health report written: $MarkdownPath"
 Write-Host "Structured report written: $JsonPath"

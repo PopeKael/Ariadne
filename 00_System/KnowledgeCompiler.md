@@ -26,6 +26,14 @@ Apply mode only adds sorted, unique links to `## Related Concepts` sections, and
 
 The health report also lists report-only promotion candidates. These are derived from `library.json` evidence across at least three distinct document identities and are checked against the existing `Wiki/Concepts`, `People`, and `Entities` registries. The compiler never creates or changes nodes.
 
+To promote an explicitly approved candidate, pass its exact reported name:
+
+```powershell
+.\00_System\Compile-Knowledge.ps1 -Mode Promote -ApprovedCandidates 'Matt Wolfe'
+```
+
+Promote creates only a minimal canonical node record in the candidate's existing recommended namespace and writes a separate promotion report. It refuses to run without explicit candidate names and never overwrites an existing node.
+
 Reports are written to `Reports/Ariadne/` as a human-readable Markdown summary and companion JSON. The report covers explicit wiki-link density, orphan and sparse pages, filename/heading mismatches, exact normalized duplicate titles, unresolved links, and link recommendations where historic library metadata names an existing wiki page.
 
 The compiler deliberately treats link and merge recommendations as proposals. Canonical concepts must be decided across the whole vault, not inferred from a single source document.
