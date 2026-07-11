@@ -5078,5 +5078,413 @@
     "processed_path": "Processed/YouTubing IS Working in Thailand Regardless of the Framing_.md",
     "wiki_path": "Wiki/Content Creation.md",
     "indexed_at": "2026-07-11 14:26:49"
+  },
+  {
+    "source_name": "‘Critical’_ Sinister side to Telstra glitch2026-07-11T14_51_02+07_002026-07-10T23_30_00.000Z[[Blair Jackson]].md",
+    "document_id": "url:https://www.news.com.au/technology/online/critical-telstra-glitch-could-be-targeted-by-bad-actors/news-story/e25ab310a0d4c1a24d942d55409b1c5d",
+    "source_url": "https://www.news.com.au/technology/online/critical-telstra-glitch-could-be-targeted-by-bad-actors/news-story/e25ab310a0d4c1a24d942d55409b1c5d",
+    "youtube_video_id": null,
+    "page_title": "‘Critical’: Sinister side to Telstra glitch",
+    "channel_author": "- \"[[Blair Jackson]]",
+    "publication_date": "2026-07-11",
+    "content_sha256": "aa98c6b2eae5a511bb6bb1497780894532d008e8bf960b98ae2c642c5b54188b",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "Telecommunications",
+      "Cybersecurity",
+      "Timing synchronization",
+      "Critical infrastructure"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses the Telstra network outage and its implications for critical infrastructure and cybersecurity.",
+    "tags": [
+      "telstra",
+      "network outage",
+      "cybersecurity",
+      "critical infrastructure",
+      "timing synchronization",
+      "GPS"
+    ],
+    "links": [
+      "https://www.news.com.au/technology/online/critical-telstra-glitch-could-be-targeted-by-bad-actors/news-story/e25ab310a0d4c1a24d942d55409b1c5d"
+    ],
+    "map_entry": "Telstra outage exposes Australia's vulnerability to attacks on critical infrastructure.",
+    "summary": "This article details a widespread outage of Telstra’s mobile network caused by a timing synchronization issue linked to GPS and NTP, which left millions without service and shut down regional rail lines. Cybersecurity experts warn that the incident reveals deep reliance on precise timing systems and highlights potential weaknesses in critical infrastructure. The report stresses the need for robust fallback mechanisms and better software testing before deployment.",
+    "review_path": "Review/‘Critical’_ Sinister side to Telstra glitch2026-07-11T14_51_02+07_002026-07-10T23_30_00.000Z[[Blair Jackson]].review.md",
+    "processed_path": "Processed/‘Critical’_ Sinister side to Telstra glitch2026-07-11T14_51_02+07_002026-07-10T23_30_00.000Z[[Blair Jackson]].md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-11 16:19:20"
+  },
+  {
+    "source_name": "3D Image Creation Request2026-07-11T16_09_37+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a379ab3-c0a4-83ec-85e8-d55fd28329f8",
+    "source_url": "https://chatgpt.com/c/6a379ab3-c0a4-83ec-85e8-d55fd28329f8",
+    "youtube_video_id": null,
+    "page_title": "3D Image Creation Request",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "345a352c7cd2a587c830ea607f869520592c23dc1051353dc077c433f7a955f4",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Prompt Engineering",
+      "AI Video Generation",
+      "Drone Footage"
+    ],
+    "source_language": "en",
+    "reason": "The document provides guidance on using AI prompts and image pairs to generate a smooth drone ascent video, relevant for content creators.",
+    "tags": [
+      "AI",
+      "video generation",
+      "prompt engineering",
+      "drone",
+      "content creation"
+    ],
+    "links": [],
+    "map_entry": "Guide on creating AI-generated drone footage from ground level to aerial view via prompt design.",
+    "summary": "The conversation outlines how to produce an AI-generated aerial sequence that starts at rooftop or ground level and rises to a wide view over Bangkok. It recommends using two keyframe images (zoomed-in start and final aerial) for interpolation, crafting concise motion prompts emphasizing steady ascent without rotation, setting motion strength around 20‑30%, and applying negative prompts to avoid shake or distortion. It also discusses reversing the clip if needed and scaling output duration with smoothness settings.",
+    "review_path": "Review/3D Image Creation Request2026-07-11T16_09_37+07_00.review.md",
+    "processed_path": "Processed/3D Image Creation Request2026-07-11T16_09_37+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:20:08"
+  },
+  {
+    "source_name": "AI Adoption vs Trust2026-07-11T16_10_17+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a389044-c2bc-83ec-8048-db1a2f0c3eb4",
+    "source_url": "https://chatgpt.com/c/6a389044-c2bc-83ec-8048-db1a2f0c3eb4",
+    "youtube_video_id": null,
+    "page_title": "AI Adoption vs Trust",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "eeae9208765dbc779dd2fa517f0c67653ec8dd82fcf478fccaa6cafd8e19e5ae",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "AI adoption",
+      "trust",
+      "critical thinking",
+      "information overload",
+      "digital literacy"
+    ],
+    "source_language": "en",
+    "reason": "The document examines AI’s role as a tool, emphasizing that trust depends on users’ critical skills and literacy rather than the technology itself.",
+    "tags": [
+      "ai",
+      "trust",
+      "literacy",
+      "critical-thinking",
+      "information-overload",
+      "epistemology"
+    ],
+    "links": [],
+    "map_entry": "Explores how AI amplifies existing information challenges; stresses that trust hinges on human critical thinking, not autonomous AI behavior.",
+    "summary": "This dialogue frames AI as a mirror reflecting users’ reasoning abilities rather than an independent threat. It highlights the shift from information scarcity to evaluation bottlenecks and introduces the concept of a “Judgment Age” where discernment is key. The discussion underlines that AI’s impact depends on cultural incentives, media literacy, and users’ capacity for critical evaluation.",
+    "review_path": "Review/AI Adoption vs Trust2026-07-11T16_10_17+07_00.review.md",
+    "processed_path": "Processed/AI Adoption vs Trust2026-07-11T16_10_17+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-11 16:20:34"
+  },
+  {
+    "source_name": "Cannabis and Brain Protection2026-07-11T16_10_43+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a38afe4-977c-83ec-9984-315009f45178",
+    "source_url": "https://chatgpt.com/c/6a38afe4-977c-83ec-9984-315009f45178",
+    "youtube_video_id": null,
+    "page_title": "Cannabis and Brain Protection",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "45228e07d28b8664e59ecb7c63acca77930fe6bba1ef8bc994f06eee86160d55",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Cannabis",
+      "Neuroscience",
+      "Elder Health"
+    ],
+    "source_language": "en",
+    "reason": "The document centers on personal reflections about cannabis use for cognitive health in older adults, discussing scientific studies and individual opinions.",
+    "tags": [
+      "cannabis",
+      "brain protection",
+      "neurodegenerative diseases",
+      "elderly"
+    ],
+    "links": [
+      "https://futurism.com/health-medicine/research-smoke-weed-older"
+    ],
+    "map_entry": "ChatGPT conversation about a study linking cannabis compounds to potential brain-protective effects in older adults.",
+    "summary": "A user shares and discusses a ChatGPT response about a recent study showing that cannabinol (CBN) may protect brain cells from oxidative stress, challenging assumptions that cannabis harms cognition in older adults. The exchange includes personal remarks, humor, and references to the source article.",
+    "review_path": "Review/Cannabis and Brain Protection2026-07-11T16_10_43+07_00.review.md",
+    "processed_path": "Processed/Cannabis and Brain Protection2026-07-11T16_10_43+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-11 16:21:00"
+  },
+  {
+    "source_name": "Cloudflare Facebook Scraping Issue2026-07-11T15_04_41+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a3741cc-304c-83ec-a51c-b542126db9fd",
+    "source_url": "https://chatgpt.com/c/6a3741cc-304c-83ec-a51c-b542126db9fd",
+    "youtube_video_id": null,
+    "page_title": "Cloudflare Facebook Scraping Issue",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "ab4d854092920444bbeae80c74714abb6f2f70dbeaf6220504f4f0258ca60f07",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "Cloudflare",
+      "Bot Protection",
+      "Facebook Scraper"
+    ],
+    "source_language": "en",
+    "reason": "The document focuses on how Cloudflare’s Under Attack mode and bot protection interfere with Facebook’s page scraping process, a clear infrastructure/security issue.",
+    "tags": [
+      "cloudflare",
+      "facebook scraper",
+      "under attack mode",
+      "bot protection"
+    ],
+    "links": [],
+    "map_entry": "ChatGPT conversation about troubleshooting Facebook scraping failures caused by Cloudflare Under Attack mode.",
+    "summary": "The discussion details how Cloudflare’s aggressive bot protection, specifically the \"Under Attack\" mode and bot fight settings, blocks Facebook’s external crawler (facebookexternalhit/Facebot) from accessing a site’s Open Graph image. It explains that Facebook’s scraper cannot solve JavaScript or CAPTCHA challenges, leading to errors like \"URL returned bad HTTP response code.\" The conversation also touches on potential mitigations such as disabling protection temporarily or adding user-agent based WAF rules, but ultimately suggests prioritizing security over thumbnail generation for the author’s current publishing strategy. This serves as a useful reference for diagnosing similar integration issues between CDN/Cloudflare security settings and third‑party social media scrapers.",
+    "review_path": "Review/Cloudflare Facebook Scraping Issue2026-07-11T15_04_41+07_00.review.md",
+    "processed_path": "Processed/Cloudflare Facebook Scraping Issue2026-07-11T15_04_41+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-11 16:21:18"
+  },
+  {
+    "source_name": "Idris Ship Data Issue2026-07-11T16_09_51+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a37ad85-fcd0-83ec-b509-75c99ce98675",
+    "source_url": "https://chatgpt.com/c/6a37ad85-fcd0-83ec-b509-75c99ce98675",
+    "youtube_video_id": null,
+    "page_title": "Idris Ship Data Issue",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "eb77e38e3217bb9027402eb6cab0212a15668a7a0bc89c53ff8baee01211b571",
+    "primary_topic": "Gaming",
+    "subtopics": [
+      "Star Citizen",
+      "Server crashes",
+      "Bug report"
+    ],
+    "source_language": "en",
+    "reason": "The document reports a Star Citizen update causing server crashes due to data validation failure.",
+    "tags": [
+      "gaming",
+      "star-citizen",
+      "bugreport"
+    ],
+    "links": [
+      "https://chatgpt.com/c/6a37ad85-fcd0-83ec-b509-75c99ce98675"
+    ],
+    "map_entry": "Idris Ship Data Issue – summary of Star Citizen 4.8.2 update problem",
+    "summary": "An unexpected change to Idris ship data in Star Citizen version 4.8.2 caused server crashes when affected ships spawned. The issue stems from failed validation and similar recent incidents highlight a gap between game complexity and safeguards. CIG plans stronger automated validation and compatibility checks.",
+    "review_path": "Review/Idris Ship Data Issue2026-07-11T16_09_51+07_00.review.md",
+    "processed_path": "Processed/Idris Ship Data Issue2026-07-11T16_09_51+07_00.md",
+    "wiki_path": "Wiki/Gaming.md",
+    "indexed_at": "2026-07-11 16:21:51"
+  },
+  {
+    "source_name": "Plant Consciousness Debate2026-07-11T15_03_55+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a363872-0b28-83ec-b77b-9ecda1324049",
+    "source_url": "https://chatgpt.com/c/6a363872-0b28-83ec-b77b-9ecda1324049",
+    "youtube_video_id": null,
+    "page_title": "Plant Consciousness Debate",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "2e87a2a4e60cf9a340c24e72ba68d820dc4a2ad36490882aa3d1aafbb4fae826",
+    "primary_topic": "Travel & Expat Experience",
+    "subtopics": [
+      "Freedom Cost",
+      "Retirement Planning",
+      "Personal Finance",
+      "Expat Living Costs"
+    ],
+    "source_language": "en",
+    "reason": "The article details a personal relocation to Thailand, focusing on the financial cost of early retirement and daily freedom, key aspects of expat experience and personal finance planning.",
+    "tags": [
+      "freedom cost",
+      "retirement",
+      "expat",
+      "personal finance"
+    ],
+    "links": [],
+    "map_entry": "Document explores how moving abroad for early retirement translates into a tangible per-day cost of freedom, using a case study from Sydney to Thailand.",
+    "summary": "The piece recounts the author’s sale of a $600k Sydney townhouse and transition to a low‑cost lifestyle in Bangkok, framing this move as an investment in daily freedom rather than a simple savings calculation. By quantifying forgone salary, superannuation, property appreciation, and investment returns over ten years, the author derives a per‑day cost (~AUD 315–400) for the time now free from work. The article contrasts this “freedom bill” with living expenses in Thailand, highlights the importance of a personal calculator to assess affordability, and ultimately urges readers to evaluate whether their assets can support the daily price of freedom before making an expatriate move.",
+    "review_path": "Review/Plant Consciousness Debate2026-07-11T15_03_55+07_00.review.md",
+    "processed_path": "Processed/Plant Consciousness Debate2026-07-11T15_03_55+07_00.md",
+    "wiki_path": "Wiki/Travel & Expat Experience.md",
+    "indexed_at": "2026-07-11 16:22:28"
+  },
+  {
+    "source_name": "Rice Growing Methods Explained2026-07-11T15_03_12+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a3618da-8f24-83ec-bcc5-7a7558488c09",
+    "source_url": "https://chatgpt.com/c/6a3618da-8f24-83ec-bcc5-7a7558488c09",
+    "youtube_video_id": null,
+    "page_title": "Rice Growing Methods Explained",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "a516b3abbb5628e474a87f7ef5de1f25a7b621c3ded38c852a00c865bf131d30",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "Rice flowering",
+      "Seed saving",
+      "Plant pollination",
+      "Image licensing"
+    ],
+    "source_language": "en",
+    "reason": "The document provides practical guidance on locating and using images of rice flowers, explains key aspects of rice biology, and discusses seed saving practices.",
+    "tags": [
+      "agriculture",
+      "plant biology",
+      "image licensing"
+    ],
+    "links": [
+      "https://commons.wikimedia.org/wiki/File:Rice_panicle.jpg",
+      "https://commons.wikimedia.org/wiki/File:Spikelets_of_Rice_(Oryza_sativa).jpg",
+      "https://nrcs.usda.gov/Internet/FSE_DOCUMENTS/stelprdb1112000.pdf#page=15",
+      "http://www.fao.org/rice/factsheets/tips/en/"
+    ],
+    "map_entry": "Guide on finding pictures of flowering rice and overview of seed saving and pollination.",
+    "summary": "This document explains how to locate free, public domain images of flowering rice, details the key stages of rice panicle development (booting, heading, blooming), discusses self‑pollination mechanics, and highlights considerations for saving seed versus buying certified seed. It includes links to Wikimedia Commons, USDA PDFs, and FAO resources, offering a concise resource for anyone interested in visualizing or studying rice biology.",
+    "review_path": "Review/Rice Growing Methods Explained2026-07-11T15_03_12+07_00.review.md",
+    "processed_path": "Processed/Rice Growing Methods Explained2026-07-11T15_03_12+07_00.md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-11 16:23:01"
+  },
+  {
+    "source_name": "Solar Cost-Benefit Analysis2026-07-11T15_03_35+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a36281f-cd54-83ec-a49e-8c94bd479ee5",
+    "source_url": "https://chatgpt.com/c/6a36281f-cd54-83ec-a49e-8c94bd479ee5",
+    "youtube_video_id": null,
+    "page_title": "Solar Cost-Benefit Analysis",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "9350078d6360715d9c47a002ac88f5d99f883ee08ce83df3d5f5ad3aeace6536",
+    "primary_topic": "Business",
+    "subtopics": [
+      "solar installation",
+      "local market research",
+      "Google Maps search strategy"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses strategies for finding local solar installation contractors in Thailand, which falls under business operations.",
+    "tags": [
+      "solar",
+      "installation",
+      "Thailand",
+      "search",
+      "local market"
+    ],
+    "links": [],
+    "map_entry": "Guide on using Thai keywords to locate residential solar installers via Google Maps",
+    "summary": "This guide explains how to identify and locate small-scale solar panel installers in Thailand by using specific Thai search terms in Google Maps. It lists recommended phrases such as \"ช่างโซล่าเซลล์\" and \"ติดติดตั้งโซล่าไฟฟ้า\", advises adding locality names, and highlights what to look for in photos (inverter stickers) and review counts to pinpoint local vendors. The information helps businesses or homeowners find the most relevant local contractors for residential solar projects.",
+    "review_path": "Review/Solar Cost-Benefit Analysis2026-07-11T15_03_35+07_00.review.md",
+    "processed_path": "Processed/Solar Cost-Benefit Analysis2026-07-11T15_03_35+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-11 16:23:30"
+  },
+  {
+    "source_name": "Tetrataenite Super Material2026-07-11T15_04_24+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a37360b-7d0c-83ec-9a08-438f3a9de865",
+    "source_url": "https://chatgpt.com/c/6a37360b-7d0c-83ec-9a08-438f3a9de865",
+    "youtube_video_id": null,
+    "page_title": "Tetrataenite Super Material",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "ad9b5db8d0be954bb1d1fd0c9d7cd02de324b338ad72ba92dac54f092502b2fa",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Materials innovation",
+      "Additive manufacturing",
+      "AI-assisted design",
+      "Scalability challenges",
+      "Commercialization pathway"
+    ],
+    "source_language": "en",
+    "reason": "The document introduces tetrataenite super material development and AI-assisted manufacturing, which has not been covered previously.",
+    "tags": [
+      "materials",
+      "manufacturing",
+      "ai",
+      "scalability"
+    ],
+    "links": [
+      "Electron Beam Lithography",
+      "Focused Ion Beam",
+      "Ultrafast Laser Deposition",
+      "AI in Materials Science",
+      "Additive Manufacturing"
+    ],
+    "map_entry": "Detailed exploration of tetrataenite development, fabrication methods, AI integration, and commercialization roadmap.",
+    "summary": "The document outlines the technical pathways for creating ordered FeNi alloys (tetrataenite) using advanced lithography and additive manufacturing techniques, integrates AI-driven design and active learning loops to optimize production, addresses scalability challenges, and discusses a commercial deployment strategy. It combines material science, process engineering, and market analysis to propose a viable roadmap toward industrial implementation.",
+    "review_path": "Review/Tetrataenite Super Material2026-07-11T15_04_24+07_00.review.md",
+    "processed_path": "Processed/Tetrataenite Super Material2026-07-11T15_04_24+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-11 16:24:13"
+  },
+  {
+    "source_name": "Thailand Medical Hub Story2026-07-11T15_04_10+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807",
+    "source_url": "https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807",
+    "youtube_video_id": null,
+    "page_title": "Thailand Medical Hub Story",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "8515b3dd82e5544ba6640c03f903acd80da44c34fd20339c6f8bfb2930e16ee8",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Video Series Planning",
+      "Script Writing Techniques",
+      "Camera Angles & Shots",
+      "B-roll Integration",
+      "Post-Production Workflow"
+    ],
+    "source_language": "en",
+    "reason": "The document outlines the planning, scripting and filming strategy for a video series on Thailand’s medical hub topic.",
+    "tags": [
+      "video production",
+      "scriptwriting",
+      "Thailand travel"
+    ],
+    "links": [],
+    "map_entry": "Planning guide for a Thai gender‑affirming surgery video series featuring A4 script cards and dual‑camera setup.",
+    "summary": "This guide details how to prepare and shoot a conversational video about Thailand's leadership in gender‑affirming surgery. It covers using A4 pages as realistic script anchors, two‑camera shots (wide conversation and close‑ups), marking key points for smooth transitions, suggested B‑roll footage, and a quick post‑production workflow. The focus is on authenticity while maintaining clear storytelling structure.",
+    "review_path": "Review/Thailand Medical Hub Story2026-07-11T15_04_10+07_00.review.md",
+    "processed_path": "Processed/Thailand Medical Hub Story2026-07-11T15_04_10+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-11 16:24:46"
+  },
+  {
+    "source_name": "Zoo Hypothesis Comment Ideas2026-07-11T16_09_21+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a3761d0-6c3c-83ec-9356-cecd534622ef",
+    "source_url": "https://chatgpt.com/c/6a3761d0-6c3c-83ec-9356-cecd534622ef",
+    "youtube_video_id": null,
+    "page_title": "Zoo Hypothesis Comment Ideas",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-11",
+    "content_sha256": "247e1865d5da78e5a4d1819d02723019d5b711f54e9717628547c37895b0b18a",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "Fermi Paradox",
+      "Dark Forest Theory",
+      "Panspermia",
+      "Post-biological Evolution"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses speculative theories about extraterrestrial life, including the zoo hypothesis, dark forest theory, panspermia, and post‑biological evolution.",
+    "tags": [
+      "philosophy",
+      "science-fiction",
+      "FermiParadox",
+      "panspermia",
+      "darkforest"
+    ],
+    "links": [
+      "Zoo Hypothesis",
+      "Dark Forest Theory",
+      "Panspermia",
+      "Post-biological Evolution"
+    ],
+    "map_entry": "A commentary on speculative ideas surrounding the existence of extraterrestrial civilizations, exploring concepts like the zoo hypothesis, dark forest theory, panspermia, and potential post‑biological stages.",
+    "summary": "The discussion examines various hypotheses about why we might not detect alien life. It considers the zoo hypothesis (civilizations hiding from us), the dark forest theory (galaxies as silent predators), panspermia (life spreading across planets), and the possibility that advanced civilizations become post-biological. The author blends philosophical reflection with speculative science, noting both pessimistic and optimistic interpretations.",
+    "review_path": "Review/Zoo Hypothesis Comment Ideas2026-07-11T16_09_21+07_00.review.md",
+    "processed_path": "Processed/Zoo Hypothesis Comment Ideas2026-07-11T16_09_21+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-11 16:25:27"
   }
 ]

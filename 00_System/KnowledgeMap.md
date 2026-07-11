@@ -1,7 +1,9 @@
-> Last updated: 2026-07-11 14:26:49
+> Last updated: 2026-07-11 16:25:27
 
 ## Business
 Purpose: The article discusses the pressure and challenges faced by Westpac brokers due to unrealistic sales targets, highlighting workplace dynamics within a financial institution.
+- Detailed exploration of tetrataenite development, fabrication methods, AI integration, and commercialization roadmap.
+- Guide on using Thai keywords to locate residential solar installers via Google Maps
 - Article detailing tungsten supply chain issues, Chinese export policies, and recycling practices.
 - KPMG scandal: whistleblower claims partners used confidential client data to secure lucrative audit contracts, resulting in top leadership resignations and a call for governance overhaul.
 - Case study on Thai consumer council lawsuit against Facebook over fraud and platform liability.
@@ -18,6 +20,7 @@ Purpose: The article discusses the pressure and challenges faced by Westpac brok
 
 ## Travel & Expat Experience
 Purpose: Document discusses expatriate experiences in Thailand, fitting under Travel & Expat Experience.
+- Document explores how moving abroad for early retirement translates into a tangible per-day cost of freedom, using a case study from Sydney to Thailand.
 - Guide outlining pillars, title skeletons, thumbnail moods, and rotation system for a Thailand-based travel vlog.
 - WAZZA profile page showcasing Thai expat lifestyle, AI interests, and community links.
 - A YouTube vlog transcript reflecting on four months of living in Bangkok, covering daily costs, cultural adaptation, and dating challenges.
@@ -80,6 +83,7 @@ Purpose: It discusses using large language models to build personal knowledge ba
 
 ## Knowledge Management
 Purpose: The article discusses design principles for personal knowledge bases, aligning with Knowledge Management.
+- Guide on finding pictures of flowering rice and overview of seed saving and pollination.
 - Discussion on Thai cannabis legislation and its comparison with alcohol laws, focusing on medical vs recreational use and public health impact.
 - Markdown Plugin Benefits - concise description of the source.
 - Podcast episode summary explaining how to build a personal context MCP server for AI agents.
@@ -90,6 +94,8 @@ Purpose: The article discusses design principles for personal knowledge bases, a
 
 ## Content Creation
 Purpose: The document describes generating and translating images, fitting under Content Creation.
+- Planning guide for a Thai gender‑affirming surgery video series featuring A4 script cards and dual‑camera setup.
+- Guide on creating AI-generated drone footage from ground level to aerial view via prompt design.
 - Explains that filming YouTube content within Thailand is treated as work under local law, requiring proper visa status and a work permit.
 - Vlog discussing Thailand's stance on AI-generated images, distinguishing permissible editing from deceptive deepfakes, and providing legal guidelines for creators.
 - ChatGPT conversation summarizing Thai YouTube niche themes and advice on collaboration inquiries.
@@ -132,6 +138,7 @@ Purpose: The document describes generating and translating images, fitting under
 
 ## Gaming
 Purpose: The document covers the development, peak, and decline of arcade gaming culture.
+- Idris Ship Data Issue – summary of Star Citizen 4.8.2 update problem
 - Article detailing the impact of Windows 11’s Core Isolation on gaming PCs and steps to disable Memory Integrity for smoother gameplay.
 - Full documentary tracing arcades from rise to decline and cultural impact.
 
@@ -145,6 +152,7 @@ Purpose: The document introduces Ariadne, a librarian character and outlines her
 
 ## Personal
 Purpose: The document discusses a personal experience of losing all life savings due to a fraudulent phone call.
+- ChatGPT conversation about a study linking cannabis compounds to potential brain-protective effects in older adults.
 - Summary of the Retired Engineers Chaos Board highlighting retirement scheduling and AI development integration.
 - Physiotherapy for Joint Pain – ChatGPT conversation recommending orthopedic specialists near Phutthamonthon Sai 5, Bangkok.
 - An in-depth exploration of new and evolving treatments for hair loss, combining traditional remedies with cutting‑edge scientific research.
@@ -155,6 +163,8 @@ Purpose: The document discusses a personal experience of losing all life savings
 
 ## Infrastructure
 Purpose: The content reviews an existing product category—home batteries—and does not introduce a wholly new field of study.
+- ChatGPT conversation about troubleshooting Facebook scraping failures caused by Cloudflare Under Attack mode.
+- Telstra outage exposes Australia's vulnerability to attacks on critical infrastructure.
 - Video summary: China's thorium reactor breakthrough and its impact on global industrial energy costs.
 - ChatGPT discussion on resolving YouTube upload failures across multiple browsers and channels.
 - South Africa's power grid collapse and recovery due to political interference with engineering workforce.
@@ -171,6 +181,8 @@ Purpose: The content reviews an existing product category—home batteries—and
 
 ## Philosophy
 Purpose: The document discusses occult philosophy and conspiracy theories linking Crowley and Epstein, fitting within Philosophy.
+- A commentary on speculative ideas surrounding the existence of extraterrestrial civilizations, exploring concepts like the zoo hypothesis, dark forest theory, panspermia, and potential post‑biological stages.
+- Explores how AI amplifies existing information challenges; stresses that trust hinges on human critical thinking, not autonomous AI behavior.
 - Michio Kaku's YouTube interview exploring physics concepts, simulation theory, AI advancements, and existential questions about humanity.
 - PopMech feature article on Vlatko Vedral’s ideas about using quantum entanglement for quantum gravity and potential antigravity applications.
 - Analysis of the role of religion and identity in shaping democracy within Middle Eastern countries.
