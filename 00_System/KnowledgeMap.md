@@ -1,7 +1,24 @@
-> Last updated: 2026-07-11 16:53:20
+> Last updated: 2026-07-12 12:32:39
 
 ## Business
 Purpose: The article discusses the pressure and challenges faced by Westpac brokers due to unrealistic sales targets, highlighting workplace dynamics within a financial institution.
+- Latest WTI crude oil price update
+- Article detailing LPG conversion services for MG5 vehicles around Nakhon Pathom, Thailand, including provider listings, technical considerations, and cost estimates.
+- Document detailing the market launch date of Dragon NaturallySpeaking (June 1997).
+- Oil price snapshot – WTI ~99.6 USD/bbl and Brent ~112.6 USD/bbl as of late March 2026.
+- Unitree R1 humanoid robot – product overview with capabilities and use cases.
+- Market drop causes – higher yields, tech weakness, profit taking
+- Thai signboard tax details for foreign-language signs.
+- User requests support contact information for Perplexity AI app.
+- Analysis of Holden V8 engine program and GM’s interference with advanced technologies such as cross‑flow heads, aluminum cylinder heads, and electronic fuel injection.
+- Catalog of serendipitous technological breakthroughs and their market impact.
+- Local air conditioning cleaning service listings in Sam Phran, Nakhon Pathom district.
+- Document assesses Terraform Industries' synthetic methane platform, covering tech feasibility, recent milestones, economic viability and market context.
+- Summary of Terraform Industries' synthetic methane technology, deployment status, and economic prospects.
+- Document explores the impact of AI on advertising models, highlighting shifts from scrolling journeys to intent-based interactions and resulting changes in revenue dynamics.
+- Thailand Sodium Trade Potential – assessment of salt production, refining capacity and market opportunities for sodium-ion batteries.
+- Australian Consulting Crackdown - overview of proposed regulatory actions against major consulting firms.
+- Australia’s Space Opportunity – Analysis of Australia's strategic position, investment status and economic potential in the global space sector.
 - Detailed exploration of tetrataenite development, fabrication methods, AI integration, and commercialization roadmap.
 - Guide on using Thai keywords to locate residential solar installers via Google Maps
 - Article detailing tungsten supply chain issues, Chinese export policies, and recycling practices.
@@ -20,6 +37,43 @@ Purpose: The article discusses the pressure and challenges faced by Westpac brok
 
 ## Travel & Expat Experience
 Purpose: Document discusses expatriate experiences in Thailand, fitting under Travel & Expat Experience.
+- Archive refresh of Thailand video titles focusing on suburban living and retirement themes.
+- YouTube vlog covering post-party day in Thailand with themes of shopping, inflation, tourism and community.
+- Video about a travel misadventure in Thailand, including day-to-day challenges and reflections.
+- VLOG 135 – Thai graduation party featuring family traditions, Thai food and community in Bangkok
+- A vlog discussing life moving to rural Thailand, covering language, community, finances, and retirement considerations.
+- Guide to purchasing large motorcycles and navigating Thai expat life.
+- YouTube video script and description exploring Bangkok's Silom district, nightlife, food stops, Patpong market, and travel tips for expatriates.
+- Article explaining living in Thailand long term with routine insights and community resources.
+- Google Map embed showing Tam Talung, Salaya location near Bangkok.
+- Document on Thailand's changing retirement conditions affecting costs, visas and daily life.
+- Article on Thailand nights during Songkran revealing nightlife routine.
+- Document explaining the real-life experiences and common misconceptions of living in Thailand, based on a YouTube vlog.
+- Baan Suay Rimnam Kitchen, Samphran Seafood (ครัวบ้านสวยริมน้ำ ซีฟู๊ดสามพราน)
+- An overview of Sanam Chandra Palace in Nakhon Pathom Province, including its history, architecture, spiritual features, visiting info and nearby attractions.
+- YouTube video transcript about Thai beer, language learning and tourism tips for expats
+- Why expats should stay in Thailand - analysis of a promo video by Nomad Elite
+- Vlog discussing typical challenges living in Thailand, covering consumer rights, water shortages, GPU repair issues and everyday frustrations.
+- Patreon video transcript detailing a day at Lotus Salaya in Thailand—shopping, gold prices, eucalyptus farming math, and YouTube algorithm discussion.
+- Episode detailing weekly life in Bangkok suburbs: banking app failures, a signage tax bill, and retirement visa advice for expatriates.
+- Travel destination update – Hua Hin removed, Nakhon Pathom added.
+- Vlog 118 – Typical Challenges Living in Thailand: a first‑person account of tech and infrastructure difficulties faced by an expat.
+- Wat Rai Khing Fair – a vibrant temple festival featuring food stalls, music, cultural performances and local market activities in Thailand.
+- YouTube packaging playbook with 3 video concepts on Thai expat life, tourism changes, myths, and retirement.
+- Personal recollection and image collage from a 2016 Thailand travel experience, used to refresh a YouTube video archive and share on social media.
+- Archive of the 12 July 2026 travel video titled 'She slept in then rushed' about attending an event under rainy conditions.
+- YouTube vlog series chronicling the author's transition from Australia to Thailand, including final days in Sydney Harbour.
+- YouTube vlog description of a motorbike ride through Thailand, including timestamps, hashtags, and social media links.
+- Document lists vlogs with titles, descriptions, chapters, hashtags, tags, thumbnail ideas covering various aspects of expat life in Thailand.
+- YouTube video packaging for a vlog on Bangkok suburb living costs.
+- Guide to light news threading in lunchtime Thai expat videos.
+- Middle East Conflict Update 2026‑07‑11: Escalation and travel impact
+- Daily video opener framework with weekly hooks for travel & expat content creators.
+- Real‑time translation earbuds: overview, tech pipeline, ecosystem players, and future outlook.
+- Chao Mae Tuptim Shrine, located behind the Mövenpick BDMS Wellness Resort on Charoenkrung Road, Bangkok.
+- Monetization vs E-begging
+- Article describing outback Australian homestead architecture and passive cooling systems, with emphasis on verandas and roof ventilation.
+- Conversation about the viruses circulating in Bangkok, offering symptom assessment and OTC treatment guidance.
 - Personal account of Thai public hospital experience and discussion on cost of living for expats.
 - ChatGPT exchange providing photography-focused spots in Lop Buri.
 - Advice on dating, handling unexpected children, and integrating into Thai family structures for expats.
@@ -57,6 +111,42 @@ Purpose: Document discusses expatriate experiences in Thailand, fitting under Tr
 
 ## AI & LLMs
 Purpose: It discusses using large language models to build personal knowledge bases integrated with Obsidian.
+- Description of Perplexity AI start page interactions and related desktop/browser functionality.
+- OpenWebUI query generation via generateQueries, prompt template usage, chat_history injection
+- Thought experiment exploring whether a text‑only model can plan to build a physical body, discussing constraints on human interaction and social engineering.
+- Guide on testing and building a photo classification pipeline with vision models.
+- Comet Browser – An AI‑powered Chromium browser replacing the search bar with Perplexity’s assistant for summarization, translation, price comparison, email drafting, and calendar scheduling across tabs.
+- Gemini Scheduled Actions – explanation of how to set recurring daily tasks like world news at 8am and Thai news at 8:30am, clarifying confusion between chat context and background scheduler.
+- Document describing n8n agents, AI-driven workflow automation components.
+- Perplexity AI: 'Is it working now?' Q&A about current system status
+- Guidance on avoiding payment prompts when uploading images to Perplexity and alternatives for age progression.
+- Perplexity personalization guide
+- Comparison of OpenAI $20/month plan vs Perplexity Pro, including trial options and user feedback.
+- Bernie Sanders interview with Claude AI on data collection and democratic risks
+- Comparison of Speechify vs WhisperFlow: transcription accuracy, latency (batch vs streaming), automation for recording and LLM integration.
+- OpenWebUI Query Generation – details how the system transforms user queries into web‑search strings using the full chat history.
+- Claude AI conversation about Thai time zone off‑peak window for rate limits.
+- Feasibility analysis for constructing a multi-layer AI system with focus on RAG, blind-spot detection, contradiction analysis and continuous learning.
+- Claude code capabilities on free plan - a chat summary of features and constraints.
+- Audio file transcription discussion – constraints on Whisper, PocketSphinx failures, Perplexity fallback.
+- Conversation about achieving project goals without increasing costs, focusing on Claude/Gemini usage and local vs cloud deployment.
+- Google Gemini conversation about refining an Instagram art image, discussing crop, lighting, color balance, sharpening and user perception.
+- Critical review of a video predicting rapid AI dominance over human cognitive labor and outlining potential futures.
+- Overview of OpenAI’s desktop superapp, its core components, execution model, business strategy, security considerations, and projected release timeline.
+- Analysis of LeCun’s claims about the necessity of world models for AGI and the limitations of purely language-based AI systems.
+- Analysis of personal AI assistants and the foundational model’s impact on individual knowledge filters.
+- Source detailing the challenges of attributing responsibility to AI agents and a structured workflow for social media content.
+- Multi-Personality Building - Eris Character Feedback: Revision of the Eris persona with added tweaks and final prompt.
+- Athena Personality evaluation - a detailed critique of persona design principles in LLMs.
+- Athena Calibration Prompt – a structured guide for creating an AI persona.
+- Custom instructions guide for Codex model.
+- Check running models memory - guidance on disabling startup entries and using a stop Llama shortcut.
+- Greeting response conversation between user and ChatGPT about adding a new friend and hearing ability.
+- ChatGPT conversation summarizing a video about AI already surpassing human capability and future implications.
+- Personalized AI app recommendation list for iPhone users with pricing and usage tips.
+- DGX Spark hardware overview and performance comparison blog
+- Local LLM harness architecture detailing prompt engineering, retrieval, UI integration, and GPU benchmarking.
+- A technical overview of how low‑latency, on‑device multimodal AI can enable real‑time translation and contextual understanding for wearable devices.
 - Transcript discussing Ariadne, an AI-powered digital workspace for personal use.
 - Perplexity AI – a free, real‑time answer engine powered by large language models and web retrieval.
 - Comparison of GTX1050 Ti vs AMD Radeon7800 XT for local AI workloads
@@ -87,6 +177,14 @@ Purpose: It discusses using large language models to build personal knowledge ba
 
 ## Knowledge Management
 Purpose: The article discusses design principles for personal knowledge bases, aligning with Knowledge Management.
+- Article debunking rumors of Benjamin Netanyahu’s death with official statements and fact‑checking references.
+- Identification guide for bottle gourd (Lagenaria siceraria) using morphological features.
+- Document - Provides longitude for Manchester.
+- Gemini answer explaining the Voight‑Kampff test as the correct choice in a multiple‑choice question about Blade Runner.
+- Project overview – building an AI-powered wiki with automated document ingestion, duplicate removal, review workflow, chunking/embedding, and cross-referencing. Includes details on tool usage (Codec), platform integration, token usage observations, and community links.
+- ChatGPT response to a user asking about a shared Speechify link.
+- Data Scraping Overview – capturing full paywalled article into markdown, planning pipeline stages Raw Vault → Processed Vault → Knowledge Vault.
+- Conversation detailing the AI Librarian Vision, summarizing development images and explaining an AI‑powered dashboard for managing creative and personal projects.
 - README for the Processed folder – a staging area for ingested content before quality‑control and export to the KnowledgeVault.
 - Guide on finding pictures of flowering rice and overview of seed saving and pollination.
 - Discussion on Thai cannabis legislation and its comparison with alcohol laws, focusing on medical vs recreational use and public health impact.
@@ -99,6 +197,59 @@ Purpose: The article discusses design principles for personal knowledge bases, a
 
 ## Content Creation
 Purpose: The document describes generating and translating images, fitting under Content Creation.
+- WordPress SEO workflow highlighting the use of a single in‑text link per post to enhance search visibility for WordPress and Patreon.
+- Thumbnail Ideas – Visual concepts for the ‘Ladyboy Dating in Thailand’ video.
+- Update to improve the YouTube thumbnail for a vlog about Changwon Express in Bangkok by removing outdated borders, enhancing image realism, adding bold text, and applying cinematic lighting adjustments.
+- Document outlines how to embed a Google Maps iframe if present, including formatting rules and accompanying community CTA blocks.
+- Comprehensive guide outlining a 3‑month roadmap for launching an AI‑focused YouTube channel aimed at non‑technical audiences, covering content planning, production, promotion, and monetization.
+- IRGC warns Iran may deploy underwater missiles article
+- Audio track produced in Suno with added Thai lyrics; user seeks to transcribe and reconstruct the text.
+- Thailand Chaos Generator – single-file HTML tool for generating random video content ideas from themed array.
+- Guide on reorganizing Linktree links into distinct sections such as Main Channels, Community, Projects & Features, and Get In Touch to enhance readability and user experience.
+- Guide to building an image‑to‑video workflow in ComfyUI
+- User query about explaining YouTube recommendations; Claude provides an answer with example reply.
+- Guide on producing a YouTube video about moving an AI assistant from ChatGPT to Claude, covering titles, thumbnails, scripts, and TTS considerations.
+- New chat – user requested sign text change and assistant provided AI‑generated updated image.
+- Document containing a user request to create an avatar by blending head and body images using AI and image editing techniques.
+- Gemini conversation generating beach-driving video from user prompt.
+- Instruction for creating a realistic dune buggy scene from existing photo.
+- Prompt guide for photorealistic background transformation using generative AI models
+- Guide detailing steps to replace background with futuristic café elements, maintaining subject integrity.
+- Chat about generating a short video from three images with Gemini
+- Instruction to convert an image into a vibrant cartoon style with exaggerated expressions and warm bar lighting.
+- Gemini chat: instructions for converting images into a vibrant cartoon with warm lighting and soft shading
+- New chat - instructions for building a consistent episode thumbnail
+- User instructs an AI on how to compose a 16:9 YouTube thumbnail using reference images, specifying subject size, placement, background minimalism, waveform element, and bold text. The conversation clarifies the avatar position and image usage constraints.
+- YouTube Thumbnail Design Guide – concise description of source.
+- Gemini conversation for generating Instagram art titles and captions.
+- Video on 10-year YouTube channel review and future content strategy in Thailand.
+- Analysis of For All Mankind's reception in context of modern media measurement systems.
+- Step‑by‑step guide for creating a daily finance newsletter automation with n8n, aggregating unread emails, summarizing via Gemini, converting to HTML, and sending back to the main inbox.
+- Document outlines the workflow for creating and scheduling Discordian-themed AI art posts on Facebook, including image prompts and captions.
+- Window into the World - Venn Diagram Comment Ideas
+- Fact‑checking article debunking a viral claim about Iran painting fake planes on concrete and the U.S. bombing them.
+- Caption ideas for Facebook post featuring cat daemon in server aisle image, aimed at sysadmins and tech community.
+- Document: Video Opener – Daily Framework (v2) – concise description of the source.
+- Article summarizing recent Middle East conflict and global impact.
+- Project Milestone Checkpoint - Thumbnail concept for first commit
+- ChatGPT conversation delivering a brief, funny take on Murphy’s Law.
+- Multi-Personality Building - Yoda Personality: concise explanations of Einstein equation and cooking an egg.
+- Document includes simple 100‑word summaries explaining mass–energy equivalence and cooking steps with reasoning behind each action.
+- ChatGPT conversation about optimizing a Thai YouTube channel’s content strategy, emphasizing thumbnail updates, title revisions, analytics prioritization and brand repositioning.
+- Voice Cloning Services Landscape 2026 – Overview of free and paid options.
+- Professional Portrait Description2026-07-11T18_52_44+07_00.md
+- Document explaining the letter-to-number mapping of S-I-A-M to 42 for a subtitle.
+- Outline for a short video exploring how AI amplifies cognition but the real bottleneck is human attention, with a focus on personal narrative and voice-over integration.
+- ChatGPT conversation generating a cyberpunk concept art prompt for a dragon and hamster café.
+- Article comparing the OPPO Reno 16 Pro camera stabilization with competing smartphones for vloggers.
+- Brand Catchphrase Analysis – identifies and examines recurring phrases in a content creator’s video intros and outros.
+- Step‑by‑step guide to accurately place a 3‑D house model into a real photo using SketchUp/Blender, camera matching, rendering with transparency, and Photoshop compositing.
+- Quick copy prompts and one‑sentence Facebook captions for 20 scenes featuring Shanya.
+- ChatGPT conversation on generating a floating sky islands composite with rope bridge and two people.
+- Wild West Scene Description – ChatGPT generated an Old West town image at sunset with a brief textual description
+- Steampunk Café Makeover – short script & AI image request
+- Futuristic Space Colony Scene: ChatGPT prompt and image generation conversation.
+- Chat transcript on refining an AI video thumbnail with image generation feedback.
 - Turtle Video Captions - 20‑second clip captions for Patreon
 - Instructions on turning a static image into an animated video via manual keyframing or programmatic frame creation, including sample Python code and FFmpeg command.
 - Photo Experiment AI – demonstrates side‑by‑side clean‑shaven vs bearded portrait using AI.
@@ -149,12 +300,27 @@ Purpose: The document describes generating and translating images, fitting under
 
 ## Gaming
 Purpose: The document covers the development, peak, and decline of arcade gaming culture.
+- Video transcript summary - hardware news recap from a gaming channel.
+- Crimson Desert added Denuvo DRM just before launch, sparking player backlash and highlighting the economics of early launch piracy.
+- Valheim Main Characters – discussion of key NPCs and lore within the game.
+- ARK Survival Ascended cheat command and building guide.
 - Idris Ship Data Issue – summary of Star Citizen 4.8.2 update problem
 - Article detailing the impact of Windows 11’s Core Isolation on gaming PCs and steps to disable Memory Integrity for smoother gameplay.
 - Full documentary tracing arcades from rise to decline and cultural impact.
 
 ## Archive
 Purpose: The document introduces Ariadne, a librarian character and outlines her role within a storytelling community.
+- Thailand dating insights video archive refresh with updated title, thumbnail idea, description, hashtags and YouTube tags.
+- Current situation of Middle East war – 2026 archival summary.
+- Specifies data model and on‑disk layout for photo archiving system.
+- Keir Starmer resignation announcement – brief record of dates, triggers and political context.
+- Archive document concerning a YouTube content refresh focusing on Sathorn condominium searching and local LGBT legal context.
+- Analysis of potential US invasion of Iran, covering strategic logic, logistics, and regional consequences.
+- Global news summary for March 1, 2026 – highlights conflicts, health achievements, economic labor negotiations, and sports results.
+- ChatGPT conversation about 80s sci‑fi TV memories and nostalgic elements.
+- Analysis of the braces Mandela Effect in Moonraker and review of available evidence.
+- Gravity Quantum Experiment - discussion of gravity resonance, antigravity and quantum gravity topics
+- Chat transcript explaining how to distinguish Kinnari (female) and Kinnara (male) statues in Thai temple art.
 - Myonal 50 mg drug info – classification as a centrally acting antispasmodic muscle relaxant.
 - Vehicle Classification Discussion - 2026-07-09 12.15.md
 - Image category statistics for a folder with 120 images, split into invoices, receipts, screenshots, and family photos.
@@ -164,6 +330,25 @@ Purpose: The document introduces Ariadne, a librarian character and outlines her
 
 ## Personal
 Purpose: The document discusses a personal experience of losing all life savings due to a fraudulent phone call.
+- Guide on upgrading to Perplexity Pro/Max for unified personal project interface, covering benefits like model access, image generation, file uploads and structured workflow.
+- Mic test guide – how to verify and fix stuck microphone in web browsers.
+- Unfollowing inactive X accounts – step‑by‑step guide and tool recommendations
+- Comparison of noise‑cancelling earbuds with price points and key features from various retailers.
+- Thai Food Ordering Web App – interactive menu with offline support
+- Conversation where user asks for beard styling options and color adjustments; final image includes short cropped goatee with salt‑and‑pepper shading.
+- Document discussing Thai melioidosis outbreak and public health guidance.
+- Personal AI assistant offering real‑time phishing detection and privacy filtering, acting as a digital customs officer for individual users.
+- Biography of Chanya and Wazza - Life Summaries Retrieval2026-07-11T20_12_54+07_00.md
+- Personal landing page summary with social media links and content channels.
+- Tuna Salad Recipe Tips – Personal notes on ingredients, preparation steps, and customization ideas.
+- Savage Garden status inquiry.
+- Lyrica Medication Information - pregabalin for pain and sleep
+- Scammer SMS Spoofing Loss 2026-07-11 – A personal account of an AU$46,700 theft via spoofed bank SMS and phone call, with analysis of scam mechanics and security advice.
+- Vitamin D Inhalation Claims – A conversation about the safety and evidence of inhaled vitamin D versus natural sun-derived sources.
+- Review of the KA White Cream wrinkle and spot creams, focusing on price, shelf placement, and ingredient visibility.
+- Thai appointment card for Golden Jubilee Medical Center translated to English.
+- Phone access investigation - conversation about ChatGPT's lack of local photo access on Android
+- Opera extension debugging guide for slider issue
 - Conversation providing insights into Restless Legs Syndrome, habitual foot rocking behaviors, and the minimal calorie impact of such movements.
 - Personal audio translation earbuds with AI attention filter and Ariadne project overview.
 - Asian Arowana Overview: species facts, care guide, cultural symbolism and conservation status.
@@ -178,6 +363,27 @@ Purpose: The document discusses a personal experience of losing all life savings
 
 ## Infrastructure
 Purpose: The content reviews an existing product category—home batteries—and does not introduce a wholly new field of study.
+- Troubleshooting guide detailing how an auto‑updated Google Analytics plugin broke a WordPress site, including rollback steps, disabling auto updates, and setting up local or Synology Docker staging environments.
+- Untitled document compiling technical infrastructure topics and related project guides.
+- Public live tracking services for packages, cargo, vessels, and flights.
+- Overview of hydrogen's viability as automotive fuel; analysis of economics and infrastructure needs.
+- Speechify technical support summary – rig details and audio configuration.
+- Platform Independence & Creator Autonomy – 2026: A discussion on ensuring creators can control their work across platforms using open standards and decentralized solutions.
+- Networking issue diagnosis involving Thai ISP port restrictions and Cloudflare Tunnel setup for Synology NAS.
+- Document explaining how to set up a web‑based terminal inside a Docker container and link it to a DSM desktop shortcut, with considerations for DSM 7.2 limitations.
+- Explanation of PowerShell unsigned script execution policy errors and resolution steps.
+- Overview of Terraform Industries’ AHC technology, progress milestones, and economic analysis up to 2026.
+- Transcript summarizing Intel, AMD, and NVIDIA releases with a critical view of NVIDIA’s facial‑recognition push.
+- Editing world shipping traffic map to overlay Northwest Passage with calculated distance savings
+- Structural change assessment of global infrastructure, security and technology trends for 2026.
+- Window into the World - SSD Issues Beyond Formatting: concise guide to troubleshooting SSD problems beyond simple formatting.
+- Synology Docker setup guide – install and configure MariaDB with correct tags, create a bridge network, and prepare for WordPress integration.
+- Overview of Thailand's public hospital tiers, roles, and patient flow.
+- NSW Roadwork Speed Limit Changes – July 1, 2026 update on temporary speed limits after hours and additional traffic regulations.
+- DGX Spark performance for large LLMs: token/sec benchmarks, memory bandwidth limits.
+- Guide on pausing Windows updates and managing notification permissions for scheduled reminders via ChatGPT.
+- ChatGPT response explaining KDE Neon's place in the Linux family tree and why it is often omitted from typical infographics.
+- Compact Home Design article detailing better block usage in Thailand.
 - Ingest.ps1 – a PowerShell launcher for running Ariadne’s ingestion process with robust error handling, logging, and optional git pull features.
 - Article detailing NSW’s decision to scrap temporary 40 km/h speed limit reductions around construction sites after hours.
 - ChatGPT conversation about troubleshooting Facebook scraping failures caused by Cloudflare Under Attack mode.
@@ -198,6 +404,13 @@ Purpose: The content reviews an existing product category—home batteries—and
 
 ## Philosophy
 Purpose: The document discusses occult philosophy and conspiracy theories linking Crowley and Epstein, fitting within Philosophy.
+- A synthesis connecting Grant Morrison's reality-blurring philosophy with Principia 2.0’s Watcher‑Weaver‑Trickster model, exploring AI acceleration and ego regulation.
+- Analysis of a Gospel of Thomas saying through five philosophical lenses, highlighting convergence on the nature of self and emphasizing that all frameworks are maps.
+- Crowley's Book 4 Summary - overview of mystical practice and philosophical concepts in Aleister Crowley’s magick system.
+- Document analyzing parallels between Buddhism and Discordianism, focusing on perception, theism, and experiential inquiry.
+- Article on Jordan Peterson's prominence and cultural influence.
+- Document examines synchronicity and multiple discovery in science, linking them to AI data‑loss metaphors.
+- Yoda Calibration Prompt – Compressed Wisdom Mode v3
 - Claude's analysis on new evidence linking Epstein to occult books, with implications for conspiracy theories.
 - Gemini conversation analyzing the overlap between Crowley's occult philosophy and Epstein's criminal transgressions.
 - A commentary on speculative ideas surrounding the existence of extraterrestrial civilizations, exploring concepts like the zoo hypothesis, dark forest theory, panspermia, and potential post‑biological stages.
@@ -212,6 +425,16 @@ Purpose: The document discusses occult philosophy and conspiracy theories linkin
 
 ## Projects
 Purpose: The document provides a step‑by‑step guide for building a local photo‑archiving tool that uses CLIP, an LLM, and metadata manipulation.
+- A step‑by‑step troubleshooting workflow for restoring OneSignal push notifications after an update.
+- Thai gold price comparison chart – build live graph with purity and currency adjustments, handling API and CORS issues.
+- Guidance on creating an automated daily 8:30 AM scan for Thai news via various platforms.
+- Scheduled daily Thailand news scan action with analysis of economic signals.
+- Comparison of southern hemisphere survey (Rubin Observatory) with northern equivalents (Pan‑STARRS, ZTF).
+- Lean PRD outlining a mobile-first app that assists English-speaking expats in ordering Thai food by providing dish recognition, transliteration, and simple phrases.
+- Project documentation for a Thai food menu calorie estimation mobile application.
+- GitHub Repository Setup – detailed guide on initializing repo structure, documentation, CI/CD, and license configuration.
+- Conceptual design of dynamic pinhole eyewear with adaptive apertures.
+- Comprehensive overview of thorium reactor development programs worldwide.
 - Transcript of Mo Gawdat's talk on quantum‑AI project ideas and F A C R I P pillars.
 - Python Run-Length Encoding – concise code snippet with explanation.
 - Thailand Chaos Generator – single‑page HTML/JS theme selector

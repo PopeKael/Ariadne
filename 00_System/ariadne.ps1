@@ -443,82 +443,107 @@ function Get-AllowedPrimaryTopicsText {
     return ($AllowedPrimaryTopics -join ", ")
 }
 
+function Get-AriadneResponsePreview {
+    param([string]$Response, [int]$MaximumLength = 1000)
+
+    if ([string]::IsNullOrWhiteSpace($Response)) { return "<empty>" }
+    $Preview = ($Response -replace '\s+', ' ').Trim()
+    if ($Preview.Length -gt $MaximumLength) { return $Preview.Substring(0, $MaximumLength) + "..." }
+    return $Preview
+}
+
+function Test-AriadnePermanentInvocationFailure {
+    param([string]$Message)
+
+    # Configuration/authentication failures will not improve with another call.
+    return $Message -match '(?i)(model.*not found|unknown model|invalid model|unauthori[sz]ed|forbidden|authentication|invalid request|unsupported)'
+}
+
 function Invoke-AriadneModel {
     param(
         [string]$Prompt,
         [string]$DocumentName
     )
 
-    $Body = @{
-        model  = "gpt-oss:20b"
-        prompt = $Prompt
-        stream = $false
-    } | ConvertTo-Json -Depth 5
-
-    $Response = Invoke-RestMethod `
-        -Uri "http://localhost:11434/api/generate" `
-        -Method Post `
-        -ContentType "application/json" `
-        -Body $Body
-
-    $RawReply = $Response.response.Trim()
-    $ReplyResult = ConvertTo-AriadneReply -RawReply $RawReply -AttemptLabel "Attempt 1"
-    $Parsed = $ReplyResult.Parsed
-    $FailureReason = $ReplyResult.FailureReason
-    if ($Parsed) {
-        return @{
-            Parsed = $Parsed
-            RawReply = $RawReply
-            FailureReason = $null
-        }
-    }
-
     $SchemaExample = Get-AriadneSchemaExample
     $AllowedTopicText = Get-AllowedPrimaryTopicsText
-    Write-AriadneLog -Level "INFO" -Message "Retrying model response for $DocumentName"
-    $RetryPrompt = @"
+    $MaxAttempts = 3
+    $Diagnostics = [System.Collections.Generic.List[object]]::new()
+    $LastRawReply = ""
+    $LastFailureReason = $null
+
+    for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+        if ($Attempt -gt 1) {
+            $BackoffSeconds = [math]::Pow(2, $Attempt - 2)
+            Write-AriadneLog -Level "INFO" -Message "Retrying ${DocumentName}: attempt $Attempt of $MaxAttempts after $BackoffSeconds second(s)"
+            Start-Sleep -Seconds $BackoffSeconds
+        }
+
+        $AttemptKind = switch ($Attempt) { 1 { "initial" } 2 { "repair" } default { "strict-repair" } }
+        $AttemptPrompt = $Prompt
+        if ($Attempt -eq 2) {
+            $AttemptPrompt = @"
 $Prompt
 
------ IMPORTANT RETRY INSTRUCTION -----
-Your previous reply for "$DocumentName" was invalid for the required schema.
-Return ONLY one valid JSON object that exactly matches the schema.
-Do not add markdown fences.
-Do not add explanations.
-Do not change language away from English.
-Use exactly these keys and no others:
-primary_topic, subtopics, source_language, is_new_topic, reason, tags, links, map_entry, summary
-primary_topic must be one of these exact values:
-$AllowedTopicText
-Here is a valid example shape:
+----- RETRY: CORRECT THE PREVIOUS RESPONSE -----
+Your previous response failed validation: $LastFailureReason
+Return ONLY one valid JSON object. No markdown fences or explanations.
+Use exactly these keys: primary_topic, subtopics, source_language, is_new_topic, reason, tags, links, map_entry, summary
+primary_topic must be one of: $AllowedTopicText
+Example:
 $SchemaExample
-
-Your previous invalid reply was:
-$RawReply
+Previous response preview:
+$(Get-AriadneResponsePreview -Response $LastRawReply)
 "@
+        } elseif ($Attempt -eq 3) {
+            $AttemptPrompt = @"
+$Prompt
 
-    $RetryBody = @{
-        model  = "gpt-oss:20b"
-        prompt = $RetryPrompt
-        stream = $false
-    } | ConvertTo-Json -Depth 5
+----- STRICT JSON RETRY -----
+Previous failure: $LastFailureReason
+Return exactly one JSON object and nothing else. Do not use markdown fences.
+All of subtopics, tags, and links must be JSON arrays. is_new_topic must be true or false.
+Use exactly these keys: primary_topic, subtopics, source_language, is_new_topic, reason, tags, links, map_entry, summary
+primary_topic must be one of: $AllowedTopicText
+If uncertain, return this valid fallback object exactly:
+{"primary_topic":"Archive","subtopics":[],"source_language":"en","is_new_topic":false,"reason":"Could not confidently classify the document.","tags":[],"links":[],"map_entry":"Unclassified document pending review.","summary":"The document could not be confidently classified from the provided content."}
+"@
+        }
 
-    $RetryResponse = Invoke-RestMethod `
-        -Uri "http://localhost:11434/api/generate" `
-        -Method Post `
-        -ContentType "application/json" `
-        -Body $RetryBody
+        $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $RawReply = ""
+        $ReplyResult = $null
+        $Retryable = $true
+        try {
+            $Body = @{ model = "gpt-oss:20b"; prompt = $AttemptPrompt; stream = $false } | ConvertTo-Json -Depth 5
+            $Response = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" -Method Post -ContentType "application/json" -Body $Body
+            $RawReply = if ($null -eq $Response.response) { "" } else { $Response.response.Trim() }
+            $ReplyResult = ConvertTo-AriadneReply -RawReply $RawReply -AttemptLabel "Attempt $Attempt"
+            $LastFailureReason = $ReplyResult.FailureReason
+        } catch {
+            $LastFailureReason = "Model invocation failed: $($_.Exception.Message)"
+            $Retryable = -not (Test-AriadnePermanentInvocationFailure -Message $_.Exception.Message)
+        } finally {
+            $Stopwatch.Stop()
+        }
 
-    $RetryRawReply = $RetryResponse.response.Trim()
-    $RetryReplyResult = ConvertTo-AriadneReply -RawReply $RetryRawReply -AttemptLabel "Attempt 2"
-    $RetryParsed = $RetryReplyResult.Parsed
-    $RetryFailureReason = $RetryReplyResult.FailureReason
+        $LastRawReply = $RawReply
+        $Diagnostics.Add([pscustomobject]@{
+            attempt = $Attempt; kind = $AttemptKind; duration_ms = $Stopwatch.ElapsedMilliseconds
+            failure_reason = $LastFailureReason; response_length = $RawReply.Length
+            response_preview = Get-AriadneResponsePreview -Response $RawReply; retryable = $Retryable
+        })
 
-    return @{
-        Parsed = $RetryParsed
-        RawReply = $RetryRawReply
-        FailureReason = $RetryFailureReason
-        InitialFailureReason = $FailureReason
+        if ($ReplyResult -and $ReplyResult.Parsed) {
+            Write-AriadneLog -Level "INFO" -Message "Model attempt $Attempt succeeded for $DocumentName in $($Stopwatch.ElapsedMilliseconds)ms"
+            return @{ Parsed = $ReplyResult.Parsed; RawReply = $RawReply; FailureReason = $null; Diagnostics = @($Diagnostics) }
+        }
+
+        Write-AriadneLog -Level "WARNING" -Message "Model attempt $Attempt failed for ${DocumentName}: $LastFailureReason; duration=$($Stopwatch.ElapsedMilliseconds)ms; response_length=$($RawReply.Length); retryable=$Retryable"
+        if (!$Retryable) { break }
     }
+
+    return @{ Parsed = $null; RawReply = $LastRawReply; FailureReason = $LastFailureReason; Diagnostics = @($Diagnostics) }
 }
 
 function Convert-ToWikiFileName {
@@ -821,6 +846,11 @@ $Document
             $RawReply = $ModelResult.RawReply
             $Parsed = $ModelResult.Parsed
             $FailureReason = $ModelResult.FailureReason
+            $AttemptDiagnostics = if ($ModelResult.Diagnostics) {
+                (@($ModelResult.Diagnostics) | ForEach-Object {
+                    "Attempt $($_.attempt) [$($_.kind)]: $($_.failure_reason)`n  Duration: $($_.duration_ms)ms; Response length: $($_.response_length); Retryable: $($_.retryable)`n  Preview: $($_.response_preview)"
+                }) -join "`n`n"
+            } else { "No attempt diagnostics available." }
 
             $ReviewFile = Join-Path $Review ($InboxItem.BaseName + ".review.md")
 
@@ -943,6 +973,9 @@ $($SourceIdentity.content_sha256)
 
 Failure Reason:
 $FailureReason
+
+Attempt Diagnostics:
+$AttemptDiagnostics
 
 ---
 
