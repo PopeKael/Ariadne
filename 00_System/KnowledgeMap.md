@@ -1,7 +1,10 @@
-> Last updated: 2026-07-12 12:32:39
+> Last updated: 2026-07-13 08:42:54
 
 ## Business
 Purpose: The article discusses the pressure and challenges faced by Westpac brokers due to unrealistic sales targets, highlighting workplace dynamics within a financial institution.
+- Transcript of a presentation outlining 15 commandments to accelerate product development and transformation in the age of AI, focusing on speed, documentation as code, meeting reduction, team dynamics, and teaching practices.
+- Analysis of AUD↔THB fluctuations driven by Middle East conflicts, oil price spikes, and tourism impacts.
+- SpaceX Starship V3 launch from Pad 2, Texas – first successful test of the V3 variant.
 - Latest WTI crude oil price update
 - Article detailing LPG conversion services for MG5 vehicles around Nakhon Pathom, Thailand, including provider listings, technical considerations, and cost estimates.
 - Document detailing the market launch date of Dragon NaturallySpeaking (June 1997).
@@ -37,6 +40,19 @@ Purpose: The article discusses the pressure and challenges faced by Westpac brok
 
 ## Travel & Expat Experience
 Purpose: Document discusses expatriate experiences in Thailand, fitting under Travel & Expat Experience.
+- Thailand Travel Guide – concise overview of Thailand’s geography, culture, cuisine, attractions, festivals and economy.
+- Thailand attracts Western retirees due to a combination of affordable living, quality healthcare, tropical climate, robust infrastructure, and rich cultural experiences.
+- Thai Visa & Immigration guide – overview of visa types, requirements, and key tips.
+- Baan Bangkrathuek
+- WordPress post detailing an expat’s medical emergency in a Thai public hospital and accompanying immigration visit.
+- Travel blog entry about buying a new phone in Thailand for vlogging purposes.
+- Article exploring the evolving expat lifestyle in Thailand, highlighting modernization, cost benefits, and practical advice for long-term residents.
+- Vlog about Bangkok’s Hua Lamphong retro night market along canals, highlighting street food stalls, solar-powered punts, and expat interactions.
+- Thailand attracts Western retirees through affordable living costs, quality healthcare, favorable long-term visa options, a warm tropical climate, and a culturally welcoming environment.
+- Video commentary on expat concerns in Thailand, with focus on property ownership and visa restrictions.
+- A set of YouTube vlog titles, descriptions, chapters and tags detailing various aspects of expat life in Thailand, from retirement finances to local culture and travel experiences.
+- Content about retirement in Thailand: visa options (DTV, OA, O), new tax on signage, facial recognition for banking apps, two-tier pricing, cost of living shifts.
+- Description of a bright outdoor selfie photo of a smiling couple at a riverside café in Thailand. The image features a Thai woman and an older Caucasian man, with detailed background elements such as wooden tables, fans, trees, and a calm river under midday sunlight.
 - Archive refresh of Thailand video titles focusing on suburban living and retirement themes.
 - YouTube vlog covering post-party day in Thailand with themes of shopping, inflation, tourism and community.
 - Video about a travel misadventure in Thailand, including day-to-day challenges and reflections.
@@ -111,6 +127,17 @@ Purpose: Document discusses expatriate experiences in Thailand, fitting under Tr
 
 ## AI & LLMs
 Purpose: It discusses using large language models to build personal knowledge bases integrated with Obsidian.
+- Comparison of token‑based and frame‑based compute costs for AI applications, with emphasis on FLOPs and dollar value as common metrics.
+- Bernie Sanders’ dialogue with Claude highlights concerns over AI power structures, accountability, and societal effects.
+- Open WebUI Qwen3 4b self‑introduction – description of model type and hosting hardware
+- Open WebUI Llama AI Overview – concise description of model and hardware infrastructure.
+- AI & LLMs - Gemini Usage & Cost Concerns
+- Thought experiment on AGI building a physical body under constraints; explores limits of LLMs and robotics.
+- Open WebUI - Small model configuration for web search
+- Conversation about designing a multi-agent orchestration framework for LLMs.
+- User inquiry about using an STT engine for transcribing a Thai song produced in Suno.
+- Document explains why Gemini's text model cannot edit images and how to approach such tasks with suitable tools.
+- Gemini conversation about refusing to generate images due to policy constraints.
 - Description of Perplexity AI start page interactions and related desktop/browser functionality.
 - OpenWebUI query generation via generateQueries, prompt template usage, chat_history injection
 - Thought experiment exploring whether a text‑only model can plan to build a physical body, discussing constraints on human interaction and social engineering.
@@ -177,6 +204,7 @@ Purpose: It discusses using large language models to build personal knowledge ba
 
 ## Knowledge Management
 Purpose: The article discusses design principles for personal knowledge bases, aligning with Knowledge Management.
+- Gemini cannot autonomously fetch or index contents from a shared Google Drive URL; manual attachment via the connector is required.
 - Article debunking rumors of Benjamin Netanyahu’s death with official statements and fact‑checking references.
 - Identification guide for bottle gourd (Lagenaria siceraria) using morphological features.
 - Document - Provides longitude for Manchester.
@@ -197,6 +225,37 @@ Purpose: The article discusses design principles for personal knowledge bases, a
 
 ## Content Creation
 Purpose: The document describes generating and translating images, fitting under Content Creation.
+- Content creation guidance for producing a tribal electronic track with Suno.
+- Guide on retrieving the latest Reuters headlines using website, RSS feed, aggregator apps, and APIs.
+- Math Problem Solution – includes apple/orange count and train distance examples.
+- Document provides a simple, production‑ready example of a sticky header that fades in on page load or scroll.
+- Retro Night Market at Hua Lamphong Video Blueprint – details on visual/audio structure for Tribe channel.
+- Gemini conversation requesting an animated ant colony in a static control room setting.
+- Gemini chat 'Create' image function defaults to 16:9; solutions include cropping or using external generation tools for 9×16 aspect ratio.
+- Poster creation instruction for visualizing matter as probability clouds
+- Lower-third overlay design specification
+- Livestream background animation - fixed camera, candle flicker, water ripple, rear cave illumination variance
+- Gemini conversation where an AI-generated surreal portrait was produced from a detailed prompt, accompanied by explanatory text on the image generation process.
+- Content Creation > Image Generation
+- Document about requesting the text prompt used by Gemini's video generator for a logo animation.
+- Guide to Styling a Landing Page with Glassmorphism Effect.
+- Screenshot of the 'Megan (Studio Tech & Layout)' workspace showing prompt, AI response, file picker, and media thumbnails used for Bangkok Nights thumbnail design.
+- Document on generating a continuous, subtle ambient video loop using animation of environmental elements without camera movement.
+- User prompt and AI-generated description for an underground command cavern image.
+- YouTube video description on using AI for web hosting diagnostics and support emails
+- Overlay design concept – 'Second Guess It Always' phrase for a YouTube video
+- Gemini conversation where user asks to improve lighting and crop an image for Instagram; Gemini responds with enhanced image link.
+- Instagram photo beautification conversation
+- Content Creation - Gaming / Illustration prompt
+- Music Prompt for Songkran EDM background
+- Song lyrics for pirate shanties "Maps of Lies (Desperado’s Run)" and "Another Day's Reward", including structure, tempo, instrumentation suggestions.
+- Conceptualization of ambient Thai‑inspired music for vlog background use, including track variations and instrumentation guidelines.
+- Detailed guidance for creating a driving rock anthem titled 'The Last Generation Before AI' with specific lyrical and production instructions.
+- AI-generated punk track reflecting a retired IT engineer's personal rebellion story.
+- Cyberpunk soundtrack creation guide with Suno prompt and lyrical framework
+- Guide to creating AI-generated background music for travel vlogs using Suno prompts.
+- Guide to creating AI-powered cyberpunk music video storyboards, detailing a step-by-step clip-based workflow.
+- Songwriting request - generate title, lyrics, style prompt for rock ballad and other songs
 - WordPress SEO workflow highlighting the use of a single in‑text link per post to enhance search visibility for WordPress and Patreon.
 - Thumbnail Ideas – Visual concepts for the ‘Ladyboy Dating in Thailand’ video.
 - Update to improve the YouTube thumbnail for a vlog about Changwon Express in Bangkok by removing outdated borders, enhancing image realism, adding bold text, and applying cinematic lighting adjustments.
@@ -300,6 +359,7 @@ Purpose: The document describes generating and translating images, fitting under
 
 ## Gaming
 Purpose: The document covers the development, peak, and decline of arcade gaming culture.
+- Railroad game music prompts – titles and composition guidance for cinematic western folk soundtrack
 - Video transcript summary - hardware news recap from a gaming channel.
 - Crimson Desert added Denuvo DRM just before launch, sparking player backlash and highlighting the economics of early launch piracy.
 - Valheim Main Characters – discussion of key NPCs and lore within the game.
@@ -310,6 +370,9 @@ Purpose: The document covers the development, peak, and decline of arcade gaming
 
 ## Archive
 Purpose: The document introduces Ariadne, a librarian character and outlines her role within a storytelling community.
+- Document on categorizing a vehicle photo for a personal archival system with detailed rationale and confidence score.
+- Open WebUI session with LLM-generated responses to diverse questions, covering sports, geography, technology, medicine, and space launch information.
+- Vehicle classification - close‑up photo of a red Toyota Hilux with license plate, two people standing beside it outside a house
 - Thailand dating insights video archive refresh with updated title, thumbnail idea, description, hashtags and YouTube tags.
 - Current situation of Middle East war – 2026 archival summary.
 - Specifies data model and on‑disk layout for photo archiving system.
@@ -330,6 +393,10 @@ Purpose: The document introduces Ariadne, a librarian character and outlines her
 
 ## Personal
 Purpose: The document discusses a personal experience of losing all life savings due to a fraudulent phone call.
+- Creative strategies for repurposing children’s artwork to minimize clutter and enhance home aesthetics
+- Guide on creative ways to repurpose children’s artwork and reduce clutter.
+- Answer to the apple‑and‑orange problem with step‑by‑step calculations and discussion of fractional results.
+- User asks for samples of hair colour from dark brown to dark reds. Gemini lists shade names and undertones.
 - Guide on upgrading to Perplexity Pro/Max for unified personal project interface, covering benefits like model access, image generation, file uploads and structured workflow.
 - Mic test guide – how to verify and fix stuck microphone in web browsers.
 - Unfollowing inactive X accounts – step‑by‑step guide and tool recommendations
@@ -363,6 +430,11 @@ Purpose: The document discusses a personal experience of losing all life savings
 
 ## Infrastructure
 Purpose: The content reviews an existing product category—home batteries—and does not introduce a wholly new field of study.
+- WordPress cron review and activity logging recommendations – guides checking overdue tasks, interpreting WP‑CRON status, and choosing a lightweight audit plugin.
+- OpenWebUI internals – how query generation may use chat history and related code files.
+- 2026 Global Energy and AI Infrastructure Risk Report
+- User seeking help to resolve "Connection refused" errors between a PHP site in Docker and MariaDB 10 on Synology.
+- Post‑Under Attack Mode: Contacting TMD with evidence and requesting remedial action or compensation.
 - Troubleshooting guide detailing how an auto‑updated Google Analytics plugin broke a WordPress site, including rollback steps, disabling auto updates, and setting up local or Synology Docker staging environments.
 - Untitled document compiling technical infrastructure topics and related project guides.
 - Public live tracking services for packages, cargo, vessels, and flights.
@@ -404,6 +476,9 @@ Purpose: The content reviews an existing product category—home batteries—and
 
 ## Philosophy
 Purpose: The document discusses occult philosophy and conspiracy theories linking Crowley and Epstein, fitting within Philosophy.
+- Clean structured summary of the conversation integrating Thelema, Jung, Hermeticism, Leary circuits, Chaos Magic, Discordianism, Douglas Adams, and AI amplification into a coherent personal‑growth framework.
+- Philosophical discussion on conscious evolution
+- Explanation of Thucydides Trap theory and its historical instances.
 - A synthesis connecting Grant Morrison's reality-blurring philosophy with Principia 2.0’s Watcher‑Weaver‑Trickster model, exploring AI acceleration and ego regulation.
 - Analysis of a Gospel of Thomas saying through five philosophical lenses, highlighting convergence on the nature of self and emphasizing that all frameworks are maps.
 - Crowley's Book 4 Summary - overview of mystical practice and philosophical concepts in Aleister Crowley’s magick system.
@@ -425,6 +500,8 @@ Purpose: The document discusses occult philosophy and conspiracy theories linkin
 
 ## Projects
 Purpose: The document provides a step‑by‑step guide for building a local photo‑archiving tool that uses CLIP, an LLM, and metadata manipulation.
+- User requesting code adjustments for a Thai food ordering SPA and waiting for better development environment.
+- User seeks an AI-generated cybernetic brain image with full transparency and no background.
 - A step‑by‑step troubleshooting workflow for restoring OneSignal push notifications after an update.
 - Thai gold price comparison chart – build live graph with purity and currency adjustments, handling API and CORS issues.
 - Guidance on creating an automated daily 8:30 AM scan for Thai news via various platforms.
