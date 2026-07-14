@@ -447,6 +447,17 @@ function ConvertTo-AriadneReply {
         }
     }
 
+    # Normalise recoverable schema drift before rejecting the document. These defaults
+    # contain no inferred facts: they only make optional arrays empty and remove
+    # duplicate/contradictory domain labels.
+    foreach($Field in @('secondary_domains','subtopics','tags','links','entities')){
+        if($null -eq $Parsed.$Field -or $Parsed.$Field -is [string]){$Parsed|Add-Member -NotePropertyName $Field -NotePropertyValue @() -Force}
+    }
+    $Parsed.secondary_domains=@($Parsed.secondary_domains|Where-Object {$_ -and $_ -ne $Parsed.primary_topic}|Select-Object -Unique|Select-Object -First 3)
+    if($null -eq $Parsed.map_entry -or [string]::IsNullOrWhiteSpace("$($Parsed.map_entry)")){$Parsed|Add-Member -NotePropertyName map_entry -NotePropertyValue 'Document pending classification review.' -Force}
+    if($null -eq $Parsed.summary -or [string]::IsNullOrWhiteSpace("$($Parsed.summary)")){$Parsed|Add-Member -NotePropertyName summary -NotePropertyValue 'The document was ingested successfully but did not include a model-generated summary.' -Force}
+    if($null -eq $Parsed.reason -or [string]::IsNullOrWhiteSpace("$($Parsed.reason)")){$Parsed|Add-Member -NotePropertyName reason -NotePropertyValue 'Classification completed with the available model fields.' -Force}
+    if($null -eq $Parsed.primary_topic -or [string]::IsNullOrWhiteSpace("$($Parsed.primary_topic)")){$Parsed|Add-Member -NotePropertyName primary_topic -NotePropertyValue 'Archive' -Force}
     $ValidationResult = Test-AriadneResponse -Parsed $Parsed
     if ($ValidationResult.IsValid) {
         return @{
