@@ -722,10 +722,17 @@ function Get-LibraryEntries {
 
 function Save-LibraryEntries {
     param($Entries)
-
-    $Entries |
-        ConvertTo-Json -Depth 6 |
-        Out-File -LiteralPath $LibraryPath -Encoding utf8 -NoNewline
+    $json = $Entries | ConvertTo-Json -Depth 6
+    for($attempt=1;$attempt -le 8;$attempt++){
+        try {
+            $json | Out-File -LiteralPath $LibraryPath -Encoding utf8 -NoNewline -ErrorAction Stop
+            return
+        } catch {
+            if($attempt -eq 8){ throw }
+            Write-AriadneLog -Level 'WARNING' -Message "library.json is locked; retrying write $attempt/8"
+            Start-Sleep -Milliseconds (250*$attempt)
+        }
+    }
 }
 
 function Update-LibraryEntry {

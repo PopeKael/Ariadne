@@ -10,7 +10,10 @@ $related=@($entries|ForEach-Object{$w=@(Words $_|Select-Object -Unique);$common=
 $Classification|Add-Member -NotePropertyName related_notes -NotePropertyValue @($related.name) -Force
 # Persist reciprocal note links now. The new note itself is saved by ariadne.ps1 immediately after this pass.
 foreach($target in $related.name){$entry=$entries|Where-Object{$_.source_name -eq $target}|Select-Object -First 1;if($entry){$current=@($entry.related_notes);if($current -notcontains $SourceName){$entry|Add-Member -NotePropertyName related_notes -NotePropertyValue @($current+$SourceName) -Force}}}
-if($related.Count){$entries|ConvertTo-Json -Depth 8|Out-File -LiteralPath $libraryPath -Encoding utf8 -NoNewline}
+if($related.Count){
+  $json=$entries|ConvertTo-Json -Depth 8
+  for($attempt=1;$attempt -le 8;$attempt++){try{$json|Out-File -LiteralPath $libraryPath -Encoding utf8 -NoNewline -ErrorAction Stop;break}catch{if($attempt -eq 8){throw};Start-Sleep -Milliseconds (250*$attempt)}}
+}
 foreach($e in @($Classification.entities)){if(!$e -or "$e" -match '^@'){continue};$p=Join-Path $entityRoot ("$(Norm "$e").md");if(!(Test-Path $p)){"# $e`n"|Out-File $p -Encoding utf8};$marker="- [[$SourceName]]";if((Get-Content -Raw $p) -notmatch [regex]::Escape($marker)){Add-Content $p $marker -Encoding utf8}}
 foreach($c in @($Classification.tags)+@($Classification.subtopics)){if(!$c){continue};$p=Join-Path $conceptRoot ("$(Norm "$c").md");if(!(Test-Path $p)){"# $c`n"|Out-File $p -Encoding utf8};Add-Content $p "- [[$SourceName]]" -Encoding utf8}
 return $Classification
