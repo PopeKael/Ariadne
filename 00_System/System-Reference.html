@@ -23,7 +23,7 @@
       <article class="card"><h3>1. Ingest</h3><p><code>ariadne.ps1</code> classifies Inbox Markdown, creates review/catalogue records, links it, then files it.</p></article>
       <article class="card"><h3>2. Connect</h3><p>Graph scripts maintain explicit relationships, concept pages, entities, and person identity records.</p></article>
       <article class="card"><h3>3. Improve</h3><p>The compiler proposes or applies conservative Wiki links. It is deliberately separate from ingest.</p></article>
-      <article class="card"><h3>4. Retrieve</h3><p><code>ariadne_mcp.py</code> exposes the catalogue and Processed corpus read-only to MCP clients.</p></article>
+      <article class="card"><h3>4. Retrieve</h3><p><code>ariadne_mcp.py</code> combines catalogue, lexical, local embedding, and graph signals over the read-only Processed corpus.</p></article>
     </div>
   </section>
 
@@ -47,6 +47,7 @@
         <tr><td><a href="Migrate-LegacyGraph.ps1"><code>Migrate-LegacyGraph.ps1</code></a></td><td class="repair">Legacy migration</td><td>Migrates older graph metadata into the current relationship/concept/entity model, records state, and preserves existing metadata and reciprocal links.</td><td>One-off/upgrade tool; supports batch size and <code>-Force</code>.</td></tr>
         <tr><td><a href="Migrate-PersonEntities.ps1"><code>Migrate-PersonEntities.ps1</code></a></td><td class="repair">Person migration</td><td>Moves legacy person-style entity relationships into the dedicated People and identity-index model.</td><td>One-off/upgrade tool; supports batch size and <code>-Force</code>.</td></tr>
         <tr><td><a href="Publish-Knowledge.ps1"><code>Publish-Knowledge.ps1</code></a></td><td class="maintenance">Publishing workflow</td><td>Copies the canonical System Knowledge Map to <code>Wiki/KnowledgeMap.md</code> and generates <code>Wiki/index.md</code> plus searchable <code>Wiki/index.html</code>.</td><td>Supports PowerShell <code>-WhatIf</code>; it never modifies the catalogue or compiler outputs.</td></tr>
+        <tr><td><a href="Build-Embeddings.ps1"><code>Build-Embeddings.ps1</code></a></td><td class="maintenance">Local embedding index</td><td>Invokes the Python index builder against the existing heading-aware Processed chunks. It adds changed chunks, removes replaced/deleted chunks, and retains failures for retry without modifying source notes or <code>library.json</code>.</td><td>Normal run is incremental; use <code>-Status</code> for durable totals. <code>-Rebuild</code> deliberately recreates the index. Requires a locally installed Ollama embedding model.</td></tr>
         <tr><td><a href="Commit.ps1"><code>Commit.ps1</code></a></td><td class="maintenance">Snapshot and push</td><td>Stages all vault changes, commits a timestamped snapshot, and pushes <code>main</code> to <code>origin</code>.</td><td>Broad git scope. Review <code>git status</code> first if unrelated work may be present.</td></tr>
       </tbody>
     </table>
@@ -58,7 +59,9 @@
     <table>
       <thead><tr><th>File</th><th>Function</th></tr></thead>
       <tbody>
-        <tr><td><a href="ariadne_mcp.py"><code>ariadne_mcp.py</code></a></td><td>Python 3.12 stdio MCP server. Read-only lexical search and heading-aware chunk retrieval over <code>library.json</code> and <code>Processed/</code>; it writes no derived store.</td></tr>
+        <tr><td><a href="ariadne_mcp.py"><code>ariadne_mcp.py</code></a></td><td>Python 3.12 stdio MCP server. Read-only, bounded hybrid retrieval over <code>library.json</code> and heading-aware <code>Processed/</code> chunks: catalogue/lexical relevance, optional local embedding cosine similarity, and existing graph/entity metadata. It degrades to lexical retrieval when the local index or Ollama is unavailable.</td></tr>
+        <tr><td><a href="ariadne_embeddings.py"><code>ariadne_embeddings.py</code></a></td><td>Shared local embedding store implementation: stable chunk identity/content hashing, loopback-only Ollama calls, batched embeddings, cosine similarity, failure metadata, and atomic index replacement.</td></tr>
+        <tr><td><a href="build_embeddings.py"><code>build_embeddings.py</code></a></td><td>Python CLI entrypoint used by <code>Build-Embeddings.ps1</code>. Enumerates the same chunks as MCP retrieval and supports <code>--status</code>, <code>--rebuild</code>, and model selection.</td></tr>
         <tr><td><a href="AriadnePrompt.md"><code>AriadnePrompt.md</code></a></td><td>The classification contract used by ingest: strict JSON schema, canonical-domain rules, tagging, entities, map entry, and summary requirements.</td></tr>
         <tr><td><a href="AriadneTestPrompt.md"><code>AriadneTestPrompt.md</code></a></td><td>Human-facing test/evaluation prompt for assessing a document against the Knowledge Map and system prompt. Its output is structured Markdown rather than ingest JSON.</td></tr>
         <tr><td><a href="DomainVocabulary.json"><code>DomainVocabulary.json</code></a></td><td>Canonical domain taxonomy, descriptions, keywords, and intentional domain relationships. This constrains valid classification domains and compiler evidence.</td></tr>
@@ -78,6 +81,7 @@
         <tr><td><a href="library.json"><code>library.json</code></a></td><td><strong>Authoritative catalogue.</strong> Per-document identity, filing, metadata, relationships, and processed path. Used by graph tooling and MCP retrieval.</td></tr>
         <tr><td><a href="KnowledgeCompiler.md"><code>KnowledgeCompiler.md</code></a></td><td>Operational manual for compiler modes, proposal/apply safety rules, candidate promotion, and generated reports.</td></tr>
         <tr><td><a href="KnowledgeVault-MCP.md"><code>KnowledgeVault-MCP.md</code></a></td><td>MCP server design, tool list, client configuration, retrieval policy, and smoke test.</td></tr>
+        <tr><td><a href="../Reports/Ariadne/embedding-index-report.md"><code>Reports/Ariadne/embedding-index-report.md</code></a></td><td>v0.8.2 embedding model, storage, index-build, and lexical-versus-hybrid validation report.</td></tr>
         <tr><td><a href="Engineering-Backlog.md"><code>Engineering-Backlog.md</code></a></td><td>Tracked Ariadne engineering debt and planned work. Currently records secret sanitisation as a medium-priority planned item.</td></tr>
       </tbody>
     </table>
@@ -92,6 +96,7 @@
         <tr><td><code>KnowledgeMap.md.pre-0.8.15</code><br><code>library.json.pre-0.8.15</code></td><td>Versioned pre-upgrade snapshots retained as rollback/reference points for the 0.8.15 transition.</td></tr>
         <tr><td><code>LibraryStatus.md.bak</code></td><td>Older saved status artefact; retained for historical recovery/reference rather than current workflow.</td></tr>
         <tr><td><code>ingest.log.bak</code></td><td>Rotated historical ingest log. Current operational logs belong under <code>Logs/</code>.</td></tr>
+        <tr><td><code>Data/embedding-index.json</code></td><td>Persistent local embedding index generated by <code>Build-Embeddings.ps1</code>. It records chunk identity, content hash, model/version, vector, and retryable failures. Never edit it manually; the builder writes a temporary replacement and atomically commits it.</td></tr>
         <tr><td><code>__pycache__/ariadne_mcp.*.pyc</code></td><td>Python bytecode cache generated when the MCP server runs. Disposable; do not edit or document as source.</td></tr>
       </tbody>
     </table>

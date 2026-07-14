@@ -18,7 +18,10 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 
-INDEX_VERSION = 1
+# Bump this when the persisted record schema changes.  The index is derived
+# data, so rejecting an older shape is preferable to silently returning
+# chunks without the provenance required for citations.
+INDEX_VERSION = 2
 DEFAULT_MODEL = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")
 DEFAULT_OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434")
 
@@ -135,7 +138,9 @@ def build_index(root: Path, chunks: list[dict[str, Any]], rebuild: bool = False,
         wanted.add(key)
         existing = existing_by_key.get(key)
         if existing and isinstance(existing.get("embedding"), list):
-            next_index["entries"][key] = existing
+            # Catalogue metadata can change without changing the text. Keep
+            # the vector but refresh the persisted citation/provenance fields.
+            next_index["entries"][key] = {**existing, **chunk}
             stats["skipped"] += 1
             continue
         pending.append((key, chunk))

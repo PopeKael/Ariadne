@@ -2,7 +2,7 @@
 """Read-only MCP server for an Ariadne KnowledgeVault.
 
 Uses 00_System/library.json as the catalogue and Processed Markdown as the
-source corpus. It deliberately has no write tools or derived datastore.
+source corpus. The embedding index is derived, rebuildable state only.
 """
 
 from __future__ import annotations
@@ -183,10 +183,20 @@ def chunk_records() -> list[dict[str, Any]]:
         except OSError:
             continue
         relative = path.relative_to(ROOT).as_posix()
+        citation = {
+            "source_url": record.get("source_url"),
+            "source_name": record.get("source_name"),
+            "source_language": record.get("source_language"),
+            "publication_date": record.get("publication_date"),
+            "channel_author": record.get("channel_author"),
+        }
         for index, (heading, chunk) in enumerate(markdown_chunks(content)):
             chunk_id = f"{record.get('document_id')}#chunk-{index}"
             result.append({"path": relative, "document_id": record.get("document_id"), "chunk_id": chunk_id,
-                           "heading": heading, "content": chunk, "content_hash": chunk_hash(heading, chunk)})
+                           "heading": heading, "title": record.get("page_title") or record.get("source_name"),
+                           "content": chunk, "content_hash": chunk_hash(heading, chunk),
+                           "document_content_hash": record.get("content_sha256"),
+                           "citation": citation})
     return result
 
 
@@ -259,6 +269,11 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
     records_by_id = {record.get("document_id"): record for _, record in ranked_records}
     lexical_ids = {record.get("document_id") for score, record in ranked_records[: max(limit * 6, 24)] if score > 0}
     index = embedding_index()
+    indexed_by_chunk = {
+        str(entry.get("chunk_id")): entry
+        for entry in (index or {}).get("entries", {}).values()
+        if isinstance(entry, dict)
+    }
     semantic_by_chunk: dict[str, float] = {}
     if index and index.get("entries"):
         try:
@@ -306,11 +321,17 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
         if key in seen:
             continue
         seen.add(key)
+        indexed_entry = indexed_by_chunk.get(chunk_id)
+        if indexed_entry and indexed_entry.get("content_hash") != chunk_hash(heading, chunk):
+            indexed_entry = None
+        citation = indexed_entry.get("citation", {}) if indexed_entry else {}
         results.append({
             "chunk_id": f"{record.get('document_id')}#chunk-{index}",
             "document_id": record.get("document_id"),
-            "title": record.get("page_title") or record.get("source_name"),
-            "source_url": record.get("source_url"),
+            "path": indexed_entry.get("path") if indexed_entry else path.relative_to(ROOT).as_posix(),
+            "title": indexed_entry.get("title") if indexed_entry else record.get("page_title") or record.get("source_name"),
+            "source_url": citation.get("source_url", record.get("source_url")),
+            "citation": citation,
             "heading": heading,
             "score": combined,
             "lexical_score": round(lexical, 6),

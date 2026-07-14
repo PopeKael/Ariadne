@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from ariadne_embeddings import DEFAULT_MODEL, build_index, index_path, load_index
+from ariadne_embeddings import DEFAULT_MODEL, INDEX_VERSION, build_index, index_path, load_index
 from ariadne_mcp import ROOT, chunk_records
 
 def main() -> int:
@@ -16,7 +16,10 @@ def main() -> int:
     if args.status:
         index = load_index(ROOT)
         if not index:
-            print(json.dumps({"status": "missing", "path": str(index_path(ROOT))}, indent=2)); return 0
+            path = index_path(ROOT)
+            status = "incompatible" if path.exists() else "missing"
+            print(json.dumps({"status": status, "path": str(path), "expected_format_version": INDEX_VERSION,
+                              "action": "run Build-Embeddings.ps1 -Rebuild"}, indent=2)); return 0
         print(json.dumps({"status": "ready", "path": str(index_path(ROOT)), "model": index.get("model"),
                           "dimensions": index.get("dimensions"), "chunks": len(index.get("entries", {})),
                           "failures": len(index.get("failures", {})), "storage_bytes": index_path(ROOT).stat().st_size}, indent=2)); return 0
