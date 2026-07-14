@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariadne System Reference</title>
+  <style>
+    :root { color-scheme: dark; --bg:#10151b; --panel:#17212b; --line:#314152; --text:#e7edf4; --muted:#aab8c7; --accent:#6bc4e5; --warn:#f2bf67; --danger:#ef8b8b; }
+    * { box-sizing:border-box; } body { max-width:1200px; margin:0 auto; padding:32px 24px 64px; background:var(--bg); color:var(--text); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    h1,h2,h3 { line-height:1.2; } h1 { margin:0; } h2 { margin-top:42px; border-bottom:1px solid var(--line); padding-bottom:8px; } h3 { margin-bottom:6px; } a { color:var(--accent); } code { color:#d2e5ef; background:#0c1116; padding:2px 5px; border-radius:4px; } .lede { color:var(--muted); max-width:80ch; } .meta,.note { color:var(--muted); font-size:.92rem; } .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; } .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; } .card p { margin:6px 0 0; color:var(--muted); } .badge { display:inline-block; font-size:.76rem; border:1px solid var(--line); border-radius:99px; padding:1px 8px; color:var(--muted); margin:0 4px 4px 0; } .caution { border-left:4px solid var(--warn); background:#292415; padding:12px 16px; } table { width:100%; border-collapse:collapse; margin:14px 0 26px; } th,td { vertical-align:top; text-align:left; padding:11px 10px; border-bottom:1px solid var(--line); } th { color:var(--muted); font-size:.84rem; letter-spacing:.03em; text-transform:uppercase; } td:first-child { white-space:nowrap; } .routine { color:#a6dca4; } .maintenance { color:var(--warn); } .repair { color:var(--danger); } @media (max-width:700px) { body { padding:22px 13px; font-size:15px; } table { display:block; overflow-x:auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ariadne System Reference</h1>
+    <p class="lede">A working index of <code>00_System</code>: what runs the vault, what describes it, and which files are state or recovery artefacts. This is intentionally a reference page, not another control plane.</p>
+    <p class="meta">Vault-relative location: <code>00_System/System-Reference.html</code> · Inventory reviewed 2026-07-14</p>
+  </header>
+
+  <section>
+    <h2>Operating model</h2>
+    <div class="grid">
+      <article class="card"><h3>1. Ingest</h3><p><code>ariadne.ps1</code> classifies Inbox Markdown, creates review/catalogue records, links it, then files it.</p></article>
+      <article class="card"><h3>2. Connect</h3><p>Graph scripts maintain explicit relationships, concept pages, entities, and person identity records.</p></article>
+      <article class="card"><h3>3. Improve</h3><p>The compiler proposes or applies conservative Wiki links. It is deliberately separate from ingest.</p></article>
+      <article class="card"><h3>4. Retrieve</h3><p><code>ariadne_mcp.py</code> exposes the catalogue and Processed corpus read-only to MCP clients.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Scripts</h2>
+    <p><span class="badge routine">Routine</span><span class="badge maintenance">Maintenance / deliberate run</span><span class="badge repair">Migration or repair</span></p>
+    <table>
+      <thead><tr><th>Script</th><th>Role</th><th>Function and effect</th><th>Run notes</th></tr></thead>
+      <tbody>
+        <tr><td><a href="ariadne.ps1"><code>ariadne.ps1</code></a></td><td class="routine">Core ingest</td><td>Processes Inbox files, calls the Ariadne classification prompt, writes Review and Processed output, updates <code>library.json</code> and <code>KnowledgeMap.md</code>, detects duplicates, and maintains a retry queue.</td><td><code>-MaxItemsPerRun N</code> limits a batch; normal operational entry point.</td></tr>
+        <tr><td><a href="Run%20Injest.ps1"><code>Run Injest.ps1</code></a></td><td class="routine">Convenience launcher</td><td>Sets a process-only execution-policy bypass, invokes <code>ariadne.ps1</code>, and keeps the console open on completion or failure.</td><td>Filename contains the existing “Injest” typo. Rename only if shortcuts/docs are updated together.</td></tr>
+        <tr><td><a href="Invoke-GraphLinking.ps1"><code>Invoke-GraphLinking.ps1</code></a></td><td class="routine">Ingest helper</td><td>Scores related catalogue entries from classification metadata, adds reciprocal links, and creates/updates concept and entity pages. It delegates @mentions to person resolution.</td><td>Called by ingest; requires classification and source name.</td></tr>
+        <tr><td><a href="Resolve-PersonIdentities.ps1"><code>Resolve-PersonIdentities.ps1</code></a></td><td class="routine">Identity helper</td><td>Finds <code>@handles</code>, applies aliases, maintains the person identity index, and creates/updates People pages with interaction backlinks.</td><td>Called by graph linking; mutates person state.</td></tr>
+        <tr><td><a href="Retry-FailedIngestion.ps1"><code>Retry-FailedIngestion.ps1</code></a></td><td class="maintenance">Retry control</td><td>Moves failed Markdown back to Inbox and normalises/queues retry records. Permanent failures are excluded unless explicitly included.</td><td>Use <code>-IncludePermanent</code> only after understanding the failure.</td></tr>
+        <tr><td><a href="Repair-RetryQueue.ps1"><code>Repair-RetryQueue.ps1</code></a></td><td class="repair">Queue repair</td><td>Deduplicates and normalises <code>Logs/IngestionRetryQueue.json</code>, preserving the highest-attempt record per source.</td><td>Targeted repair; it overwrites the queue.</td></tr>
+        <tr><td><a href="Repair-LibraryIndex.ps1"><code>Repair-LibraryIndex.ps1</code></a></td><td class="repair">Index repair</td><td>Removes one named dangling entry from <code>library.json</code>, and fails unless exactly one match exists.</td><td>Its default source name is intentionally specific. Change <code>-SourceName</code> only after verification.</td></tr>
+        <tr><td><a href="Compile-Knowledge.ps1"><code>Compile-Knowledge.ps1</code></a></td><td class="maintenance">Wiki-link compiler</td><td>Analyses Wiki and catalogue evidence, reports graph/link issues, proposes safe related-concept links, and can apply only compiler-owned <code>## Related Concepts</code> updates. Can promote explicit approved candidates.</td><td>Start with <code>-Mode Proposal</code>; use <code>Apply</code> or <code>Promote</code> deliberately.</td></tr>
+        <tr><td><a href="GraphHealth.ps1"><code>GraphHealth.ps1</code></a></td><td class="maintenance">Health audit</td><td>Calculates graph health from explicit relationships: orphan and sparse notes, missing backlinks/pages, duplicate groups, cross-cluster ratio, and retry debt. Writes <code>Reports/Graph-Health.md</code>.</td><td><code>-FailBelowThreshold</code> makes it CI-friendly.</td></tr>
+        <tr><td><a href="Reconcile-Graph.ps1"><code>Reconcile-Graph.ps1</code></a></td><td class="maintenance">Incremental graph repair</td><td>Repairs one-way links and gives weakly linked notes bounded semantic links using shared metadata tokens; then runs a health audit and writes a reconciliation report.</td><td>Mutates <code>library.json</code>; default cap is 8 links/note.</td></tr>
+        <tr><td><a href="Rebuild-GraphRelations.ps1"><code>Rebuild-GraphRelations.ps1</code></a></td><td class="repair">Full graph rebuild</td><td>Rebuilds bounded, symmetric relationships across the catalogue and records a reconciliation report.</td><td>Broader than incremental reconciliation; snapshot first.</td></tr>
+        <tr><td><a href="Migrate-LegacyGraph.ps1"><code>Migrate-LegacyGraph.ps1</code></a></td><td class="repair">Legacy migration</td><td>Migrates older graph metadata into the current relationship/concept/entity model, records state, and preserves existing metadata and reciprocal links.</td><td>One-off/upgrade tool; supports batch size and <code>-Force</code>.</td></tr>
+        <tr><td><a href="Migrate-PersonEntities.ps1"><code>Migrate-PersonEntities.ps1</code></a></td><td class="repair">Person migration</td><td>Moves legacy person-style entity relationships into the dedicated People and identity-index model.</td><td>One-off/upgrade tool; supports batch size and <code>-Force</code>.</td></tr>
+        <tr><td><a href="Publish-Knowledge.ps1"><code>Publish-Knowledge.ps1</code></a></td><td class="maintenance">Publishing workflow</td><td>Copies the canonical System Knowledge Map to <code>Wiki/KnowledgeMap.md</code> and generates <code>Wiki/index.md</code> plus searchable <code>Wiki/index.html</code>.</td><td>Supports PowerShell <code>-WhatIf</code>; it never modifies the catalogue or compiler outputs.</td></tr>
+        <tr><td><a href="Commit.ps1"><code>Commit.ps1</code></a></td><td class="maintenance">Snapshot and push</td><td>Stages all vault changes, commits a timestamped snapshot, and pushes <code>main</code> to <code>origin</code>.</td><td>Broad git scope. Review <code>git status</code> first if unrelated work may be present.</td></tr>
+      </tbody>
+    </table>
+    <aside class="caution"><strong>Practical rule:</strong> treat the red scripts as state-changing maintenance tools, not as routine housekeeping. <code>library.json</code> is authoritative catalogue state; make a Git commit or copy before graph-wide migration/rebuild work.</aside>
+  </section>
+
+  <section>
+    <h2>Service, prompts, and configuration</h2>
+    <table>
+      <thead><tr><th>File</th><th>Function</th></tr></thead>
+      <tbody>
+        <tr><td><a href="ariadne_mcp.py"><code>ariadne_mcp.py</code></a></td><td>Python 3.12 stdio MCP server. Read-only lexical search and heading-aware chunk retrieval over <code>library.json</code> and <code>Processed/</code>; it writes no derived store.</td></tr>
+        <tr><td><a href="AriadnePrompt.md"><code>AriadnePrompt.md</code></a></td><td>The classification contract used by ingest: strict JSON schema, canonical-domain rules, tagging, entities, map entry, and summary requirements.</td></tr>
+        <tr><td><a href="AriadneTestPrompt.md"><code>AriadneTestPrompt.md</code></a></td><td>Human-facing test/evaluation prompt for assessing a document against the Knowledge Map and system prompt. Its output is structured Markdown rather than ingest JSON.</td></tr>
+        <tr><td><a href="DomainVocabulary.json"><code>DomainVocabulary.json</code></a></td><td>Canonical domain taxonomy, descriptions, keywords, and intentional domain relationships. This constrains valid classification domains and compiler evidence.</td></tr>
+        <tr><td><a href="PersonAliases.json"><code>PersonAliases.json</code></a></td><td>Manual canonical-handle overrides used during @mention resolution.</td></tr>
+        <tr><td><a href="PersonIdentityIndex.json"><code>PersonIdentityIndex.json</code></a></td><td>Generated identity state: canonical handles, observed aliases, timestamps, and interaction counts. Maintained by person resolution.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Maps, catalogue, and documentation</h2>
+    <table>
+      <thead><tr><th>File</th><th>Function</th></tr></thead>
+      <tbody>
+        <tr><td><a href="README.md"><code>README.md</code></a></td><td>Defines the boundary of <code>00_System</code>: Ariadne behaviour and operational framework, not personal knowledge.</td></tr>
+        <tr><td><a href="KnowledgeMap.md"><code>KnowledgeMap.md</code></a></td><td>The generated human-readable map of the vault’s classified knowledge. Ingest updates it; it is not the authoritative per-document index.</td></tr>
+        <tr><td><a href="library.json"><code>library.json</code></a></td><td><strong>Authoritative catalogue.</strong> Per-document identity, filing, metadata, relationships, and processed path. Used by graph tooling and MCP retrieval.</td></tr>
+        <tr><td><a href="KnowledgeCompiler.md"><code>KnowledgeCompiler.md</code></a></td><td>Operational manual for compiler modes, proposal/apply safety rules, candidate promotion, and generated reports.</td></tr>
+        <tr><td><a href="KnowledgeVault-MCP.md"><code>KnowledgeVault-MCP.md</code></a></td><td>MCP server design, tool list, client configuration, retrieval policy, and smoke test.</td></tr>
+        <tr><td><a href="Engineering-Backlog.md"><code>Engineering-Backlog.md</code></a></td><td>Tracked Ariadne engineering debt and planned work. Currently records secret sanitisation as a medium-priority planned item.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Recovery and generated artefacts</h2>
+    <table>
+      <thead><tr><th>Pattern / file</th><th>Function</th></tr></thead>
+      <tbody>
+        <tr><td><code>KnowledgeMap.md.bak</code><br><code>library.json.bak</code></td><td>Previous snapshots of the map and catalogue. Useful for local recovery or comparison; not active inputs for normal operation.</td></tr>
+        <tr><td><code>KnowledgeMap.md.pre-0.8.15</code><br><code>library.json.pre-0.8.15</code></td><td>Versioned pre-upgrade snapshots retained as rollback/reference points for the 0.8.15 transition.</td></tr>
+        <tr><td><code>LibraryStatus.md.bak</code></td><td>Older saved status artefact; retained for historical recovery/reference rather than current workflow.</td></tr>
+        <tr><td><code>ingest.log.bak</code></td><td>Rotated historical ingest log. Current operational logs belong under <code>Logs/</code>.</td></tr>
+        <tr><td><code>__pycache__/ariadne_mcp.*.pyc</code></td><td>Python bytecode cache generated when the MCP server runs. Disposable; do not edit or document as source.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">The backup files are a useful short-term safety net, but Git history is the cleaner long-term rollback mechanism. Multiple independent snapshots can otherwise become archaeological strata with no retention policy.</p>
+  </section>
+
+  <section>
+    <h2>Recommended routine</h2>
+    <p>Use <code>Run Injest.ps1</code> (or <code>ariadne.ps1</code>) for normal intake. Review the generated Review files and run <code>Compile-Knowledge.ps1 -Mode Proposal</code> when you want to improve the Wiki graph intentionally. Use <code>GraphHealth.ps1</code> to measure the result. Reserve migration, rebuild, and repair scripts for a diagnosed problem; they are scalpels, despite the temptation to use them as a leaf blower.</p>
+  </section>
+</body>
+</html>

@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ariadne_embeddings import DEFAULT_MODEL, chunk_hash, cosine, load_index, ollama_embed
+
 
 # MCP stdio transport is UTF-8 JSON; Windows PowerShell may otherwise select a
 # legacy console code page when stdout is redirected.
@@ -28,6 +30,7 @@ MAX_DOCUMENT_CHARS = 24_000
 MAX_CHUNK_CHARS = 2_400
 DEFAULT_CHUNK_CHARS = 1_600
 TOKEN_RE = re.compile(r"[\w-]+", re.UNICODE)
+EMBEDDING_INDEX_CACHE: tuple[float, dict[str, Any] | None] | None = None
 
 
 def send(message: dict[str, Any]) -> None:
@@ -168,6 +171,50 @@ def score_text(text: str, query: str) -> float:
     return score
 
 
+def chunk_records() -> list[dict[str, Any]]:
+    """Return the exact heading-aware chunks used by both indexing and MCP."""
+    result = []
+    for record in load_library():
+        path = processed_path(record)
+        if not path or not path.is_file():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8-sig", errors="replace")
+        except OSError:
+            continue
+        relative = path.relative_to(ROOT).as_posix()
+        for index, (heading, chunk) in enumerate(markdown_chunks(content)):
+            chunk_id = f"{record.get('document_id')}#chunk-{index}"
+            result.append({"path": relative, "document_id": record.get("document_id"), "chunk_id": chunk_id,
+                           "heading": heading, "content": chunk, "content_hash": chunk_hash(heading, chunk)})
+    return result
+
+
+def embedding_index() -> dict[str, Any] | None:
+    global EMBEDDING_INDEX_CACHE
+    path = ROOT / "00_System" / "Data" / "embedding-index.json"
+    try:
+        stamp = path.stat().st_mtime_ns
+    except OSError:
+        return None
+    if EMBEDDING_INDEX_CACHE and EMBEDDING_INDEX_CACHE[0] == stamp:
+        return EMBEDDING_INDEX_CACHE[1]
+    index = load_index(ROOT)
+    EMBEDDING_INDEX_CACHE = (stamp, index)
+    return index
+
+
+def graph_score(record: dict[str, Any], query: str) -> float:
+    """Conservative existing entity/graph metadata signal, normalized to 0..1."""
+    query_tokens = set(tokens(query))
+    signals = []
+    for field in ("links", "entities", "people", "related_notes", "subtopics", "primary_topic", "secondary_domains"):
+        value = string_list(record.get(field)) if isinstance(record.get(field), list) else str(record.get(field) or "")
+        if query_tokens and query_tokens.intersection(tokens(value)):
+            signals.append(1)
+    return min(1.0, len(signals) / 3.0)
+
+
 def search(arguments: dict[str, Any]) -> dict[str, Any]:
     query = arguments.get("query")
     if not isinstance(query, str) or not query.strip():
@@ -204,15 +251,33 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("'limit' must be an integer.")
     limit = max(1, min(limit, MAX_RESULT_LIMIT))
 
-    # Use catalogue fields as a first-pass relevance gate, then rank passages
-    # by their own content. Examining more candidates than the result limit
-    # avoids a broad document title hiding a better, lower-ranked passage.
+    # Bounded candidate selection: lexical/catalogue candidates and semantic
+    # candidates are unioned before a final hybrid rank. This permits synonym
+    # queries while avoiding a full-vault result payload.
     ranked_records = [(score_record(record, query), record) for record in load_library()]
-    ranked_records = [(score, record) for score, record in ranked_records if score > 0]
     ranked_records.sort(key=lambda item: (-item[0], str(item[1].get("document_id") or "")))
-
+    records_by_id = {record.get("document_id"): record for _, record in ranked_records}
+    lexical_ids = {record.get("document_id") for score, record in ranked_records[: max(limit * 6, 24)] if score > 0}
+    index = embedding_index()
+    semantic_by_chunk: dict[str, float] = {}
+    if index and index.get("entries"):
+        try:
+            query_vector = ollama_embed(query, str(index.get("model") or DEFAULT_MODEL))
+            scored = [(cosine(query_vector, entry.get("embedding", [])), entry) for entry in index["entries"].values()]
+            scored.sort(key=lambda item: -item[0])
+            for semantic, entry in scored[: max(limit * 12, 48)]:
+                if semantic > 0:
+                    semantic_by_chunk[str(entry.get("chunk_id"))] = semantic
+        except RuntimeError:
+            # Search remains usable if Ollama is offline after indexing.
+            pass
+    candidate_ids = lexical_ids | {item.rsplit("#chunk-", 1)[0] for item in semantic_by_chunk}
     candidates = []
-    for document_score, record in ranked_records[: max(limit * 4, 12)]:
+    for document_id in candidate_ids:
+        record = records_by_id.get(document_id)
+        if not record:
+            continue
+        document_score = score_record(record, query)
         path = processed_path(record)
         if not path or not path.is_file():
             continue
@@ -222,14 +287,20 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
             continue
         for index, (heading, chunk) in enumerate(markdown_chunks(content)):
             passage_score = score_text(chunk, query)
-            if passage_score <= 0:
-                continue
-            candidates.append((document_score + passage_score, record, index, heading, chunk))
+            chunk_id = f"{record.get('document_id')}#chunk-{index}"
+            lexical = document_score + passage_score
+            semantic = semantic_by_chunk.get(chunk_id, 0.0)
+            graph = graph_score(record, query)
+            # Lexical values are unbounded; compress them before blending.
+            lexical_normalized = lexical / (lexical + 12.0) if lexical else 0.0
+            combined = 0.50 * lexical_normalized + 0.40 * semantic + 0.10 * graph
+            if combined > 0:
+                candidates.append((combined, lexical, semantic, graph, record, index, heading, chunk))
 
-    candidates.sort(key=lambda item: (-item[0], str(item[1].get("document_id") or ""), item[2]))
+    candidates.sort(key=lambda item: (-item[0], str(item[4].get("document_id") or ""), item[5]))
     results = []
     seen = set()
-    for score, record, index, heading, chunk in candidates:
+    for combined, lexical, semantic, graph, record, index, heading, chunk in candidates:
         # Avoid returning overlapping windows from the same part of a document.
         key = (record.get("document_id"), index)
         if key in seen:
@@ -241,7 +312,11 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
             "title": record.get("page_title") or record.get("source_name"),
             "source_url": record.get("source_url"),
             "heading": heading,
-            "score": score,
+            "score": combined,
+            "lexical_score": round(lexical, 6),
+            "semantic_score": round(semantic, 6),
+            "graph_score": round(graph, 6),
+            "combined_score": round(combined, 6),
             "content": chunk,
         })
         if len(results) >= limit:
