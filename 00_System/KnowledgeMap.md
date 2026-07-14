@@ -1,4 +1,4 @@
-> Last updated: 2026-07-14 14:57:36
+> Last updated: 2026-07-14 15:38:46
 
 ## AI & LLMs
 Purpose: Document describes Google Gemini, an AI assistant product, fitting under AI & LLMs.
@@ -143,6 +143,12 @@ Purpose: The article discusses a telecommunications outage affecting critical na
 
 ## Content Creation
 Purpose: User requested a new content creation article in 4th person
+- Template for creating consistent YouTube thumbnail backgrounds without text.
+- Title suggestions and branding tips for Pope Kael's Twitch stream.
+- Pope Kael TV channel description update reflecting expanded AI and gaming focus.
+- Guide on fixing missing transcripts in older YouTube videos using AI transcription services and workflow tweaks.
+- Content Creation > Thumbnail Design
+- Instructional document detailing step-by-step layout creation for YouTube thumbnails using Canva/Photoshop/Figma, focusing on text placement, image usage, and visual balance for the title "Confident… Wrong".
 - UAP Pattern Recognition Content Clip
 - Strategy guide for retired travelers pivoting from travel vlogs to reflective, value-based content in Thailand.
 - User requesting adaptation of a high‑resolution poster prompt to run on a different AI image generator; focus on achieving 4K 4:3 output.
@@ -379,6 +385,7 @@ Purpose: The document discusses expatriate experiences and attitudes in Thailand
 
 ## Knowledge Management
 Purpose: The document focuses on designing and evaluating personal knowledge base architectures, fitting within Knowledge Management.
+- Build Your Own Second Brain Guide – tutorial on setting up a personal knowledge base with AI assistance, covering tools like Obsidian and Cloud Code Desktop, folder structure, rulebooks, automation, and plugins.
 - Discussion on creating authentic Magic Eye stereograms via depth maps and procedural algorithms, contrasting with AI image generation.
 - Transfer Summary – Pope Kael TV: Analysis of UFO politics, Colombian UAP footage, China humanoid robotics, and meta-layer AI considerations.
 - ChatGPT data loss incident: Schrödinger’s Data metaphor, cryptomnesia, and multiple discovery discussion.
@@ -471,6 +478,8 @@ Purpose: It details gameplay mechanics for ARK's planning and build modes, fitti
 
 ## Business
 Purpose: Document discusses economic opportunities and strategic policy in Australia’s space industry, fitting within the Business domain.
+- Visual Identity Creation - Business Branding
+- The Rabbit Hole – Digest on Alex Karp's view that only vocational skills and neurodivergent individuals will thrive in the AI era.
 - Meta Glasses privacy and regulatory analysis
 - The Rabbit Hole - CryoPaint Clothing Feasibility
 - Adobe's Declining Dominance: Analysis of market shift, subscription impact, and AI-driven competition

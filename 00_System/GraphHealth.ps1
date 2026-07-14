@@ -19,6 +19,9 @@ foreach ($e in $entries) {
     foreach ($x in @(A $e.entities)) { $k=N "$x"; if ($k) { if (!$entities.ContainsKey($k)) {$entities[$k]=@()}; $entities[$k]+=$e.source_name } }
     foreach ($r in @(A $e.related_notes)) { if ($notes.ContainsKey("$r")) { [void]$edges[$e.source_name].Add("$r") } }
 }
+# Note names must be indexed before resolving relationships; otherwise forward references
+# are incorrectly discarded during a single-pass load.
+foreach ($e in $entries) { foreach ($r in @($e.related_notes | Where-Object {$_})) { if ($notes.ContainsKey("$r")) { [void]$edges[$e.source_name].Add("$r") } } }
 # Links are deliberately explicit only: inferred shared domain/tag membership is useful
 # for discovery, but counting it as a graph edge would make a sparse vault look healthy.
 $orphan=@($notes.Keys | Where-Object {$edges[$_].Count -eq 0}); $low=@($notes.Keys | Where-Object {$edges[$_].Count -lt $LowConnectivityThreshold})
@@ -26,7 +29,7 @@ $dupConcept=@($concepts.Keys | Group-Object { ($_ -replace '\b(ai|llms?|the|and)
 $dupEntity=@($entities.Keys | Group-Object { $_ } | Where-Object {$_.Count -gt 1})
 $wikiConcepts=Join-Path $Vault 'Wiki\Concepts'; $wikiEntities=Join-Path $Vault 'Entities'
 $missingConcept=@($concepts.Keys | Where-Object { !(Test-Path -LiteralPath (Join-Path $wikiConcepts ("$_.md"))) }); $missingEntity=@($entities.Keys | Where-Object { !(Test-Path -LiteralPath (Join-Path $wikiEntities ("$_.md"))) })
-$backlinkMissing=@(); foreach($n in $notes.Keys) { foreach($r in @(A $notes[$n].related_notes)) { if ($notes.ContainsKey("$r") -and @(A $notes["$r"].related_notes) -notcontains $n) {$backlinkMissing += "$n -> $r"} } }
+$backlinkMissing=@(); foreach($n in $notes.Keys) { foreach($r in $edges[$n]) { if ($notes.ContainsKey("$r") -and -not ($edges["$r"] -contains $n)) {$backlinkMissing += "$n -> $r"} } }
 $cross=0; $possible=0; foreach($a in $notes.Keys){foreach($b in $edges[$a]){if($a -lt $b){$possible++; if($notes[$a].primary_topic -ne $notes[$b].primary_topic){$cross++}}}}
 $avg=if($notes.Count){[math]::Round((@($edges.Values|ForEach-Object {$_.Count}|Measure-Object -Sum).Sum/$notes.Count),2)}else{0}; $ratio=if($possible){$cross/$possible}else{0}
 $retry=@(); if(Test-Path $RetryQueuePath){try{$retry=@(Get-Content -Raw $RetryQueuePath|ConvertFrom-Json)}catch{}}
