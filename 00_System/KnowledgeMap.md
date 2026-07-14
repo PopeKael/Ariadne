@@ -1,7 +1,8 @@
-> Last updated: 2026-07-14 15:38:46
+> Last updated: 2026-07-14 16:44:13
 
 ## AI & LLMs
 Purpose: Document describes Google Gemini, an AI assistant product, fitting under AI & LLMs.
+- YouTube video discussing OpenAI's SuperApp concept and its implications for AI integration in workflows.
 - ChatGPT conversation summarizing Unitree Robotics R1 humanoid robot features and discussing mobility versus intelligence.
 - Hedge Fund AI usage & Luxman CD player article
 - Video discussing AI's use in uncovering hidden structures within governments, with focus on Thailand visa policy changes.
@@ -143,6 +144,9 @@ Purpose: The article discusses a telecommunications outage affecting critical na
 
 ## Content Creation
 Purpose: User requested a new content creation article in 4th person
+- Content Creation > Video Production Workflow
+- YouTube content packaging guide for Pope Kael TV focusing on AI-driven filtering and smarter tribes concept.
+- Pope Kael TV thumbnail design request using AI for image editing.
 - Template for creating consistent YouTube thumbnail backgrounds without text.
 - Title suggestions and branding tips for Pope Kael's Twitch stream.
 - Pope Kael TV channel description update reflecting expanded AI and gaming focus.
@@ -544,6 +548,7 @@ Purpose: Could not confidently classify the document.
 
 ## Philosophy
 Purpose: The document presents a philosophical comparison between Buddhist concepts and Discordianist ideas.
+- Video connecting General Semantics principles to AI language processing and human interaction.
 - ChatGPT conversation: 'The Rabbit Hole - Political Beliefs and Identity' – analysis of left‑right framing, curiosity, and identity formation.
 - Personal reflection on using narrative intent as a form of 'magic' to influence long-term behavior, referencing Grant Morrison and neuroplasticity.
 - Philosophical critique of UAP claims, emphasis on Occam's razor, role of secrecy and media in shaping narrative.
