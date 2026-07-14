@@ -12,6 +12,7 @@ param(
 
 $Wiki = Join-Path $Vault "Wiki"
 $LibraryPath = Join-Path $Vault "00_System\library.json"
+$DomainVocabularyPath = Join-Path $Vault "00_System\DomainVocabulary.json"
 if ($Mode -ne 'Proposal' -and [string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $Vault "Reports\Ariadne"
 }
@@ -20,6 +21,16 @@ function Get-CanonicalKey {
     param([string]$Value)
     if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
     return (($Value.ToLowerInvariant() -replace '[^\p{L}\p{N}]+', ' ').Trim())
+}
+
+function Get-EntrySecondaryDomains {
+    param($Entry, $DomainVocabulary)
+
+    $Primary = [string]$Entry.primary_topic
+    $Explicit = @($Entry.secondary_domains | Where-Object { $_ })
+    if ($Explicit.Count) { return @($Explicit | Where-Object { $_ -ne $Primary } | Sort-Object -Unique) }
+
+    return @()
 }
 
 function Get-WikiLinks {
@@ -33,12 +44,12 @@ function Get-WikiLinks {
 function New-ExistingLinkProposal {
     param(
         [pscustomobject]$Page,
-        [string]$TargetPath
+        [string[]]$TargetPath
     )
 
-    $TargetLink = $TargetPath -replace '\.md$', ''
-    $Link = "[[${TargetLink}]]"
-    if ($Page.Content -match [regex]::Escape($Link)) { return $null }
+    $TargetLinks = @($TargetPath | ForEach-Object { $_ -replace '\.md$', '' } | Sort-Object -Unique)
+    $TargetLinks = @($TargetLinks | Where-Object { $Page.Content -notmatch [regex]::Escape("[[${_}]]") })
+    if (!$TargetLinks.Count) { return $null }
 
     $NewLine = if ($Page.Content -match "`r`n") { "`r`n" } else { "`n" }
     $Section = [regex]::Match($Page.Content, '(?ms)^## Related Concepts\s*\r?\n(.*?)(?=^##\s|\z)')
@@ -50,22 +61,22 @@ function New-ExistingLinkProposal {
             return $null
         }
         $ExistingLinks = @($ExistingLines | ForEach-Object { ([regex]::Match($_, '\[\[([^\]|#]+)')).Groups[1].Value.Trim() })
-        $AllLinks = @($ExistingLinks + $TargetLink | Sort-Object -Unique)
+        $AllLinks = @($ExistingLinks + $TargetLinks | Sort-Object -Unique)
         $Replacement = "## Related Concepts$NewLine$NewLine" + (($AllLinks | ForEach-Object { "- [[$_]]" }) -join $NewLine) + $NewLine
         $Before = $Page.Content
         $After = $Page.Content.Substring(0, $Section.Index) + $Replacement + $Page.Content.Substring($Section.Index + $Section.Length)
-        $AddedLines = @("- $Link")
+        $AddedLines = @($TargetLinks | ForEach-Object { "- [[${_}]]" })
     } else {
         $Before = $Page.Content
         $Separator = if ($Before.EndsWith("`n")) { $NewLine } else { "$NewLine$NewLine" }
-        $After = "$Before$Separator## Related Concepts$NewLine$NewLine- $Link$NewLine"
-        $AddedLines = @('## Related Concepts', '', "- $Link")
+        $After = "$Before$Separator## Related Concepts$NewLine$NewLine" + (($TargetLinks | ForEach-Object { "- [[${_}]]" }) -join $NewLine) + $NewLine
+        $AddedLines = @('## Related Concepts', '') + @($TargetLinks | ForEach-Object { "- [[${_}]]" })
     }
 
     return [pscustomobject]@{
         page = $Page.RelativePath
         target = $TargetPath
-        link = $Link
+        link = @($TargetLinks | ForEach-Object { "[[${_}]]" })
         before = $Before
         after = $After
         added_lines = $AddedLines
@@ -238,6 +249,9 @@ foreach ($RegistryKey in $NodeRegistry.Keys) {
 }
 
 $LibraryEntries = @()
+$DomainVocabulary = $null
+if (!(Test-Path -LiteralPath $DomainVocabularyPath)) { throw "Domain vocabulary not found: $DomainVocabularyPath" }
+$DomainVocabulary = Get-Content -LiteralPath $DomainVocabularyPath -Raw | ConvertFrom-Json
 $SuggestedLinks = @()
 if (Test-Path -LiteralPath $LibraryPath) {
     try {
@@ -254,6 +268,12 @@ if (Test-Path -LiteralPath $LibraryPath) {
                 $Key = Get-CanonicalKey $Candidate
                 if ($KeyToLinkTarget.ContainsKey($Key) -and $SourcePage -and $SourcePage -ne $KeyToLinkTarget[$Key]) {
                     [pscustomobject]@{ source = $SourcePage; target = $KeyToLinkTarget[$Key]; suggested_by = "$($_.source_name) (structured node reference)" }
+                }
+            }
+            foreach ($Candidate in @(Get-EntrySecondaryDomains -Entry $_ -DomainVocabulary $DomainVocabulary)) {
+                $Key = Get-CanonicalKey $Candidate
+                if ($KeyToPage.ContainsKey($Key) -and $SourcePage -and $SourcePage -ne $KeyToPage[$Key]) {
+                    [pscustomobject]@{ source = $SourcePage; target = $KeyToPage[$Key]; suggested_by = "$($_.source_name) (secondary domain)" }
                 }
             }
         } | Sort-Object source, target -Unique)
@@ -275,7 +295,16 @@ $WikiSuggestedLinks = @($Pages.Values | ForEach-Object {
         }
     }
 })
-$SuggestedLinks = @($SuggestedLinks + $WikiSuggestedLinks | Sort-Object source, target -Unique)
+$DomainSuggestedLinks = @($DomainVocabulary.domains | ForEach-Object {
+    $Source = "$($_.name).md"
+    foreach ($TargetDomain in @($_.related_domains)) {
+        $Target = "$TargetDomain.md"
+        if ($Pages.ContainsKey($Source) -and $Pages.ContainsKey($Target) -and $Source -ne $Target) {
+            [pscustomobject]@{ source = $Source; target = $Target; suggested_by = 'canonical domain architecture' }
+        }
+    }
+})
+$SuggestedLinks = @($SuggestedLinks + $WikiSuggestedLinks + $DomainSuggestedLinks | Sort-Object source, target -Unique)
 
 $PromotionEvidence = @{}
 foreach ($Entry in $LibraryEntries) {
@@ -321,8 +350,8 @@ $PromotionCandidates = @($PromotionEvidence.Values | Where-Object { $_.document_
     }
 } | Sort-Object recommended_namespace, candidate_name)
 
-$Proposals = @($SuggestedLinks | ForEach-Object {
-    New-ExistingLinkProposal -Page $Pages[$_.source] -TargetPath $_.target
+$Proposals = @($SuggestedLinks | Group-Object source | ForEach-Object {
+    New-ExistingLinkProposal -Page $Pages[$_.Name] -TargetPath @($_.Group.target)
 } | Where-Object { $_ })
 
 $Promoted = @()

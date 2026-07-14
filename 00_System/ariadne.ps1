@@ -21,23 +21,17 @@ foreach ($Folder in @($Review, $Processed, $Failed, $Duplicates, $Wiki, $Logs)) 
 
 $KnowledgeMapPath  = Join-Path $System "KnowledgeMap.md"
 $AriadnePromptPath = Join-Path $System "AriadnePrompt.md"
+$DomainVocabularyPath = Join-Path $System "DomainVocabulary.json"
 $LibraryPath       = Join-Path $System "library.json"
 $MaxItemsPerRun    = 0
+$RetryQueuePath    = Join-Path $Logs "IngestionRetryQueue.json"
+$RetryLimit        = 4
+$RetryDelayMinutes = 15
 $LogPath           = Join-Path $Logs "Ariadne.log"
 $MaxLogSizeBytes   = 2MB
-$AllowedPrimaryTopics = @(
-    "AI & LLMs",
-    "Infrastructure",
-    "Knowledge Management",
-    "Projects",
-    "Content Creation",
-    "Business",
-    "Personal",
-    "Gaming",
-    "Philosophy",
-    "Archive",
-    "Travel & Expat Experience"
-)
+if (!(Test-Path -LiteralPath $DomainVocabularyPath)) { throw "Domain vocabulary not found: $DomainVocabularyPath" }
+$DomainVocabulary = Get-Content -LiteralPath $DomainVocabularyPath -Raw | ConvertFrom-Json
+$AllowedPrimaryTopics = @($DomainVocabulary.domains | ForEach-Object { $_.name })
 
 function Rotate-AriadneLogIfNeeded {
     if (!(Test-Path $LogPath)) {
@@ -68,6 +62,23 @@ function Write-AriadneLog {
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $Line = "$Timestamp [$Level] $Message"
     Add-Content -LiteralPath $LogPath -Value $Line -Encoding utf8
+}
+
+function Get-RetryQueue { if (!(Test-Path $RetryQueuePath)) { return @() }; try { return @(Get-Content -LiteralPath $RetryQueuePath -Raw | ConvertFrom-Json) } catch { Write-AriadneLog -Level "ERROR" -Message "Retry queue is invalid JSON: $($_.Exception.Message)"; return @() } }
+function Save-RetryQueue($Queue) { @($Queue) | ConvertTo-Json -Depth 6 | Out-File -LiteralPath $RetryQueuePath -Encoding utf8 -NoNewline }
+function Queue-IngestionFailure([string]$Name,[string]$Reason,[bool]$Retryable) {
+    $Queue=[System.Collections.ArrayList]@(Get-RetryQueue); $record=$Queue | Where-Object {$_.source_name -eq $Name} | Select-Object -First 1
+    if($record){[void]$Queue.Remove($record);$attempt=[int]$record.attempts+1}else{$attempt=1}
+    $permanent=(-not $Retryable) -or $attempt -ge $RetryLimit; $next=(Get-Date).AddMinutes($RetryDelayMinutes)
+    [void]$Queue.Add([pscustomobject]@{source_name=$Name;attempts=$attempt;status=$(if($permanent){'permanent'}else{'pending'});last_reason=$Reason;last_attempt=(Get-Date -Format 's');next_attempt=$next.ToString('s')})
+    Save-RetryQueue $Queue
+    Write-AriadneLog -Level $(if($permanent){'ERROR'}else{'WARNING'}) -Message "Ingestion failure queued: $Name attempts=$attempt status=$(if($permanent){'permanent'}else{'pending'}) reason=$Reason"
+    return $permanent
+}
+function Restore-DueRetries {
+    $Queue=[System.Collections.ArrayList]@(Get-RetryQueue); $changed=$false
+    foreach($r in @($Queue)){if($r.status -eq 'pending' -and [datetime]$r.next_attempt -le (Get-Date)){$p=Join-Path $Failed $r.source_name;if(Test-Path -LiteralPath $p){Move-Item -LiteralPath $p -Destination (Join-Path $Inbox $r.source_name) -Force;Write-AriadneLog -Level 'INFO' -Message "Retrying queued ingest: $($r.source_name)";$changed=$true}else{ $r.status='permanent';$r.last_reason='Retry source missing from Failed folder';$changed=$true }}}
+    if($changed){Save-RetryQueue $Queue}
 }
 
 function Get-NormalizedMarkdownContent {
@@ -281,7 +292,7 @@ function Test-AriadneResponse {
         }
     }
 
-    $RequiredFields = @("primary_topic", "subtopics", "source_language", "is_new_topic", "reason", "tags", "links", "map_entry", "summary")
+    $RequiredFields = @("primary_topic", "secondary_domains", "subtopics", "source_language", "is_new_topic", "reason", "tags", "links", "entities", "map_entry", "summary")
     foreach ($Field in $RequiredFields) {
         if ($null -eq $Parsed.$Field) {
             return @{
@@ -302,6 +313,21 @@ function Test-AriadneResponse {
             IsValid = $false
             FailureReason = "Invalid primary_topic: $($Parsed.primary_topic)"
         }
+    }
+    if ($Parsed.secondary_domains -is [string]) {
+        return @{ IsValid = $false; FailureReason = "secondary_domains must be an array, not a string" }
+    }
+    $SecondaryDomainList = @($Parsed.secondary_domains)
+    if ($SecondaryDomainList.Count -gt 3) {
+        return @{ IsValid = $false; FailureReason = "secondary_domains cannot contain more than three domains" }
+    }
+    foreach ($Domain in $SecondaryDomainList) {
+        if ($Domain -isnot [string] -or $AllowedPrimaryTopics -notcontains $Domain -or $Domain -eq $Parsed.primary_topic) {
+            return @{ IsValid = $false; FailureReason = "secondary_domains must contain distinct canonical domains other than primary_topic" }
+        }
+    }
+    if (@($SecondaryDomainList | Select-Object -Unique).Count -ne $SecondaryDomainList.Count) {
+        return @{ IsValid = $false; FailureReason = "secondary_domains contains duplicates" }
     }
     if ($Parsed.source_language -isnot [string] -or [string]::IsNullOrWhiteSpace($Parsed.source_language)) {
         return @{
@@ -351,10 +377,11 @@ function Test-AriadneResponse {
             FailureReason = "links must be an array, not a string"
         }
     }
+    if ($Parsed.entities -is [string]) { return @{ IsValid = $false; FailureReason = "entities must be an array, not a string" } }
 
     $SubtopicList = @($Parsed.subtopics)
     $TagList = @($Parsed.tags)
-    $LinkList = @($Parsed.links)
+    $LinkList = @($Parsed.links); $EntityList = @($Parsed.entities)
     foreach ($Subtopic in $SubtopicList) {
         if ($Subtopic -isnot [string]) {
             return @{
@@ -379,6 +406,7 @@ function Test-AriadneResponse {
             }
         }
     }
+    foreach ($Entity in $EntityList) { if ($Entity -isnot [string]) { return @{ IsValid = $false; FailureReason = "entities contains non-string value" } } }
 
     if ($Parsed.map_entry -match '[\r\n]') {
         return @{
@@ -436,7 +464,7 @@ function ConvertTo-AriadneReply {
 }
 
 function Get-AriadneSchemaExample {
-    return '{"primary_topic":"AI & LLMs","subtopics":["agent workflows","local models"],"source_language":"en","is_new_topic":false,"reason":"The document discusses AI tools and model behavior.","tags":["ai","llms"],"links":["Codex","Claude Code"],"map_entry":"Example document - concise description of the source.","summary":"This document discusses AI tools, model behavior, and practical workflow implications. It compares approaches and highlights relevant concepts. The source is useful as a reference for future retrieval."}'
+    return '{"primary_topic":"AI & LLMs","secondary_domains":["Knowledge Management","Infrastructure"],"subtopics":["agent workflows","local models"],"source_language":"en","is_new_topic":false,"reason":"The document discusses AI tools and model behavior.","tags":["ai","llms"],"links":["Codex","Claude Code"],"entities":["Codex","Claude Code"],"map_entry":"Example document - concise description of the source.","summary":"This document discusses AI tools, model behavior, and practical workflow implications. It compares approaches and highlights relevant concepts. The source is useful as a reference for future retrieval."}'
 }
 
 function Get-AllowedPrimaryTopicsText {
@@ -488,7 +516,7 @@ $Prompt
 ----- RETRY: CORRECT THE PREVIOUS RESPONSE -----
 Your previous response failed validation: $LastFailureReason
 Return ONLY one valid JSON object. No markdown fences or explanations.
-Use exactly these keys: primary_topic, subtopics, source_language, is_new_topic, reason, tags, links, map_entry, summary
+Use exactly these keys: primary_topic, secondary_domains, subtopics, source_language, is_new_topic, reason, tags, links, entities, map_entry, summary
 primary_topic must be one of: $AllowedTopicText
 Example:
 $SchemaExample
@@ -502,11 +530,11 @@ $Prompt
 ----- STRICT JSON RETRY -----
 Previous failure: $LastFailureReason
 Return exactly one JSON object and nothing else. Do not use markdown fences.
-All of subtopics, tags, and links must be JSON arrays. is_new_topic must be true or false.
-Use exactly these keys: primary_topic, subtopics, source_language, is_new_topic, reason, tags, links, map_entry, summary
+All of secondary_domains, subtopics, tags, links, and entities must be JSON arrays. is_new_topic must be true or false.
+Use exactly these keys: primary_topic, secondary_domains, subtopics, source_language, is_new_topic, reason, tags, links, entities, map_entry, summary
 primary_topic must be one of: $AllowedTopicText
 If uncertain, return this valid fallback object exactly:
-{"primary_topic":"Archive","subtopics":[],"source_language":"en","is_new_topic":false,"reason":"Could not confidently classify the document.","tags":[],"links":[],"map_entry":"Unclassified document pending review.","summary":"The document could not be confidently classified from the provided content."}
+{"primary_topic":"Archive","secondary_domains":[],"subtopics":[],"source_language":"en","is_new_topic":false,"reason":"Could not confidently classify the document.","tags":[],"links":[],"entities":[],"map_entry":"Unclassified document pending review.","summary":"The document could not be confidently classified from the provided content."}
 "@
         }
 
@@ -627,11 +655,14 @@ function Normalize-LibraryEntry {
         publication_date = $Entry.publication_date
         content_sha256  = $Entry.content_sha256
         primary_topic   = $PrimaryTopic
+        secondary_domains = if ($Entry.secondary_domains) { @($Entry.secondary_domains) } else { @() }
         subtopics       = @($Subtopics)
         source_language = if ($Entry.source_language) { $Entry.source_language } else { "en" }
         reason          = $Entry.reason
         tags            = @($Entry.tags)
         links           = @($Entry.links)
+        entities        = @($Entry.entities)
+        related_notes   = @($Entry.related_notes)
         map_entry       = $Entry.map_entry
         summary         = $Entry.summary
         review_path     = $Entry.review_path
@@ -679,11 +710,14 @@ function Update-LibraryEntry {
         [string]$SourceName,
         $SourceIdentity,
         [string]$PrimaryTopic,
+        [string[]]$SecondaryDomains,
         [string[]]$Subtopics,
         [string]$SourceLanguage,
         [string]$Reason,
         [string[]]$Tags,
         [string[]]$Links,
+        [string[]]$Entities,
+        [string[]]$RelatedNotes,
         [string]$Summary,
         [string]$MapEntry,
         [string]$ReviewFileName,
@@ -714,11 +748,14 @@ function Update-LibraryEntry {
         publication_date = $SourceIdentity.publication_date
         content_sha256  = $SourceIdentity.content_sha256
         primary_topic   = $PrimaryTopic
+        secondary_domains = @($SecondaryDomains)
         subtopics       = @($Subtopics)
         source_language = $SourceLanguage
         reason          = $Reason
         tags            = @($Tags)
         links           = @($Links)
+        entities        = @($Entities)
+        related_notes   = @($RelatedNotes)
         map_entry       = $MapEntry
         summary         = $Summary
         review_path     = "Review/$ReviewFileName"
@@ -734,6 +771,7 @@ function Update-LibraryEntry {
 function Update-WikiPage {
     param(
         [string]$Topic,
+        [string[]]$SecondaryDomains,
         [string]$Reason,
         [string]$Summary,
         [string]$MapEntry,
@@ -750,7 +788,7 @@ function Update-WikiPage {
     $SourceLink = "[[Processed/$ProcessedFileName]]"
     $ReviewLink = "[[Review/$ReviewFileName]]"
     $TagLine = if ($Tags.Count -gt 0) { $Tags -join ", " } else { "None" }
-    $ResolvedLinks = @(Resolve-ExistingWikiLinks -Candidates $Links)
+    $ResolvedLinks = @(Resolve-ExistingWikiLinks -Candidates @($SecondaryDomains + $Links))
     $LinkLine = if ($ResolvedLinks.Count -gt 0) { $ResolvedLinks -join ", " } else { "None" }
     $SourceMarker = "Source: $SourceName"
 
@@ -797,6 +835,7 @@ $FailedThisRun = 0
 $DuplicatesThisRun = 0
 
 try {
+    Restore-DueRetries
     $InboxItems = Get-ChildItem $Inbox -Filter *.md
     if ($MaxItemsPerRun -gt 0) {
         $InboxItems = $InboxItems | Select-Object -First $MaxItemsPerRun
@@ -855,6 +894,9 @@ $Document
             $ReviewFile = Join-Path $Review ($InboxItem.BaseName + ".review.md")
 
             if ($Parsed) {
+                # Second pass: compare the classified note with the existing vault, then materialise
+                # concept/entity hubs before any final graph records are written.
+                $Parsed = & (Join-Path $System "Invoke-GraphLinking.ps1") -Classification $Parsed -SourceName $InboxItem.Name -Vault $Vault
                 Update-KnowledgeMap -Topic $Parsed.primary_topic -Reason $Parsed.reason -MapEntry $Parsed.map_entry
 
                 $NewTag = if ($Parsed.is_new_topic) { " (new topic)" } else { "" }
@@ -893,6 +935,9 @@ $($SourceIdentity.content_sha256)
 Primary Topic:
 $($Parsed.primary_topic)$NewTag
 
+Secondary Domains:
+$(if (@($Parsed.secondary_domains).Count) { $Parsed.secondary_domains -join ", " } else { "None" })
+
 Source Language:
 $($Parsed.source_language)
 
@@ -905,6 +950,12 @@ $($Parsed.tags -join ", ")
 Links:
 $($Parsed.links -join ", ")
 
+Entities:
+$($Parsed.entities -join ", ")
+
+Related Notes:
+$($Parsed.related_notes -join ", ")
+
 ---
 
 $($Parsed.summary)
@@ -913,6 +964,7 @@ $($Parsed.summary)
 
                 $WikiFileName = Update-WikiPage `
                     -Topic $Parsed.primary_topic `
+                    -SecondaryDomains @($Parsed.secondary_domains) `
                     -Reason $Parsed.reason `
                     -Summary $Parsed.summary `
                     -MapEntry $Parsed.map_entry `
@@ -926,11 +978,14 @@ $($Parsed.summary)
                     -SourceName $InboxItem.Name `
                     -SourceIdentity $SourceIdentity `
                     -PrimaryTopic $Parsed.primary_topic `
+                    -SecondaryDomains @($Parsed.secondary_domains) `
                     -Subtopics @($Parsed.subtopics) `
                     -SourceLanguage $Parsed.source_language `
                     -Reason $Parsed.reason `
                     -Tags @($Parsed.tags) `
                     -Links @($Parsed.links) `
+                    -Entities @($Parsed.entities) `
+                    -RelatedNotes @($Parsed.related_notes) `
                     -Summary $Parsed.summary `
                     -MapEntry $Parsed.map_entry `
                     -ReviewFileName ($InboxItem.BaseName + ".review.md") `
@@ -985,6 +1040,9 @@ $RawReply
 
                 Write-Host "WARNING: model reply was not valid JSON. Review file written, Knowledge Map left untouched."
                 Write-AriadneLog -Level "ERROR" -Message "Failed after retry: $FailureReason"
+                $IsPermanentInvocationFailure = Test-AriadnePermanentInvocationFailure -Message $FailureReason
+                $PermanentlyFailed = Queue-IngestionFailure -Name $InboxItem.Name -Reason $FailureReason -Retryable (-not $IsPermanentInvocationFailure)
+                if ($PermanentlyFailed) { Write-AriadneLog -Level "ERROR" -Message "Permanent ingestion failure: $($InboxItem.Name) reason=$FailureReason" }
                 Write-AriadneLog -Level "INFO" -Message "Saved review: $([System.IO.Path]::GetFileName($ReviewFile))"
             }
 

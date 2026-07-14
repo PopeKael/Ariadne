@@ -1,4 +1,4 @@
-# Ariadne Knowledge Compiler (v0.8)
+# Ariadne Knowledge Compiler (v0.8.15)
 
 The Knowledge Compiler is separate from deterministic ingest. It analyses the existing Wiki and `library.json`, then produces evidence for human review. It does not rewrite pages, create concepts, merge aliases, or change the Knowledge Map.
 
@@ -22,7 +22,7 @@ Apply approved, conservative link changes:
 .\00_System\Compile-Knowledge.ps1 -Mode Apply
 ```
 
-Apply mode only adds sorted, unique links to `## Related Concepts` sections, and only where exact evidence from existing Wiki metadata or `library.json` names another existing Wiki page. It writes a post-compilation health report with before/after graph metrics.
+Apply mode only adds sorted, unique links to `## Related Concepts` sections. Evidence can be an exact existing-page reference in source metadata, an explicitly assigned secondary domain, or an intentional domain-to-domain relationship from `DomainVocabulary.json`. It writes a post-compilation health report with before/after graph metrics.
 
 The health report also lists report-only promotion candidates. These are derived from `library.json` evidence across at least three distinct document identities and are checked against the existing `Wiki/Concepts`, `People`, and `Entities` registries. The compiler never creates or changes nodes.
 

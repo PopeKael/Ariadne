@@ -1,0 +1,16 @@
+{
+  "version": "0.8.15",
+  "domains": [
+    { "name": "AI & LLMs", "description": "AI models, agents, prompting, model capabilities, and AI policy.", "keywords": ["ai", "llm", "llms", "rag", "mcp"], "related_domains": ["Infrastructure", "Knowledge Management", "Content Creation", "Business"] },
+    { "name": "Infrastructure", "description": "Compute, networks, storage, operating systems, deployment, and operational tooling.", "keywords": ["infrastructure", "docker", "linux", "windows", "network", "server", "servers", "storage", "gpu", "deployment"], "related_domains": ["AI & LLMs", "Knowledge Management", "Projects"] },
+    { "name": "Knowledge Management", "description": "Capture, organisation, retrieval, knowledge graphs, and personal knowledge systems.", "keywords": ["knowledge management", "knowledge base", "knowledge vault", "retrieval", "embedding", "embeddings", "chunking", "obsidian"], "related_domains": ["AI & LLMs", "Infrastructure", "Projects", "Personal"] },
+    { "name": "Projects", "description": "Defined initiatives, project planning, architecture, decisions, and delivery work.", "keywords": ["roadmap", "architecture", "milestone"], "related_domains": ["AI & LLMs", "Infrastructure", "Knowledge Management", "Content Creation"] },
+    { "name": "Content Creation", "description": "Writing, video, audio, imagery, publishing, audience development, and creative workflows.", "keywords": ["content creation", "youtube", "vlogging", "thumbnail", "music", "social media", "wordpress"], "related_domains": ["AI & LLMs", "Business", "Travel & Expat Experience", "Gaming"] },
+    { "name": "Business", "description": "Markets, companies, products, strategy, finance, regulation, and commercial operations.", "keywords": ["business", "market", "markets", "finance", "investment", "company", "companies", "product strategy", "economics"], "related_domains": ["AI & LLMs", "Content Creation", "Travel & Expat Experience"] },
+    { "name": "Personal", "description": "Personal decisions, home, family, health, relationships, and individual productivity.", "keywords": ["family", "health", "relationship", "productivity"], "related_domains": ["Knowledge Management", "Travel & Expat Experience", "Philosophy"] },
+    { "name": "Gaming", "description": "Games, gaming hardware, game culture, and the games industry.", "keywords": ["gaming", "game", "games", "arcade"], "related_domains": ["AI & LLMs", "Content Creation"] },
+    { "name": "Philosophy", "description": "Ideas, ethics, meaning, worldviews, and reflective analysis.", "keywords": ["philosophy", "ethics", "consciousness"], "related_domains": ["AI & LLMs", "Personal"] },
+    { "name": "Travel & Expat Experience", "description": "Travel, Thailand, relocation, visas, local life, and expatriate experience.", "keywords": ["travel", "thailand", "thai", "expat", "visa", "immigration", "tourism", "bangkok"], "related_domains": ["Business", "Content Creation", "Personal"] },
+    { "name": "Archive", "description": "Fallback for material that cannot yet be confidently assigned to another domain.", "keywords": [], "related_domains": [] }
+  ]
+}
