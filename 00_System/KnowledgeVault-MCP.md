@@ -16,6 +16,16 @@
 - `search_knowledge_vault(query, limit=5)` remains available for document-level catalogue browsing.
 - `get_knowledge_document(document_id, offset=0, max_chars=12000)` returns processed Markdown for a selected result. Use `next_offset` to page a long document.
 
+## Retrieval evaluation
+
+`evaluation/retrieval_cases.json` is the versioned regression set for chunk retrieval. Cases may expect a document ID or, where necessary, an exact chunk ID. Run it after ranking, chunking, or embedding changes:
+
+```powershell
+py -3 .\00_System\evaluate_retrieval.py
+```
+
+The JSON report includes Recall@K and mean reciprocal rank (MRR), plus the returned chunk IDs for misses. Add cases from real queries and regressions; do not silently change an expectation just to improve a score.
+
 ## Local MCP configuration
 
 Configure an MCP client with this stdio command:
