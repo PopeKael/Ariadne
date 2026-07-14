@@ -13,7 +13,7 @@
 <body>
   <header>
     <h1>Ariadne System Reference</h1>
-    <p class="lede">A working index of <code>00_System</code>: what runs the vault, what describes it, and which files are state or recovery artefacts. This is intentionally a reference page, not another control plane.</p>
+    <p class="lede">A working index of <code>00_System</code>: what runs the vault, what describes it, and which files are state or recovery artefacts. This is intentionally a reference page, not another control plane. Use <code>Start-AriadneControl.ps1</code> for the local workflow menu.</p>
     <p class="meta">Vault-relative location: <code>00_System/System-Reference.html</code> · Inventory reviewed 2026-07-14</p>
   </header>
 
@@ -33,6 +33,7 @@
     <table>
       <thead><tr><th>Script</th><th>Role</th><th>Function and effect</th><th>Run notes</th></tr></thead>
       <tbody>
+        <tr><td><a href="Start-AriadneControl.ps1"><code>Start-AriadneControl.ps1</code></a></td><td class="routine">Control menu</td><td>Starts the local Ariadne Control page, which separates normal operations from maintenance actions and launches only allow-listed workflows in separate PowerShell windows.</td><td>Run this first, then use the browser menu. Press <code>Ctrl+C</code> in its PowerShell window to stop the local menu.</td></tr>
         <tr><td><a href="ariadne.ps1"><code>ariadne.ps1</code></a></td><td class="routine">Core ingest</td><td>Processes Inbox files, calls the Ariadne classification prompt, writes Review and Processed output, updates <code>library.json</code> and <code>KnowledgeMap.md</code>, detects duplicates, and maintains a retry queue.</td><td><code>-MaxItemsPerRun N</code> limits a batch; normal operational entry point.</td></tr>
         <tr><td><a href="Run%20Injest.ps1"><code>Run Injest.ps1</code></a></td><td class="routine">Convenience launcher</td><td>Sets a process-only execution-policy bypass, invokes <code>ariadne.ps1</code>, and keeps the console open on completion or failure.</td><td>Filename contains the existing “Injest” typo. Rename only if shortcuts/docs are updated together.</td></tr>
         <tr><td><a href="Invoke-GraphLinking.ps1"><code>Invoke-GraphLinking.ps1</code></a></td><td class="routine">Ingest helper</td><td>Scores related catalogue entries from classification metadata, adds reciprocal links, and creates/updates concept and entity pages. It delegates @mentions to person resolution.</td><td>Called by ingest; requires classification and source name.</td></tr>

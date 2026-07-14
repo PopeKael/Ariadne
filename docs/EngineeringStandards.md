@@ -168,8 +168,11 @@ Git does not store:
 
 - Personal knowledge
 - Generated review files
+- Generated runtime indexes, including `00_System/Data/embedding-index.json`
 - Temporary working files
 - User-specific workspace layout
+
+Generated artifacts must have a documented rebuild path. For the local semantic-search index, use `00_System/Build-Embeddings.ps1 -Rebuild`.
 
 ---
 

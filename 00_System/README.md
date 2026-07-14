@@ -22,6 +22,25 @@ Typical contents include:
 - Build documentation
 - Project roadmap
 
+## Generated runtime data
+
+`Data/embedding-index.json` is Ariadne's local semantic-search index. It is generated from the vault and intentionally excluded from Git: it is reproducible, machine-local, and may be large.
+
+Check or recreate it with:
+
+```powershell
+.\00_System\Build-Embeddings.ps1 -Status
+.\00_System\Build-Embeddings.ps1 -Rebuild
+```
+
+Do not add the generated index to commits. The scripts, configuration, and source content needed to rebuild it remain version controlled.
+
+## Control menu
+
+Run `Start-AriadneControl.ps1` to open the local HTML control menu. It separates normal vault operations from maintenance routines and launches each selected workflow in a separate PowerShell window.
+
+The launcher accepts requests only from its own loopback page and exposes a fixed allow-list of scripts. It is deliberately not a general PowerShell command runner.
+
 ## What belongs here?
 
 Anything that defines the behaviour of Ariadne belongs in this folder.

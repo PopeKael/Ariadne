@@ -21,6 +21,7 @@ Examples include:
 - User and developer guides
 - Installation documentation
 - Release notes
+- [Changelog](../CHANGELOG.md)
 - Future roadmap
 
 ## What belongs here?
