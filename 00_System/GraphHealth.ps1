@@ -12,11 +12,11 @@ function N([string]$s) { if ($null -eq $s) { return '' }; return (($s.ToLowerInv
 function A($v) { if ($null -eq $v) { return @() }; return @($v) }
 
 $entries = if (Test-Path -LiteralPath $LibraryPath) { @(Get-Content -Raw -LiteralPath $LibraryPath | ConvertFrom-Json) } else { @() }
-$notes = @{}; $edges = @{}; $concepts = @{}; $entities = @{}
+$notes = @{}; $edges = @{}; $concepts = @{}; $entities = @{}; $personEntityKeys=[System.Collections.Generic.HashSet[string]]::new()
 foreach ($e in $entries) {
     if (!$e.source_name) { continue }; $notes[$e.source_name] = $e; $edges[$e.source_name] = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($c in @(A $e.tags) + @(A $e.subtopics)) { $k=N "$c"; if ($k) { if (!$concepts.ContainsKey($k)) {$concepts[$k]=@()}; $concepts[$k]+=$e.source_name } }
-    foreach ($x in @(A $e.entities)) { $k=N "$x"; if ($k) { if (!$entities.ContainsKey($k)) {$entities[$k]=@()}; $entities[$k]+=$e.source_name } }
+    foreach ($x in @(A $e.entities)) { $k=N "$x"; if ($k) { if ("$x" -match '^@') {[void]$personEntityKeys.Add($k)}; if (!$entities.ContainsKey($k)) {$entities[$k]=@()}; $entities[$k]+=$e.source_name } }
     foreach ($r in @(A $e.related_notes)) { if ($notes.ContainsKey("$r")) { [void]$edges[$e.source_name].Add("$r") } }
 }
 # Note names must be indexed before resolving relationships; otherwise forward references
@@ -27,8 +27,8 @@ foreach ($e in $entries) { foreach ($r in @($e.related_notes | Where-Object {$_}
 $orphan=@($notes.Keys | Where-Object {$edges[$_].Count -eq 0}); $low=@($notes.Keys | Where-Object {$edges[$_].Count -lt $LowConnectivityThreshold})
 $dupConcept=@($concepts.Keys | Group-Object { ($_ -replace '\b(ai|llms?|the|and)\b','').Trim() } | Where-Object {$_.Count -gt 1})
 $dupEntity=@($entities.Keys | Group-Object { $_ } | Where-Object {$_.Count -gt 1})
-$wikiConcepts=Join-Path $Vault 'Wiki\Concepts'; $wikiEntities=Join-Path $Vault 'Entities'
-$missingConcept=@($concepts.Keys | Where-Object { !(Test-Path -LiteralPath (Join-Path $wikiConcepts ("$_.md"))) }); $missingEntity=@($entities.Keys | Where-Object { !(Test-Path -LiteralPath (Join-Path $wikiEntities ("$_.md"))) })
+$wikiConcepts=Join-Path $Vault 'Wiki\Concepts'; $wikiEntities=Join-Path $Vault 'Entities'; $peopleRoot=Join-Path $Vault 'People'
+$missingConcept=@($concepts.Keys | Where-Object { !(Test-Path -LiteralPath (Join-Path $wikiConcepts ("$_.md"))) }); $missingEntity=@($entities.Keys | Where-Object { $root=if($personEntityKeys.Contains($_)){$peopleRoot}else{$wikiEntities}; !(Test-Path -LiteralPath (Join-Path $root ("$_.md"))) })
 $backlinkMissing=@(); foreach($n in $notes.Keys) { foreach($r in $edges[$n]) { if ($notes.ContainsKey("$r") -and -not ($edges["$r"] -contains $n)) {$backlinkMissing += "$n -> $r"} } }
 $cross=0; $possible=0; foreach($a in $notes.Keys){foreach($b in $edges[$a]){if($a -lt $b){$possible++; if($notes[$a].primary_topic -ne $notes[$b].primary_topic){$cross++}}}}
 $avg=if($notes.Count){[math]::Round((@($edges.Values|ForEach-Object {$_.Count}|Measure-Object -Sum).Sum/$notes.Count),2)}else{0}; $ratio=if($possible){$cross/$possible}else{0}

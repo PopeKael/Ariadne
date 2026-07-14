@@ -232,7 +232,6 @@
       "House Price Estimation2026-07-10T16_59_21+07_00.md",
       "Lop Buri Photography Tips2026-07-10T22_06_17+07_00.md",
       "Order Discrepancy Resolution2026-07-10T19_51_30+07_00.md",
-      "Siam=422026-07-02T19_05_42+07_002026-07-02T04_21_04-07_00[[Chanya & Wazza's Thailand]].md",
       "Sukhothai Trip.md"
     ],
     "map_entry": "Comment on visiting Tree Town and nearby sois, noting bar crowds in Chiang Mai.",
@@ -270,14 +269,17 @@
       "RAG",
       "Marp"
     ],
-    "entities": [],
+    "entities": [
+      "@karpathy",
+      "@__endif"
+    ],
     "related_notes": [
       "🔍 Vehicles • Open WebUI2026-07-12T22_47_24+07_00.md",
       "Achieving project goals without increasing costs2026-07-12T09_21_23+07_00.md",
       "Build a Self Improving Claude Knowledge Base.md",
-      "GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].md",
       "Librarian Interface for LLMs2026-07-10T16_59_07+07_00.md",
       "My main focus right now is finding one interface to do all my personal...2026-07-12T11_46_25+07_00.md",
+      "What are 5 creative things I c... • Open WebUI2026-07-12T22_55_30+07_00.md",
       "What does it do exactly_2026-07-12T11_50_42+07_00.md"
     ],
     "map_entry": "Andrej Karpathy on X — Using LLMs to create and maintain a personal knowledge base in Obsidian",
@@ -285,7 +287,11 @@
     "review_path": "Review/(5) Andrej Karpathy on X_ _LLM Knowledge Bases__Something I'm finding very useful recently_ using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token .review.md",
     "processed_path": "Processed/(5) Andrej Karpathy on X_ _LLM Knowledge Bases__Something I'm finding very useful recently_ using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token .md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 08:37:37"
+    "indexed_at": "2026-07-14 08:37:37",
+    "people": [
+      "@karpathy",
+      "@__endif"
+    ]
   },
   {
     "source_name": "🇹🇭 Thai Visa & Immigration G... • Open WebUI2026-07-12T22_57_12+07_00.md",
@@ -440,7 +446,6 @@
     "related_notes": [
       "Build a Self Improving Claude Knowledge Base.md",
       "Correspondence - YouTube Comments C&W2026-07-05T11_17_00+07_00.md",
-      "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "SpaceX Starship Launch Success • Open WebUI2026-07-12T22_49_30+07_00.md",
       "untitled.md",
       "Voice Cloning Applications2026-07-11T18_53_51+07_00.md",
@@ -699,7 +704,8 @@
       "https://app.ringer.ai"
     ],
     "entities": [
-      "AI News & Strategy Daily"
+      "AI News & Strategy Daily",
+      "@nate"
     ],
     "related_notes": [
       "🔊 Translate Thai-English2026-07-10T19_58_05+07_00.md",
@@ -716,7 +722,10 @@
     "review_path": "Review/1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].review.md",
     "processed_path": "Processed/1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 08:40:23"
+    "indexed_at": "2026-07-14 08:40:23",
+    "people": [
+      "@nate"
+    ]
   },
   {
     "source_name": "3D Image Creation Request2026-07-11T16_09_37+07_00.md",
@@ -821,10 +830,12 @@
     ],
     "links": [],
     "entities": [
-      "Matt Wolfe"
+      "Matt Wolfe",
+      "@mr"
     ],
     "related_notes": [
       "1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
+      "AI News_ GPT-5.6 and the new Super App are a Massive Leap!2026-07-10T22_54_43+07_002026-07-10T07_41_53-07_00[[Matt Wolfe]].md",
       "Build An AI Second Brain Knowledge Base (Step-By-Step).md",
       "Cold Viruses in Bangkok2026-07-11T17_37_47+07_00.md",
       "Music Learning Games2026-07-10T19_56_18+07_00.md",
@@ -835,7 +846,10 @@
     "review_path": "Review/9 Free AI Skills That Feel Like Cheat Codes.review.md",
     "processed_path": "Processed/9 Free AI Skills That Feel Like Cheat Codes.md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 08:41:04"
+    "indexed_at": "2026-07-14 08:41:04",
+    "people": [
+      "@mr"
+    ]
   },
   {
     "source_name": "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
@@ -874,15 +888,18 @@
       "Leonardo"
     ],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
       "AI News_ GPT-5.6 and the new Super App are a Massive Leap!2026-07-10T22_54_43+07_002026-07-10T07_41_53-07_00[[Matt Wolfe]].md",
+      "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].md",
       "Markdown Summary2026-07-11T18_50_05+07_00.md",
-      "My main focus right now is finding one interface to do all my personal...2026-07-12T11_46_25+07_00.md",
-      "Pope Kael TV - Master YouTube Packaging Guide2026-07-14T13_58_27+07_00.md",
+      "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "The Patreon Tribe - AI Pricing and Failures2026-07-14T12_29_04+07_00.md",
       "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md"
     ],
@@ -891,7 +908,12 @@
     "review_path": "Review/A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 08:42:19"
+    "indexed_at": "2026-07-14 08:42:19",
+    "people": [
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "A Thai Academic Speaks Up for Foreign Retirees_2026-07-05T09_14_54+07_002025-02-21T16_45_02-08_00[[Integrity Legal Thailand]].md",
@@ -959,9 +981,9 @@
     "entities": [],
     "related_notes": [
       "(5) Andrej Karpathy on X_ _LLM Knowledge Bases__Something I'm finding very useful recently_ using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token .md",
+      "AI Task Classification2026-07-10T22_13_01+07_00.md",
       "It's officially the end of an era for Adobe2026-07-08T07_40_21+07_002026-07-07T13_41_19Z[[Amir Bohlooli]].md",
       "Markdown Plugin Benefits.md",
-      "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "Middle East crude oil pricing2026-07-12T09_16_37+07_00.md",
       "Pope Kael TV - Video Performance Analysis2026-07-14T13_39_04+07_00.md",
       "Wordpress SEO Workflow - Google Analytics Plugin Issue2026-07-12T11_42_26+07_00.md",
@@ -1253,6 +1275,7 @@
       "My art - Thumbnail Design Assistance2026-07-14T13_28_52+07_00.md",
       "New chat2026-07-12T08_02_15+07_00.md",
       "New chat2026-07-12T17_55_39+07_00.md",
+      "Pope Kael TV - AI Alignment Test Results2026-07-14T14_01_58+07_00.md",
       "Pope Kael TV - Master YouTube Packaging Guide2026-07-14T13_58_27+07_00.md"
     ],
     "map_entry": "AI Integration Review — chat about using AI to generate and refine thumbnails for a video production",
@@ -1346,15 +1369,16 @@
       "https://openai.com/blog/gpt-5"
     ],
     "entities": [
-      "Matt Wolfe"
+      "Matt Wolfe",
+      "@mr"
     ],
     "related_notes": [
+      "9 Free AI Skills That Feel Like Cheat Codes.md",
       "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE).md",
       "Image Upscaling Request - 2026-07-09 12.46.md",
       "Perplexity.md",
       "Professional Portrait Description2026-07-11T18_52_44+07_00.md",
-      "Tetrataenite Super Material2026-07-11T15_04_24+07_00.md",
       "The Rabbit Hole - Hank's AI Perspective2026-07-13T22_54_30+07_00.md",
       "Use N8N To Build A Custom AI-Powered Newsletter2026-07-11T20_50_08+07_002025-10-29T13_00_30-07_00[[Matt Wolfe]].md"
     ],
@@ -1363,7 +1387,10 @@
     "review_path": "Review/AI News_ GPT-5.6 and the new Super App are a Massive Leap!2026-07-10T22_54_43+07_002026-07-10T07_41_53-07_00[[Matt Wolfe]].review.md",
     "processed_path": "Processed/AI News_ GPT-5.6 and the new Super App are a Massive Leap!2026-07-10T22_54_43+07_002026-07-10T07_41_53-07_00[[Matt Wolfe]].md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 08:46:16"
+    "indexed_at": "2026-07-14 08:46:16",
+    "people": [
+      "@mr"
+    ]
   },
   {
     "source_name": "AI Task Classification2026-07-10T22_13_01+07_00.md",
@@ -1397,10 +1424,10 @@
     "entities": [],
     "related_notes": [
       "1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
+      "Achieving project goals without increasing costs2026-07-12T09_21_23+07_00.md",
       "Anthropic is coming for EVERYTHING.md",
       "Correspondence - Hitchhiker treadmill2026-07-02T13_50_35+07_00.md",
       "Flight and Ship Trackers2026-07-11T12_19_40+07_00.md",
-      "The Rabbit Hole - AI and Job Disruption2026-07-13T22_52_53+07_00.md",
       "The Rabbit Hole - Cloud Centralization Fragility2026-07-13T22_43_13+07_00.md",
       "World-Renowned Physicist_ They Are Lying To You About UFOs & Reality - Michio Kaku2026-07-03T08_11_52+07_002026-05-21T00_00_29-07_00[[The Diary Of A CEO]].md",
       "Your Roadmap Is Why You're Losing to AI-Native Teams.2026-07-12T23_41_20+07_002026-07-12T09_00_37-07_00[[AI News & Strategy Daily _ Nate B Jones]].md"
@@ -1442,7 +1469,9 @@
     "links": [
       "https://example.com/original"
     ],
-    "entities": [],
+    "entities": [
+      "@media"
+    ],
     "related_notes": [
       "Greeting response2026-07-11T18_51_58+07_00.md",
       "Linktree or Custom Page2026-07-11T12_15_50+07_00.md",
@@ -1457,7 +1486,10 @@
     "review_path": "Review/And once again, we are at a point where I'm still trying to evaluate exactly...2026-07-12T11_51_00+07_00.review.md",
     "processed_path": "Processed/And once again, we are at a point where I'm still trying to evaluate exactly...2026-07-12T11_51_00+07_00.md",
     "wiki_path": "Wiki/Content Creation.md",
-    "indexed_at": "2026-07-14 08:47:39"
+    "indexed_at": "2026-07-14 08:47:39",
+    "people": [
+      "@media"
+    ]
   },
   {
     "source_name": "Anthropic is coming for EVERYTHING.md",
@@ -1549,24 +1581,32 @@
     ],
     "links": [],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@PopeKael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty"
     ],
     "related_notes": [
       "AI Librarian Vision2026-07-11T18_55_13+07_00.md",
+      "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "Code Stuff I don't Understand - Business Architecture Blueprint2026-07-14T12_36_18+07_00.md",
       "Code Stuff I don't Understand - The AI Librarian and Cartographer.md",
       "Feasibility of building a structural idea2026-07-12T09_21_12+07_00.md",
       "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "New chat2026-07-12T18_41_28+07_00.md",
-      "The Rabbit Hole - Thai Airways Drug Scandal2026-07-14T12_28_04+07_00.md",
-      "Window into the World - ChatGPT Data Loss Incident2026-07-11T20_18_51+07_00.md"
+      "Where will I find the Time2026-07-08T20_30_26+07_002026-07-08T05_59_27-07_00[[Garage Alchemy with Pope Kael]].md"
     ],
     "map_entry": "Ariadne: an AI librarian system with layered architecture for capturing user intent, mapping capabilities, synthesizing intelligence and ensuring trust",
     "summary": "The speaker describes Ariadne, a modular AI librarian built on nine layers: data ingestion, intent & context understanding, capability discovery (atlas), intelligent execution, cognitive synthesis, evaluation, response generation, feedback learning, and governance. The system integrates multiple LLMs and tools to gather information, assess reliability, and produce trustworthy answers while continually improving through user feedback. Key strengths highlighted are the comprehensive capability atlas, robust synthesis engine, and a strong trust framework.",
     "review_path": "Review/Ariadne, the librarian.review.md",
     "processed_path": "Processed/Ariadne, the librarian.md",
     "wiki_path": "Wiki/Knowledge Management.md",
-    "indexed_at": "2026-07-14 08:49:49"
+    "indexed_at": "2026-07-14 08:49:49",
+    "people": [
+      "@PopeKael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty"
+    ]
   },
   {
     "source_name": "ARK Cheat Commands Guide2026-07-11T18_24_31+07_00.md",
@@ -1703,14 +1743,18 @@
       "GitHub"
     ],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAn",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
+      "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "AI Global Power Struggle2026-07-11T17_43_52+07_00.md",
-      "Compare prices for noise cancelling earbuds2026-07-12T11_51_38+07_00.md",
+      "Ariadne, the librarian.md",
       "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
-      "I'm finding Perplexity is performing tasks very well on the free tier. __One...2026-07-12T11_46_38+07_00.md",
-      "Image Translation Request2026-07-11T18_23_31+07_00.md",
+      "It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
       "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md",
       "Window into the World - AGI Risks and Deception2026-07-11T20_20_07+07_00.md",
       "Window into the World - AI Layoffs and Justifications2026-07-11T20_17_34+07_00.md"
@@ -1720,7 +1764,13 @@
     "review_path": "Review/Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 08:52:11"
+    "indexed_at": "2026-07-14 08:52:11",
+    "people": [
+      "@ChanyaAn",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "Audio file transcription2026-07-12T09_18_22+07_00.md",
@@ -2127,7 +2177,9 @@
       "https://www.bangkokcityguide.com/"
     ],
     "entities": [
-      "Thairish Times"
+      "Thairish Times",
+      "@BangkokPat",
+      "@ThairishTimes"
     ],
     "related_notes": [
       "🔊 Translate Thai-English2026-07-10T19_58_05+07_00.md",
@@ -2144,7 +2196,11 @@
     "review_path": "Review/Broke in Thailand_ The E-Begging Foreigners Who Refuse to Leave When the Money Runs Out @BangkokPat.review.md",
     "processed_path": "Processed/Broke in Thailand_ The E-Begging Foreigners Who Refuse to Leave When the Money Runs Out @BangkokPat.md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 08:57:15"
+    "indexed_at": "2026-07-14 08:57:15",
+    "people": [
+      "@BangkokPat",
+      "@ThairishTimes"
+    ]
   },
   {
     "source_name": "Build a Self Improving Claude Knowledge Base.md",
@@ -2242,7 +2298,8 @@
       "GitHub"
     ],
     "entities": [
-      "Matt Wolfe"
+      "Matt Wolfe",
+      "@mr"
     ],
     "related_notes": [
       "9 Free AI Skills That Feel Like Cheat Codes.md",
@@ -2259,7 +2316,10 @@
     "review_path": "Review/Build An AI Second Brain Knowledge Base (Step-By-Step).review.md",
     "processed_path": "Processed/Build An AI Second Brain Knowledge Base (Step-By-Step).md",
     "wiki_path": "Wiki/Knowledge Management.md",
-    "indexed_at": "2026-07-14 08:58:36"
+    "indexed_at": "2026-07-14 08:58:36",
+    "people": [
+      "@mr"
+    ]
   },
   {
     "source_name": "Camera Stabilization Comparison2026-07-11T18_51_05+07_00.md",
@@ -2811,7 +2871,6 @@
     ],
     "entities": [],
     "related_notes": [
-      "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "Bangkok among world's 10 most expensive cities for the wealthy2026-07-08T21_29_55+07_002026-07-08T14_25_00+07_00[[Bangkok Post Public Company Limited]].md",
       "KA White Creams Review2026-07-11T18_28_30+07_00.md",
       "Local aircon cleaning services in Sam Phran, Nakhon Pathom2026-07-12T09_18_51+07_00.md",
@@ -2864,11 +2923,10 @@
     "related_notes": [
       "AI Task Classification2026-07-10T22_13_01+07_00.md",
       "Flight and Ship Trackers2026-07-11T12_19_40+07_00.md",
+      "KA White Creams Review2026-07-11T18_28_30+07_00.md",
       "Pope Kael TV.md",
-      "The AI Systems Architect.md",
       "The Rabbit Hole - MrBeast's YouTube Decline2026-07-13T22_55_26+07_00.md",
       "What China JUST revealed will change HISTORY !.md",
-      "Where will I find the Time2026-07-08T20_30_26+07_002026-07-08T05_59_27-07_00[[Garage Alchemy with Pope Kael]].md",
       "Your Roadmap Is Why You're Losing to AI-Native Teams.2026-07-12T23_41_20+07_002026-07-12T09_00_37-07_00[[AI News & Strategy Daily _ Nate B Jones]].md"
     ],
     "map_entry": "Blueprint for Ariadne: cost‑efficient AI system design principles based on personal engineering experience.",
@@ -2907,7 +2965,9 @@
       "Obsidian",
       "YouTube"
     ],
-    "entities": [],
+    "entities": [
+      "@benwilliams174"
+    ],
     "related_notes": [
       "📚 Markdown Knowledge Base • Open WebUI2026-07-05T23_49_54+07_00.md",
       "Explaining YouTube's recommendation algorithm to viewers2026-07-12T09_16_56+07_00.md",
@@ -2923,7 +2983,10 @@
     "review_path": "Review/Correspondence - YouTube Comments C&W2026-07-05T11_17_00+07_00.review.md",
     "processed_path": "Processed/Correspondence - YouTube Comments C&W2026-07-05T11_17_00+07_00.md",
     "wiki_path": "Wiki/Content Creation.md",
-    "indexed_at": "2026-07-14 09:11:35"
+    "indexed_at": "2026-07-14 09:11:35",
+    "people": [
+      "@benwilliams174"
+    ]
   },
   {
     "source_name": "Correspondence.md",
@@ -3034,7 +3097,7 @@
       "Multi-Personality Building - Yoda's Guidance Refinement2026-07-11T19_40_12+07_00.md",
       "My art - AI Animation for Miniatures2026-07-14T13_30_47+07_00.md",
       "My art - Song Comment Refinement2026-07-14T12_44_27+07_00.md",
-      "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md"
+      "The Rabbit Hole - Metaverse and User Economy2026-07-14T12_09_39+07_00.md"
     ],
     "map_entry": "Custom Instructions for Codex – a conversation outlining best practices for personalizing AI behavior",
     "summary": "This chat logs the creation of custom instructions to tailor an AI assistant’s responses. The user asks for guidance on what directives to include so the model behaves more like a knowledgeable partner, while avoiding basic explanations unless requested. ChatGPT offers two structured blocks: one focusing on technical decision-making and troubleshooting, and another tailored to the user's interests in infrastructure, content creation, and collaborative problem solving. The instructions emphasize concise answers, maintain continuity across contexts, and encourage the AI to surface better questions or alternative approaches rather than merely answering directly. Overall, the conversation demonstrates how prompt engineering can shape an LLM into a more efficient, partnership-oriented assistant.",
@@ -3581,16 +3644,19 @@
       "XSplit"
     ],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
-      "📚 Markdown Knowledge Base • Open WebUI2026-07-05T23_49_54+07_00.md",
       "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "Build An AI Second Brain Knowledge Base (Step-By-Step).md",
       "GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].md",
       "It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
-      "Project Milestone Checkpoint2026-07-11T19_35_09+07_00.md",
+      "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
+      "The AI Systems Architect.md",
       "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md"
     ],
     "map_entry": "Document outlines how to set up a local AI development environment, manage projects with Git tags and Docker, and store knowledge in an Obsidian vault.",
@@ -3598,7 +3664,12 @@
     "review_path": "Review/First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/Knowledge Management.md",
-    "indexed_at": "2026-07-14 09:21:42"
+    "indexed_at": "2026-07-14 09:21:42",
+    "people": [
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "Flight and Ship Trackers2026-07-11T12_19_40+07_00.md",
@@ -3974,16 +4045,19 @@
       "Patreon"
     ],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
-      "(5) Andrej Karpathy on X_ _LLM Knowledge Bases__Something I'm finding very useful recently_ using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token .md",
       "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "ChatGPT's native image integration advantage.md",
       "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
       "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "Pope Kael TV - Project Progress Review2026-07-13T16_37_13+07_00.md",
+      "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md",
       "Vehicle Classification Discussion - 2026-07-09 12.15.md"
     ],
     "map_entry": "A guide to creating a wiki‑style knowledge graph by ingesting PDF documents, chunking text, embedding with OpenAI, deduplicating, and storing in Pinecone for semantic search.",
@@ -3991,7 +4065,12 @@
     "review_path": "Review/GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/Knowledge Management.md",
-    "indexed_at": "2026-07-14 09:30:09"
+    "indexed_at": "2026-07-14 09:30:09",
+    "people": [
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "Gravity Quantum Experiment2026-07-11T18_28_55+07_00.md",
@@ -4196,7 +4275,6 @@
       "Biography of Chanya and Wazza - Life Summaries Retrieval2026-07-11T20_12_54+07_00.md",
       "New chat2026-07-12T08_11_00+07_00.md",
       "The Rabbit Hole - CEO Salaries vs Industrial Policy2026-07-14T12_25_53+07_00.md",
-      "Where will I find the Time2026-07-08T20_30_26+07_002026-07-08T05_59_27-07_00[[Garage Alchemy with Pope Kael]].md",
       "YouTube Archive Refresh - Bangkok Suburb Living Costs2026-07-12T07_54_08+07_00.md"
     ],
     "map_entry": "Personal discussion on building a modest home on family land in Thailand with supportive infrastructure and familial ties.",
@@ -4282,7 +4360,7 @@
     "entities": [],
     "related_notes": [
       "Claude's code capabilities on free plan2026-07-12T09_19_05+07_00.md",
-      "My AI workflow has improved.md",
+      "how do i unfollow inactive x accounts2026-07-12T11_45_11+07_00.md",
       "Perplexity.md",
       "Pope Kael TV - Channel Description Update2026-07-14T13_57_20+07_00.md",
       "Thailand Content Ideas2026-07-10T19_57_07+07_00.md",
@@ -4329,13 +4407,15 @@
       "https://www.archivlyx.com/twitter/following-manager",
       "https://apps.apple.com/us/app/unfollow-for-x-aka-twitter/id369327398"
     ],
-    "entities": [],
+    "entities": [
+      "@elonmusk"
+    ],
     "related_notes": [
       "AI Experts on Threads2026-07-10T19_48_41+07_00.md",
       "Anthropic is coming for EVERYTHING.md",
       "Facebook Reels for Music2026-07-11T12_18_44+07_00.md",
+      "How do I compare my current $20 per month with OpenAI to the similar offering...2026-07-12T11_48_51+07_00.md",
       "If I upload a photo of me at the age of 8 and my current age 65, could you...2026-07-12T11_53_06+07_00.md",
-      "Is there a public website that tracks live shipping_2026-07-12T11_47_36+07_00.md",
       "NSW Roadwork Speed Limit Changes2026-07-11T18_28_07+07_00.md",
       "Pope Kael TV - AI YouTube Transcription Fix2026-07-14T14_00_19+07_00.md",
       "The Patreon Tribe - AI Pricing and Failures2026-07-14T12_29_04+07_00.md"
@@ -4345,7 +4425,10 @@
     "review_path": "Review/how do i unfollow inactive x accounts2026-07-12T11_45_11+07_00.review.md",
     "processed_path": "Processed/how do i unfollow inactive x accounts2026-07-12T11_45_11+07_00.md",
     "wiki_path": "Wiki/Content Creation.md",
-    "indexed_at": "2026-07-14 09:33:50"
+    "indexed_at": "2026-07-14 09:33:50",
+    "people": [
+      "@elonmusk"
+    ]
   },
   {
     "source_name": "How to Build a Personal Context MCP.md",
@@ -4426,7 +4509,9 @@
       "cleanup"
     ],
     "links": [],
-    "entities": [],
+    "entities": [
+      "@media"
+    ],
     "related_notes": [
       "Desktop shortcut to Docker Bash terminal on Synology2026-07-12T09_21_01+07_00.md",
       "How to Build a Personal Context MCP.md",
@@ -4442,7 +4527,10 @@
     "review_path": "Review/HTML code for landing page2026-07-11T12_16_16+07_00.review.md",
     "processed_path": "Processed/HTML code for landing page2026-07-11T12_16_16+07_00.md",
     "wiki_path": "Wiki/Infrastructure.md",
-    "indexed_at": "2026-07-14 09:35:08"
+    "indexed_at": "2026-07-14 09:35:08",
+    "people": [
+      "@media"
+    ]
   },
   {
     "source_name": "I just created this audio track in Suno - I didn't ask for lyrics but they...2026-07-12T11_53_19+07_00.md",
@@ -4535,7 +4623,8 @@
       "https://huggingface.co/flux"
     ],
     "entities": [
-      "Matt Wolfe"
+      "Matt Wolfe",
+      "@mr"
     ],
     "related_notes": [
       "AI News_ GPT-5.6 and the new Super App are a Massive Leap!2026-07-10T22_54_43+07_002026-07-10T07_41_53-07_00[[Matt Wolfe]].md",
@@ -4552,7 +4641,10 @@
     "review_path": "Review/I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE).review.md",
     "processed_path": "Processed/I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE).md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 09:38:23"
+    "indexed_at": "2026-07-14 09:38:23",
+    "people": [
+      "@mr"
+    ]
   },
   {
     "source_name": "I'm finding Perplexity is performing tasks very well on the free tier. __One...2026-07-12T11_46_38+07_00.md",
@@ -4585,14 +4677,12 @@
     ],
     "entities": [],
     "related_notes": [
-      "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "Correspondence - YouTube Comments C&W2026-07-05T11_17_00+07_00.md",
       "Custom Instructions for Codex2026-07-11T19_36_32+07_00.md",
       "Multi-Personality Building - Athena Calibration Prompt2026-07-11T19_39_58+07_00.md",
       "Multi-Personality Building - Yoda's Guidance Refinement2026-07-11T19_40_12+07_00.md",
       "My Music - Background Music for Vlog2026-07-12T18_56_21+07_00.md",
-      "perplexity comet browser2026-07-12T11_52_26+07_00.md",
-      "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md"
+      "perplexity comet browser2026-07-12T11_52_26+07_00.md"
     ],
     "map_entry": "Guide to creating a personalized conversational assistant using Perplexity’s free tier features.",
     "summary": "This article provides practical instructions on leveraging Perplexity's personalization options—custom tone prompts, profile-based personality, and style rules—to make the AI feel less tool‑like and more like an ongoing personal assistant. It includes tips such as consistent style guidelines, reinforcing tone when necessary, and using profile information to tailor responses.",
@@ -4684,10 +4774,10 @@
       "🌴 Retirement in Affordable Tr... • Open WebUI2026-07-12T22_58_04+07_00.md",
       "📸 Thai Image Translation2026-07-10T22_01_00+07_00.md",
       "🔊 English _ Thai Teacher2026-07-10T22_01_16+07_00.md",
-      "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "Code Stuff I don't Understand - Building an interface2026-07-14T12_35_12+07_00.md",
       "My art - Image Translation Request2026-07-14T13_16_48+07_00.md",
       "My art - Mage vs Dragon Image Request2026-07-14T13_32_47+07_00.md",
+      "New chat2026-07-12T08_05_43+07_00.md",
       "Thailand Chaos Generator Search2026-07-10T22_03_10+07_00.md"
     ],
     "map_entry": "Image translation request for medical appointment card with location details for Golden Jubilee Medical Center, including GPS coordinates and campus navigation instructions.",
@@ -5091,7 +5181,6 @@
     ],
     "entities": [],
     "related_notes": [
-      "how do i unfollow inactive x accounts2026-07-12T11_45_11+07_00.md",
       "Local aircon cleaning services in Sam Phran, Nakhon Pathom2026-07-12T09_18_51+07_00.md",
       "Luckin Coffee in Thailand2026-07-10T17_00_36+07_00.md",
       "What is the current situation of the Middle East war_ That was okay.2026-07-12T11_49_05+07_00.md"
@@ -5136,22 +5225,32 @@
     ],
     "links": [],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
+      "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].md",
       "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
+      "My AI workflow has improved.md",
       "My Hosting - Stage 1.7 Parse2026-07-09T23_12_30+07_00.md",
       "Pope Kael TV - Project Progress Review2026-07-13T16_37_13+07_00.md",
-      "Repurposing Kid Art • Open WebUI2026-07-12T22_54_54+07_00.md"
+      "The AI Systems Architect.md"
     ],
     "map_entry": "CodeEx video covering document conversion, chunking, embedding, local DB storage and GitHub integration.",
     "summary": "The video explains the CodeEx project’s first stage of converting PDF/DOCX files into short markdown chunks, then generating embeddings with local AI models, storing them in a local PostgreSQL database. It shows Obsidian integration, GitHub syncing, and GPU memory considerations.",
     "review_path": "Review/It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 09:48:05"
+    "indexed_at": "2026-07-14 09:48:05",
+    "people": [
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "It's officially the end of an era for Adobe2026-07-08T07_40_21+07_002026-07-07T13_41_19Z[[Amir Bohlooli]].md",
@@ -5233,7 +5332,8 @@
     ],
     "entities": [],
     "related_notes": [
-      "Compare prices for noise cancelling earbuds2026-07-12T11_51_38+07_00.md"
+      "Compare prices for noise cancelling earbuds2026-07-12T11_51_38+07_00.md",
+      "Correspondence - Hitchhiker treadmill2026-07-02T13_50_35+07_00.md"
     ],
     "map_entry": "KA White Creams Review – personal discussion on Thai local cosmetic products and a low‑cost experiment with wrinkle and spot creams.",
     "summary": "The conversation documents the author’s experience testing two budget-friendly skincare creams from the KA brand in Thailand. It examines shelf placement theory, emphasizes the importance of ingredient lists (INCI), discusses patch testing, and reflects on local marketing strategies for Thai cosmetics.",
@@ -6249,24 +6349,32 @@
       "MCP server configuration"
     ],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
-      "Achieving project goals without increasing costs2026-07-12T09_21_23+07_00.md",
+      "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "Ariadne, the librarian.md",
+      "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].md",
       "It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
       "Markdown Plugin Benefits.md",
       "Pope Kael TV - Project Progress Review2026-07-13T16_37_13+07_00.md",
-      "The AI Systems Architect.md",
-      "The Rabbit Hole - Thai Airways Drug Scandal2026-07-14T12_28_04+07_00.md"
+      "The AI Systems Architect.md"
     ],
     "map_entry": "Document on improving AI-powered knowledge vault retrieval through chunking and embeddings, with comparative analysis of agent‑centric workflows.",
     "summary": "The content outlines the transition from full PDF ingestion to a chunked, embedding‑based retrieval system for an AI knowledge vault. It explains implementation steps, testing results, and plans to build a hybrid pipeline that incorporates graph reasoning after semantic retrieval. The speaker contrasts his knowledge‑centric approach with Matt Wolf’s agent‑centric method, discusses project milestones, and seeks community input on similar projects.",
     "review_path": "Review/MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 10:03:01"
+    "indexed_at": "2026-07-14 10:03:01",
+    "people": [
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "Medication Clarification Request2026-07-10T22_05_35+07_00.md",
@@ -6298,7 +6406,6 @@
       "Lyrica Medication Information2026-07-11T18_54_10+07_00.md",
       "Prime Number Checker Function - 2026-07-09 12.16.md",
       "Steampunk Café Makeover2026-07-11T17_39_30+07_00.md",
-      "Sukhothai Trip.md",
       "The Rabbit Hole - Microneedling and Hair Growth2026-07-14T12_28_25+07_00.md"
     ],
     "map_entry": "Ketosis Carb Reduction List - Key Foods to Cut for Keto in Thailand",
@@ -6780,23 +6887,30 @@
       "Patreon"
     ],
     "links": [],
-    "entities": [],
+    "entities": [
+      "@PopeKael",
+      "@alice_beauty"
+    ],
     "related_notes": [
       "Correspondence.md",
       "Monetization vs E-begging2026-07-11T18_21_45+07_00.md",
       "New chat2026-07-12T08_11_22+07_00.md",
       "Real Aussie Expat Life - 2026-07-09 12.46.md",
       "Rephrasing Emotive YouTube Content2026-07-10T19_55_59+07_00.md",
+      "Siam=422026-07-02T19_05_42+07_002026-07-02T04_21_04-07_00[[Chanya & Wazza's Thailand]].md",
       "Thailand Medical Hub Story2026-07-11T15_04_10+07_00.md",
-      "WAZZA2026-07-02T20_31_00+07_00.md",
-      "Wordpress SEO Workflow - Thailand Life After Songkran2026-07-12T11_44_32+07_00.md"
+      "WAZZA2026-07-02T20_31_00+07_00.md"
     ],
     "map_entry": "Transcript discussing Thai living experiences, healthcare cost differences, personal medical incidents, and content creation workflow for the author's online presence.",
     "summary": "The video transcript follows an expat navigating life in Thailand: sharing insights into public vs private healthcare costs, insurance nuances, a knee surgery episode, and strategies for producing YouTube and Patreon content while managing family travel plans.",
     "review_path": "Review/Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].review.md",
     "processed_path": "Processed/Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 10:10:05"
+    "indexed_at": "2026-07-14 10:10:05",
+    "people": [
+      "@PopeKael",
+      "@alice_beauty"
+    ]
   },
   {
     "source_name": "Music Learning Games2026-07-10T19_56_18+07_00.md",
@@ -6877,20 +6991,29 @@
     ],
     "links": [],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@PopeKael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty"
     ],
     "related_notes": [
-      "How do I compare my current $20 per month with OpenAI to the similar offering...2026-07-12T11_48_51+07_00.md",
+      "It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
       "Pope Kael TV.md",
       "Thailand Medical Hub Story2026-07-11T15_04_10+07_00.md",
-      "The Patreon Tribe - IFTTT Build Optimization2026-07-14T12_32_28+07_00.md"
+      "The Patreon Tribe - IFTTT Build Optimization2026-07-14T12_32_28+07_00.md",
+      "Where will I find the Time2026-07-08T20_30_26+07_002026-07-08T05_59_27-07_00[[Garage Alchemy with Pope Kael]].md"
     ],
     "map_entry": "Workflow for turning raw ideas into polished YouTube video scripts using Markdown/Google Docs and collaborative editing tools.",
     "summary": "This document provides a practical guide to creating structured, easy-to-read YouTube video scripts. It details the setup of project files in Markdown or Google Docs, use of headers, anchor tags, and templates, collaboration steps, and overall workflow for efficient script production.",
     "review_path": "Review/My AI workflow has improved.review.md",
     "processed_path": "Processed/My AI workflow has improved.md",
     "wiki_path": "Wiki/Content Creation.md",
-    "indexed_at": "2026-07-14 10:11:17"
+    "indexed_at": "2026-07-14 10:11:17",
+    "people": [
+      "@PopeKael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty"
+    ]
   },
   {
     "source_name": "My Hosting - Ariadne Project Session 0042026-07-06T11_38_49+07_00.md",
@@ -7111,12 +7234,12 @@
     "related_notes": [
       "_Google Gemini2026-07-12T08_06_54+07_00.md",
       "(5) Andrej Karpathy on X_ _LLM Knowledge Bases__Something I'm finding very useful recently_ using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token .md",
-      "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "AI Librarian Vision2026-07-11T18_55_13+07_00.md",
       "Finding Trending Thai Content2026-07-10T17_01_59+07_00.md",
       "How to Build a Personal Context MCP.md",
       "If I upload a photo of me at the age of 8 and my current age 65, could you...2026-07-12T11_53_06+07_00.md",
-      "Qwen Studio24.md"
+      "Qwen Studio24.md",
+      "Solar installation inquiry2026-07-11T19_35_30+07_00.md"
     ],
     "map_entry": "Guidance on upgrading to Perplexity Pro or Max for personal project management, detailing feature sets and workflow integration.",
     "summary": "The document explains how users can shift from the free tier of Perplexity AI to its Pro (and optionally Max) plans to unlock extended search limits, image/video generation, advanced models, file uploads, and a “Create files & apps” capability. It emphasizes that these enhancements provide a single interface for managing personal projects by offering structured spaces, threaded conversations, and easy export of documents—making Perplexity an all‑in‑one solution for individuals who need comprehensive AI support without relying on multiple separate tools.",
@@ -7697,13 +7820,13 @@
     ],
     "entities": [],
     "related_notes": [
+      "Image Translation Request2026-07-11T18_23_31+07_00.md",
       "Image Upscaling Request - 2026-07-09 12.46.md",
       "My art - Lighting Adjustment Request2026-07-14T13_31_24+07_00.md",
       "My art - Mage vs Dragon Image Request2026-07-14T13_32_47+07_00.md",
       "New chat2026-07-12T08_06_00+07_00.md",
       "New chat2026-07-12T08_08_12+07_00.md",
       "New chat2026-07-12T17_55_13+07_00.md",
-      "Order Discrepancy Resolution2026-07-10T19_51_30+07_00.md",
       "the support team is away for the weekend - I want to send an email to the...2026-07-12T11_49_47+07_00.md"
     ],
     "map_entry": "Gemini conversation about converting an image to vibrant cartoon style; user requests correction of previous AI response.",
@@ -8502,7 +8625,9 @@
       "development environment"
     ],
     "links": [],
-    "entities": [],
+    "entities": [
+      "@media"
+    ],
     "related_notes": [
       "And once again, we are at a point where I'm still trying to evaluate exactly...2026-07-12T11_51_00+07_00.md",
       "Claude's code capabilities on free plan2026-07-12T09_19_05+07_00.md",
@@ -8514,7 +8639,10 @@
     "review_path": "Review/New chat2026-07-12T17_55_59+07_00.review.md",
     "processed_path": "Processed/New chat2026-07-12T17_55_59+07_00.md",
     "wiki_path": "Wiki/Infrastructure.md",
-    "indexed_at": "2026-07-14 10:37:14"
+    "indexed_at": "2026-07-14 10:37:14",
+    "people": [
+      "@media"
+    ]
   },
   {
     "source_name": "New chat2026-07-12T17_56_22+07_00.md",
@@ -8890,7 +9018,7 @@
       "New chat2026-07-12T18_41_41+07_00.md",
       "New chat2026-07-12T18_50_52+07_00.md",
       "New chat2026-07-12T18_54_47+07_00.md",
-      "Pope Kael TV - AI Alignment Test Results2026-07-14T14_01_58+07_00.md",
+      "Pope Kael TV - Master YouTube Packaging Guide2026-07-14T13_58_27+07_00.md",
       "Pope Kael TV - PKTV Project Framework2026-07-14T13_36_15+07_00.md"
     ],
     "map_entry": "Design guide for square Facebook post thumbnail featuring Thailand street scenes, night markets, temples and ex‑pat couple with specific overlay text and icons.",
@@ -9249,7 +9377,10 @@
     "links": [
       "https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Inter:wght@300;500;700&display=swap"
     ],
-    "entities": [],
+    "entities": [
+      "@import",
+      "@NoPlanThailand"
+    ],
     "related_notes": [
       "Improving Linktree styling and organization2026-07-12T09_20_50+07_00.md",
       "Linktree or Custom Page2026-07-11T12_15_50+07_00.md",
@@ -9265,7 +9396,11 @@
     "review_path": "Review/New chat2026-07-12T18_41_41+07_00.review.md",
     "processed_path": "Processed/New chat2026-07-12T18_41_41+07_00.md",
     "wiki_path": "Wiki/Personal.md",
-    "indexed_at": "2026-07-14 10:50:22"
+    "indexed_at": "2026-07-14 10:50:22",
+    "people": [
+      "@import",
+      "@NoPlanThailand"
+    ]
   },
   {
     "source_name": "New chat2026-07-12T18_42_07+07_00.md",
@@ -10458,7 +10593,6 @@
     "entities": [],
     "related_notes": [
       "(2) The Thailand Vloggers Hub _ Interesting article from Pattaya Mail.md",
-      "New chat2026-07-12T08_05_43+07_00.md",
       "Repurposing Kid Art • Open WebUI2026-07-12T22_54_54+07_00.md",
       "Thai food menu app - Order Food Like a Thai2026-07-11T20_15_10+07_00.md",
       "The Patreon Tribe - Patreon Tier Descriptions2026-07-14T12_33_24+07_00.md",
@@ -11261,8 +11395,8 @@
     "links": [],
     "entities": [],
     "related_notes": [
-      "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "My art - Banner Animation Workflow2026-07-14T13_25_29+07_00.md",
+      "My art - Pose Cheat Sheet Ideas2026-07-14T13_28_29+07_00.md",
       "My art - Song creation vibe check2026-07-14T12_43_56+07_00.md",
       "My art - Thumbnail Design Assistance2026-07-14T13_28_52+07_00.md",
       "My Music - My Music Composition2026-07-12T14_01_34+07_00.md",
@@ -11425,11 +11559,11 @@
       "3D Image Creation Request2026-07-11T16_09_37+07_00.md",
       "Imaging theme ideas2026-07-11T18_27_23+07_00.md",
       "My art - AI Animation for Miniatures2026-07-14T13_30_47+07_00.md",
-      "My art - Recreating Images with MII2026-07-14T13_04_37+07_00.md",
       "New chat2026-07-12T18_42_07+07_00.md",
       "New chat2026-07-12T18_53_04+07_00.md",
       "New chat2026-07-12T18_54_14+07_00.md",
-      "Steam Cathedral of Code - 2026-07-09 12.45.md"
+      "Steam Cathedral of Code - 2026-07-09 12.45.md",
+      "Wordpress SEO Workflow - Thai Buffet SEO Tips2026-07-12T11_42_44+07_00.md"
     ],
     "map_entry": "Guide for animating scenes via AI-generated images and ffmpeg.",
     "summary": "This content provides a step‑by‑step guide on how to animate a scene by generating a series of AI-created image frames from detailed prompts and compiling them into a video using ffmpeg. It covers prompt crafting, choosing frame rate and resolution, leveraging text‑to‑image models (e.g., Qwen), and assembling the final clip, enabling users to produce short animated videos with minimal technical overhead.",
@@ -11726,7 +11860,6 @@
     "entities": [],
     "related_notes": [
       "Correspondence.md",
-      "It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
       "Magick - Discordianism and AI Art2026-07-12T07_48_57+07_00.md",
       "My art - Insta Photo Tips2026-07-14T13_00_49+07_00.md",
       "My art - Reaver Image Manipulation2026-07-14T12_39_57+07_00.md",
@@ -12169,11 +12302,15 @@
       "shopping"
     ],
     "links": [],
-    "entities": [],
+    "entities": [
+      "@pope_kaelFollow",
+      "@PopeKael",
+      "@alice_beauty"
+    ],
     "related_notes": [
-      "(2) The Thailand Vloggers Hub _ Interesting article from Pattaya Mail.md",
+      "Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].md",
       "New chat2026-07-12T08_11_22+07_00.md",
-      "Video Opener – Daily Framework - Reframing Repetition in Vlogs2026-07-11T20_12_00+07_00.md",
+      "Sukhothai Trip.md",
       "Wordpress SEO Workflow - Buying a Phone in Thailand2026-07-12T18_58_29+07_00.md",
       "Wordpress SEO Workflow - Thailand Vlog SEO2026-07-12T11_43_38+07_00.md",
       "YouTube Archive Refresh - 5 Things I Love About Bangkok2026-07-12T11_37_18+07_00.md",
@@ -12185,7 +12322,12 @@
     "review_path": "Review/Siam=422026-07-02T19_05_42+07_002026-07-02T04_21_04-07_00[[Chanya & Wazza's Thailand]].review.md",
     "processed_path": "Processed/Siam=422026-07-02T19_05_42+07_002026-07-02T04_21_04-07_00[[Chanya & Wazza's Thailand]].md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 11:30:48"
+    "indexed_at": "2026-07-14 11:30:48",
+    "people": [
+      "@pope_kaelFollow",
+      "@PopeKael",
+      "@alice_beauty"
+    ]
   },
   {
     "source_name": "Society's Illusion of Choice2026-07-10T19_53_38+07_00.md",
@@ -12270,6 +12412,7 @@
     "entities": [],
     "related_notes": [
       "In this video which is over a year old - _The Last Fuel We'll Ever Need__ -...2026-07-12T11_50_01+07_00.md",
+      "My main focus right now is finding one interface to do all my personal...2026-07-12T11_46_25+07_00.md",
       "New chat2026-07-12T08_11_00+07_00.md",
       "Perplexity (1).md",
       "The Rabbit Hole - Archimedes Vortex Feasibility2026-07-13T22_55_50+07_00.md",
@@ -12554,12 +12697,16 @@
       "food"
     ],
     "links": [],
-    "entities": [],
+    "entities": [
+      "@pope_kaelFollow",
+      "@PopeKael",
+      "@alice_beauty"
+    ],
     "related_notes": [
       "(2) The Thailand Vloggers Hub _ Interesting article from Pattaya Mail.md",
       "ASI and Deep Thought2026-07-10T22_02_17+07_00.md",
       "Magick - Buddhism and Discordianism Parallels2026-07-12T07_48_24+07_00.md",
-      "Medication Clarification Request2026-07-10T22_05_35+07_00.md",
+      "Siam=422026-07-02T19_05_42+07_002026-07-02T04_21_04-07_00[[Chanya & Wazza's Thailand]].md",
       "Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_40_56+07_00.md",
       "YouTube Archive Refresh - 5 Things I Love About Bangkok2026-07-12T11_37_18+07_00.md",
       "YouTube Archive Refresh - Avatar Exhibition Bangkok2026-07-12T11_35_25+07_00.md",
@@ -12570,7 +12717,12 @@
     "review_path": "Review/Sukhothai Trip.review.md",
     "processed_path": "Processed/Sukhothai Trip.md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 11:38:09"
+    "indexed_at": "2026-07-14 11:38:09",
+    "people": [
+      "@pope_kaelFollow",
+      "@PopeKael",
+      "@alice_beauty"
+    ]
   },
   {
     "source_name": "Surreal Comedy Portrait2026-07-10T19_48_15+07_00.md",
@@ -12653,7 +12805,6 @@
       "China says it can hold people abroad accountable under ethnic unity law.md",
       "Oils, Microneedles, And New Drugs_ What Does The Latest Science Say On Hair Loss And Regrowth_2026-07-06T16_37_08+07_002024-03-16T12_00_58.000Z[[Holly Large]].md",
       "The Rabbit Hole - Airport CT Scanner Impact2026-07-14T12_08_17+07_00.md",
-      "The Rabbit Hole - Metaverse and User Economy2026-07-14T12_09_39+07_00.md",
       "Window into the World - SSD Issues Beyond Formatting2026-07-11T20_15_55+07_00.md"
     ],
     "map_entry": "Clipping: Suvarnabhumi Airport says crew member’s luggage cleared security screening before Australia heroin arrest",
@@ -12816,7 +12967,6 @@
     "links": [],
     "entities": [],
     "related_notes": [
-      "AI News_ GPT-5.6 and the new Super App are a Massive Leap!2026-07-10T22_54_43+07_002026-07-10T07_41_53-07_00[[Matt Wolfe]].md",
       "Cannabis and Brain Protection2026-07-11T16_10_43+07_00.md",
       "Gaming - Spear Rope Dart Build2026-07-14T13_26_31+07_00.md",
       "Nikola Tesla Overview2026-07-10T22_02_34+07_00.md",
@@ -13076,6 +13226,7 @@
       "Testing Features and Tokens2026-07-13T11_13_12+07_00.md",
       "Thailand chaos content generator2026-07-12T09_20_17+07_00.md",
       "The Rabbit Hole - Microneedling and Hair Growth2026-07-14T12_28_25+07_00.md",
+      "The Rabbit Hole - Thai Airways Drug Scandal2026-07-14T12_28_04+07_00.md",
       "Wordpress SEO Workflow - 8️⃣ WordPress and Patreon Posts2026-07-12T11_41_38+07_00.md"
     ],
     "map_entry": "ChatGPT conversation guiding the creation of a Thailand Chaos Generator HTML app with 23 themes, discussing versions 1-3 and search tips for locating the chat.",
@@ -13232,12 +13383,12 @@
     ],
     "entities": [],
     "related_notes": [
-      "My art - Face Swap Request2026-07-14T13_10_03+07_00.md",
       "New chat2026-07-12T18_55_18+07_00.md",
       "New Headset Instructions2026-07-11T18_54_39+07_00.md",
       "Ryanair vs Australian Carriers2026-07-10T16_57_25+07_00.md",
       "Thailand Travel Guide 🌴 • Open WebUI2026-07-12T22_56_52+07_00.md",
       "The Rabbit Hole - CEO Salaries vs Industrial Policy2026-07-14T12_25_53+07_00.md",
+      "The Rabbit Hole - Thai Airways Drug Scandal2026-07-14T12_28_04+07_00.md",
       "Vlog - AI Image Liability Thailand2026-07-10T22_10_46+07_00.md",
       "YouTube Archive Refresh - Thailand's Changing Identity2026-07-12T07_50_10+07_00.md"
     ],
@@ -13329,24 +13480,32 @@
     ],
     "links": [],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@PopeKael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty"
     ],
     "related_notes": [
       "Code Stuff I don't Understand - Business Architecture Blueprint2026-07-14T12_36_18+07_00.md",
-      "Correspondence - Hitchhiker treadmill2026-07-02T13_50_35+07_00.md",
+      "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "Flight and Ship Trackers2026-07-11T12_19_40+07_00.md",
       "GMKtec EVO-X2 Overview2026-07-11T17_37_21+07_00.md",
+      "It Actually Works! My AI Just Built Its Own Knowledge Base2026-07-11T17_51_22+07_002026-07-11T03_00_00-07_00[[Garage Alchemy with Pope Kael]].md",
       "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
-      "My art - Attention to Intent Economy2026-07-14T13_05_37+07_00.md",
       "My Hosting - Ariadne Project Session 0042026-07-06T11_38_49+07_00.md",
-      "Wordpress SEO Workflow - Thai Buffet SEO Tips2026-07-12T11_42_44+07_00.md"
+      "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md"
     ],
     "map_entry": "A discussion on creating an AI Knowledge‑Systems Architect role to unify business workflows and data through AI-driven interfaces.",
     "summary": "The document explores how businesses should adopt AI by integrating existing knowledge bases, databases, and processes into cohesive, workflow-aware dashboards rather than focusing solely on model capability. It outlines a future profession of AI workplace integrators who design local or hybrid AI systems that are invisible to end users but central to daily operations.",
     "review_path": "Review/The AI Systems Architect.review.md",
     "processed_path": "Processed/The AI Systems Architect.md",
     "wiki_path": "Wiki/AI & LLMs.md",
-    "indexed_at": "2026-07-14 11:51:18"
+    "indexed_at": "2026-07-14 11:51:18",
+    "people": [
+      "@PopeKael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty"
+    ]
   },
   {
     "source_name": "The Rabbit Hole - 🔟 Unified Field Theory of Conscious Evolution2026-07-12T23_34_37+07_00.md",
@@ -13516,7 +13675,6 @@
     ],
     "entities": [],
     "related_notes": [
-      "AI Task Classification2026-07-10T22_13_01+07_00.md",
       "The Rabbit Hole - AI in Software Engineering2026-07-13T22_49_08+07_00.md",
       "The Rabbit Hole - Sunni Shia Split Explained2026-07-13T22_42_59+07_00.md",
       "The Rabbit Hole2026-07-13T22_47_38+07_00.md",
@@ -14618,8 +14776,7 @@
       "The Rabbit Hole - AI and Job Disruption2026-07-13T22_52_53+07_00.md",
       "The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00.md",
       "The Rabbit Hole - Greg's Post Analysis2026-07-13T22_43_23+07_00.md",
-      "The Rabbit Hole - Iran Jihadism and Geopolitics2026-07-14T12_10_14+07_00.md",
-      "Wordpress SEO Workflow - Life in Thailand Explained2026-07-12T11_43_17+07_00.md"
+      "The Rabbit Hole - Iran Jihadism and Geopolitics2026-07-14T12_10_14+07_00.md"
     ],
     "map_entry": "Geopolitical & media analysis of Iran with AI synthesis suggestions.",
     "summary": "This entry analyzes Iran’s geopolitical significance, media framing differences, proxy warfare strategy, sanctions impact, internal dissent, regional rivalries, and drought issues. It also discusses using an AI-based aggregator to synthesize global news narratives.",
@@ -14754,6 +14911,7 @@
     "entities": [],
     "related_notes": [
       "‘Critical’_ Sinister side to Telstra glitch2026-07-11T14_51_02+07_002026-07-10T23_30_00.000Z[[Blair Jackson]].md",
+      "My art - Attention to Intent Economy2026-07-14T13_05_37+07_00.md",
       "Power Plant Selloff TL;DR2026-07-10T19_52_43+07_00.md",
       "The Rabbit Hole - Windows 11 Sign-In Changes2026-07-13T22_46_47+07_00.md"
     ],
@@ -15026,7 +15184,10 @@
       "https://www.go-immigration.go.th/"
     ],
     "entities": [
-      "One Night in Bangkok Clips"
+      "One Night in Bangkok Clips",
+      "@OneNightinBangkok_",
+      "@OneNightinBangkokClips",
+      "@TheEndlessVoyage"
     ],
     "related_notes": [
       "A Thai Academic Speaks Up for Foreign Retirees_2026-07-05T09_14_54+07_002025-02-21T16_45_02-08_00[[Integrity Legal Thailand]].md",
@@ -15043,7 +15204,12 @@
     "review_path": "Review/The Truth About Getting a Job in Thailand as a Foreigner2026-07-04T11_26_34+07_002026-07-03T02_15_15-07_00[[One Night in Bangkok Clips]].review.md",
     "processed_path": "Processed/The Truth About Getting a Job in Thailand as a Foreigner2026-07-04T11_26_34+07_002026-07-03T02_15_15-07_00[[One Night in Bangkok Clips]].md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 12:20:52"
+    "indexed_at": "2026-07-14 12:20:52",
+    "people": [
+      "@OneNightinBangkok_",
+      "@OneNightinBangkokClips",
+      "@TheEndlessVoyage"
+    ]
   },
   {
     "source_name": "There is current speculation that Benjamin Netanyahu has been killed. I needed...2026-07-12T11_47_15+07_00.md",
@@ -15117,16 +15283,19 @@
       "https://stability.ai/stable-diffusion"
     ],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
       "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "Attention2026-07-05T16_56_00+07_002026-07-05T02_08_03-07_00[[Garage Alchemy with Pope Kael]].md",
-      "Custom Instructions for Codex2026-07-11T19_36_32+07_00.md",
       "First GitHub repo update on Ariadne2026-07-06T15_41_32+07_002026-07-06T00_48_58-07_00[[Garage Alchemy with Pope Kael]].md",
       "Gaming - 🎮Where Winds Meet2026-07-14T13_26_15+07_00.md",
-      "I'm finding Perplexity is performing tasks very well on the free tier. __One...2026-07-12T11_46_38+07_00.md",
+      "GPTCodex at work2026-07-12T00_14_12+07_002026-07-11T09_52_18-07_00[[Garage Alchemy with Pope Kael]].md",
       "Patreon Tribe Connections2026-07-11T12_17_34+07_00.md",
+      "The AI Systems Architect.md",
       "The Patreon Tribe - AI Pricing and Failures2026-07-14T12_29_04+07_00.md"
     ],
     "map_entry": "Building a personalized AI workspace and channel strategy for consistent content creation.",
@@ -15134,7 +15303,12 @@
     "review_path": "Review/Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/Content Creation.md",
-    "indexed_at": "2026-07-14 12:24:20"
+    "indexed_at": "2026-07-14 12:24:20",
+    "people": [
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "TL;DW Usage Tips2026-07-10T17_03_31+07_00.md",
@@ -15548,7 +15722,9 @@
     ],
     "links": [],
     "entities": [
-      "Matt Wolfe"
+      "Matt Wolfe",
+      "@TheNextWavePod",
+      "@mr"
     ],
     "related_notes": [
       "AI News_ GPT-5.6 and the new Super App are a Massive Leap!2026-07-10T22_54_43+07_002026-07-10T07_41_53-07_00[[Matt Wolfe]].md",
@@ -15565,7 +15741,11 @@
     "review_path": "Review/Use N8N To Build A Custom AI-Powered Newsletter2026-07-11T20_50_08+07_002025-10-29T13_00_30-07_00[[Matt Wolfe]].review.md",
     "processed_path": "Processed/Use N8N To Build A Custom AI-Powered Newsletter2026-07-11T20_50_08+07_002025-10-29T13_00_30-07_00[[Matt Wolfe]].md",
     "wiki_path": "Wiki/Content Creation.md",
-    "indexed_at": "2026-07-14 12:31:53"
+    "indexed_at": "2026-07-14 12:31:53",
+    "people": [
+      "@TheNextWavePod",
+      "@mr"
+    ]
   },
   {
     "source_name": "Valheim Main Characters2026-07-11T19_36_56+07_00.md",
@@ -15730,7 +15910,6 @@
     "entities": [],
     "related_notes": [
       "Correspondence - YouTube Comments C&W2026-07-05T11_17_00+07_00.md",
-      "Siam=422026-07-02T19_05_42+07_002026-07-02T04_21_04-07_00[[Chanya & Wazza's Thailand]].md",
       "Video Opener – Daily Framework - Framework Enhancement Suggestions2026-07-11T20_12_16+07_00.md"
     ],
     "map_entry": "Video Opener – Daily Framework",
@@ -15934,7 +16113,11 @@
       "https://buymeacoffee.com/warrengerdes",
       "https://warren.dia.net.au/images/wazza-og.png"
     ],
-    "entities": [],
+    "entities": [
+      "@PopeKael",
+      "@warrengerdes",
+      "@alice_beauty"
+    ],
     "related_notes": [
       "How can I help, Wazza_2026-07-10T19_57_23+07_00.md",
       "Improving Linktree styling and organization2026-07-12T09_20_50+07_00.md",
@@ -15950,7 +16133,12 @@
     "review_path": "Review/WAZZA2026-07-02T20_31_00+07_00.review.md",
     "processed_path": "Processed/WAZZA2026-07-02T20_31_00+07_00.md",
     "wiki_path": "Wiki/Personal.md",
-    "indexed_at": "2026-07-14 12:40:24"
+    "indexed_at": "2026-07-14 12:40:24",
+    "people": [
+      "@PopeKael",
+      "@warrengerdes",
+      "@alice_beauty"
+    ]
   },
   {
     "source_name": "We Can Make an Antigravity Machine—And Unlock a ‘Mind-Blowing’ Future, Oxford Physicist Says.md",
@@ -16034,6 +16222,7 @@
     "links": [],
     "entities": [],
     "related_notes": [
+      "(5) Andrej Karpathy on X_ _LLM Knowledge Bases__Something I'm finding very useful recently_ using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token .md",
       "📚 Math Problem Solution • Open WebUI2026-07-12T22_48_07+07_00.md",
       "Photo Recognition - Photo Recognition Pipeline2026-07-12T11_40_03+07_00.md",
       "Repurposing Kid Art • Open WebUI2026-07-12T22_54_54+07_00.md"
@@ -16404,11 +16593,14 @@
     ],
     "links": [],
     "entities": [
-      "Garage Alchemy with Pope Kael"
+      "Garage Alchemy with Pope Kael",
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
     ],
     "related_notes": [
-      "Correspondence - Hitchhiker treadmill2026-07-02T13_50_35+07_00.md",
-      "House Price Estimation2026-07-10T16_59_21+07_00.md",
+      "Ariadne, the librarian.md",
+      "My AI workflow has improved.md",
       "The Rabbit Hole - AI in Software Engineering2026-07-13T22_49_08+07_00.md"
     ],
     "map_entry": "Roadmap Governance & Retirement-friendly Development",
@@ -16416,7 +16608,12 @@
     "review_path": "Review/Where will I find the Time2026-07-08T20_30_26+07_002026-07-08T05_59_27-07_00[[Garage Alchemy with Pope Kael]].review.md",
     "processed_path": "Processed/Where will I find the Time2026-07-08T20_30_26+07_002026-07-08T05_59_27-07_00[[Garage Alchemy with Pope Kael]].md",
     "wiki_path": "Wiki/Projects.md",
-    "indexed_at": "2026-07-14 12:46:34"
+    "indexed_at": "2026-07-14 12:46:34",
+    "people": [
+      "@ChanyaAndWazzaThailand",
+      "@alice_beauty",
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "Why expats should stay in Thailand2026-07-12T09_19_55+07_00.md",
@@ -16831,7 +17028,6 @@
     ],
     "entities": [],
     "related_notes": [
-      "Ariadne, the librarian.md",
       "Moonraker Mandela Effect2026-07-11T17_43_09+07_00.md",
       "Thai Gold vs Global Gold2026-07-10T19_47_25+07_00.md",
       "Window into the World - AGI Risks and Deception2026-07-11T20_20_07+07_00.md",
@@ -17543,7 +17739,9 @@
       "https://discord.gg/PFENZwaqZy",
       "https://www.youtube.com/@ChanyaAndWazzaThailand"
     ],
-    "entities": [],
+    "entities": [
+      "@ChanyaAndWazzaThailand"
+    ],
     "related_notes": [
       "Camera Stabilization Comparison2026-07-11T18_51_05+07_00.md",
       "Siam=422026-07-02T19_05_42+07_002026-07-02T04_21_04-07_00[[Chanya & Wazza's Thailand]].md",
@@ -17559,7 +17757,10 @@
     "review_path": "Review/Wordpress SEO Workflow - Buying a Phone in Thailand2026-07-12T18_58_29+07_00.review.md",
     "processed_path": "Processed/Wordpress SEO Workflow - Buying a Phone in Thailand2026-07-12T18_58_29+07_00.md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 13:04:54"
+    "indexed_at": "2026-07-14 13:04:54",
+    "people": [
+      "@ChanyaAndWazzaThailand"
+    ]
   },
   {
     "source_name": "Wordpress SEO Workflow - Google Analytics Plugin Issue2026-07-12T11_42_26+07_00.md",
@@ -17647,14 +17848,16 @@
       "https://www.youtube.com/@ChanyaAndWazzaThailand",
       "https://bit.ly/3sn3MF9"
     ],
-    "entities": [],
+    "entities": [
+      "@ChanyaAndWazzaThailand"
+    ],
     "related_notes": [
       "740 Million People Are Living With a Condition They Rarely Talk About2026-07-14T07_24_04+07_002026-07-10T08_50_20.121Z[[Hannah Elliott]].md",
       "My Music - Defining Punk Music2026-07-12T18_57_28+07_00.md",
       "Restless Legs Syndrome Explained2026-07-10T19_46_19+07_00.md",
       "The Patreon Tribe - AI Pricing and Failures2026-07-14T12_29_04+07_00.md",
-      "The Rabbit Hole - Sunni Shia Split Explained2026-07-13T22_42_59+07_00.md",
       "Wordpress SEO Workflow - Buying a Phone in Thailand2026-07-12T18_58_29+07_00.md",
+      "Wordpress SEO Workflow - Thailand Life After Songkran2026-07-12T11_44_32+07_00.md",
       "Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_43_02+07_00.md",
       "Wordpress SEO Workflow - Thailand Vlog SEO2026-07-12T11_43_38+07_00.md"
     ],
@@ -17663,7 +17866,10 @@
     "review_path": "Review/Wordpress SEO Workflow - Life in Thailand Explained2026-07-12T11_43_17+07_00.review.md",
     "processed_path": "Processed/Wordpress SEO Workflow - Life in Thailand Explained2026-07-12T11_43_17+07_00.md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 13:07:13"
+    "indexed_at": "2026-07-14 13:07:13",
+    "people": [
+      "@ChanyaAndWazzaThailand"
+    ]
   },
   {
     "source_name": "Wordpress SEO Workflow - Thai Buffet SEO Tips2026-07-12T11_42_44+07_00.md",
@@ -17702,7 +17908,7 @@
       "Achieving project goals without increasing costs2026-07-12T09_21_23+07_00.md",
       "n8n agents2026-07-12T11_45_53+07_00.md",
       "Pope Kael TV.md",
-      "The AI Systems Architect.md",
+      "Qwen Studio.md",
       "The Rabbit Hole - AI Apocalypse Analysis2026-07-13T22_53_32+07_00.md",
       "Window into the World - OpenAI Superapp Overview2026-07-11T20_20_21+07_00.md"
     ],
@@ -17750,14 +17956,16 @@
       "https://www.youtube.com/@ChanyaAndWazzaThailand",
       "https://bit.ly/3sn3MF9"
     ],
-    "entities": [],
+    "entities": [
+      "@ChanyaAndWazzaThailand"
+    ],
     "related_notes": [
       "🌴 Retirement in Affordable Tr... • Open WebUI2026-07-12T22_58_04+07_00.md",
       "Claude Conversation2026-07-12T09_19_42+07_00.md",
-      "Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].md",
       "New chat2026-07-12T18_01_56+07_00.md",
       "New chat2026-07-12T18_40_25+07_00.duplicate.md",
       "The visa run era is over_ 2026 is the year Thailand stopped looking the other way2026-07-14T11_47_35+07_002026-07-14T10_03_21+07_00[[Vajara P.]].md",
+      "Wordpress SEO Workflow - Life in Thailand Explained2026-07-12T11_43_17+07_00.md",
       "Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_43_02+07_00.md",
       "Wordpress SEO Workflow - Thailand Vlog SEO2026-07-12T11_43_38+07_00.md"
     ],
@@ -17766,7 +17974,10 @@
     "review_path": "Review/Wordpress SEO Workflow - Thailand Life After Songkran2026-07-12T11_44_32+07_00.review.md",
     "processed_path": "Processed/Wordpress SEO Workflow - Thailand Life After Songkran2026-07-12T11_44_32+07_00.md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 13:11:13"
+    "indexed_at": "2026-07-14 13:11:13",
+    "people": [
+      "@ChanyaAndWazzaThailand"
+    ]
   },
   {
     "source_name": "Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_40_56+07_00.md",
@@ -17801,7 +18012,9 @@
       "https://www.dia.net.au/about-us/",
       "https://chatgpt.com/g/g-p-69a1b4e545b88191a9fdf06983d2b11e/c/69a1a8d0-c8d8-8398-aa5b-0f5cdf1358dd"
     ],
-    "entities": [],
+    "entities": [
+      "@ChanyaAndWazzaThailand"
+    ],
     "related_notes": [
       "Magick - Buddhism and Discordianism Parallels2026-07-12T07_48_24+07_00.md",
       "Magick - Gnostic Gospels Overview2026-07-12T07_48_09+07_00.md",
@@ -17815,7 +18028,10 @@
     "review_path": "Review/Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_40_56+07_00.review.md",
     "processed_path": "Processed/Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_40_56+07_00.md",
     "wiki_path": "Wiki/Philosophy.md",
-    "indexed_at": "2026-07-14 13:12:11"
+    "indexed_at": "2026-07-14 13:12:11",
+    "people": [
+      "@ChanyaAndWazzaThailand"
+    ]
   },
   {
     "source_name": "Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_43_02+07_00.md",
@@ -17845,7 +18061,9 @@
       "https://www.dia.net.au/about-us/",
       "https://bit.ly/3sn3MF9"
     ],
-    "entities": [],
+    "entities": [
+      "@ChanyaAndWazzaThailand"
+    ],
     "related_notes": [
       "Claude Conversation2026-07-12T09_19_42+07_00.md",
       "How can I help, Wazza_2026-07-10T19_57_23+07_00.md",
@@ -17861,7 +18079,10 @@
     "review_path": "Review/Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_43_02+07_00.review.md",
     "processed_path": "Processed/Wordpress SEO Workflow - Thailand Vlog SEO Template2026-07-12T11_43_02+07_00.md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 13:12:28"
+    "indexed_at": "2026-07-14 13:12:28",
+    "people": [
+      "@ChanyaAndWazzaThailand"
+    ]
   },
   {
     "source_name": "Wordpress SEO Workflow - Thailand Vlog SEO2026-07-12T11_43_38+07_00.md",
@@ -17898,7 +18119,9 @@
       "YouTube Channel",
       "Google Map"
     ],
-    "entities": [],
+    "entities": [
+      "@ChanyaAndWazzaThailand"
+    ],
     "related_notes": [
       "Broke in Thailand_ The E-Begging Foreigners Who Refuse to Leave When the Money Runs Out @BangkokPat.md",
       "Rephrasing Emotive YouTube Content2026-07-10T19_55_59+07_00.md",
@@ -17914,7 +18137,10 @@
     "review_path": "Review/Wordpress SEO Workflow - Thailand Vlog SEO2026-07-12T11_43_38+07_00.review.md",
     "processed_path": "Processed/Wordpress SEO Workflow - Thailand Vlog SEO2026-07-12T11_43_38+07_00.md",
     "wiki_path": "Wiki/Travel & Expat Experience.md",
-    "indexed_at": "2026-07-14 13:13:09"
+    "indexed_at": "2026-07-14 13:13:09",
+    "people": [
+      "@ChanyaAndWazzaThailand"
+    ]
   },
   {
     "source_name": "Wordpress SEO Workflow - WordPress Visual Editor Issue2026-07-12T18_58_54+07_00.md",
@@ -18099,7 +18325,8 @@
     ],
     "links": [],
     "entities": [
-      "AI News & Strategy Daily"
+      "AI News & Strategy Daily",
+      "@nate"
     ],
     "related_notes": [
       "1.6M agents registered for OpenClaw and did NOTHING.2026-07-10T22_11_55+07_002026-07-10T07_00_30-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
@@ -18116,7 +18343,10 @@
     "review_path": "Review/Your Roadmap Is Why You're Losing to AI-Native Teams.2026-07-12T23_41_20+07_002026-07-12T09_00_37-07_00[[AI News & Strategy Daily _ Nate B Jones]].review.md",
     "processed_path": "Processed/Your Roadmap Is Why You're Losing to AI-Native Teams.2026-07-12T23_41_20+07_002026-07-12T09_00_37-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
     "wiki_path": "Wiki/Business.md",
-    "indexed_at": "2026-07-14 13:15:21"
+    "indexed_at": "2026-07-14 13:15:21",
+    "people": [
+      "@nate"
+    ]
   },
   {
     "source_name": "YouTube Archive Refresh - 5 Things I Love About Bangkok2026-07-12T11_37_18+07_00.md",
@@ -19603,8 +19833,8 @@
     "related_notes": [
       "It's officially the end of an era for Adobe2026-07-08T07_40_21+07_002026-07-07T13_41_19Z[[Amir Bohlooli]].md",
       "New chat2026-07-12T18_47_23+07_00.md",
-      "The AI Systems Architect.md",
       "The Rabbit Hole - Narrative Sovereignty and AI2026-07-13T22_42_52+07_00.md",
+      "The Rabbit Hole - Underground Fungal Network2026-07-13T22_43_55+07_00.md",
       "The Thought Experiment__Okay Megan. We are live and recording so you really...2026-07-12T11_53_28+07_00.md",
       "Top Thailand YouTube Themes2026-07-10T22_01_46+07_00.md",
       "Window into the World - AI and Ad Costs2026-07-12T07_47_10+07_00.md",
@@ -20033,7 +20263,6 @@
       "New chat2026-07-12T08_01_50+07_00.md",
       "New chat2026-07-12T17_59_27+07_00.md",
       "New Headset Instructions2026-07-11T18_54_39+07_00.md",
-      "Thailand This Week2026-07-10T16_57_00+07_00.md",
       "YouTube Archive Refresh - Archive Refresh Update22026-07-12T11_36_44+07_00.md"
     ],
     "map_entry": "Content Creation > AI & Infrastructure Discussion",
@@ -20498,7 +20727,9 @@
       "corporate"
     ],
     "links": [],
-    "entities": [],
+    "entities": [
+      "@PopeKael"
+    ],
     "related_notes": [
       "My Music - My Music Composition2026-07-12T14_01_34+07_00.md"
     ],
@@ -20507,7 +20738,10 @@
     "review_path": "Review/My art - Music Creation Inquiry2026-07-14T12_40_18+07_00.review.md",
     "processed_path": "Processed/My art - Music Creation Inquiry2026-07-14T12_40_18+07_00.md",
     "wiki_path": "Wiki/Business.md",
-    "indexed_at": "2026-07-14 14:06:26"
+    "indexed_at": "2026-07-14 14:06:26",
+    "people": [
+      "@PopeKael"
+    ]
   },
   {
     "source_name": "My art - Outdoor riverside selfie2026-07-14T13_04_08+07_00.md",
@@ -20925,7 +21159,8 @@
     "related_notes": [
       "ARK Cheat Commands Guide2026-07-11T18_24_31+07_00.md",
       "My art - Insta Photo Tips2026-07-14T13_00_49+07_00.md",
-      "My art - Photo Restoration Assistance2026-07-14T13_34_59+07_00.md"
+      "My art - Photo Restoration Assistance2026-07-14T13_34_59+07_00.md",
+      "Project Milestone Checkpoint2026-07-11T19_35_09+07_00.md"
     ],
     "map_entry": "Photography Composition Guide",
     "summary": "A discussion of landscape photo improvement methods covering composition rules, foreground focus, sky utilization, lighting considerations, and post‑processing tips.",
@@ -21016,7 +21251,6 @@
       "My art - Photography Critique Tips2026-07-14T13_27_36+07_00.md",
       "My art - Song Comment Refinement2026-07-14T12_44_27+07_00.md",
       "New chat2026-07-12T18_24_39+07_00.md",
-      "Qwen Studio.md",
       "Recreate Image with Prompt2026-07-10T22_10_30+07_00.md"
     ],
     "map_entry": "Guide on using reference images with MII prompts to recreate scenes and manage image generation.",
@@ -22919,10 +23153,10 @@
     "entities": [],
     "related_notes": [
       "Australia's Space Opportunity2026-07-11T17_39_06+07_00.md",
+      "Custom Instructions for Codex2026-07-11T19_36_32+07_00.md",
       "Linktree or Custom Page2026-07-11T12_15_50+07_00.md",
       "Oils, Microneedles, And New Drugs_ What Does The Latest Science Say On Hair Loss And Regrowth_2026-07-06T16_37_08+07_002024-03-16T12_00_58.000Z[[Holly Large]].md",
       "README.md",
-      "Suvarnabhumi Airport says crew member’s luggage cleared security screening before Australia heroin arrest.md",
       "The Rabbit Hole - Cloud Centralization Fragility2026-07-13T22_43_13+07_00.md",
       "The Rabbit Hole - CryoPaint Clothing Feasibility2026-07-14T12_27_51+07_00.md",
       "Wordpress SEO Workflow - WordPress Visual Editor Issue2026-07-12T18_58_54+07_00.md"
@@ -23144,12 +23378,12 @@
     ],
     "entities": [],
     "related_notes": [
-      "Ariadne, the librarian.md",
       "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE).md",
       "IOI Detection in Images2026-07-10T19_47_06+07_00.md",
-      "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
       "New chat2026-07-12T18_45_23+07_00.md",
       "New chat2026-07-12T18_45_35+07_00.md",
+      "Thailand Chaos Generator Search2026-07-10T22_03_10+07_00.md",
+      "Thailand This Week2026-07-10T16_57_00+07_00.md",
       "The Rabbit Hole - Atom Visualization Challenges2026-07-14T12_26_07+07_00.md",
       "Window into the World - LeCun's AI Position Validity2026-07-11T20_18_30+07_00.md"
     ],
@@ -23523,11 +23757,11 @@
     "links": [],
     "entities": [],
     "related_notes": [
+      "AI Integration Review2026-07-11T17_38_02+07_00.md",
       "My art - Song creation vibe check2026-07-14T12_43_56+07_00.md",
       "My art - Thumbnail Design Assistance2026-07-14T13_28_52+07_00.md",
       "New chat2026-07-12T08_02_15+07_00.md",
       "New chat2026-07-12T17_59_27+07_00.md",
-      "New chat2026-07-12T18_24_39+07_00.md",
       "New chat2026-07-12T18_54_47+07_00.md",
       "Pope Kael TV - Master YouTube Packaging Guide2026-07-14T13_58_27+07_00.md",
       "Use N8N To Build A Custom AI-Powered Newsletter2026-07-11T20_50_08+07_002025-10-29T13_00_30-07_00[[Matt Wolfe]].md"
@@ -23776,10 +24010,10 @@
       "YouTube"
     ],
     "related_notes": [
-      "A glitch in the system2026-07-08T17_25_28+07_002026-07-07T21_41_38-07_00[[Garage Alchemy with Pope Kael]].md",
       "AI Integration Review2026-07-11T17_38_02+07_00.md",
       "My art - Remove person from scene2026-07-14T13_11_48+07_00.md",
       "New chat2026-07-12T08_02_15+07_00.md",
+      "New chat2026-07-12T18_24_39+07_00.md",
       "New chat2026-07-12T18_50_52+07_00.md",
       "New chat2026-07-12T18_54_47+07_00.md",
       "Pope Kael TV - AI Alignment Test Results2026-07-14T14_01_58+07_00.md",

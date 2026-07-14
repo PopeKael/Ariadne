@@ -12,7 +12,7 @@ foreach($match in [regex]::Matches($Document,'(?<![A-Za-z0-9_])@([A-Za-z0-9_]{2,
   $alias='@'+$match.Groups[1].Value;$key=Key $alias;$canonical=if($canonicalAliases.ContainsKey($key)){$canonicalAliases[$key]}else{$alias};$person=if($byAlias.ContainsKey((Key $canonical))){$byAlias[(Key $canonical)]}elseif($byAlias.ContainsKey($key)){$byAlias[$key]}else{$null}
   if(!$person){$person=[pscustomobject]@{canonical_name=$canonical;aliases=@($canonical);created_at=(Get-Date -Format 's');last_seen=$null;interaction_count=0};$index+=@($person);$byAlias[(Key $canonical)]=$person}
   if(@($person.aliases) -notcontains $alias){$person.aliases=@($person.aliases+$alias);$byAlias[$key]=$person}
-  $person.last_seen=(Get-Date -Format 's');$person.interaction_count=[int]$person.interaction_count+1
+  $person.last_seen=(Get-Date -Format 's')
   $safe=(Key $person.canonical_name);$page=Join-Path $peopleRoot "$safe.md";$marker="- [[$SourceName]]"
   if(!(Test-Path $page)){@"
 # $($person.canonical_name)
@@ -23,7 +23,7 @@ Aliases: $($person.aliases -join ', ')
 ## Interactions
 
 "@|Out-File $page -Encoding utf8}
-  $body=Get-Content -Raw $page;if($body -notmatch [regex]::Escape($marker)){Add-Content $page $marker -Encoding utf8}
+  $body=Get-Content -Raw $page;if($body -notmatch [regex]::Escape($marker)){Add-Content $page $marker -Encoding utf8;$person.interaction_count=[int]$person.interaction_count+1}
   if(!$people.Contains($person.canonical_name)){$people.Add($person.canonical_name)}
 }
 $index|ConvertTo-Json -Depth 5|Out-File $indexPath -Encoding utf8 -NoNewline
