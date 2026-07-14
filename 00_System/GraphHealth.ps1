@@ -34,7 +34,8 @@ $cross=0; $possible=0; foreach($a in $notes.Keys){foreach($b in $edges[$a]){if($
 $avg=if($notes.Count){[math]::Round((@($edges.Values|ForEach-Object {$_.Count}|Measure-Object -Sum).Sum/$notes.Count),2)}else{0}; $ratio=if($possible){$cross/$possible}else{0}
 $retry=@(); if(Test-Path $RetryQueuePath){try{$retry=@(Get-Content -Raw $RetryQueuePath|ConvertFrom-Json)}catch{}}
 $permanent=@($retry|Where-Object {$_.status -eq 'permanent'}).Count; $pending=@($retry|Where-Object {$_.status -eq 'pending'}).Count
-$score=[math]::Max(0,[math]::Min(100,[math]::Round(100 - (40*($orphan.Count/[math]::Max(1,$notes.Count))) - (20*($low.Count/[math]::Max(1,$notes.Count))) - (10*($backlinkMissing.Count/[math]::Max(1,$possible))) - (10*($missingConcept.Count/[math]::Max(1,$concepts.Count))) - (10*($missingEntity.Count/[math]::Max(1,$entities.Count))) + (10*$ratio))))
+$duplicatePenalty=[math]::Min(10,0.5*($dupConcept.Count+$dupEntity.Count)); $retryPenalty=[math]::Min(5,0.5*($pending+$permanent))
+$score=[math]::Max(0,[math]::Min(100,[math]::Round(100 - (40*($orphan.Count/[math]::Max(1,$notes.Count))) - (20*($low.Count/[math]::Max(1,$notes.Count))) - (10*($backlinkMissing.Count/[math]::Max(1,$possible))) - (10*($missingConcept.Count/[math]::Max(1,$concepts.Count))) - (10*($missingEntity.Count/[math]::Max(1,$entities.Count))) - $duplicatePenalty - $retryPenalty + (10*$ratio))))
 $report=@"
 # Knowledge Graph Health Audit
 

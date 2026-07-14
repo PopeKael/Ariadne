@@ -662,6 +662,7 @@ function Normalize-LibraryEntry {
         tags            = @($Entry.tags)
         links           = @($Entry.links)
         entities        = @($Entry.entities)
+        people          = @($Entry.people)
         related_notes   = @($Entry.related_notes)
         map_entry       = $Entry.map_entry
         summary         = $Entry.summary
@@ -717,6 +718,7 @@ function Update-LibraryEntry {
         [string[]]$Tags,
         [string[]]$Links,
         [string[]]$Entities,
+        [string[]]$People,
         [string[]]$RelatedNotes,
         [string]$Summary,
         [string]$MapEntry,
@@ -755,6 +757,7 @@ function Update-LibraryEntry {
         tags            = @($Tags)
         links           = @($Links)
         entities        = @($Entities)
+        people          = @($People)
         related_notes   = @($RelatedNotes)
         map_entry       = $MapEntry
         summary         = $Summary
@@ -896,7 +899,7 @@ $Document
             if ($Parsed) {
                 # Second pass: compare the classified note with the existing vault, then materialise
                 # concept/entity hubs before any final graph records are written.
-                $Parsed = & (Join-Path $System "Invoke-GraphLinking.ps1") -Classification $Parsed -SourceName $InboxItem.Name -Vault $Vault
+                $Parsed = & (Join-Path $System "Invoke-GraphLinking.ps1") -Classification $Parsed -SourceName $InboxItem.Name -Document $Document -Vault $Vault
                 Update-KnowledgeMap -Topic $Parsed.primary_topic -Reason $Parsed.reason -MapEntry $Parsed.map_entry
 
                 $NewTag = if ($Parsed.is_new_topic) { " (new topic)" } else { "" }
@@ -985,6 +988,7 @@ $($Parsed.summary)
                     -Tags @($Parsed.tags) `
                     -Links @($Parsed.links) `
                     -Entities @($Parsed.entities) `
+                    -People @($Parsed.people) `
                     -RelatedNotes @($Parsed.related_notes) `
                     -Summary $Parsed.summary `
                     -MapEntry $Parsed.map_entry `
