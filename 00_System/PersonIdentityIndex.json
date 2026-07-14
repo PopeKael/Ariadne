@@ -206,5 +206,23 @@
     "created_at": "2026-07-14T16:33:40",
     "last_seen": "2026-07-14T16:34:52",
     "interaction_count": 1
+  },
+  {
+    "canonical_name": "@neb6",
+    "aliases": [
+      "@neb6"
+    ],
+    "created_at": "2026-07-14T16:55:46",
+    "last_seen": "2026-07-14T16:55:46",
+    "interaction_count": 1
+  },
+  {
+    "canonical_name": "@mattferrell",
+    "aliases": [
+      "@mattferrell"
+    ],
+    "created_at": "2026-07-14T16:59:15",
+    "last_seen": "2026-07-14T16:59:15",
+    "interaction_count": 1
   }
 ]

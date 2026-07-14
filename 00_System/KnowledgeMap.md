@@ -1,7 +1,10 @@
-> Last updated: 2026-07-14 16:44:13
+> Last updated: 2026-07-14 17:04:41
 
 ## AI & LLMs
 Purpose: Document describes Google Gemini, an AI assistant product, fitting under AI & LLMs.
+- Capital of France • Open WebUI – Q&A page with LLM responses.
+- Overview and setup guide for AMD's local AI stack (Amuse, LM Studio, Ollama), explaining image generation and language model usage.
+- AI & LLMs > Claude internal mechanisms and alignment research
 - YouTube video discussing OpenAI's SuperApp concept and its implications for AI integration in workflows.
 - ChatGPT conversation summarizing Unitree Robotics R1 humanoid robot features and discussing mobility versus intelligence.
 - Hedge Fund AI usage & Luxman CD player article
@@ -112,6 +115,8 @@ Purpose: Document describes Google Gemini, an AI assistant product, fitting unde
 
 ## Infrastructure
 Purpose: The article discusses a telecommunications outage affecting critical national infrastructure and the cybersecurity implications thereof.
+- ChatGPT conversation about Cloudflare Under Attack mode blocking Facebook scraper.
+- Review of Pila plug‑in home batteries, covering installation constraints, performance during outages and solar integration, cost analysis, and future potential in distributed energy systems.
 - Discussion about managing WordPress site health: addressing backup warnings, disabling WP-Cron with server cron, resolving Yoast editor conflicts, and implementing activity logging.
 - Hybrid hosting architecture with Synology NAS, Docker, Cloudflare DNS, and AI-assisted workflow for website maintenance.
 - Document on Vera C. Rubin Observatory's first night of automated alerts, detailing the telescope’s imaging cadence, data processing pipeline, and scientific implications for transient event detection.
@@ -144,6 +149,8 @@ Purpose: The article discusses a telecommunications outage affecting critical na
 
 ## Content Creation
 Purpose: User requested a new content creation article in 4th person
+- Crafting an appropriate response
+- Reply to Sean on YouTube vs Facebook and success perception in retired life.
 - Content Creation > Video Production Workflow
 - YouTube content packaging guide for Pope Kael TV focusing on AI-driven filtering and smarter tribes concept.
 - Pope Kael TV thumbnail design request using AI for image editing.
@@ -329,6 +336,7 @@ Purpose: User requested a new content creation article in 4th person
 
 ## Travel & Expat Experience
 Purpose: The document discusses expatriate experiences and attitudes in Thailand, fitting within travel and expat experience.
+- Advice on leveraging comment sections and collaborations to build credibility as a seasoned Thai expat voice.
 - Thailand 2026 visa policy crackdown, ending visa run era.
 - TSA CT scanners damage analog film; carry‑on size enforcement effect
 - Document detailing the creation of a thumbnail and content for an Instagram reel showing Mick’s first visit to IconSiam in Thailand.
@@ -389,6 +397,7 @@ Purpose: The document discusses expatriate experiences and attitudes in Thailand
 
 ## Knowledge Management
 Purpose: The document focuses on designing and evaluating personal knowledge base architectures, fitting within Knowledge Management.
+- Adjust PowerShell ExecutionPolicy to run unsigned Ariadne scripts and unblock file if needed.
 - Build Your Own Second Brain Guide – tutorial on setting up a personal knowledge base with AI assistance, covering tools like Obsidian and Cloud Code Desktop, folder structure, rulebooks, automation, and plugins.
 - Discussion on creating authentic Magic Eye stereograms via depth maps and procedural algorithms, contrasting with AI image generation.
 - Transfer Summary – Pope Kael TV: Analysis of UFO politics, Colombian UAP footage, China humanoid robotics, and meta-layer AI considerations.
@@ -412,6 +421,10 @@ Purpose: The document focuses on designing and evaluating personal knowledge bas
 
 ## Personal
 Purpose: The document reflects personal memories of 1980s sci‑fi television, fitting into the Personal domain.
+- Personal project on designing and rendering a small Thai home using concrete blocks and specific wall/floor instructions.
+- Solution to basic math problem about fruits, train distance calculation, and a prime-checking function in Python.
+- Identification and overview of bottle gourd (Lagenaria siceraria) from photographic evidence and horticultural information.
+- Document describing Asian Arowana species, care tips and cultural significance for hobbyists.
 - Personal joke response + short LLM export note
 - Hair loss medication usage instructions
 - Commentary on Iranian jihadism and geopolitical dynamics from a personal viewpoint
@@ -454,6 +467,7 @@ Purpose: The document reflects personal memories of 1980s sci‑fi television, f
 
 ## Projects
 Purpose: The document focuses on project planning and cost optimization for a knowledge vault using AI tools.
+- International thorium reactor projects – status and key countries.
 - Instructions for adding a new image file to a GitHub repo via the web interface.
 - Roadmap Governance & Retirement-friendly Development
 - ChatGPT conversation guiding the creation of a Thailand Chaos Generator HTML app with 23 themes, discussing versions 1-3 and search tips for locating the chat.
@@ -469,6 +483,7 @@ Purpose: The document focuses on project planning and cost optimization for a kn
 
 ## Gaming
 Purpose: It details gameplay mechanics for ARK's planning and build modes, fitting under Gaming.
+- Arcade Gaming History – A timeline from 1970s to present, detailing technological breakthroughs, social dynamics, market shifts, decline, and revival via barcade culture.
 - Document is a personal reflection on the arcades era and how the narrator’s adult life and professional computing shaped their view of video games.
 - Summary of key points for creating a trustworthy metaverse platform with standard avatars and blockchain-backed economy.
 - Guide on verifying VBS/HVCI configuration on Windows 11 and its impact on gaming PCs.
@@ -482,6 +497,7 @@ Purpose: It details gameplay mechanics for ARK's planning and build modes, fitti
 
 ## Business
 Purpose: Document discusses economic opportunities and strategic policy in Australia’s space industry, fitting within the Business domain.
+- Analysis of China’s reliance on imported soybeans for feed, implications for food security and trade resilience.
 - Visual Identity Creation - Business Branding
 - The Rabbit Hole – Digest on Alex Karp's view that only vocational skills and neurodivergent individuals will thrive in the AI era.
 - Meta Glasses privacy and regulatory analysis

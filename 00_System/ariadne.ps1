@@ -1,3 +1,4 @@
+param([int]$MaxItemsPerRun = 0)
 # Ariadne v0.7
 # Process Inbox, ask the model to file the document into the Knowledge Map,
 # write a review file, update the Knowledge Map, then move the original to Processed.
@@ -23,7 +24,6 @@ $KnowledgeMapPath  = Join-Path $System "KnowledgeMap.md"
 $AriadnePromptPath = Join-Path $System "AriadnePrompt.md"
 $DomainVocabularyPath = Join-Path $System "DomainVocabulary.json"
 $LibraryPath       = Join-Path $System "library.json"
-$MaxItemsPerRun    = 0
 $RetryQueuePath    = Join-Path $Logs "IngestionRetryQueue.json"
 $RetryLimit        = 4
 $RetryDelayMinutes = 15
@@ -61,14 +61,14 @@ function Write-AriadneLog {
     Rotate-AriadneLogIfNeeded
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $Line = "$Timestamp [$Level] $Message"
-    Add-Content -LiteralPath $LogPath -Value $Line -Encoding utf8
+    try { Add-Content -LiteralPath $LogPath -Value $Line -Encoding utf8 -ErrorAction Stop } catch { Write-Warning "Could not write Ariadne log: $($_.Exception.Message)" }
 }
 
 function Get-RetryQueue { if (!(Test-Path $RetryQueuePath)) { return @() }; try { return @(Get-Content -LiteralPath $RetryQueuePath -Raw | ConvertFrom-Json) } catch { Write-AriadneLog -Level "ERROR" -Message "Retry queue is invalid JSON: $($_.Exception.Message)"; return @() } }
 function Save-RetryQueue($Queue) { @($Queue) | ConvertTo-Json -Depth 6 | Out-File -LiteralPath $RetryQueuePath -Encoding utf8 -NoNewline }
 function Queue-IngestionFailure([string]$Name,[string]$Reason,[bool]$Retryable) {
     $Queue=[System.Collections.ArrayList]@(Get-RetryQueue); $record=$Queue | Where-Object {$_.source_name -eq $Name} | Select-Object -First 1
-    if($record){[void]$Queue.Remove($record);$attempt=[int]$record.attempts+1}else{$attempt=1}
+    if($record){[void]$Queue.Remove($record);$attempt=[int](@($record.attempts|Where-Object{$_})|Select-Object -First 1)+1}else{$attempt=1}
     $permanent=(-not $Retryable) -or $attempt -ge $RetryLimit; $next=(Get-Date).AddMinutes($RetryDelayMinutes)
     [void]$Queue.Add([pscustomobject]@{source_name=$Name;attempts=$attempt;status=$(if($permanent){'permanent'}else{'pending'});last_reason=$Reason;last_attempt=(Get-Date -Format 's');next_attempt=$next.ToString('s')})
     Save-RetryQueue $Queue
@@ -77,7 +77,13 @@ function Queue-IngestionFailure([string]$Name,[string]$Reason,[bool]$Retryable) 
 }
 function Restore-DueRetries {
     $Queue=[System.Collections.ArrayList]@(Get-RetryQueue); $changed=$false
-    foreach($r in @($Queue)){if($r.status -eq 'pending' -and [datetime]$r.next_attempt -le (Get-Date)){$p=Join-Path $Failed $r.source_name;if(Test-Path -LiteralPath $p){Move-Item -LiteralPath $p -Destination (Join-Path $Inbox $r.source_name) -Force;Write-AriadneLog -Level 'INFO' -Message "Retrying queued ingest: $($r.source_name)";$changed=$true}else{ $r.status='permanent';$r.last_reason='Retry source missing from Failed folder';$changed=$true }}}
+    foreach($r in @($Queue)){
+        if($r.PSObject.Properties.Name -notcontains 'status'){Write-AriadneLog -Level 'ERROR' -Message 'Ignoring malformed retry queue item without status';continue}
+        $retryName=@($r.source_name|Where-Object{$_})|Select-Object -First 1
+        $nextAttempt=@($r.next_attempt|Where-Object{$_})|Select-Object -First 1
+        $due=$false;try{$due=($r.status -eq 'pending' -and [datetime]$nextAttempt -le (Get-Date))}catch{Write-AriadneLog -Level 'ERROR' -Message "Invalid retry timestamp for $($r.source_name): $nextAttempt";continue}
+        if($due){$p=Join-Path $Failed $retryName;if(Test-Path -LiteralPath $p){Move-Item -LiteralPath $p -Destination (Join-Path $Inbox $retryName) -Force;Write-AriadneLog -Level 'INFO' -Message "Retrying queued ingest: $retryName";$changed=$true}else{ $r.status='permanent';$r.last_reason='Retry source missing from Failed folder';$changed=$true }}
+    }
     if($changed){Save-RetryQueue $Queue}
 }
 
@@ -439,6 +445,11 @@ function ConvertTo-AriadneReply {
     $Parsed = $null
     try {
         $Parsed = $Candidate | ConvertFrom-Json
+        if($Parsed -is [string] -or $Parsed -is [int] -or $Parsed -is [long] -or $Parsed -is [bool] -or $null -eq $Parsed){
+            # A scalar/empty response is not a classification object. Convert it to
+            # an empty object so the safe schema defaults below can handle it.
+            $Parsed = [pscustomobject]@{}
+        }
     } catch {
         Write-AriadneLog -Level "WARNING" -Message "Invalid JSON ($AttemptLabel)"
         return @{

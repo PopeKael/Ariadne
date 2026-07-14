@@ -1,0 +1,4 @@
+param([string]$Vault=(Split-Path $PSScriptRoot -Parent))
+$path=Join-Path $Vault 'Logs\IngestionRetryQueue.json';$raw=@(Get-Content -Raw $path|ConvertFrom-Json);$by=@{}
+foreach($item in $raw){$name=@($item.source_name|Where-Object{$_})|Select-Object -First 1;if(!$name){continue};$existing=$by[$name];$attempts=[int](@($item.attempts|Where-Object{$_})|Select-Object -First 1);$status=@($item.status|Where-Object{$_})|Select-Object -First 1;if(!$status){$status='pending'};if(!$existing -or $attempts -ge [int]$existing.attempts){$by[$name]=[pscustomobject]@{source_name=$name;attempts=$attempts;status=$status;last_reason=@($item.last_reason|Where-Object{$_})|Select-Object -First 1;last_attempt=@($item.last_attempt|Where-Object{$_})|Select-Object -First 1;next_attempt=@($item.next_attempt|Where-Object{$_})|Select-Object -First 1}}}
+@($by.Values)|ConvertTo-Json -Depth 6|Out-File $path -Encoding utf8 -NoNewline;Write-Host "Normalised retry queue: $($by.Count) records"
