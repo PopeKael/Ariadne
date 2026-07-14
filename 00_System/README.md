@@ -35,6 +35,8 @@ Check or recreate it with:
 
 Do not add the generated index to commits. The scripts, configuration, and source content needed to rebuild it remain version controlled.
 
+Search results carry a structured citation with the document and chunk identity, vault path, heading, Markdown line range, and available original-source metadata. They also include a ready-to-display citation string. A citation can be `complete` (external source present), `vault-only` (valid local note), or `incomplete` with the missing fields listed.
+
 ## Control menu
 
 Run `Start-AriadneControl.ps1` to open the local HTML control menu. It separates normal vault operations from maintenance routines and launches each selected workflow in a separate PowerShell window.

@@ -21,7 +21,7 @@ from typing import Any, Callable
 # Bump this when the persisted record schema changes.  The index is derived
 # data, so rejecting an older shape is preferable to silently returning
 # chunks without the provenance required for citations.
-INDEX_VERSION = 2
+INDEX_VERSION = 3
 DEFAULT_MODEL = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")
 DEFAULT_OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434")
 

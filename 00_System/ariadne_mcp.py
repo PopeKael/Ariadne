@@ -111,21 +111,28 @@ def excerpt(record: dict[str, Any], query: str, limit: int = 700) -> str:
     return ("…" if start else "") + snippet
 
 
-def markdown_chunks(content: str, size: int = DEFAULT_CHUNK_CHARS) -> list[tuple[str, str]]:
+def markdown_chunks(content: str, size: int = DEFAULT_CHUNK_CHARS) -> list[dict[str, Any]]:
     """Split Markdown into small, self-contained passages.
 
     Headings begin a new passage. Long passages use a small overlap so a fact
     split across a boundary is not silently lost. Chunks are derived at query
     time: the Markdown remains the only source of truth.
     """
-    blocks = [block.strip() for block in re.split(r"\n\s*\n", content) if block.strip()]
-    chunks: list[tuple[str, str]] = []
+    blocks = []
+    for match in re.finditer(r"\S(?:.*?\S)?(?=\n\s*\n|\Z)", content, re.DOTALL):
+        blocks.append((match.start(), match.end(), match.group(0)))
+    chunks: list[dict[str, Any]] = []
     heading = "Document"
-    buffer: list[str] = []
+    buffer: list[tuple[int, int, str]] = []
 
     def flush() -> None:
         nonlocal buffer
-        text = "\n\n".join(buffer).strip()
+        if not buffer:
+            return
+        source_start = buffer[0][0]
+        source_end = buffer[-1][1]
+        text = content[source_start:source_end].strip()
+        source_start += len(content[source_start:source_end]) - len(content[source_start:source_end].lstrip())
         if not text:
             return
         start = 0
@@ -135,27 +142,72 @@ def markdown_chunks(content: str, size: int = DEFAULT_CHUNK_CHARS) -> list[tuple
                 boundary = text.rfind("\n", start, end)
                 if boundary > start + size // 2:
                     end = boundary
-            piece = text[start:end].strip()
+            raw_piece = text[start:end]
+            piece = raw_piece.strip()
             if piece:
-                chunks.append((heading, piece))
+                piece_start = source_start + start + len(raw_piece) - len(raw_piece.lstrip())
+                piece_end = piece_start + len(piece)
+                chunks.append({
+                    "heading": heading,
+                    "content": piece,
+                    "line_start": content.count("\n", 0, piece_start) + 1,
+                    "line_end": content.count("\n", 0, max(piece_start, piece_end - 1)) + 1,
+                })
             if end >= len(text):
                 break
             start = max(end - 180, start + 1)
         buffer = []
 
     for block in blocks:
-        match = re.match(r"^(#{1,6})\s+(.+?)\s*$", block)
+        match = re.match(r"^(#{1,6})\s+(.+?)\s*$", block[2])
         if match:
             flush()
             heading = match.group(2)
             buffer = [block]
         else:
-            candidate = "\n\n".join(buffer + [block])
+            candidate = "\n\n".join(item[2] for item in buffer + [block])
             if len(candidate) > size and buffer:
                 flush()
             buffer.append(block)
     flush()
     return chunks
+
+
+def build_citation(record: dict[str, Any], path: str, heading: str = "Document",
+                   chunk_id: str | None = None, line_start: int | None = None,
+                   line_end: int | None = None) -> dict[str, Any]:
+    """Return a stable, self-contained provenance record for retrieval output."""
+    title = record.get("page_title") or record.get("source_name") or path
+    citation = {
+        "citation_version": 1,
+        "document_id": record.get("document_id"),
+        "chunk_id": chunk_id,
+        "path": path,
+        "title": title,
+        "heading": heading,
+        "line_start": line_start,
+        "line_end": line_end,
+        "source_url": record.get("source_url"),
+        "source_name": record.get("source_name"),
+        "source_language": record.get("source_language"),
+        "publication_date": record.get("publication_date"),
+        "channel_author": record.get("channel_author"),
+    }
+    issues = [field for field in ("document_id", "path", "title", "heading") if not citation.get(field)]
+    if chunk_id and (not isinstance(line_start, int) or not isinstance(line_end, int) or line_start < 1 or line_end < line_start):
+        issues.append("line_anchor")
+    citation["status"] = "complete" if not issues and citation["source_url"] else "vault-only" if not issues else "incomplete"
+    citation["issues"] = issues
+    return citation
+
+
+def format_citation(citation: dict[str, Any]) -> str:
+    """Provide an immediately usable citation while retaining structured fields."""
+    anchor = ""
+    if citation.get("line_start"):
+        anchor = f", lines {citation['line_start']}–{citation['line_end']}"
+    location = citation.get("source_url") or f"vault:{citation.get('path')}"
+    return f"{citation.get('title')} — {citation.get('heading')}{anchor}; {location}"
 
 
 def score_text(text: str, query: str) -> float:
@@ -183,20 +235,14 @@ def chunk_records() -> list[dict[str, Any]]:
         except OSError:
             continue
         relative = path.relative_to(ROOT).as_posix()
-        citation = {
-            "source_url": record.get("source_url"),
-            "source_name": record.get("source_name"),
-            "source_language": record.get("source_language"),
-            "publication_date": record.get("publication_date"),
-            "channel_author": record.get("channel_author"),
-        }
-        for index, (heading, chunk) in enumerate(markdown_chunks(content)):
+        for index, chunk in enumerate(markdown_chunks(content)):
             chunk_id = f"{record.get('document_id')}#chunk-{index}"
+            citation = build_citation(record, relative, chunk["heading"], chunk_id, chunk["line_start"], chunk["line_end"])
             result.append({"path": relative, "document_id": record.get("document_id"), "chunk_id": chunk_id,
-                           "heading": heading, "title": record.get("page_title") or record.get("source_name"),
-                           "content": chunk, "content_hash": chunk_hash(heading, chunk),
+                           "heading": chunk["heading"], "title": record.get("page_title") or record.get("source_name"),
+                           "content": chunk["content"], "content_hash": chunk_hash(chunk["heading"], chunk["content"]),
                            "document_content_hash": record.get("content_sha256"),
-                           "citation": citation})
+                           "citation": citation, "citation_text": format_citation(citation)})
     return result
 
 
@@ -238,6 +284,9 @@ def search(arguments: dict[str, Any]) -> dict[str, Any]:
     ranked.sort(key=lambda item: (-item[0], str(item[1].get("document_id") or "")))
     results = []
     for score, record in ranked[:limit]:
+        path = processed_path(record)
+        relative = path.relative_to(ROOT).as_posix() if path else str(record.get("processed_path") or "")
+        citation = build_citation(record, relative)
         results.append({
             "document_id": record.get("document_id"),
             "title": record.get("page_title") or record.get("source_name"),
@@ -248,6 +297,8 @@ def search(arguments: dict[str, Any]) -> dict[str, Any]:
             "summary": record.get("summary"),
             "processed_path": record.get("processed_path"),
             "excerpt": excerpt(record, query),
+            "citation": citation,
+            "citation_text": format_citation(citation),
         })
     return {"query": query, "match_count": len(results), "results": results}
 
@@ -300,7 +351,9 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
             content = path.read_text(encoding="utf-8-sig", errors="replace")
         except OSError:
             continue
-        for index, (heading, chunk) in enumerate(markdown_chunks(content)):
+        for index, chunk_data in enumerate(markdown_chunks(content)):
+            heading = chunk_data["heading"]
+            chunk = chunk_data["content"]
             passage_score = score_text(chunk, query)
             chunk_id = f"{record.get('document_id')}#chunk-{index}"
             lexical = document_score + passage_score
@@ -310,28 +363,33 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
             lexical_normalized = lexical / (lexical + 12.0) if lexical else 0.0
             combined = 0.50 * lexical_normalized + 0.40 * semantic + 0.10 * graph
             if combined > 0:
-                candidates.append((combined, lexical, semantic, graph, record, index, heading, chunk))
+                candidates.append((combined, lexical, semantic, graph, record, index, heading, chunk, chunk_data, path))
 
     candidates.sort(key=lambda item: (-item[0], str(item[4].get("document_id") or ""), item[5]))
     results = []
     seen = set()
-    for combined, lexical, semantic, graph, record, index, heading, chunk in candidates:
+    for combined, lexical, semantic, graph, record, index, heading, chunk, chunk_data, path in candidates:
         # Avoid returning overlapping windows from the same part of a document.
         key = (record.get("document_id"), index)
         if key in seen:
             continue
         seen.add(key)
+        chunk_id = f"{record.get('document_id')}#chunk-{index}"
         indexed_entry = indexed_by_chunk.get(chunk_id)
         if indexed_entry and indexed_entry.get("content_hash") != chunk_hash(heading, chunk):
             indexed_entry = None
-        citation = indexed_entry.get("citation", {}) if indexed_entry else {}
+        citation = indexed_entry.get("citation") if indexed_entry else None
+        if not isinstance(citation, dict):
+            citation = build_citation(record, path.relative_to(ROOT).as_posix(), heading, chunk_id,
+                                      chunk_data["line_start"], chunk_data["line_end"])
         results.append({
-            "chunk_id": f"{record.get('document_id')}#chunk-{index}",
+            "chunk_id": chunk_id,
             "document_id": record.get("document_id"),
             "path": indexed_entry.get("path") if indexed_entry else path.relative_to(ROOT).as_posix(),
             "title": indexed_entry.get("title") if indexed_entry else record.get("page_title") or record.get("source_name"),
             "source_url": citation.get("source_url", record.get("source_url")),
             "citation": citation,
+            "citation_text": format_citation(citation),
             "heading": heading,
             "score": combined,
             "lexical_score": round(lexical, 6),
@@ -363,8 +421,10 @@ def get_chunk(arguments: dict[str, Any]) -> dict[str, Any]:
     chunks = markdown_chunks(path.read_text(encoding="utf-8-sig", errors="replace"))
     if index < 0 or index >= len(chunks):
         raise ValueError("The requested chunk no longer exists; run search_knowledge_chunks again.")
-    heading, content = chunks[index]
-    return {"chunk_id": chunk_id, "document_id": document_id, "title": record.get("page_title") or record.get("source_name"), "source_url": record.get("source_url"), "heading": heading, "content": content}
+    chunk = chunks[index]
+    citation = build_citation(record, path.relative_to(ROOT).as_posix(), chunk["heading"], chunk_id,
+                              chunk["line_start"], chunk["line_end"])
+    return {"chunk_id": chunk_id, "document_id": document_id, "title": record.get("page_title") or record.get("source_name"), "source_url": record.get("source_url"), "heading": chunk["heading"], "content": chunk["content"], "citation": citation, "citation_text": format_citation(citation)}
 
 
 def get_document(arguments: dict[str, Any]) -> dict[str, Any]:
