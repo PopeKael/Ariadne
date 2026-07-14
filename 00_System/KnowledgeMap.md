@@ -1,7 +1,9 @@
-> Last updated: 2026-07-14 17:58:23
+> Last updated: 2026-07-14 20:14:58
 
 ## AI & LLMs
 Purpose: Document describes Google Gemini, an AI assistant product, fitting under AI & LLMs.
+- Correspondence - Science and AI Literacy: Tips for sharing content that shows how science literacy helps spot misinformation from humans and AI.
+- Current ecosystem of real‑time bidirectional translation solutions that run on standard Bluetooth earbuds.
 - Video transcript detailing the development of a private AI appliance called Ariadne for secure business workflow integration and personal digital assistance.
 - Gemini chat producing an AI-generated image of a detailed underground command bunker.
 - Age Progression Image Generation Request via ChatGPT
@@ -121,6 +123,16 @@ Purpose: Document describes Google Gemini, an AI assistant product, fitting unde
 
 ## Infrastructure
 Purpose: The article discusses a telecommunications outage affecting critical national infrastructure and the cybersecurity implications thereof.
+- WordPress plugin troubleshooting & site performance guide focusing on OneSignal integration.
+- A conceptual discussion of vehicle‑to‑grid (V2G) integration emphasizing community-driven energy sharing and the policy obstacles hindering widespread adoption.
+- Correspondence about TMD Hosting Timeout Issue – chat logs with timestamps showing user and ChatGPT interactions.
+- Email signature guide for Warren Gerdes – Infrastructure Architect and Content Creator
+- Diagnosing a YouTube Studio upload failure that affected video and custom thumbnail uploads but not metadata changes or automatic thumbnails; VPN test and service recovery indicated a transient backend issue.
+- Analysis of South Africa's electricity grid turnaround, highlighting the role of political decisions on engineering competence and infrastructure performance.
+- Distance comparison between Northwest Passage route and conventional shipping lanes for US East Coast and Northern Europe to Asia.
+- Networking issue diagnosis: Thai ISP blocks inbound ports, causing Synology access failure; suggestions to use Cloudflare Tunnel or non-standard ports.
+- Clipping on IRGC warning of underwater missile deployment amid US-Iran conflict.
+- Conversation about Firefox vs Chromium ecosystem, including market share decline and extension support issues.
 - Gemini chat – investigation on Terraform Industries atmospheric hydrocarbon technology.
 - Correction to JSON output regarding Gemini scheduled actions and task automation.
 - Explanation of DGX Spark's hardware and software stack, its role as an AI appliance, and how it differs from traditional GPU setups.
@@ -159,6 +171,17 @@ Purpose: The article discusses a telecommunications outage affecting critical na
 
 ## Content Creation
 Purpose: User requested a new content creation article in 4th person
+- Document pending classification review.
+- Replying to sales pitches in YouTube comments for better engagement.
+- Email reply regarding headphone collaboration and honest review conditions
+- Correspondence - Immigration Law Commentary – drafting a YouTube comment on Thai immigration policy changes.
+- Template for creating optimized metadata for YouTube vlogs.
+- TikTok script outline: Bangkok ranked #10 among most expensive cities for the wealthy, but everyday living remains affordable for retirees.
+- User developing a 14-track ambient concept album titled 'Walking the Dream' and designing photorealistic cover art featuring desert ruins at golden hour, blending ancient ruins with stylized shrubbery to illustrate the narrative arc.
+- User seeks to create an upbeat EDM track with Thai festival vibe for a travel vlog.
+- Creative brief and development notes for an ambient tribal meditation track featuring didgeridoo-led soundscapes.
+- Content Creation - Song Writing with AI Prompts
+- A ChatGPT-generated meme caption guide for coffee as life support.
 - Video script outlining AI-assisted thumbnail creation workflow for YouTube.
 - Thumbnail workflow notes for Pope Kael TV – design guidelines, image generation limits, and optional border enhancement.
 - Internal discussion about standardizing Patreon post images to a 16:9 landscape aspect ratio for consistency across platforms.
@@ -362,6 +385,33 @@ Purpose: User requested a new content creation article in 4th person
 
 ## Travel & Expat Experience
 Purpose: The document discusses expatriate experiences and attitudes in Thailand, fitting within travel and expat experience.
+- Document detailing Thailand's 2026 visa policy shifts and enforcement changes, emphasizing a move from casual border runs to systematic monitoring for expats.
+- Youth migration from Muslim-majority countries due to economic challenges
+- Nakhon Pathom, Thailand
+- Expat Life in Thailand: Healthcare and Costs Overview
+- Personal reflection on living in Bangkok after 4 months, covering cost, culture, adaptation, and future plans.
+- Travel & Expat Experience > Social Media Content Creation
+- Travel & Expat Experience: Thailand Tourism Strategy
+- Opinion piece on expatriate life in Thailand, touching traffic issues and content creation.
+- Document - Summary instructions for Facebook post about 10‑year Thailand vlog.
+- Correspondence - Thailand Insurance Approval Issues – a discussion of Thailand’s policy on approving health insurance for travelers and its implications for coverage reliability.
+- Thai temple fair video clip summary
+- Songkran Terminology Clarification
+- Correspondence - Rephrasing Video Comment – advice on commenting about foreign tourist behaviour in Thailand.
+- Mega Plaza walkthrough vlog – highlights gaming and collectible stalls in Bangkok.
+- YouTube vlog titled 'After the Party! Thailand Hangovers, Shopping & Real Life' showcasing everyday Thai life post-party, featuring Big C shopping and insights into local culture.
+- YouTube video discussing the realities and practical aspects of dating transgender women (ladyboys) in Thailand, including cultural insights, relationship dynamics, safety, legal issues, and tips for foreigners.
+- Content creation outline for Thai travel vlogs covering festival, car service, and motor show events.
+- Embedded Google map showing the location of Baan Bangkrathuek in Thailand, with coordinates (13.7725575, 100.3050416).
+- Steak 42 – popular local steak restaurant near 7‑Eleven in Bangkok, showcased via embedded Google Map.
+- Travel & Expat Experience
+- Document discussing long-term living in Thailand, its modernization and practical advice for expats.
+- Middle East conflict update – March 3, 2026: US-Israel airstrikes on Iran spark multi‑front war, diplomatic evacuations, and energy market volatility.
+- Video commentary on Thailand's cannabis legal framework and its implications for foreigners and tourism.
+- Travel & Expat Experience - Thai Public Hospital Review
+- Document about TSA's new CT scanner rollout and its effect on analog photography travelers.
+- Insightful analysis on how adaptation to Thai cultural systems shapes expat and retiree experiences, touching on corruption, trust, and psychological resilience.
+- Video script outline – Property Rights Stack for foreigners in Thailand.
 - Travel & Expat Experience
 - Passive cooling architecture comparison between Australian homesteads and Middle Eastern windcatchers.
 - Vlog discussing life in Thailand, content creation workflow, Patreon and Facebook group management.
@@ -432,6 +482,8 @@ Purpose: The document discusses expatriate experiences and attitudes in Thailand
 
 ## Knowledge Management
 Purpose: The document focuses on designing and evaluating personal knowledge base architectures, fitting within Knowledge Management.
+- Image classification guidelines for archival folders
+- Clipping from ChatGPT conversation titled 'Multi-Personality Building - Eris Personality' containing explanations of E=mc^2 and egg frying.
 - Knowledge Management – Data ingestion pipeline and document capture process
 - Adjust PowerShell ExecutionPolicy to run unsigned Ariadne scripts and unblock file if needed.
 - Build Your Own Second Brain Guide – tutorial on setting up a personal knowledge base with AI assistance, covering tools like Obsidian and Cloud Code Desktop, folder structure, rulebooks, automation, and plugins.
@@ -457,6 +509,12 @@ Purpose: The document focuses on designing and evaluating personal knowledge bas
 
 ## Personal
 Purpose: The document reflects personal memories of 1980s sci‑fi television, fitting into the Personal domain.
+- Personal communication advice regarding Discord DM
+- Personal note: moved treadmill & inversion table upstairs into an air-conditioned room to facilitate fitness routine.
+- Scheduling email exchange for a photo shoot with Jeff, Warren, and Chanya in Bangkok, accounting for work schedules and travel constraints.
+- Draft message instructing friend to use Discord instead of Facebook for conversations, citing privacy and surveillance issues.
+- Casual request to friend
+- ChatGPT conversation about vitamin D inhalation claims and personal sun exposure.
 - Script on the true cost of retiring abroad, emphasizing daily freedom costs versus living expenses.
 - Personal discussion on managing Windows 10/11 update pauses and browser notifications for ChatGPT reminders.
 - ChatGPT conversation about integrating Wispr Flow voice transcription into personal workflow and comparing it to existing Speechify usage.
@@ -506,6 +564,10 @@ Purpose: The document reflects personal memories of 1980s sci‑fi television, f
 
 ## Projects
 Purpose: The document focuses on project planning and cost optimization for a knowledge vault using AI tools.
+- Unclassified document pending review.
+- Correspondence thread on branch comment response strategy
+- Document proposing an innovative submarine for deep-sea exploration and requesting social‑media funded outreach.
+- Product design – insulated milk bottle
 - Floor Plan Analysis – ChatGPT conversation on an 11.5 m × 6.0 m home layout and accurate placement in a site photo.
 - International thorium reactor projects – status and key countries.
 - Instructions for adding a new image file to a GitHub repo via the web interface.
@@ -523,6 +585,7 @@ Purpose: The document focuses on project planning and cost optimization for a kn
 
 ## Gaming
 Purpose: It details gameplay mechanics for ARK's planning and build modes, fitting under Gaming.
+- Document discussing Fenmarel Mestarine, a Forgotten Realms elven deity and its lore within D&D.
 - ChatGPT clip summarizing a Star Citizen 4.8.2 update bug causing Idris ship data incompatibility and server crashes.
 - Arcade Gaming History – A timeline from 1970s to present, detailing technological breakthroughs, social dynamics, market shifts, decline, and revival via barcade culture.
 - Document is a personal reflection on the arcades era and how the narrator’s adult life and professional computing shaped their view of video games.
@@ -538,6 +601,23 @@ Purpose: It details gameplay mechanics for ARK's planning and build modes, fitti
 
 ## Business
 Purpose: Document discusses economic opportunities and strategic policy in Australia’s space industry, fitting within the Business domain.
+- Source: WTI Crude Oil price snapshot with recent market analysis and key metrics.
+- Document analyzing why U.S. markets dropped today, citing interest rate fears, tech sector weakness and profit-taking.
+- Clipping about Thai public signboard tax regulation and language-based rates
+- Apple vs. Samsung lawsuit analysis and content‑creation strategy guide
+- Insurance correspondence about motorcycle policy renewal options.
+- Discussion comparing hemp and eucalyptus farming economics in Thailand.
+- Email login issue for Perplexity mobile app – delayed or missing verification emails, request to link desktop and mobile account, and maintain persistent login.
+- Business > Corporate Governance
+- Author's reflection on shift from attention to intent economy due to AI, with practical insights for Substack users.
+- Payment authorization issue with Australian credit cards while in Thailand.
+- Discord message from creator Wazza responding to patron Ray about community engagement and support.
+- Account Recovery Email Help – correspondence about migrating legacy social‑auth accounts to email-based access after Facebook login removal.
+- Article on using inverse vulcanization to turn industrial sulfur waste into a recyclable, shape‑memory polymer for 3D/4D printing.
+- Document discussing Thailand's potential in sodium trade for batteries.
+- Gold price comparison chart between Thai and global markets
+- Document pending classification review.
+- Business-focused AI assistant platform for enterprise workflow
 - Apple files lawsuit against OpenAI for alleged trade secret theft, talent poaching and supply‑chain sabotage related to AI‑powered consumer device development.
 - Daily Snapshot of 6 key business and infrastructure events as of May 8, 2026.
 - Article reporting on Thai Constitutional Court's ruling that the 400bn baht emergency loan decree was unconstitutional.
@@ -582,6 +662,13 @@ Purpose: Document discusses economic opportunities and strategic policy in Austr
 Purpose: Could not confidently classify the document.
 - Unclassified document pending review.
 - Unclassified document pending review.
+- Archive drop from January videos posted to YouTube and Facebook via a draft social media post.
+- Unclassified document pending review.
+- Fact‑check clipping debunking claim that Iran painted fake planes and U.S. spent $5 million bombing them.
+- Discussion on Element 115’s role in gravity and warp‑drive speculation, including superfluid vortex concepts.
+- Unclassified document pending review.
+- Unclassified document pending review.
+- Unclassified document pending review.
 - Unclassified document pending review.
 - Caption for a set of restored family photos.
 - Unclassified document pending review.
@@ -611,6 +698,11 @@ Purpose: Could not confidently classify the document.
 
 ## Philosophy
 Purpose: The document presents a philosophical comparison between Buddhist concepts and Discordianist ideas.
+- Analysis of why Huckleberry Finn is a cultural anchor and key educational themes.
+- Document pending classification review.
+- User-ChatGPT discussion on Islam’s influence in Middle Eastern politics, exploring secularization and mysticism.
+- Clipping: The Rabbit Hole – Achieving Trips Without Drugs – summarizing non-drug techniques for psychedelic experiences.
+- Synthesis of philosophical and psychological frameworks for modern awakening (Candles, Chaos, and Choreography).
 - Video connecting General Semantics principles to AI language processing and human interaction.
 - ChatGPT conversation: 'The Rabbit Hole - Political Beliefs and Identity' – analysis of left‑right framing, curiosity, and identity formation.
 - Personal reflection on using narrative intent as a form of 'magic' to influence long-term behavior, referencing Grant Morrison and neuroplasticity.
