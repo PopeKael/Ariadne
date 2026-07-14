@@ -74,6 +74,9 @@ Wiki/**
 # docs/
 # Projects/
 
+# Generated local semantic-search index; rebuilt from this vault.
+/00_System/Data/embedding-index.json
+
 # ----------------------------------------------------------
 # Operating System Files
 # ----------------------------------------------------------
