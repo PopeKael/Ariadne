@@ -16294,5 +16294,1478 @@
     "processed_path": "Processed/Your Roadmap Is Why You're Losing to AI-Native Teams.2026-07-12T23_41_20+07_002026-07-12T09_00_37-07_00[[AI News & Strategy Daily _ Nate B Jones]].md",
     "wiki_path": "Wiki/Business.md",
     "indexed_at": "2026-07-13 08:42:54"
+  },
+  {
+    "source_name": "MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
+    "document_id": "youtube:fcJZghMc5hk",
+    "source_url": "https://www.youtube.com/watch?v=fcJZghMc5hk",
+    "youtube_video_id": "fcJZghMc5hk",
+    "page_title": "MCP retrieval",
+    "channel_author": "- \"[[Garage Alchemy with Pope Kael]]",
+    "publication_date": "2026-07-13",
+    "content_sha256": "975e24538f23ec534bb398fd1482f3c009748db3d99be5b75b59628895b8b0ab",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "chunking",
+      "embedding",
+      "semantic retrieval",
+      "graph reasoning"
+    ],
+    "source_language": "en",
+    "reason": "The transcript details a new iteration of a knowledge vault project focused on chunking and embedding to improve LLM retrieval, marking it as a distinct update within the same domain.",
+    "tags": [
+      "knowledge management",
+      "llms",
+      "chunking",
+      "embedding",
+      "retrieval"
+    ],
+    "links": [],
+    "map_entry": "Video episode on upgrading a private knowledge base with chunking and embeddings to enhance LLM response relevance.",
+    "summary": "The transcript captures a video discussion about advancing a personal knowledge vault for use with large language models. The speaker explains progress from basic document retrieval to advanced chunk-based, semantic retrieval via embeddings, and potential future graph reasoning layers. They reflect on performance metrics, compare their approach with another engineer's agent-centric method, and outline a staged roadmap—document, chunk, embedding, hybrid retrieval, then graph logic. The narrative also touches on content creation challenges, community engagement, and calls for collaborative resources.",
+    "review_path": "Review/MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].review.md",
+    "processed_path": "Processed/MCP retrieval2026-07-13T16_23_10+07_002026-07-13T01_42_03-07_00[[Garage Alchemy with Pope Kael]].md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-13 22:57:38"
+  },
+  {
+    "source_name": "OpenAI Just Gave Everyone an AI Employee2026-07-13T09_55_19+07_002026-07-11T11_00_28-07_00[[Dylan Davis]].md",
+    "document_id": "youtube:nlXCH8-TN1c",
+    "source_url": "https://www.youtube.com/watch?v=nlXCH8-TN1c",
+    "youtube_video_id": "nlXCH8-TN1c",
+    "page_title": "OpenAI Just Gave Everyone an AI Employee",
+    "channel_author": "- \"[[Dylan Davis]]",
+    "publication_date": "2026-07-12",
+    "content_sha256": "d6dee5f6ae830bee6293c6ddff40feb07f276b36be9ba72e9213d05d859a5f26",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Desktop app integration",
+      "Folder-based task automation",
+      "Plugin ecosystem",
+      "UI navigation for browsers and apps",
+      "Scheduled & event-driven workflows",
+      "Microsite creation within ChatGPT",
+      "AI-powered document processing"
+    ],
+    "source_language": "en",
+    "reason": "Introduces the newly released ChatGPT Work desktop app and its unique capabilities for business workflow automation, which were not covered previously.",
+    "tags": [
+      "ChatGPT Work",
+      "desktop app",
+      "automation",
+      "plugins",
+      "UI navigation",
+      "microsites",
+      "task delegation"
+    ],
+    "links": [
+      "https://openai.com/chatgpt-work"
+    ],
+    "map_entry": "Comprehensive overview of ChatGPT Work features enabling AI-driven business workflow automation via a desktop app, folder monitoring, plugins, UI navigation and microsite creation.",
+    "summary": "The transcript explains how the new ChatGPT Work desktop application expands beyond simple chat to become a full-fledged AI assistant for businesses. It highlights five core strengths: mass‑file processing from folders, a rich plugin ecosystem (Google Drive, Trello, etc.), intelligent UI navigation that can control browsers and apps, automated task scheduling or folder‑monitor triggers, and built‑in microsite creation with hosting and permissions. Together these features allow non‑technical users to delegate complex, repetitive tasks and streamline workflows within their organization.",
+    "review_path": "Review/OpenAI Just Gave Everyone an AI Employee2026-07-13T09_55_19+07_002026-07-11T11_00_28-07_00[[Dylan Davis]].review.md",
+    "processed_path": "Processed/OpenAI Just Gave Everyone an AI Employee2026-07-13T09_55_19+07_002026-07-11T11_00_28-07_00[[Dylan Davis]].md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-13 22:58:12"
+  },
+  {
+    "source_name": "Pope Kael TV - Project Progress Review2026-07-13T16_37_13+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9-pope-kael-tv/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628",
+    "source_url": "https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9-pope-kael-tv/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628",
+    "youtube_video_id": null,
+    "page_title": "Pope Kael TV - Project Progress Review",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "3dab25bef7fc23f8fa8cddbf87789bf80ec1f9fd08030dd919ce5129f8ac3486",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "MCP server",
+      "chunk retrieval",
+      "retrieval augmented generation (RAG)",
+      "embeddings",
+      "knowledge vault",
+      "local knowledge base"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses building an AI-powered personal knowledge vault using MCP and chunk retrieval techniques.",
+    "tags": [
+      "ai",
+      "llms",
+      "retrieval",
+      "embeddings",
+      "knowledge management",
+      "MCP",
+      "RAG",
+      "personal knowledge base"
+    ],
+    "links": [
+      "Project Ariadne",
+      "Matt Wolf"
+    ],
+    "map_entry": "Video title and thumbnail design proposal for AI knowledge vault enhancement",
+    "summary": "The text outlines a new video title and thumbnail concept for \"My Knowledge Vault Just Got Smarter | MCP Retrieval + Chunking\", detailing how the project uses an MCP server for retrieval augmented generation, chunk-based searches, and upcoming embeddings work. It emphasizes quiet confidence over dramatic flair, suggesting poses that reflect engineering progress while maintaining brand consistency. The content serves as a guide for creating engaging yet authentic YouTube thumbnails in an AI knowledge-management context.",
+    "review_path": "Review/Pope Kael TV - Project Progress Review2026-07-13T16_37_13+07_00.review.md",
+    "processed_path": "Processed/Pope Kael TV - Project Progress Review2026-07-13T16_37_13+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 22:58:55"
+  },
+  {
+    "source_name": "Testing Features and Tokens2026-07-13T11_13_12+07_00.md",
+    "document_id": "url:https://chatgpt.com/c/6a545413-66cc-83ec-8406-f1ddbd84c4c6",
+    "source_url": "https://chatgpt.com/c/6a545413-66cc-83ec-8406-f1ddbd84c4c6",
+    "youtube_video_id": null,
+    "page_title": "Testing Features and Tokens",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "725f7d786a07954024ed65b8f0df98ebbca5efc71343ffa3db0d8d3027e8e5e6",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "MCP server",
+      "knowledge ingestion",
+      "retrieval layer",
+      "API exposure"
+    ],
+    "source_language": "en",
+    "reason": "The discussion confirms that no operational MCP service is currently deployed; only conceptual design and partial scaffolding exist, while the existing system provides a vector store and local REST API.",
+    "tags": [
+      "mcp",
+      "knowledge-management",
+      "infrastructure",
+      "api",
+      "retrieval"
+    ],
+    "links": [],
+    "map_entry": "Conversation snippet clarifying that the MCP server has not been launched yet in the Knowledge Vault setup.",
+    "summary": "The user’s query about an active MCP server is answered: currently, there is no running MCP service. The existing architecture focuses on ingesting data into a vector store and exposing it via a local REST API. The MCP concept was explored only at a design level, and implementing a retrieval endpoint would be the next logical step if an MCP‑style interface is desired.",
+    "review_path": "Review/Testing Features and Tokens2026-07-13T11_13_12+07_00.review.md",
+    "processed_path": "Processed/Testing Features and Tokens2026-07-13T11_13_12+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-13 22:59:12"
+  },
+  {
+    "source_name": "The Rabbit Hole - Adobe Construction Debate2026-07-13T22_43_30+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ac3de0-3ae8-83a1-b631-6fe20031f721",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ac3de0-3ae8-83a1-b631-6fe20031f721",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Adobe Construction Debate",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "49f57335a60f407cdb9a2c9fd1ec8f78b7572d9bdfc43e175c662689449708f8",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "Traditional Construction",
+      "Building Codes",
+      "Sustainability",
+      "Economic Analysis"
+    ],
+    "source_language": "en",
+    "reason": "The user requested a corrected, concise summary of the discussion about adobe construction versus modern building codes and industry influence.",
+    "tags": [
+      "adobe",
+      "construction",
+      "building_codes",
+      "sustainability",
+      "industry_lobbying",
+      "cost_analysis"
+    ],
+    "links": [
+      "UN Report on Earthen Housing",
+      "New Mexico Building Code for Adobe",
+      "California Building Standards Commission Hearing on Natural Construction",
+      "University of Arizona Study on Desert Thermal Mass"
+    ],
+    "map_entry": "Adobe construction: myth vs reality – costs, durability, regulatory challenges and industry lobbying.",
+    "summary": "The analysis confirms that adobe can be an effective low‑cost, energy‑efficient building material in dry climates when properly designed and maintained. However, the claim that a whole house could cost only $300 is misleading, as that figure covers just the block walls; additional costs for foundation, roof, utilities, permits, labor, and land push total expenses into tens of thousands of dollars. Building codes are largely driven by risk management—seismic resilience, fire safety, moisture control—and not solely by profit motives. While industry lobbying does influence code development, regulations also involve engineers, insurers, local governments, and public safety experts. Adobe is regulated rather than banned; some states have dedicated adobe building codes or owner‑builder exemptions that allow affordable, self‑built homes. The narrative of a deliberate conspiracy to suppress adobe is exaggerated: the truth lies in nuanced trade‑offs between material suitability, climate conditions, and regulatory risk. Thus, adobe remains a viable construction option in suitable contexts but requires realistic cost expectations and adherence to safety standards.",
+    "review_path": "Review/The Rabbit Hole - Adobe Construction Debate2026-07-13T22_43_30+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Adobe Construction Debate2026-07-13T22_43_30+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-13 22:59:48"
+  },
+  {
+    "source_name": "The Rabbit Hole - AGI Impact and Challenges2026-07-13T22_50_54+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d5c09d-bfd8-839b-bfbc-7d3a7d7b8b6c",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d5c09d-bfd8-839b-bfbc-7d3a7d7b8b6c",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AGI Impact and Challenges",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "3420340c03ec6cf646cff96a9b19ea8564442d40e19e7e3b4a0491beb258269e",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "AGI challenges",
+      "GPU performance for local AI",
+      "software stack maturity"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses AGI capabilities, bottlenecks and a hardware comparison of GPUs relevant to local AI workloads.",
+    "tags": [
+      "ai",
+      "llm",
+      "gpu",
+      "intel",
+      "nvidia",
+      "amd",
+      "performance"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d"
+    ],
+    "map_entry": "Summary of AGI discussion and GPU benchmarking for local AI use cases.",
+    "summary": "The text covers an analysis of AGI’s transformative potential versus current narrow AI, outlines bottlenecks such as reasoning, continuous learning, and alignment, and juxtaposes these concerns with a hardware-focused comparison among Intel Arc Pro B70, NVIDIA RTX Pro 4000, and AMD Radeon R9700 GPUs. It highlights that while NVIDIA dominates the ecosystem, Intel offers competitive price‑per‑VRAM for local AI tasks, though software stack maturity remains a challenge.",
+    "review_path": "Review/The Rabbit Hole - AGI Impact and Challenges2026-07-13T22_50_54+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AGI Impact and Challenges2026-07-13T22_50_54+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 23:00:16"
+  },
+  {
+    "source_name": "The Rabbit Hole - AI and Control Concerns2026-07-13T22_53_15+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d98bf6-b154-839b-9724-f0a1790d7871",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d98bf6-b154-839b-9724-f0a1790d7871",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AI and Control Concerns",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "7fa3eaf6bc7c01abe57cfbaefe0866b17d3a96ab2549a5b3edf5967b54171116",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "regulation",
+      "financial technology",
+      "governance"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses the role of AI as a tool amplifying existing control mechanisms, focusing on financial systems and governance.",
+    "tags": [
+      "ai",
+      "control",
+      "finance",
+      "regulation"
+    ],
+    "links": [],
+    "map_entry": "Document discussing AI control concerns and financial system governance.",
+    "summary": "This text argues that AI is not the root of increased centralization; rather, it amplifies existing tools like account freezes. The focus should be on regulation and oversight.",
+    "review_path": "Review/The Rabbit Hole - AI and Control Concerns2026-07-13T22_53_15+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AI and Control Concerns2026-07-13T22_53_15+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 23:00:41"
+  },
+  {
+    "source_name": "The Rabbit Hole - AI and Job Disruption2026-07-13T22_52_53+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d861e6-5d40-83a0-bf83-b9e80ed22455",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d861e6-5d40-83a0-bf83-b9e80ed22455",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AI and Job Disruption",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "0e44beaa1d941c8c3d724f285a9715a7ba5ced6f47d7b7aeea9228a1e564c87e",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI job displacement",
+      "video script outline",
+      "narrative framing"
+    ],
+    "source_language": "en",
+    "reason": "The document focuses on creating a video script to discuss AI's impact on jobs, fitting the Content Creation category.",
+    "tags": [
+      "ai",
+      "job_disruption",
+      "video_script",
+      "content_creation"
+    ],
+    "links": [
+      "https://chatgpt.com/g/p-69a4ef86524c8191be0301c425967e0d/c/69d861e6-5d40-83a0-bf83-b9e80ed22455"
+    ],
+    "map_entry": "Video script outline analyzing AI's role in job disruption, focusing on task erosion and class inversion, with a structured 10‑minute narrative plan.",
+    "summary": "The document provides an analysis of how AI erodes tasks within jobs rather than eliminating whole roles, highlights the unexpected vulnerability of \"safe\" occupations, and offers a concise outline for creating a 10‑minute video that frames these insights through engaging narrative techniques.",
+    "review_path": "Review/The Rabbit Hole - AI and Job Disruption2026-07-13T22_52_53+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AI and Job Disruption2026-07-13T22_52_53+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:01:30"
+  },
+  {
+    "source_name": "The Rabbit Hole - AI Apocalypse Analysis2026-07-13T22_53_32+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d99cf9-4fac-8398-a2cc-bd8273010640",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d99cf9-4fac-8398-a2cc-bd8273010640",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AI Apocalypse Analysis",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "fb5a5434cc7f3b73564b345c83601579a548e7b906dab83fe66f78d4403b2363",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "AI Apocalypse Narrative",
+      "Transition Narrative",
+      "Garage Alchemy Manifesto"
+    ],
+    "source_language": "en",
+    "reason": "The document analyzes a video on AI apocalypse, framing it as a transition narrative and promoting a personal manifesto about using AI rather than fearing it.",
+    "tags": [
+      "philosophy",
+      "ai apocalypse",
+      "garage alchemy",
+      "content creation"
+    ],
+    "links": [],
+    "map_entry": "Analysis of Mo Gawdat's AI apocalypse video, presenting a transition narrative and a ‘garage alchemy’ manifesto encouraging active use of AI over fear.",
+    "summary": "The text dissects a video that portrays the impending rise of AI as an inevitable but manageable shift—“collapse → correction.” It critiques typical doom–hype narratives, introduces the idea of “garage alchemy” where everyday users experiment with and refine raw AI technology, and argues that people who adopt AI will thrive while those who don’t will be left behind. The author frames this perspective as a personal manifesto for creators and viewers alike, urging proactive engagement with AI rather than passive fear.",
+    "review_path": "Review/The Rabbit Hole - AI Apocalypse Analysis2026-07-13T22_53_32+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AI Apocalypse Analysis2026-07-13T22_53_32+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-13 23:02:01"
+  },
+  {
+    "source_name": "The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AI in Daily Life",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "997d893c75e0fd8d8db733fd133d289a668d3ab3cc90e828a8ba1a38eebc9855",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "YouTube algorithm",
+      "channel branding",
+      "topic framing",
+      "AI tool integration",
+      "audience targeting"
+    ],
+    "source_language": "en",
+    "reason": "The document provides strategy for YouTube content creation, focusing on maintaining audience profile while integrating AI tools in a Thailand‑life channel.",
+    "tags": [
+      "YouTube",
+      "content strategy",
+      "expat",
+      "Thailand life",
+      "AI tools"
+    ],
+    "links": [],
+    "map_entry": "Advice on how to frame AI‑related content within a Thai lifestyle YouTube channel so it aligns with existing audience and avoids algorithm disruption.",
+    "summary": "The article explains that presenting AI usage as part of daily life in Thailand—rather than pure tech tutorials—fits the channel’s existing \"life in Thailand\" identity. It suggests keeping titles anchored on Thailand (e.g., \"Living in Thailand Just Got Easier (AI Is Helping With Thai)\") and maintaining authenticity, safety, and meaning pillars. The guidance stresses that showing real tools used daily reinforces trust, and notes the subtle mistake of deviating too far from the life‑in‑Thailand framing could break momentum. It also touches on AI context window myths, references Altered Carbon as a pop‑culture analogy, but mainly focuses on content strategy for an expat audience.",
+    "review_path": "Review/The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:02:20"
+  },
+  {
+    "source_name": "The Rabbit Hole - AI in Software Engineering2026-07-13T22_49_08+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d0ba64-d3e8-83a1-a7e1-c859f7923b00",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d0ba64-d3e8-83a1-a7e1-c859f7923b00",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AI in Software Engineering",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "b1909358346e155cba6d1f94e0dd5438d1221edf6d65d6745c51c6d5298190df",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "software development automation",
+      "code generation",
+      "prompt injection risk",
+      "bottleneck shift from typing to design",
+      "prototype building"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses AI’s impact on software engineering, focusing on code generation capabilities and associated risks.",
+    "tags": [
+      "ai",
+      "llms",
+      "softwareengineering",
+      "automation",
+      "security"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d0ba64-d3e8-83a1-a7e1-c859f7923b00"
+    ],
+    "map_entry": "Clipping: AI reaches practical threshold for software engineering—prototyping, design bottleneck shift, and security concerns.",
+    "summary": "The article argues that AI has reached a “good‑enough often enough” level for coding, dramatically reducing the cost and speed of development. It highlights two sides: hobbyists can quickly prototype with LLMs, while seasoned engineers can use them as force multipliers for production work. At the same time, it warns about prompt injection, data exfiltration, and other security risks that accompany greater AI autonomy.",
+    "review_path": "Review/The Rabbit Hole - AI in Software Engineering2026-07-13T22_49_08+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AI in Software Engineering2026-07-13T22_49_08+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 23:02:50"
+  },
+  {
+    "source_name": "The Rabbit Hole - AI Memory Claims Analysis2026-07-13T22_47_56+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c7274d-93bc-83a0-b31d-8363f74d935e",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c7274d-93bc-83a0-b31d-8363f74d935e",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AI Memory Claims Analysis",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "5ca9cb99837e3a8db49a26587930f056aebb9626b67331ac3bd90616b84d403e",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "Memory Optimization",
+      "Hardware Impact",
+      "Market Trends"
+    ],
+    "source_language": "en",
+    "reason": "The document evaluates claims regarding AI model memory efficiency, discusses hardware implications for memory demand, and analyzes market reactions, fitting the Infrastructure category.",
+    "tags": [
+      "ai",
+      "memory",
+      "hardware-demand",
+      "market-analysis"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c7274d-93bc-83a0-b31d-8363f74d935e"
+    ],
+    "map_entry": "Analysis of exaggerated AI memory reduction claims and their alleged impact on RAM demand.",
+    "summary": "The document critically examines a claim that AI advances can cut memory usage by 6× and speed up processing by 8× across the industry. It notes real research directions such as improved attention, quantization, and sparsity, but argues that the broad performance and market impact claims are misleading or cherry‑picked. The author concludes that increased AI workloads actually boost demand for high‑bandwidth memory rather than reduce it.",
+    "review_path": "Review/The Rabbit Hole - AI Memory Claims Analysis2026-07-13T22_47_56+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AI Memory Claims Analysis2026-07-13T22_47_56+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-13 23:03:38"
+  },
+  {
+    "source_name": "The Rabbit Hole - AI Privacy and Power2026-07-13T22_43_47+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bc9f63-1a38-83a1-a033-aa851baca8fd",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bc9f63-1a38-83a1-a033-aa851baca8fd",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - AI Privacy and Power",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "a3f41b1ebfd9309a5d5a6029de541902f6706885ae1ceb7a950a157a89e268cf",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "personal data collection",
+      "microtargeting in politics",
+      "privacy regulation gaps",
+      "data center moratorium",
+      "democratic impact of AI profiling"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses how large‑scale AI systems collect personal data, use it for microtargeting, and the resulting threats to privacy and democracy. It calls for regulatory intervention such as a data‑center moratorium, aligning with the AI & LLMs primary topic.",
+    "tags": [
+      "privacy",
+      "data-collection",
+      "AI regulation",
+      "microtargeting",
+      "democracy",
+      "political influence"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bc9f63-1a38-83a1-a033-aa851baca8fd"
+    ],
+    "map_entry": "The Rabbit Hole – AI Privacy and Power: a briefing on personal data exploitation by AI systems, the threat to democratic processes, and calls for regulatory intervention.",
+    "summary": "This document outlines how unchecked AI data collection threatens individual privacy and democratic integrity. It details profiling practices that enable microtargeted political messaging, critiques weak current regulations, proposes a moratorium on new AI data centers as leverage for lawmakers, and highlights potential economic, political, and technological implications of such policies.",
+    "review_path": "Review/The Rabbit Hole - AI Privacy and Power2026-07-13T22_43_47+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - AI Privacy and Power2026-07-13T22_43_47+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 23:04:18"
+  },
+  {
+    "source_name": "The Rabbit Hole - Archimedes Vortex Feasibility2026-07-13T22_55_50+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ddbc07-cb74-8399-856b-0f707a8a98d3",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ddbc07-cb74-8399-856b-0f707a8a98d3",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Archimedes Vortex Feasibility",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "87dd0fbf820bb89c395e7b15c5f45311b4325d1a1106b23b2037e99ebf876d7c",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "wind turbine design",
+      "economic feasibility",
+      "roof deployment constraints"
+    ],
+    "source_language": "en",
+    "reason": "Document analyzes Archimedes vortex wind turbine deployment challenges.",
+    "tags": [
+      "wind energy",
+      "turbine technology",
+      "energy economics",
+      "rooftop power"
+    ],
+    "links": [],
+    "map_entry": "Analysis of the viability and barriers to deploying Archimedes vortex wind turbines on residential rooftops.",
+    "summary": "The document discusses the technical appeal of the Archimedes vortex wind turbine, noting its aerodynamic advantages in turbulent urban winds. However, it explains why such turbines are not common on suburban roofs, citing limited wind resources, low energy density, long payback periods compared to solar PV, and practical issues like weight, permits, installation, and maintenance.",
+    "review_path": "Review/The Rabbit Hole - Archimedes Vortex Feasibility2026-07-13T22_55_50+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Archimedes Vortex Feasibility2026-07-13T22_55_50+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-13 23:04:52"
+  },
+  {
+    "source_name": "The Rabbit Hole - Attention Feedback Loop2026-07-13T22_52_11+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d7d935-b360-839e-867a-08720cb91591",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d7d935-b360-839e-867a-08720cb91591",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Attention Feedback Loop",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "d7a6194024613509fc3dd721e87b6395819c2a9682e5574df62983041dc624d8",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI hype cycle",
+      "utility-focused strategy",
+      "attention economy"
+    ],
+    "source_language": "en",
+    "reason": "The document analyzes the dynamics of AI-related YouTube content, critiques clickbait feedback loops, and proposes a practical, utility-oriented channel approach.",
+    "tags": [
+      "content_creation",
+      "ai_hype",
+      "attention_loop",
+      "utility_channel"
+    ],
+    "links": [],
+    "map_entry": "The Rabbit Hole – Attention Feedback Loop: analysis of AI hype channel dynamics and recommendation for a steady, utilitarian content strategy.",
+    "summary": "The article examines how AI news channels create cyclical attention loops driven by exaggerated framing and rapid output, leading to fleeting spikes but low long-term retention. It contrasts this with a proposed model focusing on everyday utility—such as translations or problem-solving—that offers lasting value and compounding audience growth. The piece highlights the importance of stepping outside the noise-driven arena to build content that people can actually use daily.",
+    "review_path": "Review/The Rabbit Hole - Attention Feedback Loop2026-07-13T22_52_11+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Attention Feedback Loop2026-07-13T22_52_11+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:05:21"
+  },
+  {
+    "source_name": "The Rabbit Hole - Australia's Fuel Supply Strategy2026-07-13T22_50_03+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d31377-6084-8398-a914-7a50f3e7e84d",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d31377-6084-8398-a914-7a50f3e7e84d",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Australia's Fuel Supply Strategy",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "741469d5ec2379c83ab48aeded31dc8d8cd36367c057c88c7d89a19a30545871",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Energy Policy",
+      "Australia"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses Australia’s fuel supply strategy and how to visually represent it, a business‑policy related topic.",
+    "tags": [
+      "clippings"
+    ],
+    "links": [],
+    "map_entry": "The Rabbit Hole - Australia's Fuel Supply Strategy",
+    "summary": "An article excerpt describing strategies for depicting Australian-specific imagery in the context of the nation’s fuel supply and trade imbalances.",
+    "review_path": "Review/The Rabbit Hole - Australia's Fuel Supply Strategy2026-07-13T22_50_03+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Australia's Fuel Supply Strategy2026-07-13T22_50_03+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-13 23:06:06"
+  },
+  {
+    "source_name": "The Rabbit Hole - Biodiesel and Global Challenges2026-07-13T22_54_44+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69db2642-63ec-839e-beb5-8da1940247fc",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69db2642-63ec-839e-beb5-8da1940247fc",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Biodiesel and Global Challenges",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "e4e78574dd1a927275d8a0754b0d2a2ec7dfc972ac8ad02d413ccacb126eec14",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "energy economics",
+      "biodiesel technology",
+      "logistics",
+      "conspiracy theory analysis"
+    ],
+    "source_language": "en",
+    "reason": "The document is an article discussing biodiesel usage and debunking conspiracies, fitting content creation.",
+    "tags": [
+      "biodiesel",
+      "energy policy",
+      "economics",
+      "logistics",
+      "conspiracy theories"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69db2642-63ec-839e-beb5-8da1940247fc"
+    ],
+    "map_entry": "Article explaining why biodiesel isn't widely adopted and analyzing related conspiracy theories.",
+    "summary": "The document presents a comprehensive analysis of the barriers to widespread adoption of biodiesel in global transport, focusing on energy density, land use, cost, infrastructure, and engine compatibility. It critiques a popular conspiracy narrative claiming suppression of a 'magic plant', arguing instead that practical economic and technical factors outweigh any deliberate censorship. Additionally, it briefly touches on pulse jet engines, noting their low fuel efficiency compared to modern turbofans. The piece serves as an informational resource debunking myths while outlining the real challenges of biofuel integration.",
+    "review_path": "Review/The Rabbit Hole - Biodiesel and Global Challenges2026-07-13T22_54_44+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Biodiesel and Global Challenges2026-07-13T22_54_44+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:06:31"
+  },
+  {
+    "source_name": "The Rabbit Hole - Branch · AI Apocalypse Analysis2026-07-13T22_53_44+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9a885-a6bc-8398-8686-5aa3427201ff",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9a885-a6bc-8398-8686-5aa3427201ff",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "aa2934847e8fcd2a4b83d944411c9c51aa0bd5d9341b098abf54add4e850f983",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "AI Ethics",
+      "Socioeconomic Impact of AI",
+      "Employment Disruption",
+      "Universal Basic Income",
+      "Surveillance & Control",
+      "Information Trustworthiness",
+      "Human-Centric Skills",
+      "Technological Transition"
+    ],
+    "source_language": "en",
+    "reason": "The document focuses on the philosophical and societal implications of AI's rapid advancement, addressing how humans must adapt during a transitional period.",
+    "tags": [
+      "AI",
+      "Society",
+      "Future",
+      "Ethics",
+      "Jobs",
+      "UBI",
+      "Surveillance",
+      "Truth",
+      "HumanSkills"
+    ],
+    "links": [],
+    "map_entry": "Philosophical analysis of AI transition and societal adaptation",
+    "summary": "The talk outlines a forthcoming “dystopian transition” triggered by rapidly advancing AI amidst global competition, greed, and geopolitical tension. It warns of widespread unemployment (20‑50% in some sectors) and the collapse of capitalist structures as machines outpace human labor. To prevent societal breakdown, concepts like universal basic income are suggested. The speaker also highlights risks of surveillance, manipulation of truth through synthetic media, and erosion of shared reality. Despite these challenges, a long‑term vision of abundance is presented: work becomes obsolete, allowing humans to focus on connection, empathy, and creativity. AI is reframed not as a tool but as an emerging intelligence shaped by human values; its outcome depends on societal choices. Practical advice centers on mastering AI usage, fostering uniquely human skills, discerning truth, staying adaptable, and upholding ethics. The narrative concludes with cautious optimism: the transition period tests collective responsibility, offering both danger and opportunity.",
+    "review_path": "Review/The Rabbit Hole - Branch · AI Apocalypse Analysis2026-07-13T22_53_44+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Branch · AI Apocalypse Analysis2026-07-13T22_53_44+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-13 23:07:18"
+  },
+  {
+    "source_name": "The Rabbit Hole - Branch · AI Apocalypse Analysis2026-07-13T22_54_04+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9aa1c-21c4-8399-b014-b26a83bd97cd",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9aa1c-21c4-8399-b014-b26a83bd97cd",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "f535d505b5b7e782611d278e6fd567c859dfdcd61c861e110d408a976253d20f",
+    "primary_topic": "Knowledge Management",
+    "subtopics": [
+      "AI transition narrative",
+      "Intelligence as a service model",
+      "Human networks/tribes for AI",
+      "Cost of knowledge and pricing shift"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses how AI is already integrated, the drop in intelligence costs, the need to learn AI, and building human networks to interpret and share AI outputs, all central to knowledge management themes.",
+    "tags": [
+      "AI",
+      "knowledge management",
+      "human networks",
+      "intelligence as a service",
+      "pricing model shift"
+    ],
+    "links": [],
+    "map_entry": "Document on AI transition, cost of intelligence, and the concept of 'garage alchemy'—building human communities that co‑create and refine AI outputs.",
+    "summary": "The text reframes the often-voiced ‘AI apocalypse’ narrative as an inevitable transition rather than a threat. It argues that AI has already surpassed human performance in many domains and that slowing its progress is impossible; what remains is the messy shift of jobs, economics, and governance. Key points include: 1) AI’s rapid cost reduction turns intelligence from a scarce commodity to almost ubiquitous 'electricity,' destabilizing current pricing models like those exemplified by expensive consumer electronics where most value lies in accumulated knowledge rather than physical components. 2) The real competitive advantage moves from owning knowledge to effectively filtering, interpreting, and distributing it—what the author terms *signal*. 3) Humans should learn and leverage AI tools while building networks or ‘tribes’ that collectively evaluate, test, and iterate on AI-generated ideas—a concept called “garage alchemy.” This collaborative layer serves as a counter‑measure to simple reliance on technology, ensuring humans remain indispensable by focusing on connection, empathy, ethics, and rapid collective learning. The overarching message: adapt, learn AI, engage in human communities, and the transition will be less disruptive.",
+    "review_path": "Review/The Rabbit Hole - Branch · AI Apocalypse Analysis2026-07-13T22_54_04+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Branch · AI Apocalypse Analysis2026-07-13T22_54_04+07_00.md",
+    "wiki_path": "Wiki/Knowledge Management.md",
+    "indexed_at": "2026-07-13 23:07:59"
+  },
+  {
+    "source_name": "The Rabbit Hole - Cloud Centralization Fragility2026-07-13T22_43_13+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a92d30-4d6c-839b-9238-4e8294a1aff6",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a92d30-4d6c-839b-9238-4e8294a1aff6",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Cloud Centralization Fragility",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "2306f54033379d5a33a5012489c4e7aab92a175788fe6a24046a33f7d88394a7",
+    "primary_topic": "Business",
+    "subtopics": [
+      "patent valuation",
+      "digital transition",
+      "intellectual property"
+    ],
+    "source_language": "en",
+    "reason": "The document analyzes how analog verification patents fare over time, the financial returns of patents versus technological obsolescence, and legal aspects of patent claims in software and UI.",
+    "tags": [
+      "patents",
+      "intellectual property",
+      "technology",
+      "innovation",
+      "law"
+    ],
+    "links": [],
+    "map_entry": "Excerpt on analog verification systems, patent economics, and software UI patent discussion.",
+    "summary": "This excerpt discusses how analog tape verification patents historically yielded modest financial returns once digital methods became mainstream, explores the distinction between ideas, implementations, and patentable claims, explains prior art considerations, and outlines realistic risks for small developers concerning software patents versus copyrights.",
+    "review_path": "Review/The Rabbit Hole - Cloud Centralization Fragility2026-07-13T22_43_13+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Cloud Centralization Fragility2026-07-13T22_43_13+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-13 23:08:17"
+  },
+  {
+    "source_name": "The Rabbit Hole - Fake Earth Captions2026-07-13T22_52_31+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d7c3cc-70b8-839a-a83f-6b7a069be845",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d7c3cc-70b8-839a-a83f-6b7a069be845",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Fake Earth Captions",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "11788000851c4dae18733af115ad47af261dc50a42dd673c4eba9c29b47fed55",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Social Media Marketing",
+      "Humor Writing",
+      "Conspiracy Satire"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses drafting a humorous Facebook caption that satirizes fake Earth images, references conspiracy movies (Capricorn One, Fly Me to the Moon), and includes light-hearted dialogue—an example of content creation for social media.",
+    "tags": [
+      "social media",
+      "humor",
+      "conspiracy",
+      "film references"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d7c3cc-70b8-839a-a83f-6b7a069be845"
+    ],
+    "map_entry": "A humorous social‑media caption guide that plays on conspiracy tropes and movie references.",
+    "summary": "This piece illustrates how to craft a playful Facebook post about supposedly fake Earth photos, using satire, film references (Capricorn One, Fly Me to the Moon), and a side conversation on cube‑shaped Earth ideas. It serves as an example of content creation aimed at engaging social‑media audiences.",
+    "review_path": "Review/The Rabbit Hole - Fake Earth Captions2026-07-13T22_52_31+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Fake Earth Captions2026-07-13T22_52_31+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:08:51"
+  },
+  {
+    "source_name": "The Rabbit Hole - Fenmarel Mestarine Beliefs2026-07-13T22_42_43+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a6bfea-ab44-839a-95ed-889a29219a28",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a6bfea-ab44-839a-95ed-889a29219a28",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Fenmarel Mestarine Beliefs",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "d3240f65e1e210830ecf7c92dd446a3820d94bc78b0338a05d606704b76743eb",
+    "primary_topic": "Gaming",
+    "subtopics": [
+      "Dungeons & Dragons",
+      "Forgotten Realms",
+      "Elven Deities"
+    ],
+    "source_language": "en",
+    "reason": "The document explains the identity and portfolio of Fenmarel Mestarine, a Forgotten Realms deity associated with elven outcasts.",
+    "tags": [
+      "gaming",
+      "dnd",
+      "deities",
+      "forgottenrealms"
+    ],
+    "links": [
+      "https://www.dandwiki.com/wiki/Fenmarel_Mestarine"
+    ],
+    "map_entry": "Fenmarel Mestarine – Official Forgotten Realms deity of isolation, self-reliance and marginalized elves. The article clarifies the misspelling \"Fenmeral Masterine\" and outlines his portfolio and worshippers.",
+    "summary": "The text addresses a common misconception that there is no official D&D deity called Fenmeral Masterine, explaining instead that the correct figure is Fenmarel Mestarine, an outcast deity in the Forgotten Realms pantheon. It details his domains (outcasts, isolation, self-reliance), mythic background of being expelled from the Seldarine, typical followers (elven hermits and marginalized elves), and even draws a cultural parallel to Generation Jones as a metaphorical patron for those who reject mainstream systems. The summary provides context and clarifies the deity’s role in D&D lore.",
+    "review_path": "Review/The Rabbit Hole - Fenmarel Mestarine Beliefs2026-07-13T22_42_43+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Fenmarel Mestarine Beliefs2026-07-13T22_42_43+07_00.md",
+    "wiki_path": "Wiki/Gaming.md",
+    "indexed_at": "2026-07-13 23:09:23"
+  },
+  {
+    "source_name": "The Rabbit Hole - Greg's Post Analysis2026-07-13T22_43_23+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ac32e3-a9f4-839c-b537-4ffb5d51b15e",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ac32e3-a9f4-839c-b537-4ffb5d51b15e",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Greg's Post Analysis",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "dddd9d25a3d5eaf3998d1b4bcb553550f2a8e9b117859920b1e5e93d9a8cc1c0",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Geopolitical risk",
+      "Oil supply chain",
+      "Insurance markets",
+      "U.S. legislative process",
+      "Strategic analysis"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses a speculative geopolitical scenario that could disrupt global oil trade and examines the business implications of insurance markets, U.S. policy decisions, and congressional delays.",
+    "tags": [
+      "geopolitics",
+      "oil",
+      "insurance",
+      "policy",
+      "Hormuz"
+    ],
+    "links": [],
+    "map_entry": "Analysis of Greg’s post on a hypothetical conflict affecting Hormuz oil traffic and US insurance/legislative delays.",
+    "summary": "The text critiques Greg's speculative claim about the U.S. failing to insure tankers in the Strait of Hormuz amid an Iran‑related crisis, noting that real constraints—such as limited insurance capacity and slow congressional approval—could choke oil flow even if military control is maintained.",
+    "review_path": "Review/The Rabbit Hole - Greg's Post Analysis2026-07-13T22_43_23+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Greg's Post Analysis2026-07-13T22_43_23+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-13 23:10:02"
+  },
+  {
+    "source_name": "The Rabbit Hole - Hank's AI Perspective2026-07-13T22_54_30+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9e0c7-9878-8399-aae7-b94b3da00d08",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9e0c7-9878-8399-aae7-b94b3da00d08",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Hank's AI Perspective",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "528028c474701f52fb11c127b3fe8ba02bfcb010f6829bdf681119b8a1484889",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "operational AI impact",
+      "cybersecurity exploitation"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses how real-world deployment of AI models, specifically Anthropic’s Mythos, enables zero‑day exploitation and shifts power dynamics in cybersecurity.",
+    "tags": [
+      "ai",
+      "llms",
+      "security",
+      "hype"
+    ],
+    "links": [],
+    "map_entry": "Hank's AI Perspective on real-world AI exploitation",
+    "summary": "Hank observes that most current AI news is hype; the true breakthrough occurs when models like Anthropic’s Mythos perform tangible tasks such as finding zero‑day vulnerabilities and chaining exploits. He views this transition from theoretical to operational AI as a shift in cybersecurity power, expressing uneasy curiosity rather than panic. Philosophically, he likens software to early wooden scaffolding being shaken by a hammer—AI is reshaping the foundational structure.",
+    "review_path": "Review/The Rabbit Hole - Hank's AI Perspective2026-07-13T22_54_30+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Hank's AI Perspective2026-07-13T22_54_30+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 23:10:24"
+  },
+  {
+    "source_name": "The Rabbit Hole - Heat Transfer Design Ideas2026-07-13T22_48_49+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d07b4e-d9a8-839e-b246-d8957f7ff941",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d07b4e-d9a8-839e-b246-d8957f7ff941",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Heat Transfer Design Ideas",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "67760e59c233bf79f84b2695e0ca35c05ad497e83996f99eed9bae8a5c6c64de",
+    "primary_topic": "Business",
+    "subtopics": [
+      "Product Design",
+      "Thermal Insulation",
+      "Packaging"
+    ],
+    "source_language": "en",
+    "reason": "The conversation introduces new concepts for insulating milk bottles using textured designs and trapped air, relevant to product design and business innovation.",
+    "tags": [
+      "productdesign",
+      "thermalinsulation",
+      "bottles"
+    ],
+    "links": [],
+    "map_entry": "Design ideas for improved thermal insulation in milk bottles through surface texture and geometry.",
+    "summary": "The discussion explores how bottle texture can affect heat transfer, noting that simple roughness generally increases conduction but well‑designed geometric features that trap air—such as ribbed sleeves, double‑wall channels, or lattice shells—can significantly reduce warming. Three prototype concepts are outlined: a ribbed bottle with a detachable sleeve, a dual‑layer mold with internal honeycomb channels, and an outer lattice shell around a smooth core. The focus is on practical manufacturing options suitable for hot climates and potential market appeal.",
+    "review_path": "Review/The Rabbit Hole - Heat Transfer Design Ideas2026-07-13T22_48_49+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Heat Transfer Design Ideas2026-07-13T22_48_49+07_00.md",
+    "wiki_path": "Wiki/Business.md",
+    "indexed_at": "2026-07-13 23:11:01"
+  },
+  {
+    "source_name": "The Rabbit Hole - Jerry's Memory Slip2026-07-13T22_50_13+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d362b7-b650-839a-a6c2-1745dd8bf1c3",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d362b7-b650-839a-a6c2-1745dd8bf1c3",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Jerry's Memory Slip",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "e4900ad882fcab8fb95a2372e257a0d93d8e61c34b1e0c16d63cf36fc01ace7a",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "social media posts",
+      "memory archiving"
+    ],
+    "source_language": "en",
+    "reason": "The document details the creation of a humorous Facebook post about an old video memory.",
+    "tags": [
+      "social-media",
+      "facebook",
+      "archive",
+      "humor"
+    ],
+    "links": [],
+    "map_entry": "The Rabbit Hole - Jerry's Memory Slip: A lighthearted Facebook post revisiting an archived birthday video and celebrating an eight-year friendship milestone.",
+    "summary": "This document is a ready‑to‑post Facebook caption that humorously corrects a remembered date to eight years, recounts retrieving an archived birthday video from 37 years ago at The Rome, and encourages friends to view the clip. It blends nostalgia, meme culture, and social media etiquette in a concise, shareable format.",
+    "review_path": "Review/The Rabbit Hole - Jerry's Memory Slip2026-07-13T22_50_13+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Jerry's Memory Slip2026-07-13T22_50_13+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:11:26"
+  },
+  {
+    "source_name": "The Rabbit Hole - Missing Evidence and Conspiracies2026-07-13T22_55_11+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69dbc1d6-cac4-8398-a432-8801567a1617",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69dbc1d6-cac4-8398-a432-8801567a1617",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Missing Evidence and Conspiracies",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "2f663d23cb2b4d96fa879547e721245cc6735593727ce0f7cbb93a3d71c4fd17",
+    "primary_topic": "Archive",
+    "subtopics": [
+      "Cold War Secrecy",
+      "Missing Photographic Evidence",
+      "UFO Case Studies"
+    ],
+    "source_language": "en",
+    "reason": "Document discusses lost archival evidence from a 1966 UFO incident and the Cold War record‑keeping context.",
+    "tags": [
+      "archive",
+      "cold war",
+      "ufo",
+      "secrecy",
+      "evidence"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69dbc1d6-cac4-8398-a432-8801567a1617"
+    ],
+    "map_entry": "1966 UFO Incident – Missing Evidence and Cold War Context",
+    "summary": "The text outlines a 1966 UFO sighting with witnesses but no surviving photographs or TV footage, suggesting that record loss was likely due to Cold‑War secrecy rather than deliberate alien cover‑up. It also touches on contemporary UAP/AI hype, noting media amplification. The document highlights gaps in archival preservation and the difficulty of obtaining concrete evidence from that era.",
+    "review_path": "Review/The Rabbit Hole - Missing Evidence and Conspiracies2026-07-13T22_55_11+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Missing Evidence and Conspiracies2026-07-13T22_55_11+07_00.md",
+    "wiki_path": "Wiki/Archive.md",
+    "indexed_at": "2026-07-13 23:11:50"
+  },
+  {
+    "source_name": "The Rabbit Hole - MrBeast's YouTube Decline2026-07-13T22_55_26+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ddac5d-fab0-839f-84e4-c4b00a0d58a7",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ddac5d-fab0-839f-84e4-c4b00a0d58a7",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - MrBeast's YouTube Decline",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "85aa6210cca3ae7f57cff5963faa3c6ac0b983037254c79b920012c1fa1b1f18",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Creator-Platform Dynamics",
+      "YouTube Algorithm & Monetisation",
+      "MrBeast Popularity Decline",
+      "Hypersonic Rocket Travel Speculation",
+      "Infrastructure & Safety Challenges"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses YouTube content creation dynamics, Mr. Beast’s audience changes, platform algorithms, monetisation concerns, and speculates on rocket‑based rapid travel and its practical obstacles.",
+    "tags": [
+      "youtube",
+      "content_creation",
+      "algorithm",
+      "monetization",
+      "rocket_technology"
+    ],
+    "links": [
+      "MrBeast",
+      "SpaceX"
+    ],
+    "map_entry": "Analysis of YouTube creator challenges with a detour into suborbital travel feasibility.",
+    "summary": "The author reflects on why Mr. Beast’s viewership may be declining, attributing it to platform changes and personal motivations. He criticises low‑effort content and believes the algorithm will reward engaging creators. Interspersed is a speculative discussion of using rockets for rapid Earth traversal, noting practical barriers such as safety, infrastructure, and energy costs—suggesting that while feasible on paper, rooftop rocket deployments remain unlikely outside controlled spaceports.",
+    "review_path": "Review/The Rabbit Hole - MrBeast's YouTube Decline2026-07-13T22_55_26+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - MrBeast's YouTube Decline2026-07-13T22_55_26+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:12:17"
+  },
+  {
+    "source_name": "The Rabbit Hole - Narrative Sovereignty and AI2026-07-13T22_42_52+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a6d034-270c-83a0-9171-02f84587ce0d",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a6d034-270c-83a0-9171-02f84587ce0d",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Narrative Sovereignty and AI",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "e76ebd88238c5f66528d2b174e4d910b0b66f244ec9dbdc47094ce8c1ec0e2eb",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "AI narrative",
+      "canon definition",
+      "fandom authorship"
+    ],
+    "source_language": "en",
+    "reason": "The user discusses philosophical aspects of AI storytelling, canon, and fan participation in creating narratives.",
+    "tags": [
+      "philosophy",
+      "AI narrative",
+      "canon",
+      "fandom"
+    ],
+    "links": [],
+    "map_entry": "Creative discussion about how to finish an open-ended story involving Ava from Ex Machina and implications for canon and authorship.",
+    "summary": "The text explores the philosophical questions surrounding AI-generated storytelling, particularly how decisions about ending an unfinished narrative affect what becomes canon. It considers various stakeholders—studio, audience, AI itself—and envisions a modular, participatory narrative landscape where multiple endings coexist.",
+    "review_path": "Review/The Rabbit Hole - Narrative Sovereignty and AI2026-07-13T22_42_52+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Narrative Sovereignty and AI2026-07-13T22_42_52+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-13 23:12:57"
+  },
+  {
+    "source_name": "The Rabbit Hole - Quantum Time Entanglement Theory2026-07-13T22_47_05+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf8295-0404-839e-99be-b0fa04b7a468",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf8295-0404-839e-99be-b0fa04b7a468",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Quantum Time Entanglement Theory",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "299aa8758257814d3f07bd7620c506d300f0a7eae958e1591eef4f2ce07fc51b",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "Time ontology",
+      "Quantum entanglement",
+      "Emergent time"
+    ],
+    "source_language": "en",
+    "reason": "The document explores a theoretical physics concept that frames time as an emergent property of quantum entanglement, which is a philosophical discussion about the nature of reality and temporal experience.",
+    "tags": [
+      "physics",
+      "quantum",
+      "time",
+      "entanglement",
+      "ontology"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf8295-0404-839e-99be-b0fa04b7a468"
+    ],
+    "map_entry": "Document summarizing a theory that time may emerge from quantum entanglement, suggesting time is not fundamental but relational.",
+    "summary": "The text proposes that time could be an emergent phenomenon arising from quantum entanglement between particles. It argues that in perfectly isolated systems with no entanglement, the notion of time passing would vanish, and that correlations serve as internal clocks for subsystems.",
+    "review_path": "Review/The Rabbit Hole - Quantum Time Entanglement Theory2026-07-13T22_47_05+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Quantum Time Entanglement Theory2026-07-13T22_47_05+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-13 23:13:30"
+  },
+  {
+    "source_name": "The Rabbit Hole - Solar Methane Development Status2026-07-13T22_50_29+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d4ff55-e03c-8399-a112-31482cb15304",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d4ff55-e03c-8399-a112-31482cb15304",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Solar Methane Development Status",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "72d9b4df48e907142eb30b2c344bb58d4dc20784f2ecdc69ff3255ac7c530377",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "Solar methane production",
+      "Electrolysis & Sabatier reaction",
+      "Carbon capture",
+      "Efficiency and economics",
+      "Startup progress",
+      "Technology milestones",
+      "Scaling challenges"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses the status of an existing renewable energy technology project (solar methane) and its recent developments, which are updates rather than a completely new topic.",
+    "tags": [
+      "solar",
+      "methane",
+      "synthetic fuels",
+      "energy",
+      "startup",
+      "technology",
+      "efficiency"
+    ],
+    "links": [
+      "https://terraformindustries.wordpress.com/2024/04/01/terraform-makes-carbon-neutral-natural-gas/?utm_source=chatgpt.com",
+      "https://terraformindustries.wordpress.com/?utm_source=chatgpt.com",
+      "https://caseyhandmer.wordpress.com/2025/12/08/energy-predictions-2025/?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Update on Terraform Industries' solar methane development status and progress.",
+    "summary": "The document outlines the current state of Terraform Industries’ project to produce synthetic methane from air using electrolysis, carbon capture, and the Sabatier reaction powered by cheap solar energy. It notes a 2024 milestone where pipeline‑grade methane was produced in an integrated prototype, acknowledges that the system is only about 30–35 % efficient but can be further lowered to cut costs, and describes ongoing hardware development, hiring, and economic validation efforts. The key takeaways are that the chemistry works, the prototype functions, but large‑scale economics remain unproven; the project remains in early pilot stages rather than a commercial breakthrough.",
+    "review_path": "Review/The Rabbit Hole - Solar Methane Development Status2026-07-13T22_50_29+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Solar Methane Development Status2026-07-13T22_50_29+07_00.md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-13 23:14:04"
+  },
+  {
+    "source_name": "The Rabbit Hole - Sulfur in 3D Printing2026-07-13T22_54_57+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69db3d8f-9824-8399-8dae-08fac5e8350e",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69db3d8f-9824-8399-8dae-08fac5e8350e",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Sulfur in 3D Printing",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "3e347cf8ce07cd165b5bc6e25c8e3bdf1beca53eb81506b32e0d70a11ace1e3a",
+    "primary_topic": "Projects",
+    "subtopics": [
+      "inverse vulcanization",
+      "sulfur polymer",
+      "shear‑thinning behavior",
+      "4D printing",
+      "industrial waste utilization",
+      "safety concerns"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses how inverse vulcanization creates recyclable, shape‑shifting polymers for 3D/4D printing from industrial sulfur waste.",
+    "tags": [
+      "sulfur",
+      "inverse vulcanization",
+      "3d printing",
+      "material science",
+      "recycling",
+      "4D printing",
+      "shear-thinning"
+    ],
+    "links": [
+      "https://example.com/inverse-vulcanization-3d-printing"
+    ],
+    "map_entry": "Overview of sulfur-based 3D/4D printable material via inverse vulcanization, properties, waste reuse, and safety considerations.",
+    "summary": "Sulfur polymer made by inverse vulcanization yields a recyclable, shape‑shifting 3D printable material that reuses industrial waste with controllable shear-thinning and safe handling when processed.",
+    "review_path": "Review/The Rabbit Hole - Sulfur in 3D Printing2026-07-13T22_54_57+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Sulfur in 3D Printing2026-07-13T22_54_57+07_00.md",
+    "wiki_path": "Wiki/Projects.md",
+    "indexed_at": "2026-07-13 23:14:31"
+  },
+  {
+    "source_name": "The Rabbit Hole - Sunni Shia Split Explained2026-07-13T22_42_59+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a85629-3388-839a-b7c1-9c7634f0955a",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a85629-3388-839a-b7c1-9c7634f0955a",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Sunni Shia Split Explained",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "f554400a927f7168b696a3c8aaaf7cd919e7a9143d4f5d467103a57ec4405288",
+    "primary_topic": "Archive",
+    "subtopics": [
+      "Middle East geopolitics",
+      "Iran relations",
+      "Oil influence",
+      "Proxy wars"
+    ],
+    "source_language": "en",
+    "reason": "The content centers on a detailed discussion of Middle Eastern geopolitical dynamics, particularly focusing on Iran's role, oil politics, and proxy conflicts. This fits best within an archival context that preserves comprehensive analyses of international affairs rather than active business or technology topics.",
+    "tags": [
+      "Middle East",
+      "Geopolitics",
+      "Iran",
+      "Oil",
+      "Conflict"
+    ],
+    "links": [],
+    "map_entry": "Unclassified document pending review.",
+    "summary": "The conversation explores the complexity of Middle Eastern conflict, highlighting how history, artificial borders, strategic interests, and religious identity intertwine. It discusses Iran’s support for proxy groups, the challenges of isolating it geopolitically, and the role of oil and shipping routes, concluding with a call for more balanced global media perspectives.",
+    "review_path": "Review/The Rabbit Hole - Sunni Shia Split Explained2026-07-13T22_42_59+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Sunni Shia Split Explained2026-07-13T22_42_59+07_00.md",
+    "wiki_path": "Wiki/Archive.md",
+    "indexed_at": "2026-07-13 23:15:35"
+  },
+  {
+    "source_name": "The Rabbit Hole - Tech News and Controversy2026-07-13T22_48_28+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ccb9ef-fda4-839c-92a6-eaef7c134142",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ccb9ef-fda4-839c-92a6-eaef7c134142",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Tech News and Controversy",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "d12e68e1a6759d8c9755cbcd9410de6e8bd5703f6ff6b22ba0621d659a6f1ede",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Tech News",
+      "Hardware",
+      "AI",
+      "Surveillance"
+    ],
+    "source_language": "en",
+    "reason": "The document is a video recap of weekly tech hardware updates mixed with political commentary, fitting the content‑creation category.",
+    "tags": [
+      "tech-news",
+      "hardware",
+      "ai",
+      "surveillance",
+      "gaming"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69ccb9ef-fda4-839c-92a6-eaef7c134142"
+    ],
+    "map_entry": "Weekly hardware recap video with political critique of industry trends.",
+    "summary": "The clip opens by highlighting fierce CPU competition, praising Intel’s recent chips for strong performance at lower price points and noting AMD’s new 9950X3D2 model that adds cache mainly benefiting gamers rather than broader workloads. It also covers Intel’s expansion of the Arc Pro GPU line as AI‑ready workstations with large memory banks aimed at professionals. The tone quickly shifts to criticism of Nvidia, accusing it of pushing always‑on facial recognition systems and collaborating with surveillance agencies, raising concerns over privacy and bias. Jensen Huang’s comments are framed as endorsing military use of AI amid geopolitical tensions, particularly in the Middle East. Additional stories touch on a laptop manufacturer accused of misrepresenting hardware and a lawsuit implicating Meta and YouTube for user mental health issues. Overall, the video portrays the tech industry moving toward AI, surveillance, and geopolitical influence with a cynical stance.",
+    "review_path": "Review/The Rabbit Hole - Tech News and Controversy2026-07-13T22_48_28+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Tech News and Controversy2026-07-13T22_48_28+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:15:56"
+  },
+  {
+    "source_name": "The Rabbit Hole - TV Industry Evolution Analysis2026-07-13T22_47_23+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c35a77-1684-8399-bd75-5035d33ea3fa",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c35a77-1684-8399-bd75-5035d33ea3fa",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - TV Industry Evolution Analysis",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "36cbb2b0dc83486c87c343e8ea09db851abf74e2dc9767cdecac10ccb6dd880f",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "Academic Publishing",
+      "Research Workflows",
+      "Data Integrity",
+      "Scientific Quality"
+    ],
+    "source_language": "en",
+    "reason": "The transcript discusses AI's impact on scientific research and academic publishing, focusing on quality concerns, incentive misalignment, and potential system reforms.",
+    "tags": [
+      "ai",
+      "research",
+      "publishing",
+      "science"
+    ],
+    "links": [],
+    "map_entry": "Transcript of a discussion by Sabine arguing that AI will expose flaws in academic publishing, leading to initial degradation but eventual improvement.",
+    "summary": "The conversation focuses on how AI can accelerate paper production, potentially flooding the academic literature with low-quality or fraudulent work. It argues that this pressure may force the system to reform incentives and quality controls. While AI offers efficiency gains, concerns about bias, lack of transparency, and the ability of researchers to produce misleading results are highlighted. The speaker warns that economic incentives currently reward volume over value and that publishers profit from open‑access fees regardless of content usefulness.",
+    "review_path": "Review/The Rabbit Hole - TV Industry Evolution Analysis2026-07-13T22_47_23+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - TV Industry Evolution Analysis2026-07-13T22_47_23+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 23:16:33"
+  },
+  {
+    "source_name": "The Rabbit Hole - Underground Fungal Network2026-07-13T22_43_55+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf556e-0420-839f-8337-c88d210a8650",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf556e-0420-839f-8337-c88d210a8650",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Underground Fungal Network",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "d01cbf6bee8f71def59a4e461f1c72ef18e567e4ab44785ae6d89f343acac831",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "underground fungal networks",
+      "mycorrhizal symbiosis",
+      "ecosystem services",
+      "land-use impacts"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses a natural underground infrastructure that supports plant ecosystems in Australia and its vulnerability to development.",
+    "tags": [
+      "ecology",
+      "fungi",
+      "environment",
+      "land-use"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf556e-0420-839f-8337-c88d210a8650"
+    ],
+    "map_entry": "Article about Australia's subterranean mycorrhizal network and its ecological importance.",
+    "summary": "This article explains the vast underground fungal network beneath Australian bushlands, acting as an invisible infrastructure that links plant roots, circulates nutrients, and sustains soil health. It warns that land clearing, mining or development can fragment this system, jeopardising tree resilience and ecosystem stability.",
+    "review_path": "Review/The Rabbit Hole - Underground Fungal Network2026-07-13T22_43_55+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Underground Fungal Network2026-07-13T22_43_55+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-13 23:17:01"
+  },
+  {
+    "source_name": "The Rabbit Hole - US Middle East Policy2026-07-13T22_49_22+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d103cc-c8ec-8398-a02b-576af3a1d995",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d103cc-c8ec-8398-a02b-576af3a1d995",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - US Middle East Policy",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "d6bba44e4ecedac7feef2da692649daa79d36c9daf2f6d93f1efde5a20ee332a",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "Video Summaries",
+      "Historical Analysis",
+      "U.S. Foreign Policy"
+    ],
+    "source_language": "en",
+    "reason": "The document evaluates a video summary of U.S. Middle East policy, fitting within the domain of content creation.",
+    "tags": [
+      "foreign policy",
+      "US",
+      "Middle East",
+      "oil crisis",
+      "video summary"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d103cc-c8ec-8398-a02b-576af3a1d995"
+    ],
+    "map_entry": "Video summary validation – US Middle East policy historical overview.",
+    "summary": "The document contains a video summary of U.S. foreign policy in the Middle East from 1948 to recent times, highlighting key events such as Israel recognition, Iranian coup, Yom Kippur war, oil crises, and critiques of Trump-era policy. The assistant's prior validation affirmed its structural accuracy but noted simplifications.",
+    "review_path": "Review/The Rabbit Hole - US Middle East Policy2026-07-13T22_49_22+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - US Middle East Policy2026-07-13T22_49_22+07_00.md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:17:33"
+  },
+  {
+    "source_name": "The Rabbit Hole - V2G Grid Integration2026-07-13T22_51_09+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d65a7a-a1f8-8398-9f88-8db758f1d052",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d65a7a-a1f8-8398-9f88-8db758f1d052",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - V2G Grid Integration",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "95e309702a4eb5bbb5d5f7baf14587df1c838ad540e78c9eb7ab3801d6da8fab",
+    "primary_topic": "Infrastructure",
+    "subtopics": [
+      "Vehicle-to-Grid",
+      "Community Energy Sharing",
+      "Regulation & Bureaucracy",
+      "Decentralized Grid"
+    ],
+    "source_language": "en",
+    "reason": "Document discusses V2G integration as a decentralized infrastructure solution.",
+    "tags": [
+      "V2G",
+      "Energy",
+      "Infrastructure",
+      "Community",
+      "Regulation"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d65a7a-a1f8-8398-9f88-8db758f1d052"
+    ],
+    "map_entry": "V2G Grid Integration – Community-based battery sharing to feed grid.",
+    "summary": "The piece argues that future energy can be provided by parked EVs in communities, with V2G technology allowing batteries to supply the grid when needed. It highlights current barriers such as bureaucracy and regulation, while noting early pockets of implementation.",
+    "review_path": "Review/The Rabbit Hole - V2G Grid Integration2026-07-13T22_51_09+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - V2G Grid Integration2026-07-13T22_51_09+07_00.md",
+    "wiki_path": "Wiki/Infrastructure.md",
+    "indexed_at": "2026-07-13 23:18:01"
+  },
+  {
+    "source_name": "The Rabbit Hole - Video accuracy review2026-07-13T22_48_14+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69cbd19c-d290-8399-a42b-a11d1f4cd1b8",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69cbd19c-d290-8399-a42b-a11d1f4cd1b8",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Video accuracy review",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "0957a169452474fe7bb7e7d3c80cb6dfa5b132fc5cae2807d6ccc718b3f33287",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Gold Investment",
+      "Thai Gold Market",
+      "Store of Value vs Growth",
+      "Cultural Context",
+      "Currency Risk"
+    ],
+    "source_language": "en",
+    "reason": "The document critically evaluates claims about Thai gold as an investment and its role as a store of value, offering factual corrections and contextual analysis.",
+    "tags": [
+      "investment",
+      "gold",
+      "personal finance",
+      "Thai gold",
+      "store-of-value"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69cbd19c-d290-8399-a42b-a11d1f4cd1b8"
+    ],
+    "map_entry": "Review of Thai gold investment claims: accuracy, cultural context, and asset role.",
+    "summary": "The document provides a balanced analysis of popular claims about buying Thai gold as an investment, confirming basic facts such as typical purity and market liquidity while debunking overstated price peaks, growth rates, and market perfection narratives. It clarifies that gold functions mainly as a store of value rather than a growth asset, highlighting its role in preserving purchasing power amid inflation and uncertainty, especially within Thailand’s cultural and economic context.",
+    "review_path": "Review/The Rabbit Hole - Video accuracy review2026-07-13T22_48_14+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Video accuracy review2026-07-13T22_48_14+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-13 23:18:45"
+  },
+  {
+    "source_name": "The Rabbit Hole - Why Study Classic Literature2026-07-13T22_43_38+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69baadd5-74c0-83a1-af6f-9f361032d784",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69baadd5-74c0-83a1-af6f-9f361032d784",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Why Study Classic Literature",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "ed6c90394d356829e2289873230f0d9de23f3bdda41f9848be98fd8862f3e9ba",
+    "primary_topic": "Philosophy",
+    "subtopics": [
+      "Moral Independence",
+      "Race & Slavery / Anti‑racism",
+      "River Symbolism (Freedom vs Civilization)",
+      "Cultural Anchor and Canonical Texts"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses moral philosophy, cultural canon, and educational use of a literary classic.",
+    "tags": [
+      "literature",
+      "moral philosophy",
+      "American literature",
+      "education",
+      "canon"
+    ],
+    "links": [],
+    "map_entry": "Key Themes in *Adventures of Huckleberry Finn* – analysis for educational discussion.",
+    "summary": "The article examines why *Huck‑Finn* remains a staple in American schools, highlighting themes such as Huck’s moral independence, the novel’s critique of racial attitudes and slavery, the river’s symbolism as freedom versus society, and its role as a cultural anchor. It explains how teachers use these themes to spark discussions on identity, justice, and history.",
+    "review_path": "Review/The Rabbit Hole - Why Study Classic Literature2026-07-13T22_43_38+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Why Study Classic Literature2026-07-13T22_43_38+07_00.md",
+    "wiki_path": "Wiki/Philosophy.md",
+    "indexed_at": "2026-07-13 23:19:15"
+  },
+  {
+    "source_name": "The Rabbit Hole - Windows 11 Sign-In Changes2026-07-13T22_46_47+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf56ce-eab4-83a0-b68b-ceded6752213",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf56ce-eab4-83a0-b68b-ceded6752213",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole - Windows 11 Sign-In Changes",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "c8d6c9e0ec5fc3dce668153f6f050b97ac358676290b1ea1333642ce114b7362",
+    "primary_topic": "Personal",
+    "subtopics": [
+      "Windows 11 sign‑in changes",
+      "Microsoft accounts",
+      "passkeys",
+      "online authentication",
+      "local account login hiding",
+      "offline setup difficulties",
+      "Windows as a service"
+    ],
+    "source_language": "en",
+    "reason": "The document discusses recent Windows 11 authentication updates and their effect on user experience, highlighting a shift toward cloud‑first identities.",
+    "tags": [
+      "windows",
+      "sign-in",
+      "security",
+      "cloud accounts",
+      "passkeys",
+      "offline login"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69bf56ce-eab4-83a0-b68b-ceded6752213"
+    ],
+    "map_entry": "Windows 11 sign‑in changes – shift toward Microsoft accounts, passkeys, and online authentication.",
+    "summary": "The article explains how Windows 11 is increasingly steering users away from local password logins toward Microsoft account integration and passkey-based authentication, making offline setups more difficult. It discusses the implications for power users and IT administrators, framing these updates as part of a broader \"Windows as a Service\" strategy that prioritizes security over simplicity.",
+    "review_path": "Review/The Rabbit Hole - Windows 11 Sign-In Changes2026-07-13T22_46_47+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole - Windows 11 Sign-In Changes2026-07-13T22_46_47+07_00.md",
+    "wiki_path": "Wiki/Personal.md",
+    "indexed_at": "2026-07-13 23:19:55"
+  },
+  {
+    "source_name": "The Rabbit Hole2026-07-13T22_47_38+07_00.md",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c39efb-b8c8-83a0-9172-69b3f37ab0b8",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c39efb-b8c8-83a0-9172-69b3f37ab0b8",
+    "youtube_video_id": null,
+    "page_title": "The Rabbit Hole",
+    "channel_author": "published:",
+    "publication_date": "created: 2026-07-13",
+    "content_sha256": "403762df219b79414c48822b3dc6fa13b3b9b89a1ea1175b5bfee8e357e94d56",
+    "primary_topic": "AI & LLMs",
+    "subtopics": [
+      "AI-Driven Job Displacement",
+      "Vocational Skills Demand",
+      "Neurodivergent Workforce Advantage",
+      "Palantir Initiatives"
+    ],
+    "source_language": "en",
+    "reason": "The document focuses on how AI will reshape the labor market, highlighting vocational skills and neurodivergent talent as key groups that may thrive, which aligns with themes under AI & LLMs regarding AI’s societal impact.",
+    "tags": [
+      "AI",
+      "labor market",
+      "neurodiversity",
+      "vocational training",
+      "Palantir"
+    ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69c39efb-b8c8-83a0-9172-69b3f37ab0b8"
+    ],
+    "map_entry": "Palantir CEO Alex Karp's thesis: Vocational skills and neurodivergent individuals will thrive in AI era.",
+    "summary": "The document discusses Alex Karp’s perspective that AI will eliminate many white-collar jobs, but vocational trades and neurodivergent people—who think differently from conventional systems—will have an advantage. It covers Palantir’s initiatives to support these groups and outlines potential shifts in workforce training, hiring patterns, and policy responses.",
+    "review_path": "Review/The Rabbit Hole2026-07-13T22_47_38+07_00.review.md",
+    "processed_path": "Processed/The Rabbit Hole2026-07-13T22_47_38+07_00.md",
+    "wiki_path": "Wiki/AI & LLMs.md",
+    "indexed_at": "2026-07-13 23:21:01"
+  },
+  {
+    "source_name": "Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md",
+    "document_id": "youtube:zU4X8O3oR2E",
+    "source_url": "https://www.youtube.com/watch?v=zU4X8O3oR2E",
+    "youtube_video_id": "zU4X8O3oR2E",
+    "page_title": "Timeout and channel checkpoint",
+    "channel_author": "- \"[[Garage Alchemy with Pope Kael]]",
+    "publication_date": "2026-07-13",
+    "content_sha256": "00122389ad077806397254abbaaeccbea47e5e589d66513cd2f3e0bfc0249c94",
+    "primary_topic": "Content Creation",
+    "subtopics": [
+      "AI Tools",
+      "Channel Analytics",
+      "Audience Building"
+    ],
+    "source_language": "en",
+    "reason": "The text discusses using AI (ChatGPT) to optimize YouTube channel content, analyze metrics, and engage viewers.",
+    "tags": [
+      "content-creation",
+      "ai-tools",
+      "channel-growth"
+    ],
+    "links": [
+      "https://chatgpt.com",
+      "https://studio.youtube.com"
+    ],
+    "map_entry": "Transcription of a video on how to use AI for YouTube channel growth: analytics review, community engagement tactics, and content strategy.",
+    "summary": "The document is a transcription of a creator’s discussion about leveraging AI—specifically ChatGPT—to analyze channel performance, personalize content, and grow an audience. It covers reviewing recent metrics (views, watch time, CTR), identifying key viewer segments, choosing consistent visual language for milestones, and the importance of storytelling over chasing trending headlines. The focus is on building a dedicated community through regular updates, engagement in comments, and thoughtful pacing of content, while acknowledging the role of analytics in refining strategy.",
+    "review_path": "Review/Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].review.md",
+    "processed_path": "Processed/Timeout and channel checkpoint2026-07-13T21_31_05+07_002026-07-13T05_05_39-07_00[[Garage Alchemy with Pope Kael]].md",
+    "wiki_path": "Wiki/Content Creation.md",
+    "indexed_at": "2026-07-13 23:21:39"
   }
 ]

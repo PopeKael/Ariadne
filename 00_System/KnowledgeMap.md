@@ -1,7 +1,12 @@
-> Last updated: 2026-07-13 08:42:54
+> Last updated: 2026-07-13 23:21:39
 
 ## Business
 Purpose: The article discusses the pressure and challenges faced by Westpac brokers due to unrealistic sales targets, highlighting workplace dynamics within a financial institution.
+- Design ideas for improved thermal insulation in milk bottles through surface texture and geometry.
+- Analysis of Greg’s post on a hypothetical conflict affecting Hormuz oil traffic and US insurance/legislative delays.
+- Excerpt on analog verification systems, patent economics, and software UI patent discussion.
+- The Rabbit Hole - Australia's Fuel Supply Strategy
+- Comprehensive overview of ChatGPT Work features enabling AI-driven business workflow automation via a desktop app, folder monitoring, plugins, UI navigation and microsite creation.
 - Transcript of a presentation outlining 15 commandments to accelerate product development and transformation in the age of AI, focusing on speed, documentation as code, meeting reduction, team dynamics, and teaching practices.
 - Analysis of AUD↔THB fluctuations driven by Middle East conflicts, oil price spikes, and tourism impacts.
 - SpaceX Starship V3 launch from Pad 2, Texas – first successful test of the V3 variant.
@@ -127,6 +132,14 @@ Purpose: Document discusses expatriate experiences in Thailand, fitting under Tr
 
 ## AI & LLMs
 Purpose: It discusses using large language models to build personal knowledge bases integrated with Obsidian.
+- Palantir CEO Alex Karp's thesis: Vocational skills and neurodivergent individuals will thrive in AI era.
+- Transcript of a discussion by Sabine arguing that AI will expose flaws in academic publishing, leading to initial degradation but eventual improvement.
+- Hank's AI Perspective on real-world AI exploitation
+- The Rabbit Hole – AI Privacy and Power: a briefing on personal data exploitation by AI systems, the threat to democratic processes, and calls for regulatory intervention.
+- Clipping: AI reaches practical threshold for software engineering—prototyping, design bottleneck shift, and security concerns.
+- Document discussing AI control concerns and financial system governance.
+- Summary of AGI discussion and GPU benchmarking for local AI use cases.
+- Video title and thumbnail design proposal for AI knowledge vault enhancement
 - Comparison of token‑based and frame‑based compute costs for AI applications, with emphasis on FLOPs and dollar value as common metrics.
 - Bernie Sanders’ dialogue with Claude highlights concerns over AI power structures, accountability, and societal effects.
 - Open WebUI Qwen3 4b self‑introduction – description of model type and hosting hardware
@@ -204,6 +217,8 @@ Purpose: It discusses using large language models to build personal knowledge ba
 
 ## Knowledge Management
 Purpose: The article discusses design principles for personal knowledge bases, aligning with Knowledge Management.
+- Document on AI transition, cost of intelligence, and the concept of 'garage alchemy'—building human communities that co‑create and refine AI outputs.
+- Video episode on upgrading a private knowledge base with chunking and embeddings to enhance LLM response relevance.
 - Gemini cannot autonomously fetch or index contents from a shared Google Drive URL; manual attachment via the connector is required.
 - Article debunking rumors of Benjamin Netanyahu’s death with official statements and fact‑checking references.
 - Identification guide for bottle gourd (Lagenaria siceraria) using morphological features.
@@ -225,6 +240,16 @@ Purpose: The article discusses design principles for personal knowledge bases, a
 
 ## Content Creation
 Purpose: The document describes generating and translating images, fitting under Content Creation.
+- Transcription of a video on how to use AI for YouTube channel growth: analytics review, community engagement tactics, and content strategy.
+- Video summary validation – US Middle East policy historical overview.
+- Weekly hardware recap video with political critique of industry trends.
+- Analysis of YouTube creator challenges with a detour into suborbital travel feasibility.
+- The Rabbit Hole - Jerry's Memory Slip: A lighthearted Facebook post revisiting an archived birthday video and celebrating an eight-year friendship milestone.
+- A humorous social‑media caption guide that plays on conspiracy tropes and movie references.
+- Article explaining why biodiesel isn't widely adopted and analyzing related conspiracy theories.
+- The Rabbit Hole – Attention Feedback Loop: analysis of AI hype channel dynamics and recommendation for a steady, utilitarian content strategy.
+- Advice on how to frame AI‑related content within a Thai lifestyle YouTube channel so it aligns with existing audience and avoids algorithm disruption.
+- Video script outline analyzing AI's role in job disruption, focusing on task erosion and class inversion, with a structured 10‑minute narrative plan.
 - Content creation guidance for producing a tribal electronic track with Suno.
 - Guide on retrieving the latest Reuters headlines using website, RSS feed, aggregator apps, and APIs.
 - Math Problem Solution – includes apple/orange count and train distance examples.
@@ -359,6 +384,7 @@ Purpose: The document describes generating and translating images, fitting under
 
 ## Gaming
 Purpose: The document covers the development, peak, and decline of arcade gaming culture.
+- Fenmarel Mestarine – Official Forgotten Realms deity of isolation, self-reliance and marginalized elves. The article clarifies the misspelling "Fenmeral Masterine" and outlines his portfolio and worshippers.
 - Railroad game music prompts – titles and composition guidance for cinematic western folk soundtrack
 - Video transcript summary - hardware news recap from a gaming channel.
 - Crimson Desert added Denuvo DRM just before launch, sparking player backlash and highlighting the economics of early launch piracy.
@@ -370,6 +396,8 @@ Purpose: The document covers the development, peak, and decline of arcade gaming
 
 ## Archive
 Purpose: The document introduces Ariadne, a librarian character and outlines her role within a storytelling community.
+- Unclassified document pending review.
+- 1966 UFO Incident – Missing Evidence and Cold War Context
 - Document on categorizing a vehicle photo for a personal archival system with detailed rationale and confidence score.
 - Open WebUI session with LLM-generated responses to diverse questions, covering sports, geography, technology, medicine, and space launch information.
 - Vehicle classification - close‑up photo of a red Toyota Hilux with license plate, two people standing beside it outside a house
@@ -393,6 +421,8 @@ Purpose: The document introduces Ariadne, a librarian character and outlines her
 
 ## Personal
 Purpose: The document discusses a personal experience of losing all life savings due to a fraudulent phone call.
+- Windows 11 sign‑in changes – shift toward Microsoft accounts, passkeys, and online authentication.
+- Review of Thai gold investment claims: accuracy, cultural context, and asset role.
 - Creative strategies for repurposing children’s artwork to minimize clutter and enhance home aesthetics
 - Guide on creative ways to repurpose children’s artwork and reduce clutter.
 - Answer to the apple‑and‑orange problem with step‑by‑step calculations and discussion of fractional results.
@@ -430,6 +460,12 @@ Purpose: The document discusses a personal experience of losing all life savings
 
 ## Infrastructure
 Purpose: The content reviews an existing product category—home batteries—and does not introduce a wholly new field of study.
+- V2G Grid Integration – Community-based battery sharing to feed grid.
+- Article about Australia's subterranean mycorrhizal network and its ecological importance.
+- Analysis of the viability and barriers to deploying Archimedes vortex wind turbines on residential rooftops.
+- Analysis of exaggerated AI memory reduction claims and their alleged impact on RAM demand.
+- Adobe construction: myth vs reality – costs, durability, regulatory challenges and industry lobbying.
+- Conversation snippet clarifying that the MCP server has not been launched yet in the Knowledge Vault setup.
 - WordPress cron review and activity logging recommendations – guides checking overdue tasks, interpreting WP‑CRON status, and choosing a lightweight audit plugin.
 - OpenWebUI internals – how query generation may use chat history and related code files.
 - 2026 Global Energy and AI Infrastructure Risk Report
@@ -476,6 +512,11 @@ Purpose: The content reviews an existing product category—home batteries—and
 
 ## Philosophy
 Purpose: The document discusses occult philosophy and conspiracy theories linking Crowley and Epstein, fitting within Philosophy.
+- Key Themes in *Adventures of Huckleberry Finn* – analysis for educational discussion.
+- Document summarizing a theory that time may emerge from quantum entanglement, suggesting time is not fundamental but relational.
+- Creative discussion about how to finish an open-ended story involving Ava from Ex Machina and implications for canon and authorship.
+- Philosophical analysis of AI transition and societal adaptation
+- Analysis of Mo Gawdat's AI apocalypse video, presenting a transition narrative and a ‘garage alchemy’ manifesto encouraging active use of AI over fear.
 - Clean structured summary of the conversation integrating Thelema, Jung, Hermeticism, Leary circuits, Chaos Magic, Discordianism, Douglas Adams, and AI amplification into a coherent personal‑growth framework.
 - Philosophical discussion on conscious evolution
 - Explanation of Thucydides Trap theory and its historical instances.
@@ -500,6 +541,8 @@ Purpose: The document discusses occult philosophy and conspiracy theories linkin
 
 ## Projects
 Purpose: The document provides a step‑by‑step guide for building a local photo‑archiving tool that uses CLIP, an LLM, and metadata manipulation.
+- Overview of sulfur-based 3D/4D printable material via inverse vulcanization, properties, waste reuse, and safety considerations.
+- Update on Terraform Industries' solar methane development status and progress.
 - User requesting code adjustments for a Thai food ordering SPA and waiting for better development environment.
 - User seeks an AI-generated cybernetic brain image with full transparency and no background.
 - A step‑by‑step troubleshooting workflow for restoring OneSignal push notifications after an update.
