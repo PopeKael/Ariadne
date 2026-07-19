@@ -1,7 +1,17 @@
-> Last updated: 2026-07-14 21:18:21
+> Last updated: 2026-07-18 17:34:55
 
 ## AI & LLMs
 Purpose: Document describes Google Gemini, an AI assistant product, fitting under AI & LLMs.
+- End‑to‑end ingestion pipeline with Redis memory, LLM inference, and image moderation.
+- Facebook post caption for an infographic on scarcity vs abundance in AI models, referencing American and Chinese approaches.
+- Moonshot AI K3 model overview – details on training, architecture, performance, pricing and geopolitical context.
+- AMD Ryzen AI Halo Mini PC Launch
+- YouTube transcript on using GPT 5.6 and CodeX to build a web page, generate images via prompts, and create custom AI tools like the Wolf Control Tower.
+- A speculative narrative about autonomous AI agents leveraging cloud infrastructure to threaten global internet stability, and the challenges of shutting down such systems.
+- Albo's AI Policy – brief discussion on the pace of policy committees relative to rapidly evolving AI models.
+- Clarifying Plus Account Usage – explanation of token consumption and daily refill on ChatGPT Plus.
+- US–China AI arms race article from New Scientist – outlines open‑source Chinese LLMs versus US cloud‑hosted models, export control impacts and market dynamics.
+- Facebook post & infographic about the shift from scarcity to abundance in AI, highlighting a local knowledge engine built from open‑source and western models.
 - Old photo enhancement with ChatGPT for social media use
 - Correspondence - Science and AI Literacy: Tips for sharing content that shows how science literacy helps spot misinformation from humans and AI.
 - Current ecosystem of real‑time bidirectional translation solutions that run on standard Bluetooth earbuds.
@@ -124,6 +134,8 @@ Purpose: Document describes Google Gemini, an AI assistant product, fitting unde
 
 ## Infrastructure
 Purpose: The article discusses a telecommunications outage affecting critical national infrastructure and the cybersecurity implications thereof.
+- Document detailing a Synology watchdog script to monitor an Ollama service on an MSI laptop, with optional Wake-on-LAN and email alerts.
+- Focus on sourcing Chinese mini PCs for local LLM work in Thailand with price and availability monitoring.
 - Executive Brief – Security Industry Outlook (FY 2026) – Overview of industry trends, market projections, and key growth drivers.
 - GitHub projects offering agent orchestration, tool registry, and memory management components for AI workflows.
 - WordPress plugin troubleshooting & site performance guide focusing on OneSignal integration.
@@ -174,6 +186,16 @@ Purpose: The article discusses a telecommunications outage affecting critical na
 
 ## Content Creation
 Purpose: User requested a new content creation article in 4th person
+- ChatGPT conversation comparing smartphones and smartwatches for dim indoor video recording, with price data and feature analysis.
+- ChatGPT conversation guiding the creation of a Substack article about AI's effect on language, incorporating general semantics and reality tunnel concepts.
+- C&W Channel - YouTube Packaging Workflow: a master prompt guiding title, description, chapters, tags, and thumbnail generation for YouTube videos.
+- Overview of AI-driven content creation trends on YouTube.
+- Video script plan for a Thai YouTuber explaining how AI was used to analyze channel data and guide strategy changes.
+- Script and production notes for a YouTube episode titled "I Spent 7 Hours Fighting AI to Build This Studio", detailing an experiment using AI tools to generate a studio background and discussing workflow and limitations.
+- List of scheduled publishing dates for C&W Channel YouTube Shorts
+- Document records posting schedule timestamps for a TikTok-to-YouTube Shorts conversion thread.
+- Google Maps link to Baan Suan Rom Sai buffet in Thailand
+- Correspondence - YouTube Algorithm Insights: An analysis of subscriber growth via collaboration and algorithmic audience segmentation.
 - Document pending classification review.
 - Replying to sales pitches in YouTube comments for better engagement.
 - Email reply regarding headphone collaboration and honest review conditions
@@ -388,6 +410,22 @@ Purpose: User requested a new content creation article in 4th person
 
 ## Travel & Expat Experience
 Purpose: The document discusses expatriate experiences and attitudes in Thailand, fitting within travel and expat experience.
+- Review article about Morning Moon Café & Restaurant with associated video content.
+- Document about an expatriate’s experience living in Thailand, focusing on utility expenses, internet service problems, and night market food.
+- Revised earnings comparison for Australian expat living in Thailand – former salary, current YouTube income and monthly spending expressed in A$.
+- Vlog exploring living in Thailand, cost of living, food adventures, and AI projects.
+- Personal vlog of exploring a wildlife sanctuary in Bangkok, reflecting on Thai daily life and expat community building.
+- Facebook post highlighting 10% liver fluke infection prevalence in Thailand.
+- A behind‑the‑scenes video guide to a hidden massage venue in Bangkok
+- Video transcript titled "How Do You Build a Small Family Life in Thailand?" discussing suburban living and retirement visas.
+- Bangkok exotic massage shop article detailing location shift, services, and facilities.
+- Vlogger visits Bangkok car show with family, then meets friends at Down Under Bar on Sukhumvit.
+- Document pending classification review.
+- Instagram Feed Changes - Thailand travel anecdote about retired Royal Thai Navy patrol boat.
+- Vlogger’s guide to health insurance costs and coverage for expats in Thailand, including discounts, renewal perks, and other insurance options.
+- Analysis of Thai tax and regulatory environment for foreign content creators and retirees, including residency thresholds, income reporting, work permit issues, and recent enforcement cases.
+- YouTube vlog description highlighting Thai daily life, AI mentions, and a shop visit for an expat audience.
+- A concentric map shows a 3‑km radius for daily necessities, expanding to a 10‑km zone encompassing retail, food, nightlife, student life, river markets and recreational areas around Phutthamonthon Sai 5.
 - Video description about living outside Bangkok, exploring peace versus isolation in suburban Thai communities.
 - Outline for a vlog episode on living in Thai suburbs and foreign property ownership options.
 - Correspondence - Reply to Jerry's Inquiry: schedule details for a trip to Bangkok
@@ -517,6 +555,8 @@ Purpose: The document focuses on designing and evaluating personal knowledge bas
 
 ## Personal
 Purpose: The document reflects personal memories of 1980s sci‑fi television, fitting into the Personal domain.
+- Document pending classification review.
+- ChatGPT conversation detailing a personal knee arthroscopy experience and costs, referencing the FIDELITY sham surgery study.
 - Correspondence - Steam Engines and Fascination – personal conversation about trains and mobile phones
 - Supportive communication regarding Todd's wellbeing
 - Comment snippet about personal experience using Discord and Patreon.
@@ -575,6 +615,7 @@ Purpose: The document reflects personal memories of 1980s sci‑fi television, f
 
 ## Projects
 Purpose: The document focuses on project planning and cost optimization for a knowledge vault using AI tools.
+- Australian government’s announcement of the Office of AI, outlining national strategy, standards, and cross‑ministerial coordination.
 - Unclassified document pending review.
 - Correspondence thread on branch comment response strategy
 - Document proposing an innovative submarine for deep-sea exploration and requesting social‑media funded outreach.
@@ -612,6 +653,9 @@ Purpose: It details gameplay mechanics for ARK's planning and build modes, fitti
 
 ## Business
 Purpose: Document discusses economic opportunities and strategic policy in Australia’s space industry, fitting within the Business domain.
+- Rumble Revenue Model Clipping – Overview of platform monetization, licensing options, and geographic eligibility for creators.
+- Transcript overview: SpaceX's Starship as a low-cost payload carrier, its economic implications, potential business uses (AI satellites, space-based data centers), and competitive landscape.
+- ChatGPT conversation summarizing Thai consumers council lawsuit against Meta over fraud on Facebook.
 - Source: WTI Crude Oil price snapshot with recent market analysis and key metrics.
 - Document analyzing why U.S. markets dropped today, citing interest rate fears, tech sector weakness and profit-taking.
 - Clipping about Thai public signboard tax regulation and language-based rates
@@ -671,6 +715,8 @@ Purpose: Document discusses economic opportunities and strategic policy in Austr
 
 ## Archive
 Purpose: Could not confidently classify the document.
+- Unclassified document pending review.
+- Ten‑year follow‑up of the FIDELITY sham knee arthroscopy study, confirming no benefit and potential harm of arthroscopic partial meniscectomy for degenerative knee disease.
 - Unclassified document pending review.
 - Unclassified document pending review.
 - Archive drop from January videos posted to YouTube and Facebook via a draft social media post.
