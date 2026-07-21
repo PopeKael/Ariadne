@@ -15,6 +15,7 @@ from vault_rebuild import build_manifest, manifest_bytes, write_manifest
 
 PILOT_SIZE = 12
 MAX_TRANSPORT_ATTEMPTS = 2
+MIN_SUMMARY_CHARS = 40
 POST_SNAPSHOT_NAMES = {
     "Checking out a friends AI created game2026-07-20T13_44_10+07_002026-07-19T23_35_35-07_00[[Garage Alchemy with Pope Kael]].md",
     "Controversial road rule axed for millions of Aussie drivers from today_ 'Unnecessary'.md",
@@ -102,7 +103,7 @@ def model_request(record: dict[str, Any], text: str, domains: list[str]) -> dict
     # Do not set think: GPT-OSS defaults to its supported reasoning level while
     # still returning the schema-constrained final answer in message.content.
     return {"model": "gpt-oss:20b", "messages": [{"role": "user", "content": prompt}], "stream": False,
-            "format": schema(domains), "options": {"temperature": 0}}
+            "format": schema(domains), "options": {"temperature": 0, "seed": 42}}
 
 
 def invoke_ollama(body: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None, str | None]:
@@ -144,6 +145,33 @@ def validate_proposal(value: Any, domains: list[str]) -> tuple[dict[str, Any] | 
     for key in ("entities", "people", "concepts", "links"):
         value[key] = list(dict.fromkeys(item.strip() for item in value[key] if item.strip()))[:8]
     return value, None
+
+
+def validate_semantics(proposal: dict[str, Any]) -> str | None:
+    """Reject responses that are structurally JSON but not usable enrichment."""
+    summary = re.sub(r"\s+", " ", proposal["summary"].strip())
+    if len(summary) < MIN_SUMMARY_CHARS:
+        return "summary_too_short"
+    lower = summary.lower()
+    refusal_markers = ("i'm sorry", "i am sorry", "i cannot", "i can't", "unable to", "cannot provide",
+                       "not able to", "disallowed", "must refuse", "refuse to comply")
+    if any(marker in lower for marker in refusal_markers):
+        return "policy_refusal_or_non_enrichment"
+    filler = {"not enough information", "no summary available", "unknown", "n/a", "none"}
+    if lower in filler:
+        return "generic_filler_summary"
+    return None
+
+
+def reviewable_candidates(proposal: dict[str, Any]) -> dict[str, list[str]]:
+    """Keep all candidates review-only and separate generic terms from promotion consideration."""
+    generic = {"model", "runtime", "application", "software", "technology", "project", "business",
+               "infrastructure", "system", "information", "data", "process", "tool", "tools"}
+    held: dict[str, list[str]] = {}
+    for key in ("entities", "people", "concepts", "links"):
+        held[key] = [item for item in proposal[key]
+                     if re.sub(r"\s+", " ", item.strip().lower()) in generic]
+    return held
 
 
 def response_metrics(envelope: dict[str, Any] | None, raw: str | None, latency_ms: int) -> dict[str, Any]:
@@ -266,13 +294,18 @@ def main() -> int:
             if not reason:
                 try:
                     proposal, reason = validate_proposal(json.loads(content), domains)
+                    if proposal and not reason:
+                        reason = validate_semantics(proposal)
+                        if reason:
+                            proposal = None
                 except json.JSONDecodeError:
                     reason = "invalid_json_in_model_response"
             status = "accepted_structurally" if proposal else "rejected"
             quality_flags = assess_quality(proposal) if proposal else []
+            generic_candidates = reviewable_candidates(proposal) if proposal else {}
             outcome = {"stable_source_id": record["stable_source_id"], "relative_path": record["relative_path"], "status": status,
                        "reason": reason, "proposal": proposal, "quality_flags": quality_flags,
-                       "attempt_count": len(attempts)}
+                       "generic_candidates_held": generic_candidates, "attempt_count": len(attempts)}
             outcomes.append(outcome)
             captures.write(json.dumps({"stable_source_id": record["stable_source_id"], "relative_path": record["relative_path"],
                                        "attempts": attempts, "final_attempt": attempts[-1], "error": error}, ensure_ascii=False) + "\n")
@@ -281,6 +314,7 @@ def main() -> int:
                               "proposed_domains": proposal["proposed_domains"] if proposal else [],
                               "proposal_status": status, "proposal_reason": reason,
                               "quality_flags": quality_flags, "model_attempt_count": len(attempts),
+                              "generic_candidates_held": generic_candidates,
                               "entities_held_for_review": proposal["entities"] if proposal else [],
                               "people_held_for_review": proposal["people"] if proposal else [],
                               "concepts_held_for_review": proposal["concepts"] if proposal else [],
