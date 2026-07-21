@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from typing import Any
 from vault_rebuild import build_manifest, manifest_bytes, write_manifest
 
 PILOT_SIZE = 12
+MAX_TRANSPORT_ATTEMPTS = 2
 POST_SNAPSHOT_NAMES = {
     "Checking out a friends AI created game2026-07-20T13_44_10+07_002026-07-19T23_35_35-07_00[[Garage Alchemy with Pope Kael]].md",
     "Controversial road rule axed for millions of Aussie drivers from today_ 'Unnecessary'.md",
@@ -129,10 +131,12 @@ def validate_proposal(value: Any, domains: list[str]) -> tuple[dict[str, Any] | 
     required = {"proposed_domains", "summary", "entities", "people", "concepts", "links", "confidence", "notes"}
     if set(value) != required:
         return None, "schema_keys_mismatch"
-    if not isinstance(value["proposed_domains"], list) or any(item not in domains for item in value["proposed_domains"]):
+    if (not isinstance(value["proposed_domains"], list) or len(value["proposed_domains"]) > 3
+            or any(not isinstance(item, str) or item not in domains for item in value["proposed_domains"])):
         return None, "invalid_domain_proposal"
     for key in ("entities", "people", "concepts", "links"):
-        if not isinstance(value[key], list) or not all(isinstance(item, str) for item in value[key]):
+        if (not isinstance(value[key], list) or len(value[key]) > 8
+                or not all(isinstance(item, str) for item in value[key])):
             return None, f"invalid_{key}"
     if not isinstance(value["summary"], str) or not isinstance(value["notes"], str) or not isinstance(value["confidence"], (int, float)):
         return None, "invalid_scalar_field"
@@ -140,6 +144,52 @@ def validate_proposal(value: Any, domains: list[str]) -> tuple[dict[str, Any] | 
     for key in ("entities", "people", "concepts", "links"):
         value[key] = list(dict.fromkeys(item.strip() for item in value[key] if item.strip()))[:8]
     return value, None
+
+
+def response_metrics(envelope: dict[str, Any] | None, raw: str | None, latency_ms: int) -> dict[str, Any]:
+    """Capture Ollama's timing/token fields without treating them as authoritative content."""
+    timing_fields = ("total_duration", "load_duration", "prompt_eval_count", "prompt_eval_duration",
+                     "eval_count", "eval_duration")
+    metrics = {"latency_ms": latency_ms, "response_size_bytes": len((raw or "").encode("utf-8"))}
+    for field in timing_fields:
+        metrics[field] = envelope.get(field) if isinstance(envelope, dict) else None
+    return metrics
+
+
+def assess_quality(proposal: dict[str, Any]) -> list[str]:
+    """Flag simple review concerns. These flags never reject a schema-valid response."""
+    flags: list[str] = []
+    broad = {"ai", "artificial intelligence", "technology", "software", "project", "business", "infrastructure"}
+    for key in ("entities", "people", "concepts", "links"):
+        values = proposal[key]
+        normalised = [re.sub(r"\s+", " ", item.strip().lower()) for item in values]
+        if any(len(item) < 3 for item in normalised):
+            flags.append(f"trivial_{key}")
+        if len(normalised) != len(set(normalised)):
+            flags.append(f"duplicate_{key}")
+        if any(item in broad for item in normalised):
+            flags.append(f"overly_broad_{key}")
+    if len(proposal["summary"].strip()) < 20:
+        flags.append("thin_summary")
+    return flags
+
+
+def compare_retrieval(output: Path, current: dict[str, Any], pilot: list[dict[str, Any]]) -> dict[str, Any]:
+    previous_dir = output / "previous-generate-pilot"
+    previous_path = previous_dir / "retrieval-results.json"
+    previous_catalogue = previous_dir / "pilot-catalogue.json"
+    previous: dict[str, Any] = {}
+    previous_ids: set[str] = set()
+    if previous_path.exists():
+        previous = json.loads(previous_path.read_text(encoding="utf-8"))
+    if previous_catalogue.exists():
+        previous_ids = {item["stable_source_id"] for item in json.loads(previous_catalogue.read_text(encoding="utf-8"))}
+    current_ids = {item["stable_source_id"] for item in pilot}
+    if previous_ids and previous_ids != current_ids:
+        raise RuntimeError("Archived failed pilot uses a different source set; comparison stopped.")
+    return {"comparison_basis": "archived /api/generate pilot versus repaired /api/chat pilot",
+            "same_source_set": bool(previous_ids) and previous_ids == current_ids,
+            "previous_results": previous, "current_results": current}
 
 
 def lexical_search(catalogue: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
@@ -166,7 +216,8 @@ def write_review(path: Path, record: dict[str, Any], outcome: dict[str, Any]) ->
                       f"Entities held for review: {', '.join(proposal['entities']) or 'None'}",
                       f"People held for review: {', '.join(proposal['people']) or 'None'}",
                       f"Concepts held for review: {', '.join(proposal['concepts']) or 'None'}",
-                      f"Links held for review: {', '.join(proposal['links']) or 'None'}"])
+                      f"Links held for review: {', '.join(proposal['links']) or 'None'}",
+                      f"Quality flags: {', '.join(outcome['quality_flags']) or 'None'}"])
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -190,9 +241,24 @@ def main() -> int:
     with captures_path.open("w", encoding="utf-8") as captures:
         for record in pilot:
             text = (root / record["relative_path"]).read_text(encoding="utf-8-sig")
-            request = model_request(record, text, domains)
-            raw, envelope, error = invoke_ollama(request)
-            content, thinking = final_content(envelope)
+            attempts = []
+            raw = None
+            envelope = None
+            error = None
+            content = ""
+            thinking = ""
+            for attempt_number in range(1, MAX_TRANSPORT_ATTEMPTS + 1):
+                request = model_request(record, text, domains)
+                started = time.perf_counter()
+                raw, envelope, error = invoke_ollama(request)
+                latency_ms = round((time.perf_counter() - started) * 1000)
+                content, thinking = final_content(envelope)
+                attempts.append({"attempt": attempt_number, "request": request, "raw_response": raw,
+                                 "response_envelope": envelope, "message_content": content,
+                                 "message_thinking": thinking, "error": error,
+                                 "metrics": response_metrics(envelope, raw, latency_ms)})
+                if not error:
+                    break
             proposal = None
             reason = error
             if not reason and not content.strip():
@@ -203,16 +269,18 @@ def main() -> int:
                 except json.JSONDecodeError:
                     reason = "invalid_json_in_model_response"
             status = "accepted_structurally" if proposal else "rejected"
+            quality_flags = assess_quality(proposal) if proposal else []
             outcome = {"stable_source_id": record["stable_source_id"], "relative_path": record["relative_path"], "status": status,
-                       "reason": reason, "proposal": proposal}
+                       "reason": reason, "proposal": proposal, "quality_flags": quality_flags,
+                       "attempt_count": len(attempts)}
             outcomes.append(outcome)
             captures.write(json.dumps({"stable_source_id": record["stable_source_id"], "relative_path": record["relative_path"],
-                                       "request": request, "raw_response": raw, "response_envelope": envelope,
-                                       "thinking": thinking, "error": error}, ensure_ascii=False) + "\n")
+                                       "attempts": attempts, "final_attempt": attempts[-1], "error": error}, ensure_ascii=False) + "\n")
             write_review(reviews / f"{record['canonical_content_sha256']}.md", record, outcome)
             catalogue.append({**record, "excerpt": text[:1200], "summary": proposal["summary"] if proposal else "",
                               "proposed_domains": proposal["proposed_domains"] if proposal else [],
                               "proposal_status": status, "proposal_reason": reason,
+                              "quality_flags": quality_flags, "model_attempt_count": len(attempts),
                               "entities_held_for_review": proposal["entities"] if proposal else [],
                               "people_held_for_review": proposal["people"] if proposal else [],
                               "concepts_held_for_review": proposal["concepts"] if proposal else [],
@@ -221,16 +289,40 @@ def main() -> int:
     queries = ["AI librarian project", "Thailand source material", "local technical system"]
     retrieval = {query: lexical_search(catalogue, query) for query in queries}
     (output / "retrieval-results.json").write_text(json.dumps(retrieval, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    comparison = compare_retrieval(output, retrieval, pilot)
+    (output / "retrieval-comparison.json").write_text(json.dumps(comparison, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     accepted = sum(item["status"] == "accepted_structurally" for item in outcomes)
+    capture_records = [json.loads(line) for line in captures_path.read_text(encoding="utf-8").splitlines()]
+    attempts = [attempt for capture in capture_records for attempt in capture["attempts"]]
+    total_latency = sum(attempt["metrics"]["latency_ms"] for attempt in attempts)
+    total_bytes = sum(attempt["metrics"]["response_size_bytes"] for attempt in attempts)
+    prompt_tokens = sum((attempt["metrics"].get("prompt_eval_count") or 0) for attempt in attempts)
+    completion_tokens = sum((attempt["metrics"].get("eval_count") or 0) for attempt in attempts)
+    retries = sum(len(capture["attempts"]) - 1 for capture in capture_records)
     report = ["# Rebuild v1 Controlled Pilot", "", f"Pilot sources: {len(pilot)}", f"Structurally accepted responses: {accepted}",
-              f"Rejected responses: {len(pilot) - accepted}", "", "## Sources"]
-    report.extend(f"- `{item['relative_path']}` — {item['pilot_reason']}" for item in pilot)
+              f"Rejected responses: {len(pilot) - accepted}", f"Transport retries: {retries}",
+              f"Total request latency: {total_latency} ms", f"Response size: {total_bytes} bytes",
+              f"Ollama prompt tokens: {prompt_tokens}", f"Ollama completion tokens: {completion_tokens}", "", "## Sources"]
+    outcome_by_id = {item["stable_source_id"]: item for item in outcomes}
+    for item in pilot:
+        outcome = outcome_by_id[item["stable_source_id"]]
+        report.append(f"- `{item['relative_path']}` — {item['pilot_reason']}; {outcome['status']}; attempts={outcome['attempt_count']}")
+        if outcome["proposal"]:
+            proposal = outcome["proposal"]
+            report.extend([f"  - domains: {', '.join(proposal['proposed_domains']) or 'None'}",
+                           f"  - summary: {proposal['summary']}",
+                           f"  - people: {', '.join(proposal['people']) or 'None'}; entities: {', '.join(proposal['entities']) or 'None'}",
+                           f"  - concepts: {', '.join(proposal['concepts']) or 'None'}; links: {', '.join(proposal['links']) or 'None'}",
+                           f"  - quality flags: {', '.join(outcome['quality_flags']) or 'none'}"])
+        elif outcome["reason"]:
+            report.append(f"  - rejection reason: {outcome['reason']}")
     report.extend(["", "## Proposal policy", "- Domains and summaries are accepted only when the structured response validates.",
                    "- Entities, people, concepts, and links are held for review. No record or link was created.", "", "## Retrieval smoke results"])
     for query, results in retrieval.items():
         report.append(f"- `{query}`: {len(results)} result(s)")
     report.extend(["", "## Output", "- `00_System/Data/rebuild-v1/source-manifest.json`", "- `00_System/Data/rebuild-v1/pilot-catalogue.json`",
-                   "- `00_System/Data/rebuild-v1/model-captures.jsonl`", "- `00_System/Data/rebuild-v1/reviews/`", "- `00_System/Data/rebuild-v1/retrieval-results.json`"])
+                   "- `00_System/Data/rebuild-v1/model-captures.jsonl`", "- `00_System/Data/rebuild-v1/reviews/`", "- `00_System/Data/rebuild-v1/retrieval-results.json`",
+                   "- `00_System/Data/rebuild-v1/retrieval-comparison.json`", "- `00_System/Data/rebuild-v1/previous-generate-pilot/` (preserved failed-pilot comparison baseline)"])
     report_path = root / "Reports" / "rebuild-v1-pilot.md"
     report_path.write_text("\n".join(report) + "\n", encoding="utf-8")
     print(f"pilot={len(pilot)} accepted={accepted} rejected={len(pilot)-accepted} output={output}")
