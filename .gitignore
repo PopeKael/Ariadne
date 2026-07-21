@@ -76,6 +76,7 @@ Wiki/**
 
 # Generated local semantic-search index; rebuilt from this vault.
 /00_System/Data/embedding-index.json
+/00_System/Data/rebuild-v1/
 
 # ----------------------------------------------------------
 # Operating System Files
@@ -155,3 +156,4 @@ build/
 .env.*
 !.env.example
 Reports/Ariadne/
+Reports/rebuild-v1-*
