@@ -95,13 +95,17 @@ def model_request(record: dict[str, Any], text: str, domains: list[str]) -> dict
         f"SOURCE ID: {record['stable_source_id']}\nTITLE: {record['title']}\nTYPE: {record['source_type']}\n"
         f"ALLOWED DOMAINS: {json.dumps(domains, ensure_ascii=False)}\n\nSOURCE EXCERPT:\n{excerpt}"
     )
-    return {"model": "gpt-oss:20b", "prompt": prompt, "stream": False, "think": "low", "format": schema(domains),
-            "options": {"temperature": 0, "num_predict": 500}}
+    # GPT-OSS on the installed Ollama build returns an empty final field through
+    # /api/generate. /api/chat with a JSON Schema is the verified adapter path.
+    # Do not set think: GPT-OSS defaults to its supported reasoning level while
+    # still returning the schema-constrained final answer in message.content.
+    return {"model": "gpt-oss:20b", "messages": [{"role": "user", "content": prompt}], "stream": False,
+            "format": schema(domains), "options": {"temperature": 0}}
 
 
 def invoke_ollama(body: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None, str | None]:
     encoded = json.dumps(body, ensure_ascii=False).encode("utf-8")
-    request = urllib.request.Request("http://localhost:11434/api/generate", data=encoded,
+    request = urllib.request.Request("http://localhost:11434/api/chat", data=encoded,
                                      headers={"Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(request, timeout=120) as response:
@@ -109,6 +113,14 @@ def invoke_ollama(body: dict[str, Any]) -> tuple[str | None, dict[str, Any] | No
         return raw, json.loads(raw), None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return None, None, str(exc)
+
+
+def final_content(envelope: dict[str, Any] | None) -> tuple[str, str]:
+    """Return GPT-OSS final content and separately captured reasoning."""
+    message = envelope.get("message") if isinstance(envelope, dict) else None
+    if not isinstance(message, dict):
+        return "", ""
+    return str(message.get("content") or ""), str(message.get("thinking") or "")
 
 
 def validate_proposal(value: Any, domains: list[str]) -> tuple[dict[str, Any] | None, str | None]:
@@ -180,8 +192,7 @@ def main() -> int:
             text = (root / record["relative_path"]).read_text(encoding="utf-8-sig")
             request = model_request(record, text, domains)
             raw, envelope, error = invoke_ollama(request)
-            content = envelope.get("response", "") if envelope else ""
-            thinking = envelope.get("thinking", "") if envelope else ""
+            content, thinking = final_content(envelope)
             proposal = None
             reason = error
             if not reason and not content.strip():
