@@ -1,5 +1,5 @@
 {
-  "version": "0.8.15",
+  "version": "0.8.16",
   "domains": [
     { "name": "AI & LLMs", "description": "AI models, agents, prompting, model capabilities, and AI policy.", "keywords": ["ai", "llm", "llms", "rag", "mcp"], "related_domains": ["Infrastructure", "Knowledge Management", "Content Creation", "Business"] },
     { "name": "Infrastructure", "description": "Compute, networks, storage, operating systems, deployment, and operational tooling.", "keywords": ["infrastructure", "docker", "linux", "windows", "network", "server", "servers", "storage", "gpu", "deployment"], "related_domains": ["AI & LLMs", "Knowledge Management", "Projects"] },
@@ -11,6 +11,11 @@
     { "name": "Gaming", "description": "Games, gaming hardware, game culture, and the games industry.", "keywords": ["gaming", "game", "games", "arcade"], "related_domains": ["AI & LLMs", "Content Creation"] },
     { "name": "Philosophy", "description": "Ideas, ethics, meaning, worldviews, and reflective analysis.", "keywords": ["philosophy", "ethics", "consciousness"], "related_domains": ["AI & LLMs", "Personal"] },
     { "name": "Travel & Expat Experience", "description": "Travel, Thailand, relocation, visas, local life, and expatriate experience.", "keywords": ["travel", "thailand", "thai", "expat", "visa", "immigration", "tourism", "bangkok"], "related_domains": ["Business", "Content Creation", "Personal"] },
+    { "name": "Health & Medicine", "description": "Health conditions, medicines, treatments, medical research, prevention, and healthcare decisions.", "keywords": ["health", "medicine", "medical", "drug", "medication", "symptom", "treatment", "surgery", "disease", "stroke"], "related_domains": ["Personal", "Science & Technology"] },
+    { "name": "Science & Technology", "description": "Natural sciences, engineering, scientific research, technology, and evidence-based technical explanations outside the AI and infrastructure domains.", "keywords": ["science", "physics", "biology", "chemistry", "engineering", "research", "technology", "space", "energy", "engine", "materials"], "related_domains": ["AI & LLMs", "Infrastructure", "Health & Medicine", "Philosophy"] },
+    { "name": "News & Current Affairs", "description": "Current events, public affairs, fact-checking, conflicts, elections, policy developments, and general news reporting.", "keywords": ["news", "current affairs", "conflict", "war", "policy", "government", "officials", "fact check", "breaking"], "related_domains": ["Business", "History & Society", "Travel & Expat Experience"] },
+    { "name": "History & Society", "description": "History, politics, culture, social movements, communities, and analysis of society across time.", "keywords": ["history", "historical", "politics", "society", "culture", "apartheid", "law", "geopolitics", "civil rights"], "related_domains": ["News & Current Affairs", "Philosophy", "Travel & Expat Experience"] },
+    { "name": "General Reference", "description": "Useful factual reference material, short lookups, glossaries, explanations, and snippets that do not belong to a more specific domain.", "keywords": ["reference", "definition", "coordinate", "longitude", "glossary", "lookup", "overview"], "related_domains": ["Knowledge Management", "Science & Technology"] },
     { "name": "Archive", "description": "Fallback for material that cannot yet be confidently assigned to another domain.", "keywords": [], "related_domains": [] }
   ]
 }

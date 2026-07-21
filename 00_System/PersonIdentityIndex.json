@@ -14,8 +14,8 @@
       "@ChanyaAndWazzaThailand"
     ],
     "created_at": "2026-07-14T16:27:26",
-    "last_seen": "2026-07-18T17:34:53",
-    "interaction_count": 32
+    "last_seen": "2026-07-19T14:06:24",
+    "interaction_count": 33
   },
   {
     "canonical_name": "@alice",
@@ -33,8 +33,8 @@
       "@pope_kael"
     ],
     "created_at": "2026-07-14T16:27:26",
-    "last_seen": "2026-07-18T17:34:53",
-    "interaction_count": 50
+    "last_seen": "2026-07-19T14:06:24",
+    "interaction_count": 51
   },
   {
     "canonical_name": "@alice_beauty",
@@ -42,8 +42,8 @@
       "@alice_beauty"
     ],
     "created_at": "2026-07-14T16:28:04",
-    "last_seen": "2026-07-18T17:34:53",
-    "interaction_count": 27
+    "last_seen": "2026-07-19T14:06:24",
+    "interaction_count": 28
   },
   {
     "canonical_name": "@karpathy",
@@ -69,8 +69,8 @@
       "@nate"
     ],
     "created_at": "2026-07-14T16:33:34",
-    "last_seen": "2026-07-14T16:34:53",
-    "interaction_count": 2
+    "last_seen": "2026-07-21T14:47:58",
+    "interaction_count": 3
   },
   {
     "canonical_name": "@mr",
@@ -259,6 +259,60 @@
     ],
     "created_at": "2026-07-18T14:07:13",
     "last_seen": "2026-07-18T14:07:13",
+    "interaction_count": 1
+  },
+  {
+    "canonical_name": "@13",
+    "aliases": [
+      "@13"
+    ],
+    "created_at": "2026-07-19T14:30:38",
+    "last_seen": "2026-07-19T14:30:38",
+    "interaction_count": 1
+  },
+  {
+    "canonical_name": "@zthtraining",
+    "aliases": [
+      "@zthtraining"
+    ],
+    "created_at": "2026-07-20T10:35:19",
+    "last_seen": "2026-07-20T10:35:19",
+    "interaction_count": 1
+  },
+  {
+    "canonical_name": "@the",
+    "aliases": [
+      "@the"
+    ],
+    "created_at": "2026-07-21T14:42:01",
+    "last_seen": "2026-07-21T14:42:01",
+    "interaction_count": 1
+  },
+  {
+    "canonical_name": "@serpentza",
+    "aliases": [
+      "@serpentza"
+    ],
+    "created_at": "2026-07-21T14:53:09",
+    "last_seen": "2026-07-21T14:53:09",
+    "interaction_count": 1
+  },
+  {
+    "canonical_name": "@System76",
+    "aliases": [
+      "@System76"
+    ],
+    "created_at": "2026-07-21T14:56:32",
+    "last_seen": "2026-07-21T14:56:32",
+    "interaction_count": 1
+  },
+  {
+    "canonical_name": "@CoffeeChillTV",
+    "aliases": [
+      "@CoffeeChillTV"
+    ],
+    "created_at": "2026-07-21T15:40:59",
+    "last_seen": "2026-07-21T15:40:59",
     "interaction_count": 1
   }
 ]

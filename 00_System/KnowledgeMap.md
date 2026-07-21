@@ -1,7 +1,19 @@
-> Last updated: 2026-07-18 17:34:55
+> Last updated: 2026-07-21 16:05:10
+
+> Last updated: 2026-07-21 16:04:19
+
+> Last updated: 2026-07-21 15:41:01
 
 ## AI & LLMs
 Purpose: Document describes Google Gemini, an AI assistant product, fitting under AI & LLMs.
+- Tutorial on downloading, validating, and running the GLM 5.2 large language model locally on CPU, with hardware monitoring.
+- Extract OG Image URL – conversation on how to pull og:image via PowerShell and web scraping.
+- Talk on Kimmy K3 as a breakthrough open‑source LLM, covering its performance, deployment strategies, and evolving AI regulatory landscape.
+- AI Work Platform Expansion discussion: argument that AI utility exists beyond hype, focus on open weights and spending bubble.
+- Top 10 Self-hosted AI & Productivity Tools – An overview of open-source, cost-effective alternatives to popular SaaS solutions.
+- Thai retail availability of MINIX ER939‑AI, a Ryzen AI Max+ 395 powered mini PC with 128 GB RAM and 2 TB storage.
+- Pope Kael TV - Gemini vs ChatGPT: comparison discussion and thumbnail design advice.
+- Uncategorized
 - End‑to‑end ingestion pipeline with Redis memory, LLM inference, and image moderation.
 - Facebook post caption for an infographic on scarcity vs abundance in AI models, referencing American and Chinese approaches.
 - Moonshot AI K3 model overview – details on training, architecture, performance, pricing and geopolitical context.
@@ -134,6 +146,12 @@ Purpose: Document describes Google Gemini, an AI assistant product, fitting unde
 
 ## Infrastructure
 Purpose: The article discusses a telecommunications outage affecting critical national infrastructure and the cybersecurity implications thereof.
+- Location for Discord webhook URL in n8n workflow: the URL field of HTTP Request node.
+- Hand-off document summarizing current state of Garage Alchemy and Linktree sites, backup infrastructure, deployment pipeline, and brand separation.
+- Discussion on the difficulties of rewriting legacy COBOL/Fortran code while maintaining full system behavior, highlighting business logic, data handling, and infrastructure dependencies.
+- Technical discussion on enabling external access to the Ariadne MCP via secure reverse proxy and authentication mechanisms.
+- Linux system update workflow via terminal and desktop launcher creation for KDE Neon
+- Document outlines the mapping of a personal digital ecosystem, detailing folder structure and external access configuration.
 - Document detailing a Synology watchdog script to monitor an Ollama service on an MSI laptop, with optional Wake-on-LAN and email alerts.
 - Focus on sourcing Chinese mini PCs for local LLM work in Thailand with price and availability monitoring.
 - Executive Brief – Security Industry Outlook (FY 2026) – Overview of industry trends, market projections, and key growth drivers.
@@ -186,6 +204,24 @@ Purpose: The article discusses a telecommunications outage affecting critical na
 
 ## Content Creation
 Purpose: User requested a new content creation article in 4th person
+- Archive drop from January videos posted to YouTube and Facebook via a draft social media post.
+- Caption for a set of restored family photos.
+- Document outlining video title hooks, thumbnail concepts, and packaging prompts for a YouTube series featuring three AI personalities answering the same prompt. Includes visual instructions for multi-monitor scenes and suggestions for text overlays.
+- Document pending classification review.
+- Thumbnail design instructions involving AI image generation and manual editing in Photoshop
+- Pope Kael TV thumbnail overlay improvement suggestions
+- User seeks assistance to correct and refine a channel thumbnail image, including restoring a missing left arm, aligning eye focus, and maintaining head orientation while ensuring the final graphic stays within frame constraints.
+- Content Creation: YouTube video script for auditing a 30-year-old email address with focus on spam analysis and digital hygiene.
+- Personal diary entry illustrating everyday AI usage in creative work
+- Thumbnail Design Guidelines for Pope Kael TV - Prompt Drift Explained
+- Thumbnail creation guidance
+- YouTube thumbnail and splash overlay design guide for Pope Kael TV
+- Content Creation - Thumbnail Generation
+- Document outlines a real-world AI workflow for YouTube creators, demonstrating transcript-based SEO tools and automation for efficient publishing.
+- Guidelines and process for creating consistent, branded thumbnails using modular overlay kits and Photoshop templates.
+- Video production walkthrough explaining AI-assisted workflow for creating a YouTube episode, including thumbnails and editing tasks.
+- Review of an AI collaboration vs individual use video concept for Pope Kael TV
+- Cinematic Industrial Workshop – chat conversation with image generation prompts and images.
 - ChatGPT conversation comparing smartphones and smartwatches for dim indoor video recording, with price data and feature analysis.
 - ChatGPT conversation guiding the creation of a Substack article about AI's effect on language, incorporating general semantics and reality tunnel concepts.
 - C&W Channel - YouTube Packaging Workflow: a master prompt guiding title, description, chapters, tags, and thumbnail generation for YouTube videos.
@@ -410,6 +446,11 @@ Purpose: User requested a new content creation article in 4th person
 
 ## Travel & Expat Experience
 Purpose: The document discusses expatriate experiences and attitudes in Thailand, fitting within travel and expat experience.
+- Travel vlog transcript detailing Coffee Chill TV's exploration of Udontani, highlighting coffee culture and expat credibility.
+- ChatGPT conversation summarizing Thailand's administrative reforms, crackdown on civil service corruption and implications for expatriates.
+- Guide listing top Nuru massage establishments in Bangkok for travelers.
+- Advice on integrating stepchildren into an expat life in Thailand, highlighting cultural norms, family dynamics, and future planning.
+- Weekend in Sukhothai – rare encounter with Kinnari statues during 100‑day remembrance ceremony.
 - Review article about Morning Moon Café & Restaurant with associated video content.
 - Document about an expatriate’s experience living in Thailand, focusing on utility expenses, internet service problems, and night market food.
 - Revised earnings comparison for Australian expat living in Thailand – former salary, current YouTube income and monthly spending expressed in A$.
@@ -528,6 +569,9 @@ Purpose: The document discusses expatriate experiences and attitudes in Thailand
 
 ## Knowledge Management
 Purpose: The document focuses on designing and evaluating personal knowledge base architectures, fitting within Knowledge Management.
+- Image folder category breakdown with counts and percentages for invoices, receipts, screenshots, and family photos.
+- Instructions for configuring Obsidian Web Clipper to add notes directly to the Inbox folder, along with a simple journaling loop that processes clips and integrates them into a knowledge vault.
+- Document explaining how a user captures Facebook posts into markdown files for personal knowledge management, with reflections on expat experience debates.
 - Image classification guidelines for archival folders
 - Clipping from ChatGPT conversation titled 'Multi-Personality Building - Eris Personality' containing explanations of E=mc^2 and egg frying.
 - Knowledge Management – Data ingestion pipeline and document capture process
@@ -555,6 +599,8 @@ Purpose: The document focuses on designing and evaluating personal knowledge bas
 
 ## Personal
 Purpose: The document reflects personal memories of 1980s sci‑fi television, fitting into the Personal domain.
+- Document is a transcript of a YouTube video titled "Decolonization in South Africa – Not a White‑Out!" where the host discusses his personal experience with apartheid and decolonization, critiquing communism and comparing life in South Africa to the United States.
+- Personal correspondence excerpt about experiencing Bangkok belly and safe return to the US.
 - Document pending classification review.
 - ChatGPT conversation detailing a personal knee arthroscopy experience and costs, referencing the FIDELITY sham surgery study.
 - Correspondence - Steam Engines and Fascination – personal conversation about trains and mobile phones
@@ -615,8 +661,10 @@ Purpose: The document reflects personal memories of 1980s sci‑fi television, f
 
 ## Projects
 Purpose: The document focuses on project planning and cost optimization for a knowledge vault using AI tools.
+- Photo Archive Manager v1.0 specification covering inventory, classification, organization and audit functionality.
+- Detailed guide to set up a photo archive manager (PAM) with Ollama LLM for image classification, including hardware recommendations, milestones, and practical scripts.
+- Transcript detailing a web development project focused on resolving mobile-to-desktop layout constraints, discussing CSS tweaks and media queries.
 - Australian government’s announcement of the Office of AI, outlining national strategy, standards, and cross‑ministerial coordination.
-- Unclassified document pending review.
 - Correspondence thread on branch comment response strategy
 - Document proposing an innovative submarine for deep-sea exploration and requesting social‑media funded outreach.
 - Product design – insulated milk bottle
@@ -653,6 +701,11 @@ Purpose: It details gameplay mechanics for ARK's planning and build modes, fitti
 
 ## Business
 Purpose: Document discusses economic opportunities and strategic policy in Australia’s space industry, fitting within the Business domain.
+- ChatGPT conversation evaluating niobium arsenide versus copper in semiconductor interconnects and comparing material costs.
+- A video by Bit Monger on Thai youth debt and Bitcoin market trends.
+- Analysis of SpaceX cost model and China’s reusable rocket developments, focusing on economic implications and competitive dynamics.
+- Correspondence - Scam Email Response Strategy
+- ChatGPT guidance on building an interactive business directory map for Paul’s website, comparing Google My Maps vs custom JavaScript solution.
 - Rumble Revenue Model Clipping – Overview of platform monetization, licensing options, and geographic eligibility for creators.
 - Transcript overview: SpaceX's Starship as a low-cost payload carrier, its economic implications, potential business uses (AI satellites, space-based data centers), and competitive landscape.
 - ChatGPT conversation summarizing Thai consumers council lawsuit against Meta over fraud on Facebook.
@@ -714,47 +767,12 @@ Purpose: Document discusses economic opportunities and strategic policy in Austr
 - Australia's Space Opportunity — summary of article on Australia's potential in global space industry
 
 ## Archive
-Purpose: Could not confidently classify the document.
-- Unclassified document pending review.
-- Ten‑year follow‑up of the FIDELITY sham knee arthroscopy study, confirming no benefit and potential harm of arthroscopic partial meniscectomy for degenerative knee disease.
-- Unclassified document pending review.
-- Unclassified document pending review.
-- Archive drop from January videos posted to YouTube and Facebook via a draft social media post.
-- Unclassified document pending review.
-- Fact‑check clipping debunking claim that Iran painted fake planes and U.S. spent $5 million bombing them.
-- Discussion on Element 115’s role in gravity and warp‑drive speculation, including superfluid vortex concepts.
-- Unclassified document pending review.
-- Unclassified document pending review.
-- Unclassified document pending review.
-- Unclassified document pending review.
-- Caption for a set of restored family photos.
-- Unclassified document pending review.
-- General world news highlight covering multiple global events
-- Unclassified document pending review.
-- Middle East conflict status summary, July 2026
-- Popular Mechanics magazine issue summaries (August/September 2023 to June/July 2022)
-- Document outlines the historical measurement of the speed of light, Einstein's reasoning leading to special relativity, and practical implications like GPS.
+Purpose: Retained material that is genuinely unclassified, empty, superseded, or awaiting an explicit archival decision.
 - Empty document skeleton with YAML front matter; no body content provided.
-- Unclassified document pending review.
-- Clipping of video summary on US Middle East policy and oil crises.
-- Unclassified document pending review.
-- Second opinion request about alleged occult links between Epstein and Crowley.
-- Image folder category breakdown with counts and percentages for invoices, receipts, screenshots, and family photos.
-- Photo Archive Manager v1.0 specification covering inventory, classification, organization and audit functionality.
-- Detailed guide to set up a photo archive manager (PAM) with Ollama LLM for image classification, including hardware recommendations, milestones, and practical scripts.
-- Unclassified document pending review.
-- Gemini chat – user asks for Manchester longitude; Gemini replies
-- Gemini chat – user requests image of vehicle on beach, Gemini returns a video link.
-- Gemini conversation with 2 messages analyzing overlapping narratives between Crowley and Epstein
-- ChatGPT conversation about Myonal 50mg drug info.
-- ChatGPT conversation providing details on Lyrica medication and its usage for nerve pain and sleep, including side effects and dosage considerations.
-- ChatGPT conversation discussing the BMV quantum experiment and speculative antigravity concepts.
-- Crowley and Epstein Conspiracy — ChatGPT conversation exploring pattern matching between Aleister Crowley's ideas and Jeffrey Epstein allegations
-- China says it can hold people abroad accountable under ethnic unity law — overview of China's new law allowing overseas accountability for ethnic matters
-- Unclassified document pending review.
 
 ## Philosophy
 Purpose: The document presents a philosophical comparison between Buddhist concepts and Discordianist ideas.
+- A philosophical exploration of why conflicts persist, the impact of institutional incentives, and the potential for advanced LLMs to act as objective reflectors of internal contradictions in belief systems.
 - Analysis of a comment on AI's impact on future longevity and boredom over 3000 years.
 - Analysis of why Huckleberry Finn is a cultural anchor and key educational themes.
 - Document pending classification review.
@@ -778,3 +796,37 @@ Purpose: The document presents a philosophical comparison between Buddhist conce
 - Philosophical analysis proposing a Principia-style framework that synthesizes Gnostic, Jungian, Discordian, Eight-Circuit, and Thelemic perspectives while emphasizing General Semantics.
 - Crowley's Book 4 summary covering mysticism, magick theory, ritual practice, Thelema, and personal responsibility.
 - Comparison of Buddhist attitudes toward deities and atheism with Discordian perspective, highlighting similar focus on perception and constructed reality.
+
+## Health & Medicine
+Purpose: Domain for Health & Medicine material.
+- Ten‑year follow‑up of the FIDELITY sham knee arthroscopy study, confirming no benefit and potential harm of arthroscopic partial meniscectomy for degenerative knee disease.
+- ChatGPT conversation about Myonal 50mg drug info.
+- ChatGPT conversation providing details on Lyrica medication and its usage for nerve pain and sleep, including side effects and dosage considerations.
+
+## News & Current Affairs
+Purpose: Domain for News & Current Affairs material.
+- Unclassified document pending review.
+- Fact‑check clipping debunking claim that Iran painted fake planes and U.S. spent $5 million bombing them.
+- General world news highlight covering multiple global events
+- Middle East conflict status summary, July 2026
+- China says it can hold people abroad accountable under ethnic unity law — overview of China's new law allowing overseas accountability for ethnic matters
+
+## History & Society
+Purpose: Domain for History & Society material.
+- ChatGPT conversation about apartheid in South Africa, referencing corporate experiences and a critique video.
+- Clipping of video summary on US Middle East policy and oil crises.
+- Second opinion request about alleged occult links between Epstein and Crowley.
+- Gemini conversation with 2 messages analyzing overlapping narratives between Crowley and Epstein
+- Crowley and Epstein Conspiracy — ChatGPT conversation exploring pattern matching between Aleister Crowley's ideas and Jeffrey Epstein allegations
+
+## Science & Technology
+Purpose: Domain for Science & Technology material.
+- Discussion on Element 115’s role in gravity and warp‑drive speculation, including superfluid vortex concepts.
+- Popular Mechanics magazine issue summaries (August/September 2023 to June/July 2022)
+- Document outlines the historical measurement of the speed of light, Einstein's reasoning leading to special relativity, and practical implications like GPS.
+- ChatGPT conversation discussing the BMV quantum experiment and speculative antigravity concepts.
+
+## General Reference
+Purpose: Domain for General Reference material.
+- Gemini chat – user asks for Manchester longitude; Gemini replies
+- Gemini chat – user requests image of vehicle on beach, Gemini returns a video link.
