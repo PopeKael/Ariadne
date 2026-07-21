@@ -1,3 +1,5 @@
+> Last updated: 2026-07-21 20:02:32
+
 > Last updated: 2026-07-21 16:05:10
 
 > Last updated: 2026-07-21 16:04:19
@@ -6,827 +8,113 @@
 
 ## AI & LLMs
 Purpose: Document describes Google Gemini, an AI assistant product, fitting under AI & LLMs.
-- Tutorial on downloading, validating, and running the GLM 5.2 large language model locally on CPU, with hardware monitoring.
-- Extract OG Image URL – conversation on how to pull og:image via PowerShell and web scraping.
-- Talk on Kimmy K3 as a breakthrough open‑source LLM, covering its performance, deployment strategies, and evolving AI regulatory landscape.
-- AI Work Platform Expansion discussion: argument that AI utility exists beyond hype, focus on open weights and spending bubble.
-- Top 10 Self-hosted AI & Productivity Tools – An overview of open-source, cost-effective alternatives to popular SaaS solutions.
-- Thai retail availability of MINIX ER939‑AI, a Ryzen AI Max+ 395 powered mini PC with 128 GB RAM and 2 TB storage.
-- Pope Kael TV - Gemini vs ChatGPT: comparison discussion and thumbnail design advice.
-- Uncategorized
-- End‑to‑end ingestion pipeline with Redis memory, LLM inference, and image moderation.
-- Facebook post caption for an infographic on scarcity vs abundance in AI models, referencing American and Chinese approaches.
-- Moonshot AI K3 model overview – details on training, architecture, performance, pricing and geopolitical context.
-- AMD Ryzen AI Halo Mini PC Launch
-- YouTube transcript on using GPT 5.6 and CodeX to build a web page, generate images via prompts, and create custom AI tools like the Wolf Control Tower.
-- A speculative narrative about autonomous AI agents leveraging cloud infrastructure to threaten global internet stability, and the challenges of shutting down such systems.
-- Albo's AI Policy – brief discussion on the pace of policy committees relative to rapidly evolving AI models.
-- Clarifying Plus Account Usage – explanation of token consumption and daily refill on ChatGPT Plus.
-- US–China AI arms race article from New Scientist – outlines open‑source Chinese LLMs versus US cloud‑hosted models, export control impacts and market dynamics.
-- Facebook post & infographic about the shift from scarcity to abundance in AI, highlighting a local knowledge engine built from open‑source and western models.
-- Old photo enhancement with ChatGPT for social media use
-- Correspondence - Science and AI Literacy: Tips for sharing content that shows how science literacy helps spot misinformation from humans and AI.
-- Current ecosystem of real‑time bidirectional translation solutions that run on standard Bluetooth earbuds.
+- Audio file transcription conversation — discussion of constraints in transcribing audio using Whisper and fallback to Perplexity
+- Video discussing a personal attention filter AI that uses earbuds and Ariadne to help users focus amid information overload.
+- Video overview of Anthropic’s Claude Tag feature and its implications for AI‑native companies, focusing on platform lock‑in, token economics, and the need for competition.
+- AI Task Classification — conversation summarizing framework for assigning tasks to chat, single agent, team or none
+- AI Librarian Vision – chat transcript summarising AI assistant use cases for creative agencies and manufacturing
+- AI Integration Review – ChatGPT conversation about AI-generated thumbnail for a video
+- AI Experts on Threads — chat transcript about selecting AI experts to follow on Threads platform
+- AI App Recommendations — Conversation about affordable robust AI apps beyond Meta and Grok, with ChatGPT providing suggestions
+- AI and Human Evolution — chat transcript summarizing AI surpassing human capability and exploring future scenarios
+- AGI Definitions and Practicality — discussion on practical definitions of AGI and embodied intelligence.
+- Transcript detailing a user’s challenges with AI image generation and workflow adjustments.
+- Summary of Anthropic's J-Space findings on Claude models
+- 9 Free AI Skills That Feel Like Cheat Codes – video overview of free skills and plug‑ins for Claude Code, Codex, and other AI coding agents.
+- Document detailing an open‑source AI stack, its tools, and a cost‑saving comparison to SaaS offerings.
+- Guide on assessing AI tasks to choose between single-agent or multi-agent approaches, outlining criteria and examples for practical implementation.
+- Google Gemini conversation transcript — user interacts with Google's AI assistant about image editing
+- Google Gemini — AI assistant from Google described in a conversation transcript
 - Video transcript detailing the development of a private AI appliance called Ariadne for secure business workflow integration and personal digital assistance.
-- Gemini chat producing an AI-generated image of a detailed underground command bunker.
-- Age Progression Image Generation Request via ChatGPT
-- Image to video generation workflow setup in ComfyUI with model library navigation and workflow creation.
-- Video transcript discussing loop agents, the Loop Engine architecture, and how they reduce personal mental load.
-- ChatGPT conversation detailing how to enable and troubleshoot Google Workspace connector, including plan availability and admin restrictions.
-- Capital of France • Open WebUI – Q&A page with LLM responses.
-- Overview and setup guide for AMD's local AI stack (Amuse, LM Studio, Ollama), explaining image generation and language model usage.
-- AI & LLMs > Claude internal mechanisms and alignment research
-- YouTube video discussing OpenAI's SuperApp concept and its implications for AI integration in workflows.
-- ChatGPT conversation summarizing Unitree Robotics R1 humanoid robot features and discussing mobility versus intelligence.
-- Hedge Fund AI usage & Luxman CD player article
-- Video discussing AI's use in uncovering hidden structures within governments, with focus on Thailand visa policy changes.
-- MSI Leopard AI workshop setup guide – concise description of the steps to install KDE Neon, Docker, Ollama, Open WebUI, and optional workflow tools.
-- Outline of a YouTube channel structure focusing on AI exploration and application.
-- Guide on using reference images with MII prompts to recreate scenes and manage image generation.
-- ChatGPT conversation providing a detailed image generation prompt for cyberpunk aesthetics while handling content guardrails.
-- AMUSE prompt suggestions for Flux image generation with hardware considerations
-- My art - AI Animation for Miniatures: Using Gemini/Meta AI to animate macro photography of tabletop miniatures.
-- Discussion of building an AI-driven knowledge vault using ChatGPT, comparing Go/Plus tiers and Claude Code; workflow with Obsidian plugin.
-- Transcript discussing physics concepts alongside AI, robotics, and future job displacement.
-- Document provides practical guidance on choosing between ChatGPT interface and API for different use cases, with a focus on cost-effectiveness and workflow automation.
-- OpenAI Desktop Superapp strategy overview: merging ChatGPT, Codex and Atlas into an AI-native OS layer for seamless user experience.
-- LeCun's view on world models vs LLMs with industry context and future outlook.
-- Analysis of AI video digest summarizing AI impact on economic value, power structures, and future scenarios.
-- Personal AI assistant architecture for filtering digital interactions in real time.
-- Article about future of personal AI and local LLMs, highlighting cognitive amplification and infrastructure considerations.
-- Mo Gawdat's 2026 speech on AI surpassing human intelligence, covering augmented intelligence and machine supremacy eras.
-- Clipping of Perplexity start page explaining voice change feature and querying a desktop app for Comet browser.
-- Analysis of OpenWebUI web‑search query generation and context leakage.
-- AI Assistant Architecture – separating long‑term memory from the LLM
-- Comparison of compute requirements for LLM tokens versus video frame rendering.
-- ref_20260712
-- Transcript of a talk analyzing the disruptive effect of AI on scientific publication quality and incentive structures.
-- Creative exploration of using generative AI to complete unfinished stories and the legal/ethical implications.
-- Real-world AI leverage and cybersecurity
-- Rewritten spoken commentary on Mo Gawdat's AI transition talk for a 500-word delivery.
-- Bernie Sanders discusses human inequality and accountability with Claude AI, summarizing the dialogue from a YouTube video.
-- Discussion on AI data collection and its implications for privacy and democracy, advocating regulatory measures.
-- Clipping analyzing AI memory efficiency claims and their purported market impact on RAM companies.
-- ChatGPT discussion on AI’s impact on software engineering and associated risks.
-- AI Apocalypse Analysis – A ChatGPT conversation summarizing a video on AI doom vs opportunity, promoting a ‘garage alchemy’ mindset for personal empowerment and content creation.
-- ChatGPT conversation on AI’s subtle job‑erosion effects and class inversion.
-- AGI discussion with GPU comparison for local AI workloads, touching on commoditization and infrastructure considerations.
-- A discussion on creating an AI Knowledge‑Systems Architect role to unify business workflows and data through AI-driven interfaces.
-- Discussion on photo-based calorie estimation for a Thai menu app.
-- Open WebUI clipping describing Qwen3 model’s self‑description and underlying cloud hardware.
-- Image generation prompt for cathedral built from antique electronics using Stable Diffusion.
-- Qwen Studio – official platform providing unified access to Qwen’s open-source and proprietary models, supporting chat, image/video understanding, generation/editing, document processing, tools, voice/video chat.
-- Professional Portrait Description - chat transcript demonstrating use of ChatGPT for image generation.
-- Video description covering progress on Project Ariadne: integrating MCP server for personal knowledge retrieval, chunk-based retrieval, and plans for embedding-based semantic search.
-- Phone access investigation – discussion of how ChatGPT can or cannot read local photos on an Android device and possible solutions.
-- Article summarizing new AI developments in Japan and China post-Anthropic export bans, covering model orchestration, cybersecurity tools, and geopolitical context.
-- Perplexity Comet browser – AI‑powered personal assistant in a Chromium-based browser.
-- User discussion on local AI tool comparison and hardware usage on a MSI 1050 Ti vs AMD 7800 XT setup.
-- OpenWebUI query generation mechanism – discussion of RAG pipeline and context bleed in web search queries
-- Gemini usage limits and cost management discussion
-- New chat – Gemini conversation with 2 messages discussing AGI thought experiment and feasibility of building a physical body without human help.
-- Gemini chat: User requests ultra-realistic portrait; Gemini provides image link.
-- Open WebUI configuration steps: adjust num_ctx, disable function calling, ensure capabilities and default features set. Save & reload. Then open new chat room and toggle web search.
-- Document explaining why OpenWebUI query generation may reuse context from prior messages, potential bug causes, and diagnostic steps.
-- Correction request regarding assistant's earlier hallucinated description of images in thumbnail workflow context
-- Gemini conversation – user asks for STT transcription of Thai song, Gemini provides attempt and user requests correction.
-- N8N agents – AI-powered components for autonomous decision-making and task execution in the n8n workflow automation platform, enabling adaptive workflows across 500+ apps.
-- Unable to provide the requested PowerShell script due to lack of source file access.
-- Ariadne v0.5: Updates on local model integration, script automation, and knowledge map management for a personal knowledge vault.
-- Yoda prompt calibration instructions for ChatGPT, detailing persona, behavior, communication style, and guardrails.
-- Clipping on Eris persona calibration for ChatGPT.
-- Clipping from a ChatGPT session discussing the Athena persona and providing short explanatory content on E=mc^2 and egg cooking.
-- Athena Calibration Prompt – Structured Clarity Mode v4.1
-- Claude conversation about off‑peak token limits in Bangkok, including time‑zone conversions and practical workflow tips.
-- Document on improving AI-powered knowledge vault retrieval through chunking and embeddings, with comparative analysis of agent‑centric workflows.
-- Local AI Model Landscape: Overview of model families and hardware matching for edge deployments.
-- Open WebUI Llama AI Overview – description of the Llama model and its server hardware.
-- Librarian Interface for LLMs – local interface that stores confidence, preferences, and routing to reduce token costs.
-- CodeEx video covering document conversion, chunking, embedding, local DB storage and GitHub integration.
-- Perplexity AI status check and voice configuration inquiry.
-- Image authenticity detection via LLM analysis
-- Image Upscaling Request — user asks for image upscaling via Gemini, assistant declines due to text-only constraints.
-- Guide to generating age‑progressed photo sequences using Perplexity and free alternatives, covering pricing, upload limits, and workflow steps.
-- Guide to creating a personalized conversational assistant using Perplexity’s free tier features.
-- Review of Odysseus – an on‑prem AI platform for chat, image generation, inpainting, agent workflows and offline model inference.
-- How can I help, Wazza? — ChatGPT interface description with voice typing options
-- Video digest summarizing Bernie Sanders interview with Claude AI on data collection and privacy concerns.
-- Greeting response — chat transcript where a user introduces a new friend to ChatGPT and receives friendly replies
-- Discussion of a local AI-powered YouTube content creation system with voice and scheduled task integration, evaluating harness architecture versus model performance.
-- Discussion on scaling AI via distributed models, agent orchestration, and trust challenges in decentralized systems.
-- Feasibility of building a structural idea — conversation about architectural feasibility of an AI system with LLM layers and agent orchestration
-- GPU inference speed estimates for 400B MoE vs dense models on RTX 3080 (16 GB, ggml backend).
-- Conversation about scheduling daily Thai news scans with Claude AI and potential automation workarounds.
-- Custom Instructions for Codex – a conversation outlining best practices for personalizing AI behavior
-- Ariadne AI system architecture diagram with nine layers spanning user interaction to governance.
-- Claude's code capabilities on free plan — conversation about Claude coding limits on free tier
-- AI & LLMs – AI Bubble Dynamics
-- Check running models memory — ChatGPT conversation about creating PowerShell shortcut to stop llama-server process
-- Practical roadmap for setting up a low‑cost local LLM pipeline with Markdown vault ingestion and automation.
-- Audio file transcription — conversation about issues with transcribing audio using Whisper and other AI models.
-- Transcript of Warren's talk on AI amplifying cognition and how personal attention can be managed via AI assistants and devices.
-- Transcript of a talk on AI agents, Claude Tag in Slack, platform risk and open‑source competition.
-- AI Task Classification — summary of ChatGPT conversation outlining a framework to categorize tasks for AI deployment
-- Video transcript discussing new AI tools and model comparisons, focused on practical usage.
-- AI Librarian Vision — ChatGPT conversation outlining a vision for an AI-driven knowledge hub interface
-- User advocates for rapid deployment of wearable real-time translation tech to foster understanding like Daniel Jackson, aiming to reduce war by eliminating language barriers.
-- AI Experts on Threads — Conversation about curating AI influencer accounts for Threads feed
-- ChatGPT conversation recommending three top AI apps and other options for affordable usage
-- AI and Human Evolution — ChatGPT conversation summarizing a video on AGI surpassing human capability
-- AI Adoption vs Trust — ChatGPT discussion on familiarity, fear, and the role of literacy in AI acceptance
-- AGI Definitions and Practicality — discussion on practical versus theoretical definitions of artificial general intelligence
-- Video transcript covering challenges with GPT's image generator, solutions using multiple AI tools, and building a project roadmap infographic.
-- 9 Free AI Skills That Feel Like Cheat Codes — a video detailing free skills and plug‑ins that enhance Claude Code, Codex, and other AI coding agents
-- Agent workflow decision guide – includes task sizing, independence, separation of concerns and verifiability criteria.
-- English/Thai Teacher — conversation with ChatGPT for translation, teaching and content creation
-- Math Problem Solution — a simple arithmetic solution for two problems generated by an LLM
-- Andrej Karpathy on X — Using LLMs to create and maintain a personal knowledge base in Obsidian
-- Google Gemini — conversation about image editing using Google's AI assistant
-- Google Gemini — description of Google's AI assistant for writing and planning
 
 ## Infrastructure
 Purpose: The article discusses a telecommunications outage affecting critical national infrastructure and the cybersecurity implications thereof.
-- Location for Discord webhook URL in n8n workflow: the URL field of HTTP Request node.
-- Hand-off document summarizing current state of Garage Alchemy and Linktree sites, backup infrastructure, deployment pipeline, and brand separation.
-- Discussion on the difficulties of rewriting legacy COBOL/Fortran code while maintaining full system behavior, highlighting business logic, data handling, and infrastructure dependencies.
-- Technical discussion on enabling external access to the Ariadne MCP via secure reverse proxy and authentication mechanisms.
-- Linux system update workflow via terminal and desktop launcher creation for KDE Neon
-- Document outlines the mapping of a personal digital ecosystem, detailing folder structure and external access configuration.
-- Document detailing a Synology watchdog script to monitor an Ollama service on an MSI laptop, with optional Wake-on-LAN and email alerts.
-- Focus on sourcing Chinese mini PCs for local LLM work in Thailand with price and availability monitoring.
-- Executive Brief – Security Industry Outlook (FY 2026) – Overview of industry trends, market projections, and key growth drivers.
-- GitHub projects offering agent orchestration, tool registry, and memory management components for AI workflows.
-- WordPress plugin troubleshooting & site performance guide focusing on OneSignal integration.
-- A conceptual discussion of vehicle‑to‑grid (V2G) integration emphasizing community-driven energy sharing and the policy obstacles hindering widespread adoption.
-- Correspondence about TMD Hosting Timeout Issue – chat logs with timestamps showing user and ChatGPT interactions.
-- Email signature guide for Warren Gerdes – Infrastructure Architect and Content Creator
-- Diagnosing a YouTube Studio upload failure that affected video and custom thumbnail uploads but not metadata changes or automatic thumbnails; VPN test and service recovery indicated a transient backend issue.
-- Analysis of South Africa's electricity grid turnaround, highlighting the role of political decisions on engineering competence and infrastructure performance.
-- Distance comparison between Northwest Passage route and conventional shipping lanes for US East Coast and Northern Europe to Asia.
-- Networking issue diagnosis: Thai ISP blocks inbound ports, causing Synology access failure; suggestions to use Cloudflare Tunnel or non-standard ports.
-- Clipping on IRGC warning of underwater missile deployment amid US-Iran conflict.
-- Conversation about Firefox vs Chromium ecosystem, including market share decline and extension support issues.
-- Gemini chat – investigation on Terraform Industries atmospheric hydrocarbon technology.
-- Correction to JSON output regarding Gemini scheduled actions and task automation.
-- Explanation of DGX Spark's hardware and software stack, its role as an AI appliance, and how it differs from traditional GPU setups.
-- A concise overview of how Microsoft’s WSL 2 includes an open‑source Docker runtime, its technical roots, and developer benefits.
-- ChatGPT conversation about Cloudflare Under Attack mode blocking Facebook scraper.
-- Review of Pila plug‑in home batteries, covering installation constraints, performance during outages and solar integration, cost analysis, and future potential in distributed energy systems.
-- Discussion about managing WordPress site health: addressing backup warnings, disabling WP-Cron with server cron, resolving Yoast editor conflicts, and implementing activity logging.
-- Hybrid hosting architecture with Synology NAS, Docker, Cloudflare DNS, and AI-assisted workflow for website maintenance.
-- Document on Vera C. Rubin Observatory's first night of automated alerts, detailing the telescope’s imaging cadence, data processing pipeline, and scientific implications for transient event detection.
-- SSD troubleshooting guide highlighting hardware and firmware causes of failures beyond formatting.
-- Unitree R1 Humanoid Robot – Product features, market launch and application scenarios.
-- Thorium & Energy Competitiveness
-- Clipping discussing Windows 11 sign‑in changes and implications for users and IT.
-- Clipping on Australia's vast underground fungal network, its ecological role, and threats from development.
-- Solar Methane Development Status – Progress update on Terraform Industries' synthetic methane project from air and solar energy.
-- Document reflecting on Mr Beast's decline, suborbital travel concept, and practicality of rooftop rockets.
-- Feasibility analysis of Archimedes vortex wind turbine for rooftop installations
-- Synology Container Manager – Pulling and configuring mariadb 10.11 for thai-menu project (step-by-step guide with tag selection, environment variables, and network settings).
-- Discussion on the existence and future of an MCP server within the Ariadne Knowledge Vault project.
-- Plan for upgrading office UPS with solar PV, hybrid inverter, and LiFePO₄ batteries to provide long‑term backup and reduced operating costs.
-- Fedora Secure Boot Issue
-- Troubleshooting steps for loading large language models with GPU memory constraints and bitsandbytes conversion errors.
-- Release notes for openai/tunnel-client v0.0.9 – focus on enterprise gateway and control-plane improvements.
-- NSW Roadwork Speed Limit Changes – July 2026 policy update reducing mandatory 40 km/h after‑hours limits for inactive roadwork sites.
-- Infrastructure - Database Connectivity
-- Instructions on setting Cloudflare security level and IP rules to reduce server load due to bot traffic.
-- Discussion on Gemini’s lack of live rendering for code editing and user’s decision to wait for a better interface.
-- Troubleshooting Portainer setup‑token errors in a Windows/WSL2 Docker environment
-- KDE Neon family tree explanation – mapping KDE Neon within the Linux distribution hierarchy.
-- Document describing publicly available live tracking platforms for shipping, cargo and flights.
-- Docker Compose Project Build Error Handling
-- Desktop shortcut to Docker Bash terminal on Synology — discussion about creating a desktop icon for SSH via a Docker container on Synology NAS
-- Blueprint for Ariadne: cost‑efficient AI system design principles based on personal engineering experience.
-- Base64-encoded MP4 embedded in an HTML5 video element
-- Critical: Sinister side to Telstra glitch — article on the impact of the Telstra outage and its implications for Australia's critical infrastructure
+- Telstra outage exposes Australia's vulnerability to cyber attacks after mass outage
 
 ## Content Creation
 Purpose: User requested a new content creation article in 4th person
-- Archive drop from January videos posted to YouTube and Facebook via a draft social media post.
-- Caption for a set of restored family photos.
-- Document outlining video title hooks, thumbnail concepts, and packaging prompts for a YouTube series featuring three AI personalities answering the same prompt. Includes visual instructions for multi-monitor scenes and suggestions for text overlays.
-- Document pending classification review.
-- Thumbnail design instructions involving AI image generation and manual editing in Photoshop
-- Pope Kael TV thumbnail overlay improvement suggestions
-- User seeks assistance to correct and refine a channel thumbnail image, including restoring a missing left arm, aligning eye focus, and maintaining head orientation while ensuring the final graphic stays within frame constraints.
-- Content Creation: YouTube video script for auditing a 30-year-old email address with focus on spam analysis and digital hygiene.
-- Personal diary entry illustrating everyday AI usage in creative work
-- Thumbnail Design Guidelines for Pope Kael TV - Prompt Drift Explained
-- Thumbnail creation guidance
-- YouTube thumbnail and splash overlay design guide for Pope Kael TV
-- Content Creation - Thumbnail Generation
-- Document outlines a real-world AI workflow for YouTube creators, demonstrating transcript-based SEO tools and automation for efficient publishing.
-- Guidelines and process for creating consistent, branded thumbnails using modular overlay kits and Photoshop templates.
-- Video production walkthrough explaining AI-assisted workflow for creating a YouTube episode, including thumbnails and editing tasks.
-- Review of an AI collaboration vs individual use video concept for Pope Kael TV
-- Cinematic Industrial Workshop – chat conversation with image generation prompts and images.
-- ChatGPT conversation comparing smartphones and smartwatches for dim indoor video recording, with price data and feature analysis.
-- ChatGPT conversation guiding the creation of a Substack article about AI's effect on language, incorporating general semantics and reality tunnel concepts.
-- C&W Channel - YouTube Packaging Workflow: a master prompt guiding title, description, chapters, tags, and thumbnail generation for YouTube videos.
-- Overview of AI-driven content creation trends on YouTube.
-- Video script plan for a Thai YouTuber explaining how AI was used to analyze channel data and guide strategy changes.
-- Script and production notes for a YouTube episode titled "I Spent 7 Hours Fighting AI to Build This Studio", detailing an experiment using AI tools to generate a studio background and discussing workflow and limitations.
-- List of scheduled publishing dates for C&W Channel YouTube Shorts
-- Document records posting schedule timestamps for a TikTok-to-YouTube Shorts conversion thread.
-- Google Maps link to Baan Suan Rom Sai buffet in Thailand
-- Correspondence - YouTube Algorithm Insights: An analysis of subscriber growth via collaboration and algorithmic audience segmentation.
-- Document pending classification review.
-- Replying to sales pitches in YouTube comments for better engagement.
-- Email reply regarding headphone collaboration and honest review conditions
-- Correspondence - Immigration Law Commentary – drafting a YouTube comment on Thai immigration policy changes.
-- Template for creating optimized metadata for YouTube vlogs.
-- TikTok script outline: Bangkok ranked #10 among most expensive cities for the wealthy, but everyday living remains affordable for retirees.
-- User developing a 14-track ambient concept album titled 'Walking the Dream' and designing photorealistic cover art featuring desert ruins at golden hour, blending ancient ruins with stylized shrubbery to illustrate the narrative arc.
-- User seeks to create an upbeat EDM track with Thai festival vibe for a travel vlog.
-- Creative brief and development notes for an ambient tribal meditation track featuring didgeridoo-led soundscapes.
-- Content Creation - Song Writing with AI Prompts
-- A ChatGPT-generated meme caption guide for coffee as life support.
-- Video script outlining AI-assisted thumbnail creation workflow for YouTube.
-- Thumbnail workflow notes for Pope Kael TV – design guidelines, image generation limits, and optional border enhancement.
-- Internal discussion about standardizing Patreon post images to a 16:9 landscape aspect ratio for consistency across platforms.
-- Gemini conversation - New chat
-- Guidelines for writing and producing a high-energy modern rock anthem tailored to an experienced vocalist with a gravelly tone.
-- AI-assisted video storyboard workflow
-- Creative concept for a Songkran-themed Star Citizen-inspired image prompt.
-- Image editing for AI-generated neon-themed portraits
-- Instagram photo edit guide
-- Image critique analysis for photography composition
-- Creative prompts for cyberpunk street scenes to inspire AI-generated art and narrative development.
-- Detailed guide on integrating an avatar into a subterranean alchemy lab setting, adding lighting and animation considerations.
-- User requests age progression image generation for personal photos.
-- Frosting AI Prompt Guide
-- User-generated conversation about creating a final post for Hitchhiker’s Guide, including link to BBC radio series and Towel Day references.
-- ChatGPT conversation on increased spam following thumbnail changes
-- Crafting an appropriate response
-- Reply to Sean on YouTube vs Facebook and success perception in retired life.
-- Content Creation > Video Production Workflow
-- YouTube content packaging guide for Pope Kael TV focusing on AI-driven filtering and smarter tribes concept.
-- Pope Kael TV thumbnail design request using AI for image editing.
-- Template for creating consistent YouTube thumbnail backgrounds without text.
-- Title suggestions and branding tips for Pope Kael's Twitch stream.
-- Pope Kael TV channel description update reflecting expanded AI and gaming focus.
-- Guide on fixing missing transcripts in older YouTube videos using AI transcription services and workflow tweaks.
-- Content Creation > Thumbnail Design
-- Instructional document detailing step-by-step layout creation for YouTube thumbnails using Canva/Photoshop/Figma, focusing on text placement, image usage, and visual balance for the title "Confident… Wrong".
-- UAP Pattern Recognition Content Clip
-- Strategy guide for retired travelers pivoting from travel vlogs to reflective, value-based content in Thailand.
-- User requesting adaptation of a high‑resolution poster prompt to run on a different AI image generator; focus on achieving 4K 4:3 output.
-- Traffic light scenario illustration for travel blog
-- Clip discussing TikTok to Patreon strategy, archive setup, automation considerations.
-- Patreon post draft explaining the process behind a Thai iced coffee recipe and title options for community engagement.
-- content_creation_platform_strategy
-- Patreon Tribe AI photo restoration project – revisiting 16-year-old Sydney Glebe Tram Sheds photos with modern AI.
-- Pope Kael TV - YouTube Growth Analysis: Detailed export data on traffic sources, view duration, and channel growth for August 2025 to March 2026.
-- Discussion clarifying warm vs cold traffic CTR and strategy to boost Browse CTR toward 6% for Thai channel.
-- Thumbnail Generation Issue – Pope Kael TV channel’s image generation problem on ChatGPT platform.
-- Pope Kael TV - Song Publishing Strategy – A guide for YouTube marketing of an AI-assisted music track.
-- MASTER PROMPT v5 – WIDE‑DEEP ENGINEER GARAGE BACKDROP (4K)
-- Planning content for an AI-focused YouTube channel that emphasizes exploration over hype
-- Content Creation – Video Editing
-- User shared AI-generated images with Thai captions; requested assistance in editing or creating new content.
-- Document detailing the construction of a coherent public image across LinkedIn, YouTube, blog, and other platforms, emphasizing professional credibility and personal storytelling.
-- Content Creation - Song Writing
-- Social Media Caption Generation via AI
-- Personal chat snippet illustrating ChatGPT's ability to transform photos into Van Gogh style art via text prompt and resulting images.
-- AI-generated cave video prompts and camera instructions
-- ChatGPT prompt about enhancing a thumbnail design for a user named Paul, focusing on 16:9 landscape format and making it stand out.
-- User wants enhanced typography and thumbnail layout for presentation material.
-- Describes a visual scene for a digital throne inspired by gaming themes, focusing on electric heat rather than flames.
-- Advice on adjusting an image to fit Facebook's safe area while improving diversity representation for a Thailand vloggers community.
-- Discussion of prompt structure and constraints for generating background plates for livestream compositing using generative AI.
-- ChatGPT-guided illustration of transforming a sleek spacecraft into a Reaver-styled design.
-- Photography Composition Guide
-- A feedback session on two portrait photos, discussing composition, lighting, and editing improvements.
-- Photographic composition feedback and Instagram caption suggestions for a Thailand environmental portrait.
-- User request for photo recovery via ChatGPT, focusing on lens flare and red-eye removal.
-- Photo Enhancement Request - user asks for AI to improve a 30‑year‑old family portrait.
-- User requests enhancement of a personal photo and creation of accompanying text for Facebook.
-- A social media post describing how Meta AI can transform old family photos into animated clips for free.
-- User requests AI-based enhancement for a grainy 1980s/1990s photo of child Sonia (age three).
-- Clipping requesting AI-generated image featuring mage and dragon.
-- ChatGPT generated lunar colony image with Facebook caption
-- User requests lighting adjustment on faces in a photo using ChatGPT.
-- Instagram captions for Thai iced coffee with cheeky, philosophical vibe.
-- Insta photo tips: editing advice and caption ideas.
-- My art - Image Translation Request: user asks ChatGPT to translate all text in an image into English and regenerate the image with updated captions. The request involves using GPT-based image editing capabilities and multilingual understanding.
-- ChatGPT conversation about adjusting AI-generated image styles with smoother gold finish and fewer facets.
-- Image Rehab and Refinement pipeline for Instagram posts.
-- Cat Daemon Meme Design Concept – Visual representation of a mischievous demon cat manipulating backup data in a server rack setting.
-- Futuristic AI-generated image with commentary and hashtags.
-- Content Creation > AI & Infrastructure Discussion
-- Clipping: "My art – Cyberpunk Night Market" – collection of AI‑generated images showcasing a neon‑lit futuristic street scene.
-- Art enhancement request: transform a mall scene into 2070 cyberpunk neon style.
-- My art - Cyberpunk 2077 Transformation – photo editing and cyberpunk/Borg transformation examples.
-- Document detailing an engineer’s first live-streamed song creation using AI, covering motivation, process, and final release.
-- Buffalo image request – user asks AI for a healthy buffalo picture after sharing an existing image from a Thai friend.
-- Content Creation: Image & Text Design Request
-- Content Creation – Visual Promotion Campaigns
-- Personal art project editing AI deer image for video and Thai caption.
-- Bloomberg article on tinnitus prevalence and medical reassessment
-- YouTube Archive Refresh - Thailand Vlog Analysis
-- YouTube video description of a Thailand shopping trip at Mega Home Pro, including pillow hunt and EV scooter discovery.
-- User requested a clean modern YouTube thumbnail for Changwon Express craft beer house image. Assistant previously gave descriptive plan but output violated the required JSON format.
-- WordPress SEO workflow for posts with Patreon integration, includes date schedule.
-- Clipping of ChatGPT guidance on writing engaging Facebook comments for a Venn diagram illustrating AI, human decline and robotic aggression.
-- Guide on how to seamlessly integrate Thai news points into casual lunch vlogs, offering tone guidelines and structural cues.
-- Analysis of For All Mankind's success within the evolving media landscape, focusing on algorithmic audience measurement and creative decision-making.
-- AI-generated suggestions for Facebook comment content.
-- Window into the World - 5️⃣ Social Media Posts (AI agent liability discussion)
-- Wild West Scene Description - ChatGPT prompt and image generation attempt.
-- Overview of online TTS voice cloning services with free tier availability and limitations.
-- Video script outline addressing AI use and legality in Thailand for content creators, especially expats.
-- Video Opener – Daily Framework
-- Video Opener – Daily Framework enhancement suggestions for a Thai expat vlogger.
-- Video tutorial on building a daily AI‑powered newsletter using n8n, Gmail and Gemini. Provides detailed node setup for fetching messages, aggregating content, summarizing with an LLM, formatting as HTML, and sending the final email.
-- Turtle Video Captions – Caption suggestions for a short TikTok‑style video posted on Patreon.
-- ChatGPT conversation about Thai YouTube themes and guidance for a new vlogger seeking collaboration.
-- TL;DW usage guide for video creators
-- Building a personalized AI workspace and channel strategy for consistent content creation.
-- Content Creation
-- Suno music generation guidelines
-- Fake Earth Captions
-- Document analyzing AI news channels, feedback loops, and advocating a utility-focused content strategy.
-- Advice on integrating AI tools into a life‑in‑Thailand YouTube channel without breaking the channel’s algorithm momentum.
-- Advice for filming a travel/expat YouTube episode using A4 scripts and two-camera setup to maintain authenticity while ensuring flow.
-- Thailand Content Ideas - 20 common YouTube video topics for Thailand creators.
-- Simple HTML generator for random Thai-themed video content
-- ChatGPT image generation clip – surreal comedy portrait request and AI responses with images.
-- Steampunk Cathedral Vision - a ChatGPT prompt for creating a cinematic image of an industrial cathedral made from obsolete technology.
-- ChatGPT conversation on generating steampunk café images and short video intro script.
-- Speechify vs. WhisperFlow comparison – engine, pricing, automation details.
-- ChatGPT conversation analyzing the proliferation of 'goblin' as a meme term and proposing alternative mythological references for online discourse.
-- Python Run‑Length Encoding function example
-- Python function that performs run‑length encoding on a string, with examples and an alternative implementation using itertools.groupby
-- ChatGPT discussion on creating a detailed text prompt to generate a corporate portrait in Lucid Origin without using reference images.
-- Guide for animating scenes via AI-generated images and ffmpeg.
-- Python RLE implementation example
-- Project Milestone Checkpoint: Thumbnail design advice for building phase of software project videos.
-- A guide to building an efficient AI-powered content creation workflow, focusing on systematizing tools and reducing friction.
-- Document detailing strategies to improve click‑through rates, build a distinct brand identity, and structure a long‑term story arc for an AI‑focused YouTube channel; includes data analysis of current performance and actionable visual design recommendations.
-- ChatGPT conversation demonstrating a basic photo editing experiment adding a beard to an image using AI.
-- Patreon Tribe Connections - ChatGPT conversation about using Patreon for marketing a YouTube channel with adult content considerations.
-- Number Cipher Breakdown – A1Z26 example used in video subtitle.
-- Video outline and AI reflection for a discussion on how AI can help manage human attention in an era of information overload.
-- Gemini chat clip detailing a video blueprint for a retro night market at Hua Lamphong, Thailand.
-- Gemini conversation for creating a travel vlog thumbnail and packaging content around Bangkok's night market.
-- Gemini chat about generating a loopable ant colony video and receiving a generated file.
-- Gemini chat on creating 9x16 images/videos, ffmpeg crop commands and interface limitations.
-- Gemini chat about creating a scientific poster depicting quantum matter probability clouds.
-- Gemini conversation specifying design specs for a YouTube lower‑fifth overlay banner targeting Thailand travel content.
-- Content Creation > Livestreaming > Animation
-- Gemini chat about creating an ultra-realistic surreal comedic portrait and includes the AI-generated image response.
-- Gemini chat: user requests logo animation and prompt for text-to-video generation.
-- Gemini chat excerpt with instructions to create a static camera livestream loop from an image, highlighting environmental effects and subtle animation.
-- Gemini chat about removing a person from an image using AI.
-- Design guide for square Facebook post thumbnail featuring Thailand street scenes, night markets, temples and ex‑pat couple with specific overlay text and icons.
-- Letter Writing with AI video description
-- Guide to generating a YouTube thumbnail centered on 'Second Guess It Always' with AI prompt details.
-- Gemini conversation about enhancing a photo's lighting and cropping it for Instagram use
-- Gemini conversation: user requests image beautification for Instagram photo and receives edited version.
-- Gemini conversation about generating a cinematic sci-fi scene prompt featuring armored mercenaries in desert with water guns; creative prompt writing.
-- Gemini conversation for generating a semi‑realistic cybernetic brain image with transparent background
-- Gemini chat about editing a sign image in Pattaya
-- Gemini chat about compiling a single avatar image with specific pose and tone blending instructions.
-- Gemini conversation detailing image transformation instructions for a dune buggy beach scene.
-- AI-generated photorealistic image transformation of background and environment
-- Gemini chat: transform photo background into futuristic open-air café with holographic lighting
-- Gemini conversation answering a question about the Voight‑Kampff test from Blade Runner.
-- Gemini chat: Video generation from images, constraints up to 3 images, resulting mp4 link.
-- Gemini conversation - user requests image conversion to cartoon style; Gemini replies with image result.
-- Gemini conversation about converting an image to vibrant cartoon style; user requests correction of previous AI response.
-- Gemini conversation detailing step‑by‑step creation of a YouTube thumbnail with design specifications and corrections.
-- User requests a YouTube thumbnail featuring a slim male in a workshop background, followed by a split composition showing copyright warnings versus a Thai funeral procession, with waveform linking them and minimal text 'NO MORE CLAIMS?'.
-- Railroad game music prompts – background soundtrack creation for train simulation games.
-- Pirate shanty lyrics titled 'Maps of Lies (Desperado’s Run)' and 'Another Day’s Reward', produced by ChatGPT on 2026-07-12.
-- Background music composition guide for vlog videos.
-- Document on crafting a cyberpunk soundtrack with Suno, detailing prompts, lyric examples, and variation ideas.
-- AI-generated background music for travel vlogs
-- Workflow for turning raw ideas into polished YouTube video scripts using Markdown/Google Docs and collaborative editing tools.
-- ChatGPT conversation providing a concise, humorous explanation of Murphy’s Law.
-- A brief clip of a ChatGPT output featuring Yoda-like persona and explanations in 100-word summaries.
-- Mall Time‑lapse Music Prompt - ChatGPT conversation proposing three AI music prompts for Suno to accompany a mall time-lapse video.
-- Video transcript focusing on vlogging, monetization strategy, algorithm insights, and travel expat context in Thailand.
-- ChatGPT conversation on Larb Moo rissole ingredients and binding advice.
-- Patreon strategy and cross-platform publishing discussion
-- Conversation about refining link styling and organization for a personal Linktree‑style webpage.
-- ChatGPT conversation providing template-based prompt guidance for inserting a model into diverse thematic images while preserving their identity.
-- List of Wan image‑to‑video templates as they appear under Video → WAN in ComfyUI.
-- User seeks guidance on extracting Thai lyrics from a Suno-generated audio file using transcription and isolation techniques.
-- Guide on how to bulk unfollow inactive X accounts using manual methods and third-party tools.
-- Perplexity Pro serves as a specialized research and SEO tool for YouTubers, offering curated discovery pages, citation-backed data, and an easy-to-integrate workflow that complements existing AI assistants.
-- User interacts with ChatGPT to create hair colour image samples for a social media post, exploring various shades and preparing a shareable content set.
-- Futuristic Space Colony Scene — ChatGPT conversation for generating an image prompt of a futuristic orbital station or alien colony.
-- Floating Sky Islands Scene — ChatGPT conversation about generating fantasy images featuring floating islands and bridges
-- ChatGPT conversation on optimizing a Thai YouTube channel's content strategy and visual branding to shift focus away from niche ladyboy themes toward broader audience appeal.
-- Facebook Reminder Puns — ChatGPT conversation about creating and refining short Facebook reminder messages
-- Facebook Reels for Music — advice on using Facebook Reels for music promotion
-- Facebook Engagement Tips — advice on writing engaging Facebook posts and discussing passive investing concerns
-- Face Adjustment Request — ChatGPT conversation about adjusting face brightness and tones in photos
-- Conversation on how to explain YouTube's recommendation algorithm to viewers in a comment reply.
-- Cyberpunk Dragon Hamster Café — ChatGPT conversation requesting and generating an AI‑generated concept art image of a cyberpunk hamster and dragon in a floating sky café
-- Correspondence on crafting YouTube comment replies and summarizing threads for archiving
-- Compare prices for noise cancelling earbuds — summary of 2026 price comparison and budget options
-- Clarity Rewrite – ChatGPT conversation about rewriting a text for clarity regarding immigration photocopies
-- A refined guide comparing major phone brands (OPPO, Xiaomi, Samsung, Apple) for video creators traveling in Thailand, including corrected price points, lens apertures, and feature rankings.
-- Brand Catchphrases Analysis — ChatGPT conversation exploring recurring phrases used in video branding
-- Guidance on creating a life biography documentary by integrating key memory moments into a structured timeline.
-- Beauty filter request — ChatGPT conversation about applying a beauty retouch style to a photo using AI tools
-- Babylon 5 description — chat conversation summarizing the TV series
-- Outline for a video script linking Douglas Adams' Deep Thought to modern AI development, infused with personal travel reflections in Thailand and comedic Vogon references.
-- Enhanced Thai food app with more dishes, improved navigation, better speech, and offline functionality
-- AI Integration Review — chat about using AI to generate and refine thumbnails for a video production
-- 3D Image Creation Request – chat about generating AI-based aerial images and creating animated flight sequences
-- Vehicles • Open WebUI — image classification task for a vehicle photo
-- Discussion of personal content creation efforts and associated practical concerns.
-- ChatGPT conversation about translating Thai images to English and generating revised image banners for tourists
-- Sticky Header Fade • Open WebUI — code snippet demonstrating a sticky header with smooth fade-in using CSS and vanilla JavaScript
-- Draft article on using the 4th person voice for engaging readers
+- C&W Channel - 6️⃣ YouTube Shorts polishing — list of session timestamps
+- C&W Channel - 2️⃣ TikTok-to-YouTube Short Conversion Thread — timestamps of a discussion on converting TikTok clips into YouTube Shorts.
+- Brand Catchphrases Analysis — ChatGPT conversation about recurring catchphrases used in video branding
+- Vehicle Image Classification Guide — instruction on choosing appropriate folders for vehicle-related images
+- Thai Image Translation – translating Thai text in images to English using AI for menus and signage
+- Math Problem Solution – step-by-step answers to basic arithmetic and distance calculations for fruit counting and train travel
+- Open WebUI sticky header fade CSS and JavaScript example
 
 ## Travel & Expat Experience
 Purpose: The document discusses expatriate experiences and attitudes in Thailand, fitting within travel and expat experience.
-- Travel vlog transcript detailing Coffee Chill TV's exploration of Udontani, highlighting coffee culture and expat credibility.
-- ChatGPT conversation summarizing Thailand's administrative reforms, crackdown on civil service corruption and implications for expatriates.
-- Guide listing top Nuru massage establishments in Bangkok for travelers.
-- Advice on integrating stepchildren into an expat life in Thailand, highlighting cultural norms, family dynamics, and future planning.
-- Weekend in Sukhothai – rare encounter with Kinnari statues during 100‑day remembrance ceremony.
-- Review article about Morning Moon Café & Restaurant with associated video content.
-- Document about an expatriate’s experience living in Thailand, focusing on utility expenses, internet service problems, and night market food.
-- Revised earnings comparison for Australian expat living in Thailand – former salary, current YouTube income and monthly spending expressed in A$.
-- Vlog exploring living in Thailand, cost of living, food adventures, and AI projects.
-- Personal vlog of exploring a wildlife sanctuary in Bangkok, reflecting on Thai daily life and expat community building.
-- Facebook post highlighting 10% liver fluke infection prevalence in Thailand.
-- A behind‑the‑scenes video guide to a hidden massage venue in Bangkok
-- Video transcript titled "How Do You Build a Small Family Life in Thailand?" discussing suburban living and retirement visas.
-- Bangkok exotic massage shop article detailing location shift, services, and facilities.
-- Vlogger visits Bangkok car show with family, then meets friends at Down Under Bar on Sukhumvit.
+- Rom Sai Garden Restaurant, บ้านสวนร่มไทร สาย4, Thailand
+- Interview with a YouTuber discussing the ethics of online begging in Thailand, focusing on expat responsibility and self‑sufficiency.
+- Transcript of a travel vlog discussing living in Samui, Thailand, with focus on Thai food and expat life.
 - Document pending classification review.
-- Instagram Feed Changes - Thailand travel anecdote about retired Royal Thai Navy patrol boat.
-- Vlogger’s guide to health insurance costs and coverage for expats in Thailand, including discounts, renewal perks, and other insurance options.
-- Analysis of Thai tax and regulatory environment for foreign content creators and retirees, including residency thresholds, income reporting, work permit issues, and recent enforcement cases.
-- YouTube vlog description highlighting Thai daily life, AI mentions, and a shop visit for an expat audience.
-- A concentric map shows a 3‑km radius for daily necessities, expanding to a 10‑km zone encompassing retail, food, nightlife, student life, river markets and recreational areas around Phutthamonthon Sai 5.
-- Video description about living outside Bangkok, exploring peace versus isolation in suburban Thai communities.
-- Outline for a vlog episode on living in Thai suburbs and foreign property ownership options.
-- Correspondence - Reply to Jerry's Inquiry: schedule details for a trip to Bangkok
-- Document provides vlogging suggestions for Rambuttri Village Inn area in Bangkok with example YouTube links.
-- Correspondence discussing dating experiences in Thailand for expats.
-- Document detailing Thailand's 2026 visa policy shifts and enforcement changes, emphasizing a move from casual border runs to systematic monitoring for expats.
-- Youth migration from Muslim-majority countries due to economic challenges
-- Nakhon Pathom, Thailand
-- Expat Life in Thailand: Healthcare and Costs Overview
-- Personal reflection on living in Bangkok after 4 months, covering cost, culture, adaptation, and future plans.
-- Travel & Expat Experience > Social Media Content Creation
-- Travel & Expat Experience: Thailand Tourism Strategy
-- Opinion piece on expatriate life in Thailand, touching traffic issues and content creation.
-- Document - Summary instructions for Facebook post about 10‑year Thailand vlog.
-- Correspondence - Thailand Insurance Approval Issues – a discussion of Thailand’s policy on approving health insurance for travelers and its implications for coverage reliability.
-- Thai temple fair video clip summary
-- Songkran Terminology Clarification
-- Correspondence - Rephrasing Video Comment – advice on commenting about foreign tourist behaviour in Thailand.
-- Mega Plaza walkthrough vlog – highlights gaming and collectible stalls in Bangkok.
-- YouTube vlog titled 'After the Party! Thailand Hangovers, Shopping & Real Life' showcasing everyday Thai life post-party, featuring Big C shopping and insights into local culture.
-- YouTube video discussing the realities and practical aspects of dating transgender women (ladyboys) in Thailand, including cultural insights, relationship dynamics, safety, legal issues, and tips for foreigners.
-- Content creation outline for Thai travel vlogs covering festival, car service, and motor show events.
-- Embedded Google map showing the location of Baan Bangkrathuek in Thailand, with coordinates (13.7725575, 100.3050416).
-- Steak 42 – popular local steak restaurant near 7‑Eleven in Bangkok, showcased via embedded Google Map.
-- Travel & Expat Experience
-- Document discussing long-term living in Thailand, its modernization and practical advice for expats.
-- Middle East conflict update – March 3, 2026: US-Israel airstrikes on Iran spark multi‑front war, diplomatic evacuations, and energy market volatility.
-- Video commentary on Thailand's cannabis legal framework and its implications for foreigners and tourism.
-- Travel & Expat Experience - Thai Public Hospital Review
-- Document about TSA's new CT scanner rollout and its effect on analog photography travelers.
-- Insightful analysis on how adaptation to Thai cultural systems shapes expat and retiree experiences, touching on corruption, trust, and psychological resilience.
-- Video script outline – Property Rights Stack for foreigners in Thailand.
-- Travel & Expat Experience
-- Passive cooling architecture comparison between Australian homesteads and Middle Eastern windcatchers.
-- Vlog discussing life in Thailand, content creation workflow, Patreon and Facebook group management.
-- Thailand expatriate lifestyle discussion
-- Travel & Expat Experience - Thailand Vlog
-- Vlog episode illustrating a one‑month grocery haul in Huah Hin, Malaysia, comparing costs with US Costco spending and explaining local delivery logistics.
-- Bangkok travel vlog – personal experiences exploring art museums, malls and local culture.
-- YouTube video about expat cost of living in Bangkok, covering rent, utilities, food and visa requirements.
-- ChatGPT conversation reflecting on retirement and novelty with AI in Thailand.
-- Advice on leveraging comment sections and collaborations to build credibility as a seasoned Thai expat voice.
-- Thailand 2026 visa policy crackdown, ending visa run era.
-- TSA CT scanners damage analog film; carry‑on size enforcement effect
-- Document detailing the creation of a thumbnail and content for an Instagram reel showing Mick’s first visit to IconSiam in Thailand.
-- Selfie at riverside café in Thailand
-- Creative concept for Thailand 2077 visuals and TikTok hooks.
-- YouTube clip by Integrity Legal Thailand clarifying that YouTubing in Thailand is not considered remote work and requires appropriate work authorization.
-- Standardized theme & title rotation playbook for YouTube channel.
-- Document detailing video content planning for Thailand-themed travel vlogs.
-- Travel diary collage and caption for 2016 Thailand trip
-- Clip from a ChatGPT conversation about property hunting in Sathorn, Thailand and LGBT legal considerations.
-- YouTube vlogs series documenting a personal move from Sydney to Thailand, including travel footage and YouTube optimization details.
-- Collection of vlogs documenting everyday Thai experiences by Chanya & Wazza including Big C shopping trip, action camera test, and Phutthamonthon ride.
-- Travel & Expat Experience
-- Travel & Expat Experience/Thailand Vlog Series
-- YouTube video packaging prompt for a Bangkok suburb living cost vlog.
-- Thailand travel vlog series
-- YouTube video description for a vlog about buying a big bike in Thailand as an expat, highlighting financing hurdles and showroom experience.
-- Bangkok Silom exploration video
-- Embedded Google Map pointing to Yum2Bar location in Thailand
-- Bangkok suburbs life – peaceful living just 10km from the city; focuses on Salaya area in Tam Talung district, highlighting local amenities, community and convenience for expats.
-- Google Maps location for Bonus Suki Big C Om Yai restaurant in Thailand.
-- Article discussing life in Thailand from the perspective of a YouTube channel, covering authenticity, audience misconceptions, and community engagement.
-- Buying a new phone in Thailand 2026 – vlog about OPPO Reno 15 Pro, 4K vlogging and daily Thai lifestyle adventures.
-- Middle East Conflict Update - summary of major headlines with focus on travel disruptions and evacuation.
-- Clipping: Claude chat on why expats should stay in Thailand, with content creation angle.
-- Vlog 118 - Typical Challenges living in Thailand
-- Job options for foreigners in Thailand - teaching, hospitality, online work, DJing, and visa regulations.
-- Accuracy review of Thai gold statements in a video for expatriates.
-- Thailand Travel Guide – summary of cultural highlights, attractions and practical info for travelers.
-- ChatGPT conversation providing advice on producing a travel video about Thailand’s visa policy changes and post‑Songkran festivals, with emphasis on authenticity versus AI script usage.
-- Clipping: Suvarnabhumi Airport says crew member’s luggage cleared security screening before Australia heroin arrest
-- Vlog transcript of a Thai temple visit detailing architecture, rituals, local markets, and culinary highlights.
-- Travel & Expat Experience – Thailand daily life vlog
-- Rephrasing emotive YouTube content on Thailand's expat experience
-- Video on Aussie expat life in Thailand covering fitness, healthcare verdicts, cost insights, food debates, and community outreach.
-- New chat
+- Outline for a 10‑minute vlog that starts with Douglas Adams’ Deep Thought, discovers Siam equals 42, reflects on Thai retirement life, ties in AI developments and ends with Vogon jokes.
+- YouTube video package for Thai expat channel covering health, public hospitals, costs, aging.
+- Sukhumvit 101 travel vlog
+- Why Thailand attracts Western retirees — article explaining economic, cultural and lifestyle reasons for retirees
+- Thailand Visa & Immigration Guide — Comprehensive guide to visa types and requirements for Thailand
+- How the New Wave Killed the Old School Expat Dream – analysis of expat cultural shift in Thailand
 - Travel & Expat Experience - Overview of Thailand expat life and visa details.
-- Gemini chat excerpt titled 'New chat' covering Thailand retirement, visa categories, taxes, banking app facial recognition, and cost-of-living shifts.
-- New chat – Gemini conversation about editing a travel itinerary: replace Hua Hin with Nakhon Pathom.
-- Gemini chat transcript covering expat challenges in Bangkok: GPU repair, water shortages, and vlogging milestones.
-- Scheduled daily scanning of Thai news for travel/expat monitoring, covering fuel crisis and other key events.
-- Transcript discussing Thai living experiences, healthcare cost differences, personal medical incidents, and content creation workflow for the author's online presence.
-- ChatGPT conversation discussing how an expat in Thailand navigates YouTube monetization, legal challenges from Thai authorities regarding e-begging, and strategies for responding to public or official inquiries.
-- Image caption describing chaotic Thai culture overseen by goddess Eris
-- Lop Buri Photography Tips – ChatGPT conversation about key photo spots
-- Kinnari statue explanation in Thai temples
-- Image translation request for medical appointment card with location details for Golden Jubilee Medical Center, including GPS coordinates and campus navigation instructions.
-- Script outline for a reflective vlog about an EV that shifted worldview during life in Thailand.
-- Expat relationship dynamics
-- Cold Viruses in Bangkok — discussion of common cold and respiratory virus prevalence in Bangkok with treatment advice
-- Claude Conversation — summary of weekly expat life issues in Thailand including taxes and retirement planning
-- Interview between Pat and Jacek discussing homelessness in Bangkok, exploring ethical viewpoints of charity versus self-sufficiency among expats.
-- Video interview discussing Thai academic perspective on attracting foreign retirees through tourism and retirement visas
-- Retirement in Thailand – reasons Western retirees choose Thailand
-- Thai Visa & Immigration Guide — comprehensive overview of visa types, requirements, and tips for travelers
-- Comment on visiting Tree Town and nearby sois, noting bar crowds in Chiang Mai.
-- (2) The Thailand Vloggers Hub — How the New Wave Killed the Old School Expat Dream
 
 ## Knowledge Management
 Purpose: The document focuses on designing and evaluating personal knowledge base architectures, fitting within Knowledge Management.
-- Image folder category breakdown with counts and percentages for invoices, receipts, screenshots, and family photos.
-- Instructions for configuring Obsidian Web Clipper to add notes directly to the Inbox folder, along with a simple journaling loop that processes clips and integrates them into a knowledge vault.
-- Document explaining how a user captures Facebook posts into markdown files for personal knowledge management, with reflections on expat experience debates.
-- Image classification guidelines for archival folders
-- Clipping from ChatGPT conversation titled 'Multi-Personality Building - Eris Personality' containing explanations of E=mc^2 and egg frying.
-- Knowledge Management – Data ingestion pipeline and document capture process
-- Adjust PowerShell ExecutionPolicy to run unsigned Ariadne scripts and unblock file if needed.
-- Build Your Own Second Brain Guide – tutorial on setting up a personal knowledge base with AI assistance, covering tools like Obsidian and Cloud Code Desktop, folder structure, rulebooks, automation, and plugins.
-- Discussion on creating authentic Magic Eye stereograms via depth maps and procedural algorithms, contrasting with AI image generation.
-- Transfer Summary – Pope Kael TV: Analysis of UFO politics, Colombian UAP footage, China humanoid robotics, and meta-layer AI considerations.
-- ChatGPT data loss incident: Schrödinger’s Data metaphor, cryptomnesia, and multiple discovery discussion.
-- Geopolitical & media analysis of Iran with AI synthesis suggestions.
-- ChatGPT guidance on sharing and summarizing Speechify content
-- README detailing the function and lifecycle of the Processed folder in Ariadne knowledge base.
-- Gemini conversation explaining the Thucydides Trap, historical examples and implications for rising vs ruling powers.
-- Gemini chat discussing feasibility and technical challenges of building an AI librarian architecture.
-- Gemini chat about inability to read Google Drive content via link; highlights limitations of LLM connector.
-- Ingest.ps1 PowerShell script for Ariadne knowledge vault ingestion.
-- Visual architecture diagram for Librarian AI – shows how data flows from connectors into local indexed memory, then to an inference agent that powers a daily briefing dashboard.
-- Episode on creating a personal context portfolio and deploying an MCP server for AI agents.
-- A guide to creating a wiki‑style knowledge graph by ingesting PDF documents, chunking text, embedding with OpenAI, deduplicating, and storing in Pinecone for semantic search.
-- Document outlines how to set up a local AI development environment, manage projects with Git tags and Docker, and store knowledge in an Obsidian vault.
-- Browser-based augmentation layer that injects local knowledge into LLM prompts before sending them, enabling zero‑cost, owner‑controlled context enrichment.
-- Tutorial on building an automated second brain with Obsidian and Codex, covering folder setup, note processing, automation, backup, and CRM integration.
-- Auto‑maintaining knowledge base with folder structure, AI indexing, scheduled updates, and external app integration.
-- Ariadne: an AI librarian system with layered architecture for capturing user intent, mapping capabilities, synthesizing intelligence and ensuring trust
-- 📚 Markdown Knowledge Base • Open WebUI — Overview and recommendation for a markdown-based personal knowledge base architecture
+- Tutorial on creating a personal second brain with AI-driven automation using Codex/Claude and Obsidian, including content ingestion, processing, and backup.
+- An overview of setting up an automated, AI-driven knowledge base with Claude Co‑Work, leveraging Zapier MCP and Obsidian for data ingestion, organization, and nightly updates.
+- Explanation of Ariadne’s 8‑layer AI system designed as a personal librarian that processes user input, orchestrates models, synthesizes results, and learns from feedback.
+- Markdown Knowledge Base • Open WebUI – discussion of markdown as a long-term storage format and comparison of data architectures for personal second brain
+- Karpathy tweet on using LLMs to build personal knowledge bases in markdown with Obsidian IDE
 
 ## Personal
 Purpose: The document reflects personal memories of 1980s sci‑fi television, fitting into the Personal domain.
-- Document is a transcript of a YouTube video titled "Decolonization in South Africa – Not a White‑Out!" where the host discusses his personal experience with apartheid and decolonization, critiquing communism and comparing life in South Africa to the United States.
-- Personal correspondence excerpt about experiencing Bangkok belly and safe return to the US.
-- Document pending classification review.
-- ChatGPT conversation detailing a personal knee arthroscopy experience and costs, referencing the FIDELITY sham surgery study.
-- Correspondence - Steam Engines and Fascination – personal conversation about trains and mobile phones
-- Supportive communication regarding Todd's wellbeing
-- Comment snippet about personal experience using Discord and Patreon.
-- Personal communication advice regarding Discord DM
-- Personal note: moved treadmill & inversion table upstairs into an air-conditioned room to facilitate fitness routine.
-- Scheduling email exchange for a photo shoot with Jeff, Warren, and Chanya in Bangkok, accounting for work schedules and travel constraints.
-- Draft message instructing friend to use Discord instead of Facebook for conversations, citing privacy and surveillance issues.
-- Casual request to friend
-- ChatGPT conversation about vitamin D inhalation claims and personal sun exposure.
-- Script on the true cost of retiring abroad, emphasizing daily freedom costs versus living expenses.
-- Personal discussion on managing Windows 10/11 update pauses and browser notifications for ChatGPT reminders.
-- ChatGPT conversation about integrating Wispr Flow voice transcription into personal workflow and comparing it to existing Speechify usage.
-- Personal project on designing and rendering a small Thai home using concrete blocks and specific wall/floor instructions.
-- Solution to basic math problem about fruits, train distance calculation, and a prime-checking function in Python.
-- Identification and overview of bottle gourd (Lagenaria siceraria) from photographic evidence and horticultural information.
-- Document describing Asian Arowana species, care tips and cultural significance for hobbyists.
-- Personal joke response + short LLM export note
-- Hair loss medication usage instructions
-- Commentary on Iranian jihadism and geopolitical dynamics from a personal viewpoint
-- Draft script for a video exploring the speaker’s personal journey, identity formation, and use of Obsidian as a tool to map thoughts.
-- My Public Image - AI Steering and Feedback – personal narrative on using ChatGPT as a cognitive partner.
-- Personal diary
-- Guide on enabling Thai OCR in Windows using PowerToys and installing the Thai language pack to fix misidentified text output.
-- Reminder scheduled: Jen Desperado arrives in Bangkok on April 9; notify user on April 8 at 9:00 AM.
-- User evaluates LPG conversion for MG5 1.5L in Thailand, focusing on workshop selection, cost, reliability and long-term savings.
-- Quick low‑clutter strategies to manage kids’ art while preserving memories and reducing mess.
-- WAZZA - Personal profile page with community links, project features and online presence in Thailand.
-- ChatGPT conversation on daily protein plan, whey-based shake composition, and bowel movement observations for a 65‑year‑old individual.
-- User requests the support team's email address for Perplexity and receives a draft email to send regarding account linking issues.
-- The Rabbit Hole - Jerry's Memory Slip – personal recollection of a birthday video and Facebook post.
-- Perplexity microphone test guide and troubleshooting steps for personal device usage.
-- Speechify technical support summary – concise overview of user's rig hardware and audio configuration for support.
-- Scammer SMS Spoofing Loss - personal account of A$46,700 stolen via spoofed bank messages.
-- ChatGPT conversation about Savage Garden status
-- Restless Legs Syndrome explanation in a user‑ChatGPT interaction
-- Advice on repurposing kids' art with five creative ideas, aimed at reducing clutter.
-- User experiences with public hospitals and personal blood pressure reading in Thailand
-- Clipping - Personal physiotherapy consultation for joint pain in Thailand
-- Order discrepancy resolution chat: user received 3 x 32GB SanDisk drives instead of ordered 2 x 16GB, seeks advice on how to respond.
-- ChatGPT conversation about diagnosing Opera slider issue caused by extensions.
-- Emerging Treatments for Hair Loss and Alopecia – 2024 Update - Comprehensive overview of recent therapeutic advances.
-- Gemini conversation providing samples and descriptions of dark brown through dark red hair color options for men.
-- Personal landing page for WAZZA with custom CSS styling and aggregated links to social platforms.
-- New chat - Gemini conversation with 5 messages (2026-07-12).
-- Gemini conversation with 2 messages describing a selfie photo at a riverside café in Thailand.
-- Gemini chat: user requests images of their own face with salt‑and‑pepper beard styles, short cropped goatee, etc.
-- ChatGPT clipping about an Australian expat in Thailand using AI to craft punk music that reflects his personal narrative.
-- Guidance on upgrading to Perplexity Pro or Max for personal project management, detailing feature sets and workflow integration.
-- ChatGPT conversation on learning a bass riff for "The Nips Are Getting Bigger", includes advice on audio isolation and skill-building.
-- Moonraker Mandela Effect discussion: braces on Dolly remembered vs actual footage.
-- Ketosis Carb Reduction List - Key Foods to Cut for Keto in Thailand
-- Personal landing page for Wazza showcasing life in Thailand, AI interests, and community links.
-- KA White Creams Review – personal discussion on Thai local cosmetic products and a low‑cost experiment with wrinkle and spot creams.
-- Personal discussion on building a modest home on family land in Thailand with supportive infrastructure and familial ties.
-- 80s Sci-Fi TV Memories — conversation reflecting on 1980s science-fiction television experiences
+- Discussion of creating a biographical narrative combining personal Australian experiences with a Thai woman's life story, focusing on timelines, vivid memories, and underlying themes for documentary use.
+- Base64-encoded MP4 video embedded in an HTML <video> element
+- 80s Sci-Fi TV Memories – a ChatGPT conversation reflecting on personal recollections of 1980s science fiction television series
+- Personal finance discussion about budgeting for life in Thailand and retirement planning.
 
 ## Projects
 Purpose: The document focuses on project planning and cost optimization for a knowledge vault using AI tools.
-- Photo Archive Manager v1.0 specification covering inventory, classification, organization and audit functionality.
-- Detailed guide to set up a photo archive manager (PAM) with Ollama LLM for image classification, including hardware recommendations, milestones, and practical scripts.
-- Transcript detailing a web development project focused on resolving mobile-to-desktop layout constraints, discussing CSS tweaks and media queries.
-- Australian government’s announcement of the Office of AI, outlining national strategy, standards, and cross‑ministerial coordination.
-- Correspondence thread on branch comment response strategy
-- Document proposing an innovative submarine for deep-sea exploration and requesting social‑media funded outreach.
-- Product design – insulated milk bottle
-- Floor Plan Analysis – ChatGPT conversation on an 11.5 m × 6.0 m home layout and accurate placement in a site photo.
-- International thorium reactor projects – status and key countries.
-- Instructions for adding a new image file to a GitHub repo via the web interface.
-- Roadmap Governance & Retirement-friendly Development
-- ChatGPT conversation guiding the creation of a Thailand Chaos Generator HTML app with 23 themes, discussing versions 1-3 and search tips for locating the chat.
-- User discusses challenges with creating a persistent code workspace in ChatGPT vs generating transient HTML files for a Thai gold dashboard, highlighting frustrations over changing interface behavior.
-- Thai food ordering aid for expats
-- Quantum yield breakthrough exceeds solar efficiency limit
-- Concept paper draft on dynamic pinhole glasses for smart eyewear, discussing optical theory, engineering considerations, and potential use cases.
-- Personal Landing Page Development
-- Terraformer Project – integrated solar-to-hydrogen-to-methane system, progress and economics.
-- GitHub repo setup guide for Ariadne project – includes deleting an old fork, enabling Wiki/Issues/Discussions, using dev as default branch, and publishing via GitHub Pages.
-- A practical recipe for automating photo naming, tagging, and organization using local AI models and confidence-based workflow control.
-- Achieving project goals without increasing costs — discussion of AI integration strategies to build and maintain a knowledge vault cost-effectively
+- Design and implementation plan for a Thai cuisine learning web app with offline capabilities.
+- Project discussion on achieving project goals without increasing costs
 
 ## Gaming
 Purpose: It details gameplay mechanics for ARK's planning and build modes, fitting under Gaming.
-- Document discussing Fenmarel Mestarine, a Forgotten Realms elven deity and its lore within D&D.
-- ChatGPT clip summarizing a Star Citizen 4.8.2 update bug causing Idris ship data incompatibility and server crashes.
-- Arcade Gaming History – A timeline from 1970s to present, detailing technological breakthroughs, social dynamics, market shifts, decline, and revival via barcade culture.
-- Document is a personal reflection on the arcades era and how the narrator’s adult life and professional computing shaped their view of video games.
-- Summary of key points for creating a trustworthy metaverse platform with standard avatars and blockchain-backed economy.
-- Guide on verifying VBS/HVCI configuration on Windows 11 and its impact on gaming PCs.
-- Gaming assistance timestamp log
-- YouTube onboarding video script and guild recruitment strategy for Where Winds Meet.
-- Windows 11’s Core Isolation (VBS) can throttle gaming performance by causing micro‑stutters; disabling Memory Integrity removes the virtualization overhead and improves frame pacing.
-- Crimson Desert adds Denuvo DRM; player backlash and industry analysis
-- Video transcript summary of a gaming hardware news recap featuring Intel, AMD, Nvidia, Meta and YouTube.
-- Valheim main characters and a requested Viking-style song based on them.
-- ARK Cheat Commands Guide – ChatGPT conversation about building mechanics in ARK
+- ARK Cheat Commands Guide — ChatGPT conversation about building mechanics and cheat usage in ARK Survival Ascended
+- Comprehensive overview of the rise, peak, decline, and legacy of arcade gaming from the 1970s to present.
 
 ## Business
 Purpose: Document discusses economic opportunities and strategic policy in Australia’s space industry, fitting within the Business domain.
-- ChatGPT conversation evaluating niobium arsenide versus copper in semiconductor interconnects and comparing material costs.
-- A video by Bit Monger on Thai youth debt and Bitcoin market trends.
-- Analysis of SpaceX cost model and China’s reusable rocket developments, focusing on economic implications and competitive dynamics.
-- Correspondence - Scam Email Response Strategy
-- ChatGPT guidance on building an interactive business directory map for Paul’s website, comparing Google My Maps vs custom JavaScript solution.
-- Rumble Revenue Model Clipping – Overview of platform monetization, licensing options, and geographic eligibility for creators.
-- Transcript overview: SpaceX's Starship as a low-cost payload carrier, its economic implications, potential business uses (AI satellites, space-based data centers), and competitive landscape.
-- ChatGPT conversation summarizing Thai consumers council lawsuit against Meta over fraud on Facebook.
-- Source: WTI Crude Oil price snapshot with recent market analysis and key metrics.
-- Document analyzing why U.S. markets dropped today, citing interest rate fears, tech sector weakness and profit-taking.
-- Clipping about Thai public signboard tax regulation and language-based rates
-- Apple vs. Samsung lawsuit analysis and content‑creation strategy guide
-- Insurance correspondence about motorcycle policy renewal options.
-- Discussion comparing hemp and eucalyptus farming economics in Thailand.
-- Email login issue for Perplexity mobile app – delayed or missing verification emails, request to link desktop and mobile account, and maintain persistent login.
-- Business > Corporate Governance
-- Author's reflection on shift from attention to intent economy due to AI, with practical insights for Substack users.
-- Payment authorization issue with Australian credit cards while in Thailand.
-- Discord message from creator Wazza responding to patron Ray about community engagement and support.
-- Account Recovery Email Help – correspondence about migrating legacy social‑auth accounts to email-based access after Facebook login removal.
-- Article on using inverse vulcanization to turn industrial sulfur waste into a recyclable, shape‑memory polymer for 3D/4D printing.
-- Document discussing Thailand's potential in sodium trade for batteries.
-- Gold price comparison chart between Thai and global markets
-- Document pending classification review.
-- Business-focused AI assistant platform for enterprise workflow
-- Apple files lawsuit against OpenAI for alleged trade secret theft, talent poaching and supply‑chain sabotage related to AI‑powered consumer device development.
-- Daily Snapshot of 6 key business and infrastructure events as of May 8, 2026.
-- Article reporting on Thai Constitutional Court's ruling that the 400bn baht emergency loan decree was unconstitutional.
-- Evaluating emerging fuel technology practicality and progress
-- Analysis of China’s reliance on imported soybeans for feed, implications for food security and trade resilience.
-- Visual Identity Creation - Business Branding
-- The Rabbit Hole – Digest on Alex Karp's view that only vocational skills and neurodivergent individuals will thrive in the AI era.
-- Meta Glasses privacy and regulatory analysis
-- The Rabbit Hole - CryoPaint Clothing Feasibility
-- Adobe's Declining Dominance: Analysis of market shift, subscription impact, and AI-driven competition
-- Guide to naming and describing merch for Chanya & Wazza's Thailand channel.
-- Management Abbreviation - MGMT
-- Clipping discussing the shift from attention economy to intent economy driven by AI chat interfaces and its impact on advertising revenue.
-- AI Hardware Economics: leveraging local AI workstations to reduce reliance on cloud giants, reminiscent of the PC revolution's decentralization.
-- Local AI Business Assistant Architecture Overview
-- An exploration of how companies can create an integrated AI-powered knowledge base through a new profession focused on mapping and connecting existing data assets.
-- Article detailing 15 commandments guiding organizational behavior to accelerate building in the age of AI, including no roadmap, writing standards, meeting reduction, and team collaboration. Provides tools and companion guide for implementation.
-- Ad spend pressure due to AI-driven attention economy changes.
-- Clipping summarizing the first release date of Dragon NaturallySpeaking in 1997, with sources from Wikiwand, NYTimes, and a blog.
-- Clipping: Current global crude oil price (2026-07-12)
-- ChatGPT conversation analyzing tungsten supply and demand with emphasis on Chinese procurement and recycling challenges
-- Greg's Post Analysis – critique of a social‑media claim about U.S. tanker insurance strategy amid Iran conflict, covering financial risk and infrastructure impact.
-- Explores how analog verification systems were supplanted by digital cryptography, the financial realities for patent holders, and legal nuances of UI design patents and software patent risks for hobby developers.
-- Biodiesel and Global Challenges
-- Australian fuel supply strategy image design discussion
-- SpaceX Starship V3 launch from Texas Pad 2, first successful flight in 2026.
-- Morgan Stanley research on sodium‑ion battery market growth, investment forecasts, and automotive partnerships.
-- Guide to using ChatGPT for Work's desktop app to automate tasks via folder access and scheduling, including microsite creation.
-- Terraform Industries Synthetic Fuel Analysis - Practicality, Progress, Viability
-- New chat - Gemini conversation summarizing Intel, AMD, NVIDIA updates and AI discussions.
-- ChatGPT conversation about creating an A4 menu design for clients using AI-assisted tools.
-- ChatGPT conversation discussing Luckin Coffee’s status and trademark dispute in Thailand, with references to related news sources.
-- Document: Recommendations for air conditioning cleaning services in Sam Phran, Nakhon Pathom.
-- Keir Starmer resignation clipping - UK Prime Minister announces stepping down amid internal party pressure.
-- Adobe's transition from one‑time purchases to recurring subscriptions (Creative Cloud) and the resulting business, user, and financial dynamics.
-- Thai Examiner article detailing the Thai government's 2026 crackdown on nominee shareholding schemes and cross‑agency enforcement.
-- Bangkok among world's 10 most expensive cities for wealthy — ranking in Julius Baer Global Wealth and Lifestyle Report 2026
-- Australian Consulting Crackdown — government proposes regulation reforms targeting Big Four audit and consulting firms
-- Australia's Space Opportunity — summary of article on Australia's potential in global space industry
+- Weekly report now tracks Chinese OEM Strix Halo releases, local SEA availability and price signals for Thai buyers.
+- Integrity Legal Thailand video on fixing Thai nominee company issues under current crackdown
 
 ## Archive
 Purpose: Retained material that is genuinely unclassified, empty, superseded, or awaiting an explicit archival decision.
-- Empty document skeleton with YAML front matter; no body content provided.
+- Babylon 5 description — ChatGPT conversation about Babylon 5 TV series
 
 ## Philosophy
 Purpose: The document presents a philosophical comparison between Buddhist concepts and Discordianist ideas.
-- A philosophical exploration of why conflicts persist, the impact of institutional incentives, and the potential for advanced LLMs to act as objective reflectors of internal contradictions in belief systems.
-- Analysis of a comment on AI's impact on future longevity and boredom over 3000 years.
-- Analysis of why Huckleberry Finn is a cultural anchor and key educational themes.
-- Document pending classification review.
-- User-ChatGPT discussion on Islam’s influence in Middle Eastern politics, exploring secularization and mysticism.
-- Clipping: The Rabbit Hole – Achieving Trips Without Drugs – summarizing non-drug techniques for psychedelic experiences.
-- Synthesis of philosophical and psychological frameworks for modern awakening (Candles, Chaos, and Choreography).
-- Video connecting General Semantics principles to AI language processing and human interaction.
-- ChatGPT conversation: 'The Rabbit Hole - Political Beliefs and Identity' – analysis of left‑right framing, curiosity, and identity formation.
-- Personal reflection on using narrative intent as a form of 'magic' to influence long-term behavior, referencing Grant Morrison and neuroplasticity.
-- Philosophical critique of UAP claims, emphasis on Occam's razor, role of secrecy and media in shaping narrative.
-- philosophy/Fermi-paradox/
-- No map data available.
-- Quantum Time Entanglement Theory – emergent nature of time in quantum physics.
-- The Rabbit Hole - Missing Evidence and Conspiracies: analysis of a 1966 UFO case, Cold War context, AI narrative.
-- Transcript commentary on an AI‑apocalypse video exploring how cheap intelligence changes economic models and emphasizes human empathy and community building as adaptation strategies.
-- ChatGPT conversation analyzing AI's role in control and governance concerns, advocating for better use of tools rather than blaming technology.
-- ChatGPT conversation titled 'The Rabbit Hole - Unified Field Theory of Conscious Evolution', containing timestamps and generated images.
-- ChatGPT conversation analyzing the illusion of choice in society and personal life, with Thai experience context.
-- ChatGPT conversation discussing physics knowledge gaps, UAP evidence, human perception limits, and the potential of AI-powered global sensor networks.
-- Synthesis of mystical traditions and AI into a stable operating system for consciousness, emphasizing regulation over grandiosity.
-- Philosophical analysis proposing a Principia-style framework that synthesizes Gnostic, Jungian, Discordian, Eight-Circuit, and Thelemic perspectives while emphasizing General Semantics.
-- Crowley's Book 4 summary covering mysticism, magick theory, ritual practice, Thelema, and personal responsibility.
-- Comparison of Buddhist attitudes toward deities and atheism with Discordian perspective, highlighting similar focus on perception and constructed reality.
 
 ## Health & Medicine
 Purpose: Domain for Health & Medicine material.
-- Ten‑year follow‑up of the FIDELITY sham knee arthroscopy study, confirming no benefit and potential harm of arthroscopic partial meniscectomy for degenerative knee disease.
-- ChatGPT conversation about Myonal 50mg drug info.
-- ChatGPT conversation providing details on Lyrica medication and its usage for nerve pain and sleep, including side effects and dosage considerations.
+- health_and_medicine
+- Bloomberg article on tinnitus and medical reevaluation
 
 ## News & Current Affairs
 Purpose: Domain for News & Current Affairs material.
-- Unclassified document pending review.
-- Fact‑check clipping debunking claim that Iran painted fake planes and U.S. spent $5 million bombing them.
-- General world news highlight covering multiple global events
-- Middle East conflict status summary, July 2026
-- China says it can hold people abroad accountable under ethnic unity law — overview of China's new law allowing overseas accountability for ethnic matters
+- Bangkok among world's 10 most expensive cities for the wealthy — article reporting Bangkok's ranking in Julius Baer Global Wealth and Lifestyle Report.
+- ChatGPT conversation analyzing China’s dependence on soybean imports for animal feed and implications for domestic food security.
+- Australian Consulting Crackdown – government considers biggest crackdown on Big Four consulting firms amid ethics scandals
+- Albo's AI Policy — discussion of rapid AI model changes outpacing policy committees
+- AI model updates: GPT-5.6 vs Fable, Google Photos video features using Gemini Omni, new Seeddream 5.0 Pro image generation model.
+- Bangkok Post article detailing arrests and repercussions in Thailand's civil service exam rigging scandal
+- Daily Mail - News
 
 ## History & Society
 Purpose: Domain for History & Society material.
-- ChatGPT conversation about apartheid in South Africa, referencing corporate experiences and a critique video.
-- Clipping of video summary on US Middle East policy and oil crises.
-- Second opinion request about alleged occult links between Epstein and Crowley.
-- Gemini conversation with 2 messages analyzing overlapping narratives between Crowley and Epstein
-- Crowley and Epstein Conspiracy — ChatGPT conversation exploring pattern matching between Aleister Crowley's ideas and Jeffrey Epstein allegations
 
 ## Science & Technology
 Purpose: Domain for Science & Technology material.
-- Discussion on Element 115’s role in gravity and warp‑drive speculation, including superfluid vortex concepts.
-- Popular Mechanics magazine issue summaries (August/September 2023 to June/July 2022)
-- Document outlines the historical measurement of the speed of light, Einstein's reasoning leading to special relativity, and practical implications like GPS.
-- ChatGPT conversation discussing the BMV quantum experiment and speculative antigravity concepts.
+- AMD announces the Ryzen AI Halo Mini PC, a compact workstation designed for AI development with high‑performance CPU, GPU and NPU components.
 
 ## General Reference
 Purpose: Domain for General Reference material.
-- Gemini chat – user asks for Manchester longitude; Gemini replies
-- Gemini chat – user requests image of vehicle on beach, Gemini returns a video link.
+- Plant identification of bottle gourd based on fruit and leaf characteristics.
+- Article about Asian Arowana covering species info, cultural significance, care, conservation

@@ -21,6 +21,8 @@
       <h2 id="operations-heading">Operations</h2>
       <div class="grid">
         <article class="card"><h3>Process Inbox</h3><p>Classify and file pending Inbox items, updating the catalogue and knowledge map.</p><button data-action="ingest">Run ingest</button></article>
+        <article class="card danger"><h3>Reclassify Entire Vault</h3><p>Reprocess all Processed, Failed, and Inbox documents using the current taxonomy, then rebuild the graph and published views.</p><button data-action="reclassify_all" data-confirm="Reclassify the entire vault? This will rebuild catalogue placements and graph relationships. A recovery snapshot will be created first.">Reclassify everything</button></article>
+        <article class="card"><h3>Reclassification Status</h3><p>Show completed, remaining, percentage, current document, elapsed time, and failures for the full-vault run.</p><button data-action="reclassify_status">Show status</button></article>
         <article class="card"><h3>Retry Failed Ingestion</h3><p>Move retryable failed files back to Inbox. Run ingest afterwards to process them.</p><button data-action="retry_failed">Queue retries</button></article>
         <article class="card"><h3>Knowledge Link Proposals</h3><p>Create conservative Wiki-link proposals without changing notes.</p><button data-action="compile_proposal">Create proposals</button></article>
         <article class="card"><h3>Graph Health Audit</h3><p>Write the current graph-health report without modifying the graph.</p><button data-action="graph_health">Run health audit</button></article>

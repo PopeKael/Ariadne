@@ -21,6 +21,8 @@ if (-not (Test-Path -LiteralPath $MenuPath)) {
 
 $Actions = @{
     ingest = @{ Title = 'Process Inbox'; Script = 'Run Injest.ps1'; Arguments = @() }
+    reclassify_all = @{ Title = 'Reclassify entire vault'; Script = 'Reclassify-All.ps1'; Arguments = @() }
+    reclassify_status = @{ Title = 'Reclassification status'; Script = 'Reclassification-Status.ps1'; Arguments = @() }
     retry_failed = @{ Title = 'Retry failed ingestion'; Script = 'Retry-FailedIngestion.ps1'; Arguments = @() }
     compile_proposal = @{ Title = 'Create knowledge-link proposals'; Script = 'Compile-Knowledge.ps1'; Arguments = @('-Mode', 'Proposal') }
     graph_health = @{ Title = 'Run graph health audit'; Script = 'GraphHealth.ps1'; Arguments = @() }
