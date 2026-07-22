@@ -277,9 +277,13 @@ def main() -> int:
         prior_rows = load_json(prior_report)
         if isinstance(prior_rows, list):
             prior_moves = {row["stable_source_id"]: row for row in prior_rows if isinstance(row, dict) and row.get("stable_source_id")}
-    if len(manifest["records"]) != 810 or len(state.get("completed", {})) != 810 or len(captures) != 810:
-        raise RuntimeError("Integration requires the completed 810-source run.")
-    if len({r["stable_source_id"] for r in manifest["records"]}) != 810:
+    expected_ids = {r["stable_source_id"] for r in manifest["records"]}
+    capture_ids = [capture.get("stable_source_id") for capture in captures]
+    if not expected_ids or len(state.get("completed", {})) != len(expected_ids) or len(captures) != len(expected_ids):
+        raise RuntimeError("Integration requires every source in this run to have a terminal checkpoint and capture.")
+    if set(state.get("completed", {})) != expected_ids or set(capture_ids) != expected_ids or len(set(capture_ids)) != len(capture_ids):
+        raise RuntimeError("Integration state, captures, and manifest do not contain the same stable identities.")
+    if len(expected_ids) != len(manifest["records"]):
         raise RuntimeError("Duplicate stable identities in source manifest.")
     if manifest.get("validation", {}).get("duplicate_stable_ids") or manifest.get("validation", {}).get("duplicate_content_hashes"):
         raise RuntimeError("Manifest reports duplicate identities or content hashes.")
@@ -298,6 +302,10 @@ def main() -> int:
     preserved = preserve_previous(root, rollback)
     movement_path = root / ("Reports/rebuild-v1-daily-movement.json" if args.merge_existing else "Reports/rebuild-v1-movement.json")
     movement_rows = file_sources(root, manifest["records"], state["completed"], movement_path, prior_moves)
+    if args.merge_existing:
+        combined_moves = dict(prior_moves)
+        combined_moves.update({row["stable_source_id"]: row for row in movement_rows})
+        write_json(movement_path, [combined_moves[sid] for sid in sorted(combined_moves)])
     movement_by_id = {x["stable_source_id"]: x for x in movement_rows}
     existing = load_json(root / "00_System/library.json") if args.merge_existing and (root / "00_System/library.json").exists() else None
     active = build_library(root, manifest["records"], outcomes, movement_by_id, existing)

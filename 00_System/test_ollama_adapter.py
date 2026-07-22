@@ -18,6 +18,7 @@ class OllamaAdapterTests(unittest.TestCase):
         self.assertNotIn("prompt", request)
         self.assertNotIn("think", request)
         self.assertEqual(request["format"]["required"], ["proposed_domains", "summary", "entities", "people", "concepts", "links", "confidence", "notes"])
+        self.assertEqual(request["format"]["properties"]["proposed_domains"]["items"]["enum"], ["Infrastructure"])
         self.assertEqual(request["options"], {"temperature": 0, "seed": 42})
 
     def test_reads_chat_final_content_and_thinking(self) -> None:

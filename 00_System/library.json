@@ -4561,6 +4561,71 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "c10adcc0513336d039fe7e5c9804b563334b9d8b66bc003a84add85e0be48eca",
+    "document_id": "url:https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e",
+    "entities": [
+      "Tungsten",
+      "China",
+      "United States",
+      "tungsten carbide",
+      "scrap streams",
+      "critical minerals"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e"
+    ],
+    "map_entry": "Tungsten Supply and Demand",
+    "page_title": "Tungsten Supply and Demand",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Tungsten Supply and Demand2026-07-11T12_15_23+07_00__6b6c8403451e.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "c10adcc0513336d039fe7e5c9804b563334b9d8b66bc003a84add85e0be48eca",
+      "enrichment_completed_at": "2026-07-22T11:49:46.905496Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Tungsten Supply and Demand2026-07-11T12_15_23+07_00__6b6c8403451e.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e",
+    "stable_source_id": "url:https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e",
+    "subtopics": [
+      "mining quotas",
+      "recycling economics",
+      "strategic resource management",
+      "commodity market behavior"
+    ],
+    "summary": "The conversation discusses tungsten supply dynamics, highlighting China's dominance in production and its strategic restrictions that drive global demand—particularly from Chinese buyers seeking scrap in the U.S. It explains why tungsten carbide tooling remains largely recoverable yet recycling is economically challenging, and notes the mineral’s critical status across multiple industries.",
+    "tags": [
+      "Tungsten",
+      "China",
+      "United States",
+      "tungsten carbide",
+      "scrap streams",
+      "critical minerals"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "cdf2a533ba771196e6355e13c597d79d8887447e87116bb470478d5aa5392bcd",
     "document_id": "url:https://chatgpt.com/c/6a2f521d-87b8-83ec-b844-d0d1b568c7de",
     "entities": [
@@ -5387,6 +5452,45 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "b1bce65588a0ad4900d6cc5f337d0eeb808ffe14fcb7562ef921c40050e9b1e4",
+    "document_id": "url:https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [],
+    "map_entry": "Thailand Medical Hub Story",
+    "page_title": "Thailand Medical Hub Story",
+    "people": [],
+    "primary_topic": "Travel & Expat Experience",
+    "processed_path": "Processed/Thailand Medical Hub Story2026-07-11T15_04_10+07_00__5bdd2ffd9807.md",
+    "proposed_domains": [
+      "Travel & Expat Experience"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "b1bce65588a0ad4900d6cc5f337d0eeb808ffe14fcb7562ef921c40050e9b1e4",
+      "enrichment_completed_at": "2026-07-22T11:48:53.915180Z",
+      "model_confidence": 0.99,
+      "stable_source_id": "url:https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Thailand Medical Hub Story2026-07-11T15_04_10+07_00__5bdd2ffd9807.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807",
+    "stable_source_id": "url:https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807",
+    "subtopics": [],
+    "summary": "The user wants a short story in Thai about gender confirmation surgery experience.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "ad9b5db8d0be954bb1d1fd0c9d7cd02de324b338ad72ba92dac54f092502b2fa",
     "document_id": "url:https://chatgpt.com/c/6a37360b-7d0c-83ec-9a08-438f3a9de865",
     "entities": [
@@ -6019,6 +6123,52 @@
     "summary": "ChatGPT discussion about common cold viruses circulating in Bangkok, highlighting influenza, COVID‑19, RSV and rhinoviruses, with practical advice on OTC treatment (Tiffy) and when to seek medical care.",
     "tags": [],
     "wiki_path": "Wiki/index.md#health-medicine",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "c15685e13aa3f729a7a552dc22b3642a64c0e5ff0e40c11cbbbcdc4b37ec95ed",
+    "document_id": "url:https://chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [],
+    "map_entry": "AI Integration Review",
+    "page_title": "AI Integration Review",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/AI Integration Review2026-07-11T17_38_02+07_00__14f2b7010155.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "c15685e13aa3f729a7a552dc22b3642a64c0e5ff0e40c11cbbbcdc4b37ec95ed",
+      "enrichment_completed_at": "2026-07-22T11:51:21.781632Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155.md",
+    "secondary_domains": [
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "AI Integration Review2026-07-11T17_38_02+07_00__14f2b7010155.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155",
+    "stable_source_id": "url:https://chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155",
+    "subtopics": [
+      "thumbnail design",
+      "infographic parallax",
+      "visual hierarchy"
+    ],
+    "summary": "ChatGPT conversation about creating a thumbnail for an AI video, including image generation and design feedback.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
   {
@@ -7165,6 +7315,45 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "e98b2e10e07112c1e2c2b505492f63ec68a5e6fc444ce5dbc91cef484d11456c",
+    "document_id": "url:https://chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [],
+    "map_entry": "DGX Spark Output Rates",
+    "page_title": "DGX Spark Output Rates",
+    "people": [],
+    "primary_topic": "General Reference",
+    "processed_path": "Processed/DGX Spark Output Rates2026-07-11T18_25_06+07_00__aab6aec49882.md",
+    "proposed_domains": [
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "e98b2e10e07112c1e2c2b505492f63ec68a5e6fc444ce5dbc91cef484d11456c",
+      "enrichment_completed_at": "2026-07-22T11:44:28.394007Z",
+      "model_confidence": 0.99,
+      "stable_source_id": "url:https://chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "DGX Spark Output Rates2026-07-11T18_25_06+07_00__aab6aec49882.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882",
+    "stable_source_id": "url:https://chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882",
+    "subtopics": [],
+    "summary": "A short, child‑friendly tale about Whiskers the cat who loves to chase mice, written in simple language and ending with a clear moral lesson.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#general-reference",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "2bc3acda6fa875dcd5f3ab593fd077633dbe8fb0bc9291e894e6a610d531ea6d",
     "document_id": "url:https://chatgpt.com/c/6a43db63-814c-83ec-8a2a-852315573ad1",
     "entities": [
@@ -7496,6 +7685,73 @@
       "Anthony Albanese"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "5a758039797aa5af57550227351b07cc3f0359a4c91bac272cbbc488408630d8",
+    "document_id": "url:https://chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282",
+    "entities": [
+      "Aleister Crowley",
+      "Jeffrey Epstein",
+      "Thelema",
+      "Ghislaine Maxwell"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [],
+    "map_entry": "Crowley and Epstein Conspiracy",
+    "page_title": "Crowley and Epstein Conspiracy",
+    "people": [
+      "Aleister Crowley",
+      "Jeffrey Epstein",
+      "Ghislaine Maxwell"
+    ],
+    "primary_topic": "History & Society",
+    "processed_path": "Processed/Crowley and Epstein Conspiracy__f88cf8270282.md",
+    "proposed_domains": [
+      "History & Society",
+      "Philosophy",
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "5a758039797aa5af57550227351b07cc3f0359a4c91bac272cbbc488408630d8",
+      "enrichment_completed_at": "2026-07-22T11:44:20.850487Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282.md",
+    "secondary_domains": [
+      "Philosophy",
+      "General Reference"
+    ],
+    "source_language": "en",
+    "source_name": "Crowley and Epstein Conspiracy__f88cf8270282.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282",
+    "stable_source_id": "url:https://chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282",
+    "subtopics": [
+      "pattern matching",
+      "occult symbolism",
+      "elite gatherings",
+      "sexual exploitation",
+      "secretive social networks",
+      "The Book of the Law",
+      "ritual magic",
+      "conspiracy theory"
+    ],
+    "summary": "A two‑message ChatGPT dialogue in which the user asks whether Aleister Crowley’s occult ideas overlap with the alleged conspiracies surrounding Jeffrey Epstein. The assistant explains that while there are superficial similarities—such as secrecy, elite circles, and transgressive behavior—there is no credible evidence of a direct connection between Crowley’s Thelema or ceremonial magic and Epstein’s criminal enterprise. It distinguishes verified history from reasonable inference and unsupported speculation, noting how conspiracy narratives often merge unrelated elements.",
+    "tags": [
+      "Aleister Crowley",
+      "Jeffrey Epstein",
+      "Thelema",
+      "Ghislaine Maxwell"
+    ],
+    "wiki_path": "Wiki/index.md#history-society",
     "workflow_status": "accepted"
   },
   {
@@ -8274,6 +8530,61 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "0c6de502293b1087042ce4afad87b9c3d4a49ef5dfb3dd71be3b1a103ce65047",
+    "document_id": "url:https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2",
+    "entities": [
+      "pregabalin",
+      "Lyrica",
+      "Myonal"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2"
+    ],
+    "map_entry": "Lyrica Medication Information",
+    "page_title": "Lyrica Medication Information",
+    "people": [],
+    "primary_topic": "Health & Medicine",
+    "processed_path": "Processed/Lyrica Medication Information2026-07-11T18_54_10+07_00__4bf59e75a8a2.md",
+    "proposed_domains": [
+      "Health & Medicine"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "0c6de502293b1087042ce4afad87b9c3d4a49ef5dfb3dd71be3b1a103ce65047",
+      "enrichment_completed_at": "2026-07-22T11:46:07.481866Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Lyrica Medication Information2026-07-11T18_54_10+07_00__4bf59e75a8a2.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2",
+    "stable_source_id": "url:https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2",
+    "subtopics": [
+      "nerve pain",
+      "sleep disturbance",
+      "sedation",
+      "dose titration",
+      "drug interaction"
+    ],
+    "summary": "ChatGPT conversation about Lyrica (pregabalin) medication, covering its active ingredient, common uses (nerve pain and sleep aid), typical side effects (drowsiness, dizziness, blurred vision, increased appetite/weight gain, dry mouth), precautions (avoid alcohol, careful nighttime ambulation, gradual tapering), dosage options (25 mg, 50 mg, 75 mg, 150 mg), and potential additive sedation when combined with Myonal.",
+    "tags": [
+      "pregabalin",
+      "Lyrica",
+      "Myonal"
+    ],
+    "wiki_path": "Wiki/index.md#health-medicine",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "296b003ae250ed39e271b6840db23e8a356520ab03194688eca8cdac5496031f",
     "document_id": "url:https://chatgpt.com/c/6a49e313-95d8-83ec-b039-457db389726b",
     "entities": [
@@ -8935,6 +9246,55 @@
     "summary": "A 26‑message ChatGPT conversation in which a user reports confusion over the token accounting system and attempts to investigate an MCP server implementation within their local KnowledgeVault project. The discussion includes PowerShell commands that reveal only a node_repl process, no active MCP server, and file searches that locate draft documents about building a personal context MCP but not executable code. The user is seeking clarity on whether tokens are rolling or throttled and how to estimate token usage for tasks.",
     "tags": [],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "aff1b3ce1aa10cef6c83c3fee40fb92e72782a11f390b5e3cb4ff226a63617cf",
+    "document_id": "url:https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697"
+    ],
+    "map_entry": "Discord Communication Advice",
+    "page_title": "Discord Communication Advice",
+    "people": [
+      "Warren",
+      "Corvette350",
+      "Pope Kael"
+    ],
+    "primary_topic": "Personal",
+    "processed_path": "Processed/Discord Communication Advice2026-07-14T18_30_37+07_00__88afbf38b697.md",
+    "proposed_domains": [
+      "Personal"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "aff1b3ce1aa10cef6c83c3fee40fb92e72782a11f390b5e3cb4ff226a63617cf",
+      "enrichment_completed_at": "2026-07-22T11:44:42.363018Z",
+      "model_confidence": 1.0,
+      "stable_source_id": "url:https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Discord Communication Advice2026-07-14T18_30_37+07_00__88afbf38b697.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697",
+    "stable_source_id": "url:https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697",
+    "subtopics": [
+      "Discord communication etiquette",
+      "private messaging vs. public channels",
+      "AI project collaboration"
+    ],
+    "summary": "A brief exchange between a Discord user and ChatGPT about how to politely redirect a new associate from sending private messages to joining the main server voice channel for more engaging conversation.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#personal",
     "workflow_status": "accepted"
   },
   {
@@ -9863,6 +10223,58 @@
       "Swanpass"
     ],
     "wiki_path": "Wiki/index.md#business",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "c2452b47b80274a41c54c44df1145f3a7cf692d8975b996b54500541fb71f15e",
+    "document_id": "url:https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df",
+      "https://www.amd.com/en/products/processors/desktops/ryzen/ryzen-ai-halo.html?utm_source=chatgpt.com",
+      "https://www.amd.com/en/products/processors/desktops/ryzen/ryzen-ai-max-plus-395.html?utm_source=chatgpt.com",
+      "https://www.advice.co.th/branch-a022/index.php/product/productdetail/A0182705?srsltid=AfmBOor3mXuoDHztqXiiGz9wpxE2uB-8DsSVBxZ3rjHcgh_Xkv19wz0R",
+      "https://www.advice.co.th/branch-u019/index.php/search?keyword=minix&srsltid=AfmBOorkJV_ufk-i12-9EkYQfs4b8MduvevjtlHS6CtPJcVrxzot3tgg&type=catalog&utm_source=chatgpt.com",
+      "https://www.facebook.com/rogstore.fortunetown/posts/-rog-flow-z13-gz302-%E0%B8%95%E0%B8%B1%E0%B8%A7%E0%B9%81%E0%B8%A3%E0%B8%87%E0%B9%81%E0%B8%AB%E0%B9%88%E0%B8%87%E0%B8%9B%E0%B8%B5-ryzen-ai-max-395-radeon-8060s-graphics-ram-32gb/1004518355843235/?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Ryzen Strix Halo Availability",
+    "page_title": "Ryzen Strix Halo Availability",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Ryzen Strix Halo Availability2026-07-18T12_40_24+07_00__6f2ea56da6df.md",
+    "proposed_domains": [
+      "AI & LLMs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "c2452b47b80274a41c54c44df1145f3a7cf692d8975b996b54500541fb71f15e",
+      "enrichment_completed_at": "2026-07-22T11:48:30.961494Z",
+      "model_confidence": 1.0,
+      "stable_source_id": "url:https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Ryzen Strix Halo Availability2026-07-18T12_40_24+07_00__6f2ea56da6df.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df",
+    "stable_source_id": "url:https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df",
+    "subtopics": [
+      "AMD Ryzen AI Halo",
+      "Ryzen AI Max+ 395",
+      "MINIX ER939‑AI",
+      "GMKtec EVO‑X2",
+      "ROG Flow Z13"
+    ],
+    "summary": "A ChatGPT conversation (4 messages) discussing the availability of AMD’s Ryzen AI Halo (Ryzen AI Max+ 395) in Thailand, including retailer listings, pricing, and import status.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
   {
@@ -11765,6 +12177,68 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "3f24dc15e5b08b41c3ac636bbb505982221ea80e8e926808fc3a77d07a8d9ddb",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d",
+    "entities": [
+      "Big C",
+      "7‑Eleven",
+      "CP Freshmart",
+      "The Grove Salaya",
+      "Don Wai Floating Market",
+      "Sam Phran"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538034+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d"
+    ],
+    "map_entry": "C&W Channel - Suburban Bangkok Entertainment",
+    "page_title": "C&W Channel - Suburban Bangkok Entertainment",
+    "people": [],
+    "primary_topic": "Travel & Expat Experience",
+    "processed_path": "Processed/C&W Channel - Suburban Bangkok Entertainment2026-07-15T09_50_09+07_00__51cf13d44b7d.md",
+    "proposed_domains": [
+      "Travel & Expat Experience"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "3f24dc15e5b08b41c3ac636bbb505982221ea80e8e926808fc3a77d07a8d9ddb",
+      "enrichment_completed_at": "2026-07-22T11:44:06.282156Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "C&W Channel - Suburban Bangkok Entertainment2026-07-15T09_50_09+07_00__51cf13d44b7d.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d",
+    "subtopics": [
+      "suburban Bangkok ecosystem",
+      "daily life radius",
+      "entertainment ring",
+      "distributed network",
+      "open‑air nightlife plazas",
+      "expat relocation planning"
+    ],
+    "summary": "The source discusses suburban Bangkok’s ecosystem, outlining daily life within a 2–3 km radius that includes retail nodes such as Big C, 7‑Eleven, CP Freshmart, pharmacies and cafés. Entertainment emerges in the 5–8 km ring with food and social hubs like The Grove Salaya. Markets such as Don Wai Floating Market and street markets around Sam Phran serve both shopping and social functions. It highlights a distributed network of small retail nodes, community malls, markets, and open‑air nightlife plazas, contrasting with central Bangkok’s vertical stacking. The content suggests mapping these zones visually to aid expats planning moves, emphasizing that daily needs are within 10 minutes drive and entertainment within ten km.",
+    "tags": [
+      "Big C",
+      "7‑Eleven",
+      "CP Freshmart",
+      "The Grove Salaya",
+      "Don Wai Floating Market",
+      "Sam Phran"
+    ],
+    "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "4cac1277543d270e8c22fb89426ced4b005d4e67c7c4d54cdb6080969c954040",
     "document_id": "url:https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ae6fcb-bb40-83a1-9b67-75375e6b4b05",
     "entities": [],
@@ -11889,6 +12363,50 @@
     "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/6999b0d0-3274-839a-9fae-27d755e4670f",
     "subtopics": [],
     "summary": "The source is a ChatGPT‑generated social media post discussing the emerging issue of liability when AI agents cause harm. It outlines potential responsible parties—developers, deploying companies, and users—and highlights how current law treats AI as a tool while autonomy increases faster than legal clarity.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "3e0e0af1620a865a826fe16efe45e7b80ad8bfb5f475ff73e0107e268de90766",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [],
+    "map_entry": "Window into the World - Structural Change Filter",
+    "page_title": "Window into the World - Structural Change Filter",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Window into the World - Structural Change Filter2026-07-11T19_42_31+07_00__cca6f761db71.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "3e0e0af1620a865a826fe16efe45e7b80ad8bfb5f475ff73e0107e268de90766",
+      "enrichment_completed_at": "2026-07-22T11:50:15.953124Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Window into the World - Structural Change Filter2026-07-11T19_42_31+07_00__cca6f761db71.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71",
+    "subtopics": [],
+    "summary": "Window into the World - Structural Change Filter is a ChatGPT-generated intelligence scan designed to surface validated structural developments aligned with strategic priorities across multiple domains. The source includes metadata such as creation date, description, and tags, and provides an excerpt detailing the framework for identifying significant signals in AI infrastructure, macroeconomic/financial systems, geopolitical escalation, global shipping/supply chains, surveillance/censorship expansion, high-impact political or security incidents, Thailand-specific developments, and Southeast Asia competitiveness. The document outlines criteria for inclusion, de-duplication rules, fact validation guidelines, scoring thresholds, output format specifications, and a concluding pattern layer analysis.",
     "tags": [],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
@@ -16215,6 +16733,60 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "e4722a06186978d1cdad5413eb33840a43f062cf969c4a21e03445412c84e2fb",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97",
+    "entities": [
+      "Pope Kael TV",
+      "ChatGPT"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97"
+    ],
+    "map_entry": "Pope Kael TV - 4️⃣ Tech & Streaming Setup Thread",
+    "page_title": "Pope Kael TV - 4️⃣ Tech & Streaming Setup Thread",
+    "people": [],
+    "primary_topic": "Content Creation",
+    "processed_path": "Processed/Pope Kael TV - 4️⃣ Tech & Streaming Setup Thread2026-07-14T13_39_47+07_00__e8f90ab0ad97.md",
+    "proposed_domains": [
+      "Content Creation",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "e4722a06186978d1cdad5413eb33840a43f062cf969c4a21e03445412c84e2fb",
+      "enrichment_completed_at": "2026-07-22T11:47:59.421560Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97.md",
+    "secondary_domains": [
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "Pope Kael TV - 4️⃣ Tech & Streaming Setup Thread2026-07-14T13_39_47+07_00__e8f90ab0ad97.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97",
+    "subtopics": [
+      "tech setup",
+      "streaming configuration",
+      "image generation"
+    ],
+    "summary": "A chat thread titled \"Pope Kael TV - 4️⃣ Tech & Streaming Setup Thread\" posted on ChatGPT, discussing technical and streaming setup details. The thread includes timestamps of user and AI messages, image references, and a brief description indicating it is a collection of clippings.",
+    "tags": [
+      "Pope Kael TV",
+      "ChatGPT"
+    ],
+    "wiki_path": "Wiki/index.md#content-creation",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "389315d294ae7f999940432d5fb4bfba517edf71ec50ee8db05bc7c521b9ad8f",
     "document_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6997b61f-c9d8-839c-afe6-3e266171601a",
     "entities": [
@@ -18049,6 +18621,63 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "159b197938bf4d73ee1ea51d5c83b9245cf89b5a9f135fca5c20443bf25e2b79",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7",
+    "entities": [
+      "Pope Kael TV",
+      "ChatGPT"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7"
+    ],
+    "map_entry": "Pope Kael TV - Everyday AI Correspondence",
+    "page_title": "Pope Kael TV - Everyday AI Correspondence",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Pope Kael TV - Everyday AI Correspondence2026-07-19T13_56_32+07_00__1c70979cd3a7.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "159b197938bf4d73ee1ea51d5c83b9245cf89b5a9f135fca5c20443bf25e2b79",
+      "enrichment_completed_at": "2026-07-22T11:48:11.986966Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Pope Kael TV - Everyday AI Correspondence2026-07-19T13_56_32+07_00__1c70979cd3a7.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7",
+    "subtopics": [
+      "AI chatbot",
+      "YouTube video series",
+      "visual design",
+      "branding"
+    ],
+    "summary": "The source is a ChatGPT conversation titled \"Pope Kael TV - Everyday AI Correspondence\" that discusses the creation of a YouTube video series focused on improving everyday conversations with AI. The content includes brainstorming for a splash overlay, primary and secondary hooks such as \"BETTER CONVERSATIONS\" and \"Everyday AI\", visual design suggestions (color accents, speech bubble icon), and considerations for brand consistency across a series.",
+    "tags": [
+      "Pope Kael TV",
+      "ChatGPT"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "d4fc7ab740204e8df51209ab6c951abac041865d4edd194b8dcdd80cf89f3601",
     "document_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a4ca8e3-d57c-83ec-9005-666d57e92a14",
     "entities": [],
@@ -18523,6 +19152,64 @@
     ],
     "summary": "The chat discusses the concept of narrative sovereignty—allowing audiences to finish and publish stories that studios abandon due to financial constraints. It explores how generative AI could produce authentic continuations, the legal challenges posed by copyright, and the potential for a decentralized, participatory storytelling ecosystem where multiple canonical versions coexist.",
     "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "c16460cd2e831e0c2c7882144e77fbb780031fb35795b793f9ee1cb6aae66624",
+    "document_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450",
+    "entities": [
+      "AI & LLMs",
+      "Travel & Expat Experience"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450"
+    ],
+    "map_entry": "The Rabbit Hole - AI in Daily Life",
+    "page_title": "The Rabbit Hole - AI in Daily Life",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00__cfc7d380c450.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Travel & Expat Experience"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "c16460cd2e831e0c2c7882144e77fbb780031fb35795b793f9ee1cb6aae66624",
+      "enrichment_completed_at": "2026-07-22T11:49:30.147943Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450.md",
+    "secondary_domains": [
+      "Travel & Expat Experience"
+    ],
+    "source_language": "en",
+    "source_name": "The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00__cfc7d380c450.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450",
+    "subtopics": [
+      "YouTube algorithm",
+      "audience identity",
+      "Thailand life channel",
+      "AI tools in daily life",
+      "content framing",
+      "authenticity",
+      "expat experiences"
+    ],
+    "summary": "The source discusses how incorporating AI tools into daily life in Thailand can be framed to maintain a YouTube channel’s audience profile without breaking its thematic focus. It emphasizes that the content should remain centered on \"life in Thailand\" while showcasing AI as a practical aid, and it highlights potential pitfalls if the framing shifts too far toward pure tech education.",
+    "tags": [
+      "AI & LLMs",
+      "Travel & Expat Experience"
+    ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
@@ -25864,6 +26551,60 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "430f09ce2982ea2072aa9e9187bc69563e1a74a3f51c8c1426f8e05788af5fe6",
+    "document_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174",
+    "entities": [
+      "Bangkok",
+      "Silom District"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174"
+    ],
+    "map_entry": "YouTube Archive Refresh - 5 Things I Love About Bangkok",
+    "page_title": "YouTube Archive Refresh - 5 Things I Love About Bangkok",
+    "people": [],
+    "primary_topic": "Travel & Expat Experience",
+    "processed_path": "Processed/YouTube Archive Refresh - 5 Things I Love About Bangkok2026-07-12T11_37_18+07_00__66faefb79174.md",
+    "proposed_domains": [
+      "Travel & Expat Experience",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "430f09ce2982ea2072aa9e9187bc69563e1a74a3f51c8c1426f8e05788af5fe6",
+      "enrichment_completed_at": "2026-07-22T11:50:30.125331Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174.md",
+    "secondary_domains": [
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "YouTube Archive Refresh - 5 Things I Love About Bangkok2026-07-12T11_37_18+07_00__66faefb79174.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174",
+    "subtopics": [
+      "travel vlog",
+      "urban exploration",
+      "expat life"
+    ],
+    "summary": "A YouTube video titled \"5 Things I Love About Bangkok\" that showcases the city’s vibrant markets, nightlife, and everyday life in Silom. The clip highlights Bangkok’s unique blend of business towers, street food stalls, red‑light districts, Irish pubs, supermarkets, and local culture, offering a casual, observational walk through the district rather than a polished travel guide.",
+    "tags": [
+      "Bangkok",
+      "Silom District"
+    ],
+    "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "9081d6473b89175aa8579df6ef24e9ee5cbf6cfd41da659319848b4dd743e706",
     "document_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a1b1bb6-bae0-83ec-ad08-361e85717a6c",
     "entities": [
@@ -27589,6 +28330,75 @@
       "AI insights"
     ],
     "wiki_path": "Wiki/index.md#content-creation",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "01a323a5902c492ba10b94dcff4f3cbe3c055aae35f724301269798d1b3da89b",
+    "document_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3",
+    "entities": [
+      "IFTTT",
+      "Instagram",
+      "Facebook",
+      "Ollama",
+      "Llama 3",
+      "Gemma",
+      "Qwen",
+      "DeepSeek"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3"
+    ],
+    "map_entry": "The Patreon Tribe - IFTTT Build Optimization",
+    "page_title": "The Patreon Tribe - IFTTT Build Optimization",
+    "people": [],
+    "primary_topic": "Business",
+    "processed_path": "Processed/The Patreon Tribe - IFTTT Build Optimization2026-07-14T12_32_28+07_00__e32065ff33a3.md",
+    "proposed_domains": [
+      "Business",
+      "Projects",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "01a323a5902c492ba10b94dcff4f3cbe3c055aae35f724301269798d1b3da89b",
+      "enrichment_completed_at": "2026-07-22T11:49:17.189729Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3.md",
+    "secondary_domains": [
+      "Projects",
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "The Patreon Tribe - IFTTT Build Optimization2026-07-14T12_32_28+07_00__e32065ff33a3.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3",
+    "subtopics": [
+      "workflow automation",
+      "local AI model deployment",
+      "social media posting automation",
+      "permissions error handling"
+    ],
+    "summary": "The source is a chatgpt-generated discussion about optimizing IFTTT workflows for posting to Instagram and Facebook, including technical challenges with image uploads, permissions errors, and considerations around local AI model deployment (Ollama) versus cloud services. The content also touches on workflow automation tools such as n8n and Playwright.",
+    "tags": [
+      "IFTTT",
+      "Instagram",
+      "Facebook",
+      "Ollama",
+      "Llama 3",
+      "Gemma",
+      "Qwen",
+      "DeepSeek"
+    ],
+    "wiki_path": "Wiki/index.md#business",
     "workflow_status": "accepted"
   },
   {
@@ -33176,6 +33986,54 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "d588a47f0fd9508b2adff2b229f38cfd6e2e9672f50e94be910be7e45ebd0a95",
+    "document_id": "url:https://swanpass.com/map?utm_campaign=amzRef",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://swanpass.com/map?utm_campaign=amzRef"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [],
+    "map_entry": "Swanpass — Nightlife Spots & Entertainment Map in Thailand, Vietnam,",
+    "page_title": "Swanpass — Nightlife Spots & Entertainment Map in Thailand, Vietnam,",
+    "people": [],
+    "primary_topic": "General Reference",
+    "processed_path": "Processed/Swanpass — Nightlife Spots & Entertainment Map in Thailand, Vietnam,2026-07-17T10_40_30+07_00[[Swanpass]]__paign=amzRef.md",
+    "proposed_domains": [
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "d588a47f0fd9508b2adff2b229f38cfd6e2e9672f50e94be910be7e45ebd0a95",
+      "enrichment_completed_at": "2026-07-22T11:48:43.651147Z",
+      "model_confidence": 0.99,
+      "stable_source_id": "url:https://swanpass.com/map?utm_campaign=amzRef"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//swanpass.com/map?utm_campaign=amzRef.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Swanpass — Nightlife Spots & Entertainment Map in Thailand, Vietnam,2026-07-17T10_40_30+07_00[[Swanpass]]__paign=amzRef.md",
+    "source_type": "web",
+    "source_url": "https://swanpass.com/map?utm_campaign=amzRef",
+    "stable_source_id": "url:https://swanpass.com/map?utm_campaign=amzRef",
+    "subtopics": [
+      "latitude",
+      "longitude",
+      "database",
+      "mapping",
+      "Google Maps API",
+      "Leaflet.js",
+      "OpenStreetMap",
+      "marker clustering"
+    ],
+    "summary": "The user wants to display latitude/longitude points from a database on a map. Provide a step‑by‑step guide that works for most web stacks: fetch the data (e.g., via PHP/Python/Node), output JSON, then use a client‑side mapping library. Show two popular options—Google Maps JavaScript API and Leaflet/OpenStreetMap—with full code snippets, marker clustering tips, and optional heatmap ideas. End with a quick checklist and ask for any specific tech stack if they need more tailored help.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#general-reference",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "3122dee3f13f6d85877943d71ba01449ef55647cf48dd62c8d756152cd46b6bd",
     "document_id": "url:https://thethaiger.com/guides/visa-information/the-visa-run-era-is-over-2026-is-the-year-thailand-stopped-looking-the-other-way",
     "entities": [
@@ -34797,6 +35655,73 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "a8452a9a5bfee92d637cfa37af595f05a50c9fa724a5ca1a6f50c18749f35b68",
+    "document_id": "url:https://www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465",
+    "entities": [
+      "Songkran",
+      "Loy Krathong",
+      "Thai New Year",
+      "Krathongs",
+      "Bangkok"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://www.tourismthailand.org/Attraction/Songkran-Festival",
+      "https://www.tourismthailand.org/Attraction/Loy-Krathong-Festival"
+    ],
+    "map_entry": "I need this transcribed",
+    "page_title": "I need this transcribed",
+    "people": [
+      "Narrator (local guide)",
+      "Tourists",
+      "Local residents"
+    ],
+    "primary_topic": "Travel & Expat Experience",
+    "processed_path": "Processed/I need this transcribed2026-07-12T11_49_32+07_00.md",
+    "proposed_domains": [
+      "Travel & Expat Experience",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a8452a9a5bfee92d637cfa37af595f05a50c9fa724a5ca1a6f50c18749f35b68",
+      "enrichment_completed_at": "2026-07-22T11:45:47.880867Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465.md",
+    "secondary_domains": [
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "I need this transcribed2026-07-12T11_49_32+07_00.md",
+    "source_type": "web",
+    "source_url": "https://www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465",
+    "stable_source_id": "url:https://www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465",
+    "subtopics": [
+      "Cultural celebration",
+      "Water festival",
+      "Lantern floating ceremony",
+      "Renewal and cleansing",
+      "Community bonding"
+    ],
+    "summary": "The video offers an immersive tour of two of Thailand’s most iconic festivals—Songkran, the Thai New Year water festival, and Loy Krathong, the lantern‑floating celebration. The narrator begins by setting the scene in a bustling Bangkok street where locals and tourists alike dive into the streets with buckets, hoses, and spray bottles, turning the city into a giant playground of splashing water. He explains that Songkran marks the beginning of the lunar new year, a time for cleansing, renewal, and community bonding. Viewers see families playing traditional games such as “Sak Yant” (water‑balloon toss) and “Khao Khaek” (rice‑ball tossing), while street vendors sell fresh fruit juices and Thai iced tea to keep everyone hydrated. The narrator’s voice is warm and conversational, punctuated by the rhythmic sound of water splashing and cheerful chants that echo through the streets.\n\nThe video then transitions to Loy Krathong, set against a backdrop of a full moon over a serene riverbank. Here, the narrator describes how people craft delicate krathongs—small floating baskets made from banana leaves, flowers, candles, and incense—to offer prayers for good fortune and to pay respect to the river goddess. The scene is illuminated by lanterns and the soft glow of candlelight as thousands of krathongs drift downstream, creating a mesmerizing visual of hope and gratitude. The narrator highlights the cultural significance of releasing misfortunes into the water and the communal sense of peace that follows.\n\nThroughout, the video blends lively narration with ambient sounds—water splashing, chanting monks, and gentle music—to transport viewers to the heart of Thailand’s vibrant traditions. It ends with a friendly invitation for viewers to experience these festivals firsthand, encouraging them to immerse themselves in the culture and create lasting memories.",
+    "tags": [
+      "Songkran",
+      "Loy Krathong",
+      "Thai New Year",
+      "Krathongs",
+      "Bangkok"
+    ],
+    "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "d4659ca30847ece1f45fc915f02c80d57bc52c0322589514c753ef43398cba75",
     "document_id": "url:https://www.perplexity.ai/search/2a61057d-238b-4140-9940-4de144357a07",
     "entities": [
@@ -36059,6 +36984,57 @@
     "summary": "IRGC warns Iran may deploy underwater missiles during the ongoing US conflict; discusses tactical timing in the Strait of Hormuz, stockpile evidence of Ghadir-class submarines and Hoot supercavitating torpedoes, historical pattern from the 2019 tanker war, and potential impact on oil prices.",
     "tags": [],
     "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "3e74e6c4ce1ce4541737fd7b2f83347127a43df6c037f334faf980e7dfa38597",
+    "document_id": "url:https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731"
+    },
+    "indexed_at": "2026-07-22T11:51:27.538551+00:00",
+    "links": [
+      "https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731"
+    ],
+    "map_entry": "What does it do exactly?",
+    "page_title": "What does it do exactly?",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/What does it do exactly_2026-07-12T11_50_42+07_00.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "3e74e6c4ce1ce4541737fd7b2f83347127a43df6c037f334faf980e7dfa38597",
+      "enrichment_completed_at": "2026-07-22T11:50:00.690119Z",
+      "model_confidence": 1.0,
+      "stable_source_id": "url:https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731.md",
+    "secondary_domains": [
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "What does it do exactly_2026-07-12T11_50_42+07_00.md",
+    "source_type": "web",
+    "source_url": "https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731",
+    "stable_source_id": "url:https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731",
+    "subtopics": [
+      "Unitree R1",
+      "humanoid robot",
+      "dynamic balance",
+      "vision system",
+      "voice interaction",
+      "telepresence"
+    ],
+    "summary": "Unitree R1 is a compact humanoid robot that walks on two legs with dynamic balance and has 26 joints for arm and hip movements, enabling gestures, simple object handling, and even cartwheels. It includes built‑in cameras and microphones for vision and voice interaction, can speak via speaker, and serves as an interactive assistant or telepresence robot over WiFi. Potential uses include research, education, exhibitions, and light service tasks in controlled indoor environments.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#science-technology",
     "workflow_status": "accepted"
   },
   {

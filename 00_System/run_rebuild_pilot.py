@@ -82,7 +82,10 @@ def select_pilot(root: Path, records: list[dict[str, Any]]) -> list[dict[str, An
 
 
 def schema(domains: list[str]) -> dict[str, Any]:
-    names = {"type": "array", "items": {"type": "string"}, "maxItems": 3}
+    # Enforce the controlled vocabulary at generation time as well as in
+    # validate_proposal().  The prior schema permitted arbitrary strings,
+    # creating avoidable rejected records when the model used a near-match.
+    names = {"type": "array", "items": {"type": "string", "enum": domains}, "maxItems": 3}
     strings = {"type": "array", "items": {"type": "string"}, "maxItems": 8}
     return {"type": "object", "additionalProperties": False, "properties": {
         "proposed_domains": names, "summary": {"type": "string"}, "entities": strings, "people": strings,
