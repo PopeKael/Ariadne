@@ -24,6 +24,7 @@
         <article class="card"><h3>Embedding Index Status</h3><p>Check whether the local semantic-search index is present and compatible.</p><button data-action="embedding_status">Check status</button></article>
         <article class="card"><h3>Evaluate Retrieval</h3><p>Run the versioned MCP chunk-retrieval benchmark. It does not alter vault data.</p><button data-action="retrieval_evaluation">Run evaluation</button></article>
         <article class="card"><h3>Rebuild Regression Tests</h3><p>Run the rebuild-v1 Python test suite. This is developer validation, not daily ingestion.</p><button data-action="regression_tests">Run tests</button></article>
+        <article class="card"><h3>Preview Downloads Organisation</h3><p>Show what the Downloads organiser would file: Markdown to Inbox, emails to Docs, and media to their download folders. No files move.</p><button data-action="downloads_preview">Preview moves</button></article>
       </div>
     </section>
 
@@ -33,6 +34,7 @@
       <div class="grid">
         <article class="card warning"><h3>Rebuild Embedding Index</h3><p>Discard and regenerate the local embedding index. It remains local and is not committed to Git.</p><button data-action="embedding_rebuild" data-confirm="Rebuild the local embedding index?">Rebuild index</button></article>
         <article class="card"><h3>Audit Failed Ingestion</h3><p>Create a read-only rebuild-v1 failure report from retained capture and rejection evidence.</p><button data-action="audit_failures">Run audit</button></article>
+        <article class="card warning"><h3>Organise Downloads</h3><p>Move top-level Downloads files using the previewed rules. It skips filename collisions and does not overwrite files.</p><button data-action="downloads_apply" data-confirm="Move the previewed Downloads files now? Markdown goes to KnowledgeVault Inbox; media and email files go to their configured Downloads folders.">Organise Downloads</button></article>
       </div>
     </section>
   </main>

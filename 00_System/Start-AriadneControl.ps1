@@ -15,6 +15,7 @@ param(
 
 $Vault = Split-Path $PSScriptRoot -Parent
 $MenuPath = Join-Path $PSScriptRoot 'Ariadne-Control.html'
+$DownloadsOrganizerPath = Join-Path (Split-Path $Vault -Parent) 'Organize-Downloads.ps1'
 if (-not (Test-Path -LiteralPath $MenuPath)) {
     throw "Control menu not found: $MenuPath"
 }
@@ -26,6 +27,8 @@ $Actions = @{
     retrieval_evaluation = @{ Title = 'Evaluate retrieval'; Script = 'Evaluate-Retrieval.ps1'; Arguments = @() }
     regression_tests = @{ Title = 'Run rebuild regression tests'; Script = 'Run-Rebuild-Tests.ps1'; Arguments = @() }
     audit_failures = @{ Title = 'Audit failed ingestion'; Script = 'Audit-Failed-Ingestion.ps1'; Arguments = @() }
+    downloads_preview = @{ Title = 'Preview Downloads organisation'; ScriptPath = $DownloadsOrganizerPath; Arguments = @('-WhatIf') }
+    downloads_apply = @{ Title = 'Organise Downloads'; ScriptPath = $DownloadsOrganizerPath; Arguments = @() }
 }
 
 function Send-Response {
@@ -41,7 +44,7 @@ function Send-Response {
 
 function Start-AriadneAction {
     param([hashtable]$Action)
-    $ScriptPath = Join-Path $PSScriptRoot $Action.Script
+    $ScriptPath = if ($Action.ScriptPath) { $Action.ScriptPath } else { Join-Path $PSScriptRoot $Action.Script }
     if (-not (Test-Path -LiteralPath $ScriptPath)) {
         throw "Workflow script not found: $ScriptPath"
     }
