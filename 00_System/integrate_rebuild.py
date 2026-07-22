@@ -155,8 +155,8 @@ def file_sources(root: Path, records: list[dict[str, Any]], by_id: dict[str, dic
     return moves
 
 
-def build_library(root: Path, records: list[dict[str, Any]], outcomes: dict[str, dict[str, Any]], moves: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
+def build_library(root: Path, records: list[dict[str, Any]], outcomes: dict[str, dict[str, Any]], moves: dict[str, dict[str, Any]], existing: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    result_by_id = {item["document_id"]: item for item in (existing or []) if item.get("document_id")}
     for record in records:
         sid = record["stable_source_id"]
         outcome = outcomes[sid]
@@ -166,7 +166,7 @@ def build_library(root: Path, records: list[dict[str, Any]], outcomes: dict[str,
         path = moves[sid]["new_path"]
         domains = [d for d in proposal.get("proposed_domains", []) if d in DOMAINS]
         title = record.get("title") or Path(path).stem
-        result.append({
+        result_by_id[sid] = {
             "source_name": Path(path).name, "document_id": sid,
             "stable_source_id": sid, "source_url": record.get("canonical_url"),
             "external_identity": record.get("external_identity"),
@@ -184,7 +184,8 @@ def build_library(root: Path, records: list[dict[str, Any]], outcomes: dict[str,
             "review_path": f"Review/rebuild-v1/{sid.replace(':', '_')}.md",
             "processed_path": path, "wiki_path": f"Wiki/index.md#{domains[0].lower().replace(' & ', '-').replace(' ', '-') if domains else 'general-reference'}",
             "indexed_at": datetime.now(timezone.utc).isoformat(),
-        })
+        }
+    result = list(result_by_id.values())
     result.sort(key=lambda x: x["document_id"])
     return result
 
@@ -258,6 +259,7 @@ def main() -> int:
     parser.add_argument("--vault", type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--reconcile-movement-report", action="store_true")
+    parser.add_argument("--merge-existing", action="store_true", help="Merge accepted daily results into the active catalogue.")
     args = parser.parse_args()
     root = args.vault.resolve()
     run_dir = (args.run_dir or root / "00_System/Data/rebuild-v1/bulk").resolve()
@@ -270,7 +272,7 @@ def main() -> int:
         return 0
     captures = [json.loads(line) for line in (run_dir / "model-captures.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
     prior_moves: dict[str, dict[str, Any]] = {}
-    prior_report = root / "Reports/rebuild-v1-movement.json"
+    prior_report = root / ("Reports/rebuild-v1-daily-movement.json" if args.merge_existing else "Reports/rebuild-v1-movement.json")
     if prior_report.exists():
         prior_rows = load_json(prior_report)
         if isinstance(prior_rows, list):
@@ -294,11 +296,18 @@ def main() -> int:
     stamp = now_stamp()
     rollback = root / "Archive/IntegrationRollback" / stamp
     preserved = preserve_previous(root, rollback)
-    movement_path = root / "Reports/rebuild-v1-movement.json"
+    movement_path = root / ("Reports/rebuild-v1-daily-movement.json" if args.merge_existing else "Reports/rebuild-v1-movement.json")
     movement_rows = file_sources(root, manifest["records"], state["completed"], movement_path, prior_moves)
     movement_by_id = {x["stable_source_id"]: x for x in movement_rows}
-    active = build_library(root, manifest["records"], outcomes, movement_by_id)
+    existing = load_json(root / "00_System/library.json") if args.merge_existing and (root / "00_System/library.json").exists() else None
+    active = build_library(root, manifest["records"], outcomes, movement_by_id, existing)
     review_queue, review_md = build_review_queue(root, active, outcomes)
+    if args.merge_existing and (root / "Review/rebuild-v1-human-review.json").exists():
+        prior_queue = load_json(root / "Review/rebuild-v1-human-review.json")
+        combined = {(item.get("stable_source_id"), item.get("candidate_type"), str(item.get("candidate"))): item for item in prior_queue}
+        combined.update({(item.get("stable_source_id"), item.get("candidate_type"), str(item.get("candidate"))): item for item in review_queue})
+        review_queue = sorted(combined.values(), key=lambda x: (x.get("stable_source_id", ""), x.get("candidate_type", ""), str(x.get("candidate", ""))))
+        review_md = "# Rebuild-v1 human-review queue\n\nGenerated from held model candidates. No canonical People, Entities, or Wiki pages were created.\n\n" + "\n".join(f"- `{item['candidate_type']}` `{item['candidate']}` — `{item['stable_source_id']}` ([source](/" + item["source_path"] + "))" for item in review_queue) + "\n"
     write_json(root / "00_System/library.json", active)
     write_json(root / "00_System/Data/rebuild-v1/active-catalogue.json", active)
     write_json(root / "Review/rebuild-v1-human-review.json", review_queue)

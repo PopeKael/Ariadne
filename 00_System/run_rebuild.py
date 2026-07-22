@@ -4,7 +4,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,18 +18,38 @@ from run_rebuild_pilot import (MAX_TRANSPORT_ATTEMPTS, final_content, invoke_oll
 from vault_rebuild import build_manifest, manifest_bytes, write_manifest
 
 
-def atomic_json(path: Path, value: Any) -> None:
+def atomic_bytes(path: Path, data: bytes, attempts: int = 8) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        for attempt in range(attempts):
+            try:
+                os.replace(temp_name, path)
+                return
+            except OSError as exc:
+                if not isinstance(exc, PermissionError) and getattr(exc, "winerror", None) not in {5, 32, 33}:
+                    raise
+                if attempt == attempts - 1:
+                    raise RuntimeError(f"Could not replace checkpoint after {attempts} attempts: {path}") from exc
+                time.sleep(0.15 * (2 ** attempt))
+    finally:
+        if os.path.exists(temp_name):
+            try:
+                os.unlink(temp_name)
+            except OSError:
+                pass
+
+
+def atomic_json(path: Path, value: Any) -> None:
+    atomic_bytes(path, (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
 
 
 def atomic_jsonl(path: Path, values: list[dict[str, Any]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text("".join(json.dumps(value, ensure_ascii=False) + "\n" for value in values), encoding="utf-8")
-    temporary.replace(path)
+    atomic_bytes(path, "".join(json.dumps(value, ensure_ascii=False) + "\n" for value in values).encode("utf-8"))
 
 
 def now() -> str:
