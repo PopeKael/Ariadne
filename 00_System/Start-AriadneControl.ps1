@@ -20,21 +20,12 @@ if (-not (Test-Path -LiteralPath $MenuPath)) {
 }
 
 $Actions = @{
-    ingest = @{ Title = 'Process Inbox'; Script = 'Run Injest.ps1'; Arguments = @() }
-    reclassify_all = @{ Title = 'Reclassify entire vault'; Script = 'Reclassify-All.ps1'; Arguments = @() }
-    reclassify_status = @{ Title = 'Reclassification status'; Script = 'Reclassification-Status.ps1'; Arguments = @() }
-    retry_failed = @{ Title = 'Retry failed ingestion'; Script = 'Retry-FailedIngestion.ps1'; Arguments = @() }
-    compile_proposal = @{ Title = 'Create knowledge-link proposals'; Script = 'Compile-Knowledge.ps1'; Arguments = @('-Mode', 'Proposal') }
-    graph_health = @{ Title = 'Run graph health audit'; Script = 'GraphHealth.ps1'; Arguments = @() }
-    publish = @{ Title = 'Publish knowledge views'; Script = 'Publish-Knowledge.ps1'; Arguments = @() }
+    ingest = @{ Title = 'Process Inbox'; Script = 'Daily-Ingest.ps1'; Arguments = @() }
     embedding_status = @{ Title = 'Check embedding index'; Script = 'Build-Embeddings.ps1'; Arguments = @('-Status') }
     embedding_rebuild = @{ Title = 'Rebuild embedding index'; Script = 'Build-Embeddings.ps1'; Arguments = @('-Rebuild') }
-    reconcile_graph = @{ Title = 'Reconcile graph'; Script = 'Reconcile-Graph.ps1'; Arguments = @() }
-    rebuild_graph = @{ Title = 'Rebuild graph relationships'; Script = 'Rebuild-GraphRelations.ps1'; Arguments = @() }
-    repair_retry_queue = @{ Title = 'Repair retry queue'; Script = 'Repair-RetryQueue.ps1'; Arguments = @() }
-    migrate_legacy_graph = @{ Title = 'Migrate legacy graph'; Script = 'Migrate-LegacyGraph.ps1'; Arguments = @() }
-    migrate_people = @{ Title = 'Migrate person entities'; Script = 'Migrate-PersonEntities.ps1'; Arguments = @() }
-    snapshot = @{ Title = 'Commit and push snapshot'; Script = 'Commit.ps1'; Arguments = @() }
+    retrieval_evaluation = @{ Title = 'Evaluate retrieval'; Script = 'Evaluate-Retrieval.ps1'; Arguments = @() }
+    regression_tests = @{ Title = 'Run rebuild regression tests'; Script = 'Run-Rebuild-Tests.ps1'; Arguments = @() }
+    audit_failures = @{ Title = 'Audit failed ingestion'; Script = 'Audit-Failed-Ingestion.ps1'; Arguments = @() }
 }
 
 function Send-Response {
@@ -63,7 +54,8 @@ function Start-AriadneAction {
 
 $TokenBytes = New-Object byte[] 32
 [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($TokenBytes)
-$Token = [Convert]::ToHexString($TokenBytes).ToLowerInvariant()
+# Windows PowerShell 5.1 targets .NET Framework, which has no Convert.ToHexString.
+$Token = ([BitConverter]::ToString($TokenBytes) -replace '-', '').ToLowerInvariant()
 $Listener = [System.Net.HttpListener]::new()
 $Listener.Prefixes.Add("http://127.0.0.1:$Port/")
 

@@ -7,6 +7,15 @@ repair without a fresh, specifically scoped maintenance task.
 
 ## Normal daily operation
 
+To open the local supported-command menu:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\00_System\Start-AriadneControl.ps1"
+```
+
+The menu is a loopback-only convenience interface. Its allow-list contains
+only the commands documented here.
+
 From the vault root, process genuinely new Markdown in `Inbox/`:
 
 ```powershell
@@ -65,8 +74,7 @@ idempotent for the same selection. It is not a replacement for daily intake.
 
 ## Explicitly unsupported / retired
 
-Do not run `ariadne.ps1`, `Run Injest.ps1`, `Retry-FailedIngestion.ps1`, or
-`Start-AriadneControl.ps1`: the current control menu routes to legacy writers.
+Do not run `ariadne.ps1`, `Run Injest.ps1`, or `Retry-FailedIngestion.ps1`.
 The legacy graph, migration, classification, retry-queue, repair, compiler,
-publisher, and blanket Git scripts are catalogued in the maintenance audit.
-They are retained as historical material only.
+publisher, and blanket Git scripts are catalogued in the maintenance audit and
+archived as historical material only.

@@ -39,7 +39,7 @@ Search results carry a structured citation with the document and chunk identity,
 
 ## Control menu
 
-`Start-AriadneControl.ps1` is a legacy control menu and is currently unsupported: its allow-list still launches legacy ingestion and graph-mutating scripts. Do not run it. The supported rebuild-v1 command surface is documented in [Supported Commands](../docs/Supported-Commands.md); the control page will be rebuilt in a separate task.
+`Start-AriadneControl.ps1` is the loopback-only rebuild-v1 command menu. Its allow-list is limited to daily ingestion, index status/rebuild, retrieval evaluation, rebuild regression tests, and read-only failure audit. The definitive command surface is documented in [Supported Commands](../docs/Supported-Commands.md).
 
 ## What belongs here?
 

@@ -4,10 +4,9 @@ Audited: 2026-07-22. This review is read-only; no legacy script was executed.
 
 ## Decision
 
-Use `Daily-Ingest.ps1` for ordinary ingestion. The rest of the old PowerShell
-maintenance surface must not be treated as current. In particular,
-`Start-AriadneControl.ps1` is **unsupported** because its allow-list routes
-ingestion to `Run Injest.ps1`, which launches legacy `ariadne.ps1`.
+Use `Daily-Ingest.ps1` for ordinary ingestion. The old PowerShell maintenance
+surface must not be treated as current. The rebuilt `Start-AriadneControl.ps1`
+now exposes only the supported rebuild-v1 command allow-list.
 
 ## Supported commands
 
@@ -44,7 +43,7 @@ The definitive command list is [Supported Commands](../docs/Supported-Commands.m
 | `Resort-Archive.ps1` | Hard-coded legacy reclassification and wiki rewrites. | Retain as historical; never run. |
 | `Repair-LibraryIndex.ps1` | Deletes a named catalogue entry directly. | Retain as emergency historical material only. |
 | `Commit.ps1` | Runs `git add -A` then pushes `main`; unsafe with generated/GUI changes. | Retain as historical; use explicit Git commands. |
-| `Start-AriadneControl.ps1` | Its current allow-list exposes legacy operations above, including legacy ingest. | Do not run; replace only during the later web-management task. |
+| `Start-AriadneControl.ps1` | Rebuilt to expose only supported rebuild-v1 commands. | Supported loopback menu. |
 | `cleanup_legacy_graph.py` | One-off completed cleanup. | Retain as completed migration record; do not rerun without fresh audit. |
 
 ## Confirmed architecture boundary

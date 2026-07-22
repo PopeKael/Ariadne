@@ -13,35 +13,26 @@
 <body>
   <header>
     <h1>Ariadne Control</h1>
-    <p class="lede">Launch the normal KnowledgeVault workflows here. Each action opens in its own PowerShell window, so you can see output and failures directly. This page works only while <code>Start-AriadneControl.ps1</code> is running; press <code>Ctrl+C</code> in that window to stop it.</p>
+    <p class="lede">Launch supported rebuild-v1 workflows here. Each action opens in its own PowerShell window, so you can see output and failures directly. This page works only while <code>Start-AriadneControl.ps1</code> is running; press <code>Ctrl+C</code> in that window to stop it.</p>
   </header>
 
   <main>
     <section aria-labelledby="operations-heading">
       <h2 id="operations-heading">Operations</h2>
       <div class="grid">
-        <article class="card"><h3>Process Inbox</h3><p>Classify and file pending Inbox items, updating the catalogue and knowledge map.</p><button data-action="ingest">Run ingest</button></article>
-        <article class="card danger"><h3>Reclassify Entire Vault</h3><p>Reprocess all Processed, Failed, and Inbox documents using the current taxonomy, then rebuild the graph and published views.</p><button data-action="reclassify_all" data-confirm="Reclassify the entire vault? This will rebuild catalogue placements and graph relationships. A recovery snapshot will be created first.">Reclassify everything</button></article>
-        <article class="card"><h3>Reclassification Status</h3><p>Show completed, remaining, percentage, current document, elapsed time, and failures for the full-vault run.</p><button data-action="reclassify_status">Show status</button></article>
-        <article class="card"><h3>Retry Failed Ingestion</h3><p>Move retryable failed files back to Inbox. Run ingest afterwards to process them.</p><button data-action="retry_failed">Queue retries</button></article>
-        <article class="card"><h3>Knowledge Link Proposals</h3><p>Create conservative Wiki-link proposals without changing notes.</p><button data-action="compile_proposal">Create proposals</button></article>
-        <article class="card"><h3>Graph Health Audit</h3><p>Write the current graph-health report without modifying the graph.</p><button data-action="graph_health">Run health audit</button></article>
-        <article class="card"><h3>Publish Knowledge Views</h3><p>Regenerate the Wiki knowledge map and searchable index from canonical system data.</p><button data-action="publish">Publish views</button></article>
+        <article class="card"><h3>Process Inbox</h3><p>Run rebuild-v1 intake for genuinely new Inbox files: stable IDs, review-only enrichment, catalogue update, filing, and embeddings.</p><button data-action="ingest">Run daily ingest</button></article>
         <article class="card"><h3>Embedding Index Status</h3><p>Check whether the local semantic-search index is present and compatible.</p><button data-action="embedding_status">Check status</button></article>
+        <article class="card"><h3>Evaluate Retrieval</h3><p>Run the versioned MCP chunk-retrieval benchmark. It does not alter vault data.</p><button data-action="retrieval_evaluation">Run evaluation</button></article>
+        <article class="card"><h3>Rebuild Regression Tests</h3><p>Run the rebuild-v1 Python test suite. This is developer validation, not daily ingestion.</p><button data-action="regression_tests">Run tests</button></article>
       </div>
     </section>
 
     <section aria-labelledby="maintenance-heading">
       <h2 id="maintenance-heading">Maintenance</h2>
-      <p class="note">These workflows change generated state or repository contents. The red actions are broad or migration-style operations; take a snapshot first.</p>
+      <p class="note">These workflows change derived state or generate diagnostic reports. Failure remediation remains deliberately command-driven after a fresh audit; it is not a one-click menu action.</p>
       <div class="grid">
         <article class="card warning"><h3>Rebuild Embedding Index</h3><p>Discard and regenerate the local embedding index. It remains local and is not committed to Git.</p><button data-action="embedding_rebuild" data-confirm="Rebuild the local embedding index?">Rebuild index</button></article>
-        <article class="card warning"><h3>Reconcile Graph</h3><p>Repair one-way links and add bounded semantic links for weakly connected notes.</p><button data-action="reconcile_graph" data-confirm="Reconcile the graph and modify catalogue relationships?">Reconcile graph</button></article>
-        <article class="card danger"><h3>Rebuild Graph Relationships</h3><p>Recalculate bounded relationships across the complete catalogue.</p><button data-action="rebuild_graph" data-confirm="Rebuild graph relationships across the whole catalogue? Take a snapshot first.">Rebuild relationships</button></article>
-        <article class="card warning"><h3>Repair Retry Queue</h3><p>Normalise and deduplicate the ingestion retry queue.</p><button data-action="repair_retry_queue" data-confirm="Repair the retry queue?">Repair queue</button></article>
-        <article class="card danger"><h3>Migrate Legacy Graph</h3><p>Run the legacy graph migration. Intended for an upgrade, not routine use.</p><button data-action="migrate_legacy_graph" data-confirm="Run the legacy graph migration? Take a snapshot first.">Run migration</button></article>
-        <article class="card danger"><h3>Migrate Person Entities</h3><p>Migrate older person entity data to the dedicated identity model.</p><button data-action="migrate_people" data-confirm="Run the person entity migration? Take a snapshot first.">Run migration</button></article>
-        <article class="card warning"><h3>Commit and Push Snapshot</h3><p>Stage all current changes, create a timestamped commit, and push <code>main</code>.</p><button data-action="snapshot" data-confirm="Commit and push every current repository change?">Commit and push</button></article>
+        <article class="card"><h3>Audit Failed Ingestion</h3><p>Create a read-only rebuild-v1 failure report from retained capture and rejection evidence.</p><button data-action="audit_failures">Run audit</button></article>
       </div>
     </section>
   </main>
