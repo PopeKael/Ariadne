@@ -39,9 +39,7 @@ Search results carry a structured citation with the document and chunk identity,
 
 ## Control menu
 
-Run `Start-AriadneControl.ps1` to open the local HTML control menu. It separates normal vault operations from maintenance routines and launches each selected workflow in a separate PowerShell window.
-
-The launcher accepts requests only from its own loopback page and exposes a fixed allow-list of scripts. It is deliberately not a general PowerShell command runner.
+`Start-AriadneControl.ps1` is a legacy control menu and is currently unsupported: its allow-list still launches legacy ingestion and graph-mutating scripts. Do not run it. The supported rebuild-v1 command surface is documented in [Supported Commands](../docs/Supported-Commands.md); the control page will be rebuilt in a separate task.
 
 ## What belongs here?
 
