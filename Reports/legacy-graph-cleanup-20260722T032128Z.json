@@ -1,0 +1,18 @@
+{
+  "cleanup_version": 1,
+  "completed_at": "2026-07-22T03:21:30.590256+00:00",
+  "archive_root": "Archive/LegacyGraphCleanup",
+  "candidate_count": 0,
+  "moved_count": 0,
+  "already_archived_count": 0,
+  "graph_visible_markdown_before": 2028,
+  "graph_visible_markdown_after": 2028,
+  "duplicate_display_name_group_count_before": 10,
+  "duplicate_display_name_group_count_after": 10,
+  "content_creation_before": [],
+  "content_creation_after": [],
+  "orphan_count_before": 717,
+  "orphan_count_after": 717,
+  "active_catalogue_reference_count": 0,
+  "movements": []
+}
