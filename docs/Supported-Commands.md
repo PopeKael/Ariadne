@@ -30,7 +30,7 @@ merge, source filing, and incremental embeddings.
 ## Downloads intake
 
 The menu provides **Preview Downloads Organisation** and **Organise Downloads**
-actions for `D:\Downloads\Organize-Downloads.ps1`. Preview runs with
+actions for `00_System\Organize-Downloads.ps1`. Preview runs with
 `-WhatIf`; apply requires a menu confirmation. Its fixed rules are: Markdown
 to `KnowledgeVault\Inbox`, `.eml` to `D:\Downloads\Docs`, screenshots to
 `D:\Downloads\screenshots`, images to `D:\Downloads\Images`, and videos to
@@ -40,10 +40,10 @@ Equivalent commands:
 
 ```powershell
 # Read-only preview
-powershell -NoProfile -ExecutionPolicy Bypass -File "D:\Downloads\Organize-Downloads.ps1" -WhatIf
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\00_System\Organize-Downloads.ps1" -WhatIf
 
 # Apply the same fixed rules
-powershell -NoProfile -ExecutionPolicy Bypass -File "D:\Downloads\Organize-Downloads.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\00_System\Organize-Downloads.ps1"
 ```
 
 ## Safe diagnostics

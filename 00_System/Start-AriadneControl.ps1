@@ -15,7 +15,7 @@ param(
 
 $Vault = Split-Path $PSScriptRoot -Parent
 $MenuPath = Join-Path $PSScriptRoot 'Ariadne-Control.html'
-$DownloadsOrganizerPath = Join-Path (Split-Path $Vault -Parent) 'Organize-Downloads.ps1'
+$DownloadsOrganizerPath = Join-Path $PSScriptRoot 'Organize-Downloads.ps1'
 if (-not (Test-Path -LiteralPath $MenuPath)) {
     throw "Control menu not found: $MenuPath"
 }
