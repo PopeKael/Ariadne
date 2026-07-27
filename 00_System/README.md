@@ -41,6 +41,12 @@ Search results carry a structured citation with the document and chunk identity,
 
 `Start-AriadneControl.ps1` is the loopback-only rebuild-v1 command menu. Its allow-list is limited to daily ingestion, index status/rebuild, retrieval evaluation, rebuild regression tests, and read-only failure audit. The definitive command surface is documented in [Supported Commands](../docs/Supported-Commands.md).
 
+## Ariadne identity and query context
+
+The active behavioural identity is [Ariadne Identity Kernel v1.0.0](../Ariadne%20Identity%20Kernel%20v1.0.0.md). `ariadne_mcp.py` loads only that file's compact runtime section for planner, summariser, and answer calls. Memory and retrieved notes remain separate prompt data and are never used to update identity automatically.
+
+The local Ollama chat request defaults to an 8,192-token context and a 1,024-token output limit. Override these per machine with `ARIADNE_NUM_CTX` and `ARIADNE_NUM_PREDICT`; `ARIADNE_CHAT_MODEL` continues to select the installed chat model. Query results expose the kernel version used so behaviour remains auditable.
+
 ## What belongs here?
 
 Anything that defines the behaviour of Ariadne belongs in this folder.

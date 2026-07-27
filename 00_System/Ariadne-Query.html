@@ -85,7 +85,8 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.message || 'The request failed.');
         if (mode === 'summarize') {
-          status.textContent = `Summary prepared from ${payload.sources.length} retrieved source${payload.sources.length === 1 ? '' : 's'}${payload.model ? ` using ${payload.model}` : ''}.`;
+          const kernelLabel = payload.identity_kernel?.version ? ` · Ariadne identity ${payload.identity_kernel.version}` : '';
+          status.textContent = `Summary prepared from ${payload.sources.length} retrieved source${payload.sources.length === 1 ? '' : 's'}${payload.model ? ` using ${payload.model}` : ''}${kernelLabel}.`;
           const sourceList = payload.sources.map((source) => `<li id="source-${source.source_number}"><strong>[Source ${source.source_number}]</strong> ${escapeHtml(source.citation_text || '')}<br><span class="source-links">${sourceLinks(source)}</span></li>`).join('');
           results.innerHTML = `<article class="result"><h2>Vault summary</h2><div class="summary-body">${renderSummary(payload.summary || '')}</div><div class="meta"><strong>Sources</strong><ul>${sourceList}</ul></div></article>`;
           return;
@@ -121,7 +122,8 @@
         const result = payload.result;
         const searches = (result.searches || []).map(item => `<li>${escapeHtml(item.query)} — ${item.match_count} passages</li>`).join('');
         const sourceList = (result.sources || []).map((source) => `<li id="source-${source.source_number}"><strong>[Source ${source.source_number}]</strong> ${escapeHtml(source.citation_text || '')}<br><span class="source-links">${sourceLinks(source)}</span></li>`).join('');
-        status.textContent = `${mode === 'summary' ? 'Summary' : 'Answer'} prepared from ${result.sources.length} evidence passages using ${result.model || 'local Ollama'}.`;
+        const kernelLabel = result.identity_kernel?.version ? ` · Ariadne identity ${result.identity_kernel.version}` : '';
+        status.textContent = `${mode === 'summary' ? 'Summary' : 'Answer'} prepared from ${result.sources.length} evidence passages using ${result.model || 'local Ollama'}${kernelLabel}.`;
         results.innerHTML = `<article class="result"><h2>${mode === 'summary' ? 'KnowledgeVault summary' : 'KnowledgeVault answer'}</h2><div class="summary-body">${renderSummary(result.summary || '')}</div><div class="meta"><strong>Searches performed</strong><ul>${searches}</ul><strong>Sources</strong><ul>${sourceList}</ul></div></article>`;
       } catch (error) { status.className = 'error'; status.textContent = error.message; }
       finally { searchButton.disabled = false; summarizeButton.disabled = false; librarianButton.disabled = false; }

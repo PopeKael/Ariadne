@@ -266,7 +266,7 @@ if(!matches.length){list.innerHTML='<li>No external links found in this note.</l
                 $ToolName = if ($Path -eq '/summarize') { 'summarize_knowledge' } else { 'search_knowledge_chunks' }
                 $Result = Invoke-AriadneQuery -Query $Request.query.Trim() -Limit $Limit -ToolName $ToolName
                 if ($Path -eq '/summarize') {
-                    $Body = @{ ok = $true; query = $Result.query; summary = $Result.summary; sources = @($Result.sources); model = $Result.model } | ConvertTo-Json -Depth 20 -Compress
+                    $Body = @{ ok = $true; query = $Result.query; summary = $Result.summary; sources = @($Result.sources); model = $Result.model; identity_kernel = $Result.identity_kernel } | ConvertTo-Json -Depth 20 -Compress
                 } else {
                     $Body = @{ ok = $true; query = $Result.query; match_count = $Result.match_count; results = @($Result.results) } | ConvertTo-Json -Depth 20 -Compress
                 }
