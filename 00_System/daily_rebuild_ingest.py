@@ -36,13 +36,23 @@ def manifest_hash(manifest: dict) -> str:
 
 def choose_output(root: Path, digest: str) -> Path:
     current = root / "00_System/Data/rebuild-v1/daily-current"
-    state_path = current / "state.json"
-    if not state_path.exists():
+    candidates = [current]
+    daily_root = root / "00_System/Data/rebuild-v1/daily"
+    if daily_root.is_dir():
+        candidates.extend(sorted((p for p in daily_root.iterdir() if p.is_dir()), reverse=True))
+    for candidate in candidates:
+        state_path = candidate / "state.json"
+        if not state_path.is_file():
+            continue
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if state.get("manifest_sha256") == digest:
+            return candidate
+    if not (current / "state.json").exists():
         return current
-    state = json.loads(state_path.read_text(encoding="utf-8"))
-    if state.get("manifest_sha256") == digest:
-        return current
-    return root / "00_System/Data/rebuild-v1/daily" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return daily_root / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
 def main() -> int:

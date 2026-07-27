@@ -112,6 +112,19 @@ def source_destination(root: Path, old_relative: str, target_folder: str, stable
     return root / target_folder / f"{old.stem}__{suffix}{old.suffix}"
 
 
+def current_source_relative(record: dict[str, Any], prior_moves: dict[str, dict[str, Any]]) -> str:
+    """Reuse a prior destination only for the same stable source revision.
+
+    Stable identities such as URLs can legitimately produce newer captures.
+    A prior movement row with the same identity but a different content hash
+    refers to an older revision and must not hide the current Inbox source.
+    """
+    prior = prior_moves.get(record["stable_source_id"])
+    if prior and prior.get("content_sha256") == record["canonical_content_sha256"]:
+        return prior.get("new_path") or record["relative_path"]
+    return record["relative_path"]
+
+
 def file_sources(root: Path, records: list[dict[str, Any]], by_id: dict[str, dict[str, Any]], report_path: Path,
                  prior_moves: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     moves: list[dict[str, Any]] = []
@@ -119,20 +132,17 @@ def file_sources(root: Path, records: list[dict[str, Any]], by_id: dict[str, dic
         sid = record["stable_source_id"]
         outcome = by_id[sid]["outcome"]
         old_relative = outcome["relative_path"]
-        current_relative = prior_moves.get(sid, {}).get("new_path", old_relative)
+        current_relative = current_source_relative(record, prior_moves)
         old = root / current_relative
         target_folder = "Processed" if outcome["status"] == "accepted" else "Failed"
         if not old.exists():
             raise RuntimeError(f"Source disappeared during integration: {old_relative}")
         destination = old if old.parent.name.casefold() == target_folder.casefold() else source_destination(root, old_relative, target_folder, sid)
-        old_hash = content_hash(old.read_text(encoding="utf-8-sig"))
-        if old_hash != record["canonical_content_sha256"]:
-            raise RuntimeError(f"Source changed during integration: {old_relative}")
         if old.resolve() == destination.resolve():
             action = "already_in_destination"
         elif destination.exists():
             destination_hash = content_hash(destination.read_text(encoding="utf-8-sig"))
-            if destination_hash != old_hash:
+            if destination_hash != record["canonical_content_sha256"]:
                 safe_suffix = hashlib.sha256(sid.encode("utf-8")).hexdigest()[:12]
                 destination = root / target_folder / f"{Path(old_relative).stem}__{safe_suffix}{Path(old_relative).suffix}"
                 if destination.exists():
@@ -293,7 +303,7 @@ def main() -> int:
     if outcomes != state_outcomes:
         raise RuntimeError("State and catalogue outcomes differ.")
     for r in manifest["records"]:
-        current_relative = prior_moves.get(r["stable_source_id"], {}).get("new_path", r["relative_path"])
+        current_relative = current_source_relative(r, prior_moves)
         path = root / current_relative
         if not path.is_file() or content_hash(path.read_text(encoding="utf-8-sig")) != r["canonical_content_sha256"]:
             raise RuntimeError(f"Source integrity failure before movement: {r['relative_path']}")
