@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariadne Knowledge Query</title>
+  <style>
+    :root { color-scheme:dark; --bg:#10151b; --panel:#17212b; --line:#314152; --text:#e7edf4; --muted:#aab8c7; --accent:#6bc4e5; --danger:#ef8b8b; }
+    * { box-sizing:border-box; } body { max-width:1100px; margin:0 auto; padding:32px 24px 64px; background:var(--bg); color:var(--text); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    h1,h2,h3 { line-height:1.2; } h1 { margin:0; } h2 { margin:34px 0 12px; border-bottom:1px solid var(--line); padding-bottom:8px; } .lede,.note,.meta { color:var(--muted); } a { color:var(--accent); }
+    form { display:flex; gap:10px; margin:24px 0; flex-wrap:wrap; } textarea { flex:1 1 100%; min-height:90px; resize:vertical; border:1px solid var(--line); border-radius:6px; padding:11px 12px; background:#0c1116; color:var(--text); font:inherit; } button { cursor:pointer; border:1px solid #4b7891; border-radius:6px; padding:9px 16px; background:#17394a; color:var(--text); font:inherit; font-weight:650; } button:hover { background:#1d4c62; } button:disabled { cursor:wait; opacity:.65; }
+    #status { margin:18px 0; color:var(--muted); } #status.error { color:var(--danger); } .progress { display:flex; align-items:center; gap:9px; } .spinner { display:inline-block; width:13px; height:13px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; } @keyframes spin { to { transform:rotate(360deg); } } .result { margin:14px 0; padding:17px; background:var(--panel); border:1px solid var(--line); border-radius:9px; } .result h3 { margin:0 0 5px; } .result p { margin:10px 0; white-space:pre-wrap; } .meta { font-size:.9rem; } .score { float:right; color:var(--accent); } table { width:100%; border-collapse:collapse; margin:12px 0; } th,td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; } th { background:#20303d; } code { background:#0c1116; color:#d2e5ef; padding:2px 5px; border-radius:4px; word-break:break-word; } @media (max-width:700px) { body { padding:22px 13px; font-size:15px; } form { flex-direction:column; } .score { float:none; display:block; } }
+  </style>
+</head>
+<body>
+  <p><a href="/">← Ariadne Control</a></p>
+  <header>
+    <h1>Knowledge Query</h1>
+    <p class="lede">Search the KnowledgeVault directly, or ask the local librarian to interpret your question, search several parts of the vault, and write a cited answer.</p>
+  </header>
+  <form id="query-form">
+    <textarea id="query" name="query" placeholder="Ask a question about the KnowledgeVault…" required></textarea>
+    <button id="search-button" type="submit">Search vault</button>
+    <button id="summarize-button" type="button">Summarize findings</button>
+    <button id="librarian-button" type="button">Ask the librarian</button>
+  </form>
+  <p id="status" role="status" aria-live="polite">Ready.</p>
+  <main id="results" aria-live="polite"></main>
+  <script>
+    const token = '__ARIADNE_TOKEN__';
+    const form = document.getElementById('query-form');
+    const input = document.getElementById('query');
+    const status = document.getElementById('status');
+    const results = document.getElementById('results');
+    const searchButton = document.getElementById('search-button');
+    const summarizeButton = document.getElementById('summarize-button');
+    const librarianButton = document.getElementById('librarian-button');
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[character]));
+    const renderSummary = (value) => {
+      let html = escapeHtml(value);
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/^[-*] (.+)$/gm, '<div class="summary-item">• $1</div>');
+      html = html.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+      html = html.replace(/(https?:\/\/[^\s<]+)/gi, (url) => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+      html = html.replace(/\[Source\s+(\d+)\]/g, '<a class="source-ref" href="#source-$1">[Source $1]</a>');
+      const tableLines = html.split('\n');
+      const renderedLines = [];
+      for (let i = 0; i < tableLines.length; i++) {
+        if (i + 1 < tableLines.length && /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/.test(tableLines[i + 1].trim()) && tableLines[i].includes('|')) {
+          const headers = tableLines[i].split('|').map(cell => cell.trim()).filter(Boolean);
+          const rows = [];
+          i += 2;
+          while (i < tableLines.length && tableLines[i].includes('|') && tableLines[i].trim()) {
+            rows.push(tableLines[i].split('|').map(cell => cell.trim()).filter(Boolean)); i++;
+          }
+          const head = `<tr>${headers.map(cell => `<th>${cell}</th>`).join('')}</tr>`;
+          const body = rows.map(row => `<tr>${headers.map((_, index) => `<td>${row[index] || ''}</td>`).join('')}</tr>`).join('');
+          renderedLines.push(`<table><thead>${head}</thead><tbody>${body}</tbody></table>`); i--; continue;
+        }
+        renderedLines.push(tableLines[i]);
+      }
+      html = renderedLines.join('\n');
+      return html.replace(/\r?\n/g, '<br>');
+    };
+    const sourceLinks = (source) => {
+      const citation = source.citation || {};
+      const links = [];
+      if (citation.path) links.push(`<a href="/source?token=${encodeURIComponent(token)}&path=${encodeURIComponent(citation.path)}">Open local note</a>`);
+      if (citation.source_url && /^https?:\/\//i.test(citation.source_url)) links.push(`<a href="${escapeHtml(encodeURI(citation.source_url))}" target="_blank" rel="noopener">Original source</a>`);
+      return links.join(' · ');
+    };
+    async function runQuery(mode) {
+      const query = input.value.trim();
+      if (!query) return;
+      searchButton.disabled = true;
+      summarizeButton.disabled = true;
+      librarianButton.disabled = true;
+      status.className = '';
+      status.textContent = mode === 'summarize' ? 'Retrieving evidence and preparing summary…' : 'Searching…';
+      results.innerHTML = '';
+      try {
+        const response = await fetch(mode === 'summarize' ? '/summarize' : '/query', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Ariadne-Token':token }, body:JSON.stringify({ query, limit:8 }) });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.message || 'The request failed.');
+        if (mode === 'summarize') {
+          status.textContent = `Summary prepared from ${payload.sources.length} retrieved source${payload.sources.length === 1 ? '' : 's'}${payload.model ? ` using ${payload.model}` : ''}.`;
+          const sourceList = payload.sources.map((source) => `<li id="source-${source.source_number}"><strong>[Source ${source.source_number}]</strong> ${escapeHtml(source.citation_text || '')}<br><span class="source-links">${sourceLinks(source)}</span></li>`).join('');
+          results.innerHTML = `<article class="result"><h2>Vault summary</h2><div class="summary-body">${renderSummary(payload.summary || '')}</div><div class="meta"><strong>Sources</strong><ul>${sourceList}</ul></div></article>`;
+          return;
+        }
+        status.textContent = `${payload.match_count} result${payload.match_count === 1 ? '' : 's'} for “${query}”.`;
+        if (!payload.results.length) { results.innerHTML = '<p class="note">No matching passages were found.</p>'; return; }
+        results.innerHTML = payload.results.map((item) => `<article class="result"><span class="score">${Number(item.combined_score ?? item.score ?? 0).toFixed(3)}</span><h3>${escapeHtml(item.title || 'Untitled')}</h3><div class="meta">${escapeHtml(item.heading || 'Document')} · ${escapeHtml(item.path || '')}</div><p>${escapeHtml(item.content || item.excerpt || '')}</p><div class="meta">${escapeHtml(item.citation_text || '')}</div></article>`).join('');
+      } catch (error) { status.className = 'error'; status.textContent = error.message; }
+      finally { searchButton.disabled = false; summarizeButton.disabled = false; librarianButton.disabled = false; }
+    }
+    async function runLibrarian() {
+      const query = input.value.trim();
+      if (!query) return;
+      searchButton.disabled = true; summarizeButton.disabled = true; librarianButton.disabled = true;
+      results.innerHTML = '';
+      status.className = '';
+      status.innerHTML = '<span class="progress"><span class="spinner"></span><span>Starting the local librarian…</span></span>';
+      try {
+        const mode = arguments.length ? arguments[0] : 'answer';
+        const startResponse = await fetch('/planned-query', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-Ariadne-Token':token }, body:JSON.stringify({ query, limit:6, mode }) });
+        const start = await startResponse.json();
+        if (!startResponse.ok || !start.ok) throw new Error(start.message || 'Could not start the planned query.');
+        let payload;
+        while (true) {
+          await new Promise(resolve => setTimeout(resolve, 700));
+          const response = await fetch(`/planned-status?token=${encodeURIComponent(token)}&job_id=${encodeURIComponent(start.job_id)}`);
+          payload = await response.json();
+          if (!response.ok || payload.state === 'error') throw new Error(payload.message || 'The planned query failed.');
+          const progress = payload.total ? ` (${payload.completed} of ${payload.total})` : '';
+          status.innerHTML = `<span class="progress"><span class="spinner"></span><span>${escapeHtml(payload.message || 'Working…')}${progress}</span></span>`;
+          if (payload.state === 'complete') break;
+        }
+        const result = payload.result;
+        const searches = (result.searches || []).map(item => `<li>${escapeHtml(item.query)} — ${item.match_count} passages</li>`).join('');
+        const sourceList = (result.sources || []).map((source) => `<li id="source-${source.source_number}"><strong>[Source ${source.source_number}]</strong> ${escapeHtml(source.citation_text || '')}<br><span class="source-links">${sourceLinks(source)}</span></li>`).join('');
+        status.textContent = `${mode === 'summary' ? 'Summary' : 'Answer'} prepared from ${result.sources.length} evidence passages using ${result.model || 'local Ollama'}.`;
+        results.innerHTML = `<article class="result"><h2>${mode === 'summary' ? 'KnowledgeVault summary' : 'KnowledgeVault answer'}</h2><div class="summary-body">${renderSummary(result.summary || '')}</div><div class="meta"><strong>Searches performed</strong><ul>${searches}</ul><strong>Sources</strong><ul>${sourceList}</ul></div></article>`;
+      } catch (error) { status.className = 'error'; status.textContent = error.message; }
+      finally { searchButton.disabled = false; summarizeButton.disabled = false; librarianButton.disabled = false; }
+    }
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await runQuery('search');
+    });
+    summarizeButton.addEventListener('click', () => runLibrarian('summary'));
+    librarianButton.addEventListener('click', () => runLibrarian('answer'));
+    input.focus();
+  </script>
+</body>
+</html>

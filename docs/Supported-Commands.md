@@ -14,7 +14,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\00_System\Start-AriadneCo
 ```
 
 The menu is a loopback-only convenience interface. Its allow-list contains
-only the commands documented here.
+only the commands documented here. Use **Open Knowledge Query** to open the
+read-only browser wrapper for the MCP retrieval engine. **Search vault** sends
+searches to `search_knowledge_chunks`; **Summarize findings** sends the
+retrieved evidence to `summarize_knowledge` for a local, cited synthesis. It
+does not write vault data or create a second search index.
 
 From the vault root, process genuinely new Markdown in `Inbox/`:
 

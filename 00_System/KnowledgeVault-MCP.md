@@ -12,6 +12,7 @@
 ## Tools
 
 - `search_knowledge_chunks(query, limit=5)` is the preferred retrieval tool. It ranks the existing heading-aware Markdown passages and returns source and heading. Additive diagnostics are `lexical_score`, `semantic_score`, `graph_score`, and `combined_score`; clients may ignore them.
+- `summarize_knowledge(query, limit=8)` retrieves passages first, then asks the configured local Ollama chat model to synthesize only that evidence with inline `[Source N]` references. It is read-only and reports the retrieved source records alongside the summary.
 - `get_knowledge_chunk(chunk_id)` re-reads a passage returned by chunk search.
 - `search_knowledge_vault(query, limit=5)` remains available for document-level catalogue browsing.
 - `get_knowledge_document(document_id, offset=0, max_chars=12000)` returns processed Markdown for a selected result. Use `next_offset` to page a long document.
@@ -60,6 +61,18 @@ The normal command only embeds new or changed chunks, removes deleted/replaced c
 Set `ARIADNE_EMBEDDING_MODEL` (or pass `-Model`) to use another locally installed Ollama embedding model. `ARIADNE_OLLAMA_URL` is constrained to `localhost` / `127.0.0.1`.
 
 In the client instructions, tell the model: “For questions about my KnowledgeVault, use `search_knowledge_chunks` first, answer from the returned chunks, and distinguish vault evidence from general knowledge. Use whole-document retrieval only when the chunks do not provide sufficient context.” MCP gives ChatGPT the tools; that instruction establishes the retrieval-first policy.
+
+## Local browser query wrapper
+
+`Start-AriadneControl.ps1` also serves `Ariadne-Query.html` on the same
+loopback listener. Open **Query Knowledge Vault** from the control menu to use
+a simple browser search form. **Search vault** displays the retrieved passages;
+**Summarize findings** calls `summarize_knowledge` through a short-lived local
+wrapper and displays an evidence-grounded briefing plus its sources. The
+configured chat model defaults to `gpt-oss:20b` and can be changed with
+`ARIADNE_CHAT_MODEL`. Inline source references jump to the source list, which
+links to a read-only local view of the corresponding `Processed/` note and, if
+available, its original source URL. Both operations are read-only.
 
 ## Smoke test
 
