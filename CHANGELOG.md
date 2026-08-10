@@ -6,6 +6,7 @@ All notable repository-level changes are recorded here. Entries describe changes
 
 ### Changed
 
+- Made daily Inbox ingestion resilient to repeated conversation exports: the newest readable snapshot wins, older conflicting snapshots are archived in `Archive/Duplicates/`, and each resolution is recorded in the run manifest and `deduplication-report.json`.
 - Documented the policy for generated local runtime data and the embedding-index rebuild workflow.
 - Added a local HTML control menu for routine and maintenance KnowledgeVault workflows.
 - Added stable line-anchored, structured citations and display-ready citation text to knowledge retrieval results.

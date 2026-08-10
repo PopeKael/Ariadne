@@ -23,7 +23,15 @@ The source ID is selected in this order:
 2. `url:<canonical-url>` when front matter supplies a valid external source URL. URL canonicalisation lowercases scheme and host, removes a fragment, and preserves the path and query string.
 3. `sha256:<canonical-content-hash>` when no verified external identity is available.
 
-The manifest rejects duplicate source IDs and duplicate canonical content hashes. A conflict is reported; no file is changed or silently discarded.
+The full source manifest rejects duplicate source IDs and duplicate canonical content hashes. A conflict is reported; no file is changed or silently discarded.
+
+The manual daily Inbox runner has one additional recovery policy for repeated
+conversation exports: within `Inbox/`, the newest readable snapshot wins for a
+duplicate stable ID or canonical content hash. Superseded snapshots are moved
+byte-for-byte to `Archive/Duplicates/` and recorded in the run's
+`deduplication-report.json`, so an older branch remains recoverable. Unreadable
+sources remain a hard validation failure because their identity and content
+cannot be verified safely.
 
 ## Manifest fields
 
