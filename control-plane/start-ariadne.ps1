@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $controlPlane = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $controlPlane
 $tray = Join-Path $controlPlane 'tray.py'
-$url = 'http://127.0.0.1:8765/'
+$url = 'http://localhost:8765/'
 
 if (-not (Test-Path -LiteralPath $tray -PathType Leaf)) {
     throw "Ariadne tray entry point not found: $tray"

@@ -14,4 +14,4 @@ $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
 Write-Output "Installed: $taskName"
-Write-Output "Address: http://127.0.0.1:8765"
+Write-Output "Address: http://localhost:8765"

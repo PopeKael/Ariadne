@@ -43,6 +43,6 @@ Run the interface from the repository root:
 py -3 .\control-plane\server.py
 ```
 
-Open `http://127.0.0.1:8765`. The control plane uses the repository root as
+Open `http://localhost:8765`. The control plane uses the repository root as
 the default Vault root. Set `ARIADNE_VAULT_ROOT` only for a deliberate
 transition or compatibility run against another local Vault location.

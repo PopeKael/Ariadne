@@ -5,7 +5,7 @@ part of the same repository as the Knowledge Vault; the Vault system files are
 in `../00_System/` and the private Markdown knowledge folders remain excluded
 from Git.
 
-- Address: `http://127.0.0.1:8765`
+- Address: `http://localhost:8765`
 - Host: Windows
 - Runtime: Python standard library, plus Pillow and pystray for the tray companion
 - Network exposure: loopback only; it is not published to the LAN
@@ -22,4 +22,4 @@ Run it from PowerShell:
 py -3 .\control-plane\server.py
 ```
 
-Then open `http://127.0.0.1:8765` in a browser.
+Then open `http://localhost:8765` in a browser.
