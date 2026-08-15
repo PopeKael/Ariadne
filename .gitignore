@@ -1,0 +1,29 @@
+# Secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Runtime output and local state
+runtime/
+logs/
+*.log
+__pycache__/
+*.py[cod]
+
+# Local environments and build output
+.venv/
+venv/
+dist/
+build/
+
+# Editor and operating-system noise
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
