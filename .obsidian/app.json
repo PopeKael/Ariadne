@@ -1,0 +1,10 @@
+{
+  "alwaysUpdateLinks": true,
+  "userIgnoreFilters": [
+    "path:Archive",
+    "path:Review",
+    "path:Reports",
+    "path:Logs",
+    "path:00_System/Data"
+  ]
+}

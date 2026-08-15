@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "description": "Curated Ariadne retrieval regression cases. Add a case when a real query is important or previously failed.",
+  "cases": [
+    {
+      "id": "ariadne-librarian",
+      "query": "Ariadne the librarian",
+      "expected_document_ids": ["youtube:1isr91GNrhU"]
+    },
+    {
+      "id": "mcp-retrieval",
+      "query": "MCP retrieval chunk embeddings",
+      "expected_document_ids": ["youtube:fcJZghMc5hk"]
+    },
+    {
+      "id": "synology-docker-terminal",
+      "query": "desktop shortcut Docker Bash terminal Synology",
+      "expected_document_ids": ["url:https://claude.ai/chat/f8f2bb66-b0fb-446b-ab11-094ab6a2669b"]
+    },
+    {
+      "id": "ariadne-github-update",
+      "query": "first GitHub repo update Ariadne",
+      "expected_document_ids": ["youtube:oKrpJKVgN20"]
+    }
+  ]
+}

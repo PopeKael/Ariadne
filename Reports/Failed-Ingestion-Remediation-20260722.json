@@ -1,0 +1,504 @@
+{
+  "report_version": 1,
+  "created_at": "2026-07-22T11:55:36.823551+00:00",
+  "audit": "Reports/Failed-Ingestion-Audit-20260722.json",
+  "receipt": "00_System/Data/rebuild-v1/failed-remediation/4081b816f3b06d66/remediation-receipt.json",
+  "before": {
+    "by_failure_message": {
+      "empty_model_response": 22,
+      "invalid_domain_proposal": 15,
+      "invalid_json_in_model_response": 12,
+      "summary_too_short": 18
+    },
+    "by_classification": {
+      "manual-review": 17,
+      "model-json-failure": 12,
+      "obsolete": 1,
+      "pipeline-defect": 15,
+      "retry-safe": 22
+    }
+  },
+  "after": {
+    "active_catalogue_records": 761,
+    "processed_markdown_files": 763,
+    "failed_markdown_files": 48,
+    "inbox_markdown_files": 0
+  },
+  "recovered": [
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://swanpass.com/map?utm_campaign=amzRef",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155",
+      "status": "accepted",
+      "reason": null
+    }
+  ],
+  "still_failed_after_retry": [
+    {
+      "stable_source_id": "url:https://www.facebook.com/groups/thailandvloghub/permalink/27093096410370516",
+      "status": "rejected",
+      "reason": "summary_too_short"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a250e34-dac0-83ec-a4dc-3c43b32e6816",
+      "status": "rejected",
+      "reason": "summary_too_short"
+    },
+    {
+      "stable_source_id": "url:https://www.perplexity.ai/search/460c3749-b989-4048-a2ef-fcfa9e78ed6c",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a1ad06f-adec-83ec-8424-a30471c82472",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a44406-96a8-8398-85d4-96e760606900",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a3dfef-8fe0-839f-9d15-ddad824eb951",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69ea05e1-e090-8320-bd0f-6d155a0df6d1",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a2e7746-1ec4-83ec-95c8-5b9ae4ffa86f",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a02b61f-a4b8-83ec-a688-f09c62a0cca0",
+      "status": "rejected",
+      "reason": "invalid_json_in_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a4513af-76bc-83ec-9ed2-a4b6c1c4ae0a",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a6e4e6-f6d4-83a1-809b-c9d8740438f8",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a4f06a-8c5c-839c-87fa-4d165a517fb2",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a4fb05b-76e8-83ec-99c3-6bfc4c90eb0b",
+      "status": "rejected",
+      "reason": "summary_too_short"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a350e5c-3810-83ec-a1d4-ef5ce6d3802c",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "sha256:374ee45337fd77d220f6ec2fa970e2e1e8c90c6fbb0e10abf236e0861522596f",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a16c7d6-a7a8-83ec-ab94-9ae51e1bbc03",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a1708f5-80a8-83ec-a67c-e4a35524ae22",
+      "status": "rejected",
+      "reason": "empty_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a165a1a-cf14-83ec-bd68-59f505a8e826",
+      "status": "rejected",
+      "reason": "invalid_json_in_model_response"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a1844fc-d758-83ec-a48d-b49edf5bd759",
+      "status": "rejected",
+      "reason": "summary_too_short"
+    }
+  ],
+  "still_failed_by_reason": {
+    "empty_model_response": 13,
+    "invalid_json_in_model_response": 2,
+    "summary_too_short": 4
+  },
+  "archived": [],
+  "backup": [
+    {
+      "stable_source_id": "url:https://www.facebook.com/groups/thailandvloghub/permalink/27093096410370516",
+      "source": "Failed/(2) The Thailand Vloggers Hub _ Interesting article from Pattaya Mail.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/(2) The Thailand Vloggers Hub _ Interesting article from Pattaya Mail.md",
+      "raw_sha256": "f9c7d185ed8c28d3ef824fa2f63ba0d19d68f4452ec19c46cfd4fa53125ce285",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1b57edea88191bb865381686aebfa/c/69ad8992-6f08-8399-810f-51cf13d44b7d",
+      "source": "Failed/C&W Channel - Suburban Bangkok Entertainment2026-07-15T09_50_09+07_00__51cf13d44b7d.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/C&W Channel - Suburban Bangkok Entertainment2026-07-15T09_50_09+07_00__51cf13d44b7d.md",
+      "raw_sha256": "d901339cd7bafd5f22ead752dfa8bf6a89c69e168c29c1ebded9e9c9a0eed173",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a4502e6-3070-83ec-b1cd-f88cf8270282",
+      "source": "Failed/Crowley and Epstein Conspiracy__f88cf8270282.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Crowley and Epstein Conspiracy__f88cf8270282.md",
+      "raw_sha256": "5a758039797aa5af57550227351b07cc3f0359a4c91bac272cbbc488408630d8",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a43d958-aa54-83ec-bb36-aab6aec49882",
+      "source": "Failed/DGX Spark Output Rates2026-07-11T18_25_06+07_00__aab6aec49882.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/DGX Spark Output Rates2026-07-11T18_25_06+07_00__aab6aec49882.md",
+      "raw_sha256": "e98b2e10e07112c1e2c2b505492f63ec68a5e6fc444ce5dbc91cef484d11456c",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a561aae-98d4-83ec-b0f7-88afbf38b697",
+      "source": "Failed/Discord Communication Advice2026-07-14T18_30_37+07_00__88afbf38b697.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Discord Communication Advice2026-07-14T18_30_37+07_00__88afbf38b697.md",
+      "raw_sha256": "aff1b3ce1aa10cef6c83c3fee40fb92e72782a11f390b5e3cb4ff226a63617cf",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a250e34-dac0-83ec-a4dc-3c43b32e6816",
+      "source": "Failed/Foreign Land Ownership in Thailand2026-07-10T19_56_42+07_00__3c43b32e6816.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Foreign Land Ownership in Thailand2026-07-10T19_56_42+07_00__3c43b32e6816.md",
+      "raw_sha256": "961adfdc06c1bf6b6dc843de7c7f2cff129e832db6aeb72cabe2b4fc572d0c42",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://www.perplexity.ai/search/2a06ec50-6560-4563-a856-9b1a186f9465",
+      "source": "Failed/I need this transcribed2026-07-12T11_49_32+07_00.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/I need this transcribed2026-07-12T11_49_32+07_00.md",
+      "raw_sha256": "a8452a9a5bfee92d637cfa37af595f05a50c9fa724a5ca1a6f50c18749f35b68",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://www.perplexity.ai/search/460c3749-b989-4048-a2ef-fcfa9e78ed6c",
+      "source": "Failed/In this video which is over a year old - _The Last Fuel We'll Ever Need__ -...2026-07-12T11_50_01+07_00.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/In this video which is over a year old - _The Last Fuel We'll Ever Need__ -...2026-07-12T11_50_01+07_00.md",
+      "raw_sha256": "83ce7f0517c67d4573ea6cf6364cae727c2f3ebff8050926ddbd52603132d04a",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a493821-bb90-83ec-9e89-4bf59e75a8a2",
+      "source": "Failed/Lyrica Medication Information2026-07-11T18_54_10+07_00__4bf59e75a8a2.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Lyrica Medication Information2026-07-11T18_54_10+07_00__4bf59e75a8a2.md",
+      "raw_sha256": "0c6de502293b1087042ce4afad87b9c3d4a49ef5dfb3dd71be3b1a103ce65047",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a1ad06f-adec-83ec-8424-a30471c82472",
+      "source": "Failed/My art - Banner Animation Workflow2026-07-14T13_25_29+07_00__a30471c82472.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Banner Animation Workflow2026-07-14T13_25_29+07_00__a30471c82472.md",
+      "raw_sha256": "e083a1a8049739fa5353e9407d7eee9b9538d00e8e3950759caeb5b4412f3cab",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a44406-96a8-8398-85d4-96e760606900",
+      "source": "Failed/My art - Branch · Illuminatus Trilogy Summary2026-07-14T12_42_07+07_00__96e760606900.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Branch · Illuminatus Trilogy Summary2026-07-14T12_42_07+07_00__96e760606900.md",
+      "raw_sha256": "1e72e0f7d036b85826c23532122c12d232ba23ff61f157aa91daa86572dcf3c9",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a3dfef-8fe0-839f-9d15-ddad824eb951",
+      "source": "Failed/My art - Music Creation Inquiry2026-07-14T12_40_18+07_00__ddad824eb951.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Music Creation Inquiry2026-07-14T12_40_18+07_00__ddad824eb951.md",
+      "raw_sha256": "4a7952377d26484a6be2edd27be3a4507b973eb82172f9fb00fc5ca178f5afdf",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69ea05e1-e090-8320-bd0f-6d155a0df6d1",
+      "source": "Failed/My art - Photo Enhancement Request2026-07-14T13_09_49+07_00__6d155a0df6d1.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Photo Enhancement Request2026-07-14T13_09_49+07_00__6d155a0df6d1.md",
+      "raw_sha256": "aa96de0376aa4c4498878863b082d41b624426a2ca92200782b066f5fe27117d",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a2e7746-1ec4-83ec-95c8-5b9ae4ffa86f",
+      "source": "Failed/My art - Photo Sharpening Request2026-07-14T13_16_08+07_00__5b9ae4ffa86f.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Photo Sharpening Request2026-07-14T13_16_08+07_00__5b9ae4ffa86f.md",
+      "raw_sha256": "ddce053b76a450bf8577a6514ed621ad60ba6eefccaecc7d2bdf4cb645812e14",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a02b61f-a4b8-83ec-a688-f09c62a0cca0",
+      "source": "Failed/My art - Remove person from scene2026-07-14T13_11_48+07_00__f09c62a0cca0.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Remove person from scene2026-07-14T13_11_48+07_00__f09c62a0cca0.md",
+      "raw_sha256": "d27a55d4fe884e5987bfc928759aa22a8943d345203d8fd8a6aaf530914b58c6",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/6a4513af-76bc-83ec-9ed2-a4b6c1c4ae0a",
+      "source": "Failed/My art - Shot Analysis and Critique2026-07-14T13_29_53+07_00__a4b6c1c4ae0a.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Shot Analysis and Critique2026-07-14T13_29_53+07_00__a4b6c1c4ae0a.md",
+      "raw_sha256": "cbf1c7043b72658f262096fdd1bb2ba52190465d2d3a54236c72d34788838bdc",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a6e4e6-f6d4-83a1-809b-c9d8740438f8",
+      "source": "Failed/My art - Song Comment Refinement2026-07-14T12_44_27+07_00__c9d8740438f8.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Song Comment Refinement2026-07-14T12_44_27+07_00__c9d8740438f8.md",
+      "raw_sha256": "1f131b12eb423b3e622fc2c735b6013a88b958c8a0ce0562cb5ae228af54f394",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a2393a372c8191964ff91d5a81871e/c/69a4f06a-8c5c-839c-87fa-4d165a517fb2",
+      "source": "Failed/My art - Song creation vibe check2026-07-14T12_43_56+07_00__4d165a517fb2.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My art - Song creation vibe check2026-07-14T12_43_56+07_00__4d165a517fb2.md",
+      "raw_sha256": "33b5ac28808e2a957a0711b226ed146e826355aa71756cbb0e6c7ac32efb7dd2",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a4fb05b-76e8-83ec-99c3-6bfc4c90eb0b",
+      "source": "Failed/My Hosting - Stage 1.7 Parse2026-07-09T23_12_30+07_00__6bfc4c90eb0b.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/My Hosting - Stage 1.7 Parse2026-07-09T23_12_30+07_00__6bfc4c90eb0b.md",
+      "raw_sha256": "a6c93e25fb8897fa0958a2949f24ae4eaea608ea81da46cd9e6aeec5db2eca24",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6842471b-4d2c-8001-ba62-e8f90ab0ad97",
+      "source": "Failed/Pope Kael TV - 4️⃣ Tech & Streaming Setup Thread2026-07-14T13_39_47+07_00__e8f90ab0ad97.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Pope Kael TV - 4️⃣ Tech & Streaming Setup Thread2026-07-14T13_39_47+07_00__e8f90ab0ad97.md",
+      "raw_sha256": "e4722a06186978d1cdad5413eb33840a43f062cf969c4a21e03445412c84e2fb",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69dc5d74-c0ac-8398-ad3e-1c70979cd3a7",
+      "source": "Failed/Pope Kael TV - Everyday AI Correspondence2026-07-19T13_56_32+07_00__1c70979cd3a7.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Pope Kael TV - Everyday AI Correspondence2026-07-19T13_56_32+07_00__1c70979cd3a7.md",
+      "raw_sha256": "3d839ff6efa589d96df99c0597f7b07085fcae112e70c94adf3563c9838dae26",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a59f8a7-3730-83ec-a5f5-6f2ea56da6df",
+      "source": "Failed/Ryzen Strix Halo Availability2026-07-18T12_40_24+07_00__6f2ea56da6df.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Ryzen Strix Halo Availability2026-07-18T12_40_24+07_00__6f2ea56da6df.md",
+      "raw_sha256": "d39e5fc0903adf23f1aa9a350e00f51def950ce291ab272c0500e133c0135298",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://swanpass.com/map?utm_campaign=amzRef",
+      "source": "Failed/Swanpass — Nightlife Spots & Entertainment Map in Thailand, Vietnam,2026-07-17T10_40_30+07_00[[Swanpass]]__paign=amzRef.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Swanpass — Nightlife Spots & Entertainment Map in Thailand, Vietnam,2026-07-17T10_40_30+07_00[[Swanpass]]__paign=amzRef.md",
+      "raw_sha256": "d588a47f0fd9508b2adff2b229f38cfd6e2e9672f50e94be910be7e45ebd0a95",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a36525a-797c-83ec-abfd-5bdd2ffd9807",
+      "source": "Failed/Thailand Medical Hub Story2026-07-11T15_04_10+07_00__5bdd2ffd9807.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Thailand Medical Hub Story2026-07-11T15_04_10+07_00__5bdd2ffd9807.md",
+      "raw_sha256": "8515b3dd82e5544ba6640c03f903acd80da44c34fd20339c6f8bfb2930e16ee8",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a350e5c-3810-83ec-a1d4-ef5ce6d3802c",
+      "source": "Failed/The Patreon Tribe - Ambient Track Artwork Ideas2026-07-14T12_34_02+07_00__ef5ce6d3802c.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/The Patreon Tribe - Ambient Track Artwork Ideas2026-07-14T12_34_02+07_00__ef5ce6d3802c.md",
+      "raw_sha256": "6ee93921988ff05b67af48b5b7d6048042b7050c44a5d5770eb7e8acc3abb118",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1d0da3-9bd8-83ec-94ea-e32065ff33a3",
+      "source": "Failed/The Patreon Tribe - IFTTT Build Optimization2026-07-14T12_32_28+07_00__e32065ff33a3.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/The Patreon Tribe - IFTTT Build Optimization2026-07-14T12_32_28+07_00__e32065ff33a3.md",
+      "raw_sha256": "642e7e17c22ab1d8c2c674a55974f1b795592b20d4bd6e5f0ec4245c48b00e57",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69a7a8fb-c998-839f-b8cd-cfc7d380c450",
+      "source": "Failed/The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00__cfc7d380c450.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/The Rabbit Hole - AI in Daily Life2026-07-13T22_43_05+07_00__cfc7d380c450.md",
+      "raw_sha256": "997d893c75e0fd8d8db733fd133d289a668d3ab3cc90e828a8ba1a38eebc9855",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "sha256:374ee45337fd77d220f6ec2fa970e2e1e8c90c6fbb0e10abf236e0861522596f",
+      "source": "Failed/The Truth about Thai Hospitals - 2026-07-09 12.45__e0861522596f.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/The Truth about Thai Hospitals - 2026-07-09 12.45__e0861522596f.md",
+      "raw_sha256": "f72b0b20bdd363da2771514b68b64dbd14976b294aa52c408cdf2f5be2fd9be5",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a2ed742-a590-83ec-9d72-6b6c8403451e",
+      "source": "Failed/Tungsten Supply and Demand2026-07-11T12_15_23+07_00__6b6c8403451e.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Tungsten Supply and Demand2026-07-11T12_15_23+07_00__6b6c8403451e.md",
+      "raw_sha256": "c10adcc0513336d039fe7e5c9804b563334b9d8b66bc003a84add85e0be48eca",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://www.perplexity.ai/search/bd664748-1150-414b-8329-725ae14ec731",
+      "source": "Failed/What does it do exactly_2026-07-12T11_50_42+07_00.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/What does it do exactly_2026-07-12T11_50_42+07_00.md",
+      "raw_sha256": "3e74e6c4ce1ce4541737fd7b2f83347127a43df6c037f334faf980e7dfa38597",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69a1bd5b03408191bab235fccc0a9bff/c/69a1bd92-5f84-839a-a2e8-cca6f761db71",
+      "source": "Failed/Window into the World - Structural Change Filter2026-07-11T19_42_31+07_00__cca6f761db71.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/Window into the World - Structural Change Filter2026-07-11T19_42_31+07_00__cca6f761db71.md",
+      "raw_sha256": "f7f645e2459239e57aa023daef42ad7d5395d1d88b22a880b210334843e94282",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a13052b-6cc4-83ec-af0b-66faefb79174",
+      "source": "Failed/YouTube Archive Refresh - 5 Things I Love About Bangkok2026-07-12T11_37_18+07_00__66faefb79174.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/YouTube Archive Refresh - 5 Things I Love About Bangkok2026-07-12T11_37_18+07_00__66faefb79174.md",
+      "raw_sha256": "b1686d1238befa4272319fed4ab2066a874744dae065a35ff028d25c1123588d",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a16c7d6-a7a8-83ec-ab94-9ae51e1bbc03",
+      "source": "Failed/YouTube Archive Refresh - Ladyboy Dating in Thailand2026-07-12T11_38_50+07_00__9ae51e1bbc03.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/YouTube Archive Refresh - Ladyboy Dating in Thailand2026-07-12T11_38_50+07_00__9ae51e1bbc03.md",
+      "raw_sha256": "593b74a7c15a05339581708855126e27ecacdc1184a47745ce006ef2fea54fe2",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a1708f5-80a8-83ec-a67c-e4a35524ae22",
+      "source": "Failed/YouTube Archive Refresh - Thailand Plans Gone Awry2026-07-12T11_39_04+07_00__e4a35524ae22.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/YouTube Archive Refresh - Thailand Plans Gone Awry2026-07-12T11_39_04+07_00__e4a35524ae22.md",
+      "raw_sha256": "e2ec94918c7d36f0f900f33ff2dd93ee6aa7988708e44cd26c300a88885258a7",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/6a165a1a-cf14-83ec-bd68-59f505a8e826",
+      "source": "Failed/YouTube Archive Refresh - Thailand Video Titles Refresh2026-07-12T11_37_35+07_00__59f505a8e826.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/YouTube Archive Refresh - Thailand Video Titles Refresh2026-07-12T11_37_35+07_00__59f505a8e826.md",
+      "raw_sha256": "ae5c4bcc06468f0ab48b351c4f8dc42688d0b71a86bb001f0fe9832666ba594e",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a1844fc-d758-83ec-a48d-b49edf5bd759",
+      "source": "Failed/YouTube Search and Ranking2026-07-10T19_46_48+07_00__b49edf5bd759.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/YouTube Search and Ranking2026-07-10T19_46_48+07_00__b49edf5bd759.md",
+      "raw_sha256": "b41810e4f552423c2986e5a2f2350102ddba816281c9a5adaf57536a80d9ff84",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a3e3078-d86c-83ec-8ddf-14f2b7010155",
+      "source": "Failed/AI Integration Review2026-07-11T17_38_02+07_00__14f2b7010155.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/AI Integration Review2026-07-11T17_38_02+07_00__14f2b7010155.md",
+      "raw_sha256": "c15685e13aa3f729a7a552dc22b3642a64c0e5ff0e40c11cbbbcdc4b37ec95ed",
+      "action": "already_backed_up"
+    },
+    {
+      "stable_source_id": "sha256:6480fa936c1709d701060308f21f3287ae826fc4e6af4c0d5413b54ca9b3557a",
+      "source": "Failed/untitled__b54ca9b3557a.md",
+      "backup": "Archive/FailedRemediation/4081b816f3b06d66/originals/untitled__b54ca9b3557a.md",
+      "raw_sha256": "9d1cd150e3e949a9520ec84785c1644ae289a2698073f088dfbae65ce96e184f",
+      "action": "already_backed_up_source_already_archived"
+    }
+  ],
+  "embedding_update": {
+    "indexed": 4165,
+    "skipped": 1968,
+    "failed": 0,
+    "removed": 3903,
+    "documents": 761,
+    "elapsed_seconds": 59.359,
+    "chunks": 6133,
+    "storage_bytes": 75684210,
+    "model": "nomic-embed-text",
+    "dimensions": 768,
+    "failure_count": 0
+  },
+  "manual_review_count": 48
+}

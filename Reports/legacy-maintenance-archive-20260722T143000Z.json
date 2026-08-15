@@ -1,0 +1,135 @@
+{
+  "archive_version": 1,
+  "created_at": "2026-07-22T15:33:18.686036+00:00",
+  "archive_root": "Archive/LegacyMaintenance/20260722T143000Z/00_System",
+  "dry_run": false,
+  "files": [
+    {
+      "original_path": "00_System/ariadne.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/ariadne.ps1",
+      "sha256": "bd9afdaa89ad26d977a8395d2e1e579fea39243234b2d178d6fac9cb27193127",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Capture-ControlledOllama.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Capture-ControlledOllama.ps1",
+      "sha256": "699c408dc6d01fbd5eb5cd4b81d7043d4dcc7391a1105f43ce489295f4ce4edb",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Commit.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Commit.ps1",
+      "sha256": "63925f3b1bcbb68249a23ef6f2931d16422b22e452665673c610337957ed709e",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Compile-Knowledge.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Compile-Knowledge.ps1",
+      "sha256": "2107e6e1eee021134cafc919e6e042cdb8867f289b464e8307df639196bfa52c",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/GraphHealth.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/GraphHealth.ps1",
+      "sha256": "a87edd0cff191f8c1ae1f4e5af322dfd8898089353adb8837e1f21f2fb80934a",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Invoke-GraphLinking.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Invoke-GraphLinking.ps1",
+      "sha256": "35f8f7513d25c71853920015ce6d46cdd2cbf22dcebb6ef24d13fe35e86a743c",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Migrate-LegacyGraph.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Migrate-LegacyGraph.ps1",
+      "sha256": "381dbace0faffdc0ad73c8d087dcccf55d5a07ae4fae8d7f20474a3e1688a35c",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Migrate-PersonEntities.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Migrate-PersonEntities.ps1",
+      "sha256": "5bdff2976728839553e87438f424b6bd864ec0c9854d946cc55cd8461edb9a50",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Publish-Knowledge.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Publish-Knowledge.ps1",
+      "sha256": "1e6995a0fef0dd0dafba646a9520dc8d0d361c62e077037d25f407a3c657d7a5",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Rebuild-GraphRelations.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Rebuild-GraphRelations.ps1",
+      "sha256": "e57aa84bec34d9efc89d6c1c1a752cc3117ea7aa5466e8fa68dbea35bd5fa356",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Reclassification-Status.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Reclassification-Status.ps1",
+      "sha256": "dbbde327d016326265df39d5eed8126278604835b17a3d3fba601acc92500a0b",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Reclassify-All.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Reclassify-All.ps1",
+      "sha256": "376ac10fefd9ea44f659ea3113e55089105ef1cb1f0968c3db0b44809f86d7cc",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Reconcile-Graph.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Reconcile-Graph.ps1",
+      "sha256": "272e2c21ce5ec6da27a7ca84b3201a59d06569911cd17f0ecbd5fec2e2285b3e",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Repair-LibraryIndex.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Repair-LibraryIndex.ps1",
+      "sha256": "c0601b302169a1574f91cb3910b5861de7b41eaf7861afbf526201fa9ad21ec7",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Repair-RetryQueue.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Repair-RetryQueue.ps1",
+      "sha256": "fb1222cb8a88a86092f4f2e3c00a066a2897f0b5ba0ff3f29f745430dc7701a7",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Resolve-PersonIdentities.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Resolve-PersonIdentities.ps1",
+      "sha256": "3e245d1287e15d6e1b6a926d700ca5f2d79823f280b0497cf0d056c4a5281616",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Resort-Archive.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Resort-Archive.ps1",
+      "sha256": "6791071031e31f43422e27f1b94722cfcfef9ee24d5deb3d8d1e9513786857f5",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Retry-FailedIngestion.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Retry-FailedIngestion.ps1",
+      "sha256": "9ccde4544be460ef2cd878ccf40e5cbbf87c766bfb1bee9281e4c246c3ab2b33",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/Run Injest.ps1",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/Run Injest.ps1",
+      "sha256": "ee6c84ba362eddf279b70f7983851e591f95b707c9cc248e728ccc95c6861476",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/cleanup_legacy_graph.py",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/cleanup_legacy_graph.py",
+      "sha256": "037f507e75baa8dc403a29f5be83f73ef48ea8fff15da83dffbb3f3a989c18d2",
+      "action": "already_archived"
+    },
+    {
+      "original_path": "00_System/System-Reference.html",
+      "archived_path": "Archive/LegacyMaintenance/20260722T143000Z/00_System/System-Reference.html",
+      "sha256": "5b0dc37bb6aed3c21de51b7c152d287ad05a609e8effe3c4db34a819223e61da",
+      "action": "already_archived"
+    }
+  ],
+  "count": 21
+}

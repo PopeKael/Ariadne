@@ -1,29 +1,173 @@
-# Secrets and machine-specific configuration
+# ==========================================================
+# Project Ariadne
+# KnowledgeVault Template
+#
+# This repository provides the structure and framework for
+# an Ariadne KnowledgeVault while excluding user-specific
+# knowledge and personal data.
+# ==========================================================
+
+# ----------------------------------------------------------
+# Obsidian
+# Keep only the folder and README
+# ----------------------------------------------------------
+
+.obsidian/**
+!.obsidian/
+!.obsidian/README.md
+
+# ----------------------------------------------------------
+# Private KnowledgeVault folders
+# Keep directory structure only
+# ----------------------------------------------------------
+
+Archive/**
+!Archive/
+!Archive/README.md
+
+Entities/**
+!Entities/
+!Entities/README.md
+
+Failed/**
+!Failed/
+!Failed/README.md
+
+Inbox/**
+!Inbox/
+!Inbox/README.md
+
+Journal/**
+!Journal/
+!Journal/README.md
+
+Logs/**
+!Logs/
+!Logs/README.md
+
+People/**
+!People/
+!People/README.md
+
+Processed/**
+!Processed/
+!Processed/README.md
+
+Review/**
+!Review/
+!Review/README.md
+
+Wiki/**
+!Wiki/
+!Wiki/README.md
+!Wiki/Concepts/
+!Wiki/Concepts/README.md
+!Wiki/Sources/
+!Wiki/Sources/README.md
+
+# ----------------------------------------------------------
+# Public KnowledgeVault
+# These folders are intentionally version controlled
+# ----------------------------------------------------------
+
+# 00_System/
+# docs/
+# Projects/
+
+# Generated local semantic-search index; rebuilt from this vault.
+/00_System/Data/embedding-index.json
+/00_System/Data/rebuild-v1/
+
+# Local browser librarian jobs and session caches.
+/00_System/Data/QueryJobs/*
+/00_System/Data/QueryCache/*
+
+# ----------------------------------------------------------
+# Operating System Files
+# ----------------------------------------------------------
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ----------------------------------------------------------
+# Temporary / Backup Files
+# ----------------------------------------------------------
+
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.swp
+*.swo
+*~
+
+# ----------------------------------------------------------
+# Logs
+# ----------------------------------------------------------
+
+*.log
+
+# ----------------------------------------------------------
+# Databases / Cache
+# ----------------------------------------------------------
+
+*.db
+*.sqlite
+*.sqlite3
+*.cache
+
+# ----------------------------------------------------------
+# Python
+# ----------------------------------------------------------
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ----------------------------------------------------------
+# Node.js
+# ----------------------------------------------------------
+
+node_modules/
+
+# ----------------------------------------------------------
+# Visual Studio Code
+# ----------------------------------------------------------
+
+.vscode/
+
+# ----------------------------------------------------------
+# JetBrains IDEs
+# ----------------------------------------------------------
+
+.idea/
+
+# ----------------------------------------------------------
+# Build / Distribution
+# ----------------------------------------------------------
+
+dist/
+build/
+
+# ----------------------------------------------------------
+# Environment Files
+# ----------------------------------------------------------
+
 .env
 .env.*
 !.env.example
+Reports/Ariadne/
+Reports/rebuild-v1-*
+
+# Control-plane local state
+runtime/
 secrets/
 credentials/
+private/
 *.pem
 *.key
 *.pfx
 *.p12
-
-# Runtime output and local state
-runtime/
-logs/
-*.log
-__pycache__/
-*.py[cod]
-
-# Local environments and build output
-.venv/
-venv/
-dist/
-build/
-
-# Editor and operating-system noise
-.vscode/
-.idea/
-Thumbs.db
-Desktop.ini
