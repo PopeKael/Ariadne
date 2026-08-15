@@ -3,7 +3,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $Vault = Split-Path -Parent $PSScriptRoot
-Push-Location $Vault
+Push-Location $PSScriptRoot
 try {
     & py -3 -m unittest `
         (Join-Path $PSScriptRoot 'test_ollama_adapter.py') `

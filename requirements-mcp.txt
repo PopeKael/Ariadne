@@ -1,0 +1,3 @@
+# Project-managed MCP runtime for the authenticated external endpoint.
+# Keep this exact while the endpoint is being validated against MCP 2026-07-28.
+mcp==2.0.0
