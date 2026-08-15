@@ -20,7 +20,8 @@ local control-plane interface that presents and operates those capabilities.
 
 See [`docs/FOUR-PARCELS.md`](docs/FOUR-PARCELS.md) for ownership boundaries
 and [`docs/CHECKPOINT-2026-08-15.md`](docs/CHECKPOINT-2026-08-15.md) for the
-current system state.
+current system state. The concise [handover](docs/HANDOVER-2026-08-15.md)
+records the consolidation decisions and earlier rabbit holes.
 
 ## Local generated data
 

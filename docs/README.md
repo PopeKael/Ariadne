@@ -14,6 +14,8 @@ Start with:
   Toolshed, and Workspace/interface.
 - [Current checkpoint](CHECKPOINT-2026-08-15.md) — merged and running system
   state.
+- [Current handover](HANDOVER-2026-08-15.md) — consolidated state, rabbit
+  holes, and the next sensible step.
 
 ## Typical contents
 
