@@ -11,6 +11,17 @@ local control-plane interface that presents and operates those capabilities.
 - [`docs/`](docs/README.md) — project design, standards, and roadmaps.
 - Knowledge folders — the user-owned Markdown knowledge store, with private content excluded by [`.gitignore`](.gitignore).
 
+## Four architectural parcels
+
+- **Knowledge Vault** — memory and durable evidence.
+- **MCP** — the nervous system connecting reasoning engines to information and capabilities.
+- **Toolshed** — controlled hands for local actions and services.
+- **Workspace/interface** — the environment Ariadne and Wazza operate through.
+
+See [`docs/FOUR-PARCELS.md`](docs/FOUR-PARCELS.md) for ownership boundaries
+and [`docs/CHECKPOINT-2026-08-15.md`](docs/CHECKPOINT-2026-08-15.md) for the
+current system state.
+
 ## Local generated data
 
 The local semantic-search index at `00_System/Data/embedding-index.json` is generated from the vault. It is deliberately excluded from Git because it is machine-specific, can grow large, and can be rebuilt.
