@@ -16,6 +16,10 @@ Reference architecture and the public/private boundary are documented in
 `docs/`. The Vault root can be overridden temporarily with
 `ARIADNE_VAULT_ROOT`; by default it is the repository root.
 
+For somebody deploying their own copy, start with
+[`../docs/CLONE-AND-DEPLOY.md`](../docs/CLONE-AND-DEPLOY.md). The tray
+dependencies are listed in [`requirements.txt`](requirements.txt).
+
 Run it from PowerShell:
 
 ```powershell

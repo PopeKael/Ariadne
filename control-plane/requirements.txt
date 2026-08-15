@@ -1,0 +1,4 @@
+# Dependencies for the optional Windows tray companion.
+# The browser server itself uses Python's standard library.
+Pillow>=10,<13
+pystray>=0.19,<1

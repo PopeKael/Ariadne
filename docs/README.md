@@ -16,6 +16,8 @@ Start with:
   state.
 - [Current handover](HANDOVER-2026-08-15.md) — consolidated state, rabbit
   holes, and the next sensible step.
+- [Clone and deploy](CLONE-AND-DEPLOY.md) — the starting path for a new
+  independent local installation.
 
 ## Typical contents
 
