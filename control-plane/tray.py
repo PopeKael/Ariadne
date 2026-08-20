@@ -4,6 +4,7 @@ import os
 import sys
 import threading
 import webbrowser
+import ctypes
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -13,6 +14,27 @@ import server
 
 
 URL = f"http://{server.HOST}:{server.PORT}/"
+TRAY_MUTEX_NAME = "Local\\AriadneControlPlaneTray"
+
+
+def acquire_tray_instance() -> int | None | bool:
+    """Return a Windows mutex handle, False when another tray owns it."""
+    if os.name != "nt":
+        return None
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    handle = kernel32.CreateMutexW(None, False, TRAY_MUTEX_NAME)
+    if not handle:
+        return None
+    if ctypes.get_last_error() == 183:  # ERROR_ALREADY_EXISTS
+        kernel32.CloseHandle(handle)
+        return False
+    return int(handle)
+
+
+def release_tray_instance(handle: int | None | bool) -> None:
+    if os.name == "nt" and isinstance(handle, int) and handle:
+        ctypes.windll.kernel32.CloseHandle(handle)
 
 
 def make_librarian_icon() -> Image.Image:
@@ -29,8 +51,13 @@ def make_librarian_icon() -> Image.Image:
     return image
 
 
-def start_local_server() -> server.ThreadingHTTPServer:
-    httpd = server.ThreadingHTTPServer((server.HOST, server.PORT), server.AriadneHandler)
+def start_local_server() -> server.ThreadingHTTPServer | None:
+    try:
+        httpd = server.ThreadingHTTPServer((server.HOST, server.PORT), server.AriadneHandler)
+    except OSError as exc:
+        if getattr(exc, "winerror", None) == 10048 or "address already in use" in str(exc).lower():
+            return None
+        raise
     server.start_lifecycle_watchdog()
     thread = threading.Thread(target=httpd.serve_forever, name="ariadne-http", daemon=True)
     thread.start()
@@ -51,6 +78,9 @@ def quit_ariadne(icon: pystray.Icon, item: pystray.MenuItem) -> None:
 
 
 def main() -> None:
+    tray_instance = acquire_tray_instance()
+    if tray_instance is False:
+        return
     httpd = start_local_server()
     menu = pystray.Menu(
         pystray.MenuItem("Open Ariadne dashboard", open_dashboard, default=True),
@@ -62,10 +92,13 @@ def main() -> None:
     try:
         icon.run()
     finally:
-        server.release_workloads(force=True)
-        httpd.shutdown()
-        httpd.server_close()
+        if httpd is not None:
+            server.release_workloads(force=True)
+            httpd.shutdown()
+            httpd.server_close()
+        release_tray_instance(tray_instance)
 
 
 if __name__ == "__main__":
     main()
+

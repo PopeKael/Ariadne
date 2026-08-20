@@ -1,8 +1,8 @@
 const purpose = {
   C: "Windows and applications",
-  D: "Durable data and models",
+  D: "Durable data and repositories",
   E: "Video editing",
-  F: "Linux workspace plus games",
+  F: "AI models and Linux workspace",
   G: "Linux scratch drive plus small games",
 };
 
@@ -216,11 +216,18 @@ function renderQuickLaunch(services) {
   for (const [name, service] of Object.entries(services || {})) {
     const root = document.getElementById(name + "-status");
     if (!root) continue;
-    root.classList.remove("online", "starting", "offline");
+    root.classList.remove("online", "starting", "offline", "degraded", "critical", "unknown");
     const state = service?.state || (service?.available ? "online" : "offline");
     root.classList.add(state);
-    root.textContent = state === "online" ? "Online" : state === "starting" ? "Starting" : "Offline";
+    const label = name === "openai"
+      ? ({online: "Operational", degraded: "Incident", critical: "Outage", unknown: "Unknown"}[state] || "Unknown")
+      : (state === "online" ? "Online" : state === "starting" ? "Starting" : "Offline");
+    root.textContent = label;
     root.title = service?.detail || "";
+    if (name === "openai") {
+      const detail = document.querySelector("#openai-status-detail");
+      if (detail) detail.textContent = service?.summary || service?.detail || "Public service status";
+    }
   }
 }
 function render(data) {
@@ -586,6 +593,18 @@ function setupVaultControls() {
   document.querySelector("#vault-librarian-button")?.addEventListener("click", () => runVaultQuery("answer"));
 }
 function setupLaunchActions() {
+  const openWebUI = document.querySelector("#openwebui-launch");
+  openWebUI?.addEventListener("click", (event) => {
+    event.preventDefault();
+    const status = document.querySelector("#openwebui-status");
+    if (status) {
+      status.classList.remove("offline", "online");
+      status.classList.add("starting");
+      status.textContent = "Preparing";
+    }
+    window.open("/openwebui-loader", "_blank");
+  });
+
   const launch = document.querySelector('a[href="/launch/lmstudio"]');
   if (!launch) return;
   launch.addEventListener("click", async (event) => {
@@ -635,3 +654,4 @@ setupResourceControls();
 startVaultSession();
 refresh();
 setInterval(refresh, 5000);
+

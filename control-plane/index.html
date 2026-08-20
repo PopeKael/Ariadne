@@ -80,15 +80,20 @@
           <span class="badge">LINKS</span>
         </div>
         <div class="launch-list">
+          <a class="launch-row" href="https://status.openai.com/" target="_blank" rel="noopener">
+            <span class="launch-icon openai-icon">✦</span>
+            <span class="launch-copy"><strong>ChatGPT / OpenAI</strong><small id="openai-status-detail">Public service status</small></span>
+            <span class="launch-status" id="openai-status">Checking</span><span class="launch-arrow">↗</span>
+          </a>
           <a class="launch-row" href="http://192.168.1.200:5000/" target="_blank" rel="noopener">
             <span class="launch-icon synology-icon">▣</span>
             <span class="launch-copy"><strong>Synology</strong><small>Hera NAS · DSM</small></span>
             <span class="launch-status" id="synology-status">Checking</span><span class="launch-arrow">↗</span>
           </a>
-          <a class="launch-row" href="http://127.0.0.1:3000/" target="_blank" rel="noopener">
+          <a class="launch-row" id="openwebui-launch" href="/openwebui-loader" target="_blank" rel="noopener">
             <span class="launch-icon ollama-icon">◉</span>
             <span class="launch-copy"><strong>Open WebUI</strong><small>Ollama · local models</small></span>
-            <span class="launch-status" id="ollama-status">Checking</span><span class="launch-arrow">↗</span>
+            <span class="launch-status" id="openwebui-status">Checking</span><span class="launch-arrow">↗</span>
           </a>
           <a class="launch-row" href="http://127.0.0.1:9000/" target="_blank" rel="noopener">
             <span class="launch-icon portainer-icon">◆</span>
@@ -161,7 +166,7 @@
   </section>
   <section class="panel notice">
     <div class="notice-icon">✓</div>
-    <div><strong>Read-only foundation</strong><p id="notice">Ariadne owns the active Knowledge Vault session. Workers are cancelled and local models are asked to release memory when this page closes.</p></div>
+    <div><strong>Session-owned workloads</strong><p id="notice">Leave this page open for deliberate background work. When the last Ariadne session closes or expires, local jobs are cancelled, Ollama models are unloaded, and managed workloads are stopped.</p></div>
     <span class="last-update" id="last-update">—</span>
   </section>
 </main>
@@ -170,3 +175,4 @@
   <script src="/app.js"></script>
 </body>
 </html>
+

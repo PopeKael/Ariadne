@@ -41,21 +41,26 @@ if (-not $python) {
 $pythonw = Join-Path (Split-Path -Parent $python) 'pythonw.exe'
 $launcher = if (Test-Path -LiteralPath $pythonw -PathType Leaf) { $pythonw } else { $python }
 
-$existing = Get-NetTCPConnection -State Listen -LocalPort 8765 -ErrorAction SilentlyContinue
-if (-not $existing) {
-    Start-Process -FilePath $launcher -ArgumentList ('"{0}"' -f $tray) -WorkingDirectory $projectRoot -WindowStyle Hidden
-}
+Start-Process -FilePath $launcher -ArgumentList ('"{0}"' -f $tray) -WorkingDirectory $projectRoot -WindowStyle Hidden
 
 if ($OpenBrowser) {
-    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+    $opened = $false
+    for ($attempt = 0; $attempt -lt 120; $attempt++) {
         try {
             $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 1
             if ($response.StatusCode -eq 200) {
                 Start-Process $url
+                $opened = $true
                 break
             }
         }
         catch { }
         Start-Sleep -Milliseconds 250
     }
+    if (-not $opened) {
+        # Give the user a browser window even if the tray companion is still
+        # starting; the page will become available as soon as it binds.
+        Start-Process $url
+    }
 }
+

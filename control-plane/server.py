@@ -25,6 +25,15 @@ PROJECT_ROOT = ROOT.parent
 HOST = os.environ.get("ARIADNE_BIND_ADDRESS", "127.0.0.1")
 PORT = int(os.environ.get("ARIADNE_PORT", "8765"))
 LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
+DOCKER_DESKTOP_PATH = Path(r"C:\Program Files\Docker\Docker\Docker Desktop.exe")
+DOCKER_PATH = Path(r"C:\Program Files\Docker\Docker\resources\bin\docker.exe")
+OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
+OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "5m")
+OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://127.0.0.1:3000/")
+OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
+OPENAI_STATUS_URL = "https://status.openai.com/api/v2/summary.json"
+OPENAI_STATUS_CACHE_TTL_SECONDS = 45
 VAULT_ROOT = Path(os.environ.get("ARIADNE_VAULT_ROOT", str(PROJECT_ROOT))).expanduser().resolve()
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
 VAULT_WORKER_PATH = ROOT / "vault_worker.py"
@@ -37,6 +46,9 @@ WAN2GP_LOG = ROOT / "runtime" / "linux-renderer.log"
 SESSION_TTL_SECONDS = 20
 JOB_TIMEOUT_SECONDS = 300
 SESSION_LOCK = threading.RLock()
+OPENAI_STATUS_LOCK = threading.Lock()
+OPENAI_STATUS_CACHE: dict[str, object] | None = None
+OPENAI_STATUS_CACHE_AT = 0.0
 SESSIONS: dict[str, dict[str, object]] = {}
 JOBS: dict[str, dict[str, object]] = {}
 PROFILE_LOCK = threading.RLock()
@@ -47,6 +59,7 @@ BROWSER_HEARTBEAT_TIMEOUT_SECONDS = 20
 LAST_BROWSER_HEARTBEAT = time.monotonic()
 LIFECYCLE_THREAD: threading.Thread | None = None
 WSL_SESSION_PROCESSES: dict[str, subprocess.Popen] = {}
+IDLE_SHUTDOWN_DONE = False
 VAULT_ACTIONS = {
     "ingest": ("Daily-Ingest.ps1", []),
     "embedding_status": ("Build-Embeddings.ps1", ["-Status"]),
@@ -273,29 +286,201 @@ def json_http(url: str, timeout: float = 2.5) -> dict[str, object]:
         return json.loads(response.read().decode("utf-8"))
 
 
-def ollama_status() -> dict[str, object]:
+def ollama_catalog() -> dict[str, object]:
     try:
-        tags = json_http("http://127.0.0.1:11434/api/tags")
+        tags = json_http(f"{OLLAMA_URL}/api/tags")
         models = tags.get("models", []) if isinstance(tags, dict) else []
-        running = json_http("http://127.0.0.1:11434/api/ps")
+        running = json_http(f"{OLLAMA_URL}/api/ps")
         loaded = running.get("models", []) if isinstance(running, dict) else []
-        loaded_names = [str(item.get("name")) for item in loaded if isinstance(item, dict) and item.get("name")]
-        detail = f"{len(models)} local model{'s' if len(models) != 1 else ''} available"
-        if loaded_names:
-            detail = f"{loaded_names[0]} loaded"
-        return {
-            "available": True,
-            "state": "online",
-            "detail": detail,
-            "models": len(models),
-            "loaded": loaded_names,
-        }
+        model_rows = []
+        for item in models:
+            if not isinstance(item, dict) or not item.get("name"):
+                continue
+            model_rows.append({
+                "name": str(item["name"]),
+                "size": item.get("size"),
+                "modified_at": item.get("modified_at"),
+            })
+        loaded_names = [
+            str(item.get("name") or item.get("model"))
+            for item in loaded
+            if isinstance(item, dict) and (item.get("name") or item.get("model"))
+        ]
+        return {"available": True, "models": model_rows, "loaded": loaded_names}
     except (OSError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
-        return {"available": False, "state": "offline", "detail": str(exc)}
+        return {"available": False, "models": [], "loaded": [], "detail": str(exc)}
+
+
+def ollama_status() -> dict[str, object]:
+    catalog = ollama_catalog()
+    if not catalog["available"]:
+        return {"available": False, "state": "offline", "detail": catalog.get("detail", "Ollama is unavailable.")}
+    models = catalog["models"]
+    loaded_names = catalog["loaded"]
+    detail = f"{len(models)} local model{'s' if len(models) != 1 else ''} available"
+    if loaded_names:
+        detail = f"{loaded_names[0]} loaded"
+    return {
+        "available": True,
+        "state": "online",
+        "detail": detail,
+        "models": len(models),
+        "loaded": loaded_names,
+    }
+
+
+def openwebui_status() -> dict[str, object]:
+    available = probe_http(OPEN_WEBUI_URL)
+    return {
+        "available": available,
+        "state": "online" if available else "offline",
+        "detail": "Open WebUI · local browser interface" if available else "Open WebUI is not running",
+    }
+
+
+def openai_status() -> dict[str, object]:
+    """Read the public OpenAI status feed without blocking the dashboard repeatedly."""
+    global OPENAI_STATUS_CACHE, OPENAI_STATUS_CACHE_AT
+    now = time.monotonic()
+    with OPENAI_STATUS_LOCK:
+        if OPENAI_STATUS_CACHE and now - OPENAI_STATUS_CACHE_AT < OPENAI_STATUS_CACHE_TTL_SECONDS:
+            return dict(OPENAI_STATUS_CACHE)
+
+        try:
+            payload = json_http(OPENAI_STATUS_URL, timeout=3.0)
+            page_status = payload.get("status", {}) if isinstance(payload, dict) else {}
+            incidents = payload.get("incidents", []) if isinstance(payload, dict) else []
+            active_incidents = [
+                incident for incident in incidents
+                if isinstance(incident, dict)
+                and str(incident.get("status") or "").lower() not in {"resolved", "completed"}
+            ]
+
+            if active_incidents:
+                incident = active_incidents[0]
+                impact = str(incident.get("impact") or "").lower()
+                state = "critical" if impact in {"critical", "major"} else "degraded"
+                name = str(incident.get("name") or "OpenAI service incident")
+                incident_state = str(incident.get("status") or "ongoing").replace("_", " ").title()
+                result = {
+                    "available": True,
+                    "state": state,
+                    "summary": f"{name} · {incident_state}",
+                    "detail": f"{name} · {incident_state}. OpenAI status page has the latest update.",
+                    "url": "https://status.openai.com/",
+                }
+            else:
+                indicator = str(page_status.get("indicator") or "none").lower()
+                state = "online" if indicator in {"none", "operational"} else "critical" if indicator == "critical" else "degraded"
+                description = str(page_status.get("description") or "OpenAI status available")
+                result = {
+                    "available": True,
+                    "state": state,
+                    "summary": description,
+                    "detail": description,
+                    "url": "https://status.openai.com/",
+                }
+            OPENAI_STATUS_CACHE = result
+            OPENAI_STATUS_CACHE_AT = now
+            return dict(result)
+        except (OSError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            if OPENAI_STATUS_CACHE:
+                result = dict(OPENAI_STATUS_CACHE)
+                result["summary"] = f"{result.get('summary', 'Last known status')} · feed delayed"
+                result["detail"] = f"{result.get('detail', 'Last known status')} The latest check failed: {exc}"
+                OPENAI_STATUS_CACHE = result
+                OPENAI_STATUS_CACHE_AT = now
+                return result
+            result = {
+                "available": False,
+                "state": "unknown",
+                "summary": "Status feed unavailable",
+                "detail": f"Could not read the OpenAI public status feed: {exc}",
+                "url": "https://status.openai.com/",
+            }
+            OPENAI_STATUS_CACHE = result
+            OPENAI_STATUS_CACHE_AT = now
+            return result
+
+
+def launch_docker_desktop() -> str:
+    if not DOCKER_DESKTOP_PATH.exists():
+        return "Docker Desktop launcher was not found."
+    try:
+        subprocess.Popen(
+            [str(DOCKER_DESKTOP_PATH)],
+            cwd=str(DOCKER_DESKTOP_PATH.parent),
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        return "Docker Desktop launch requested."
+    except OSError as exc:
+        return f"Docker Desktop could not be launched: {exc}"
+
+
+def start_openwebui_container() -> str | None:
+    if not DOCKER_PATH.exists():
+        return None
+    result = run_action([str(DOCKER_PATH), "start", OPEN_WEBUI_CONTAINER], timeout=4.0)
+    if result["ok"]:
+        return f"Container '{OPEN_WEBUI_CONTAINER}' started."
+    detail = str(result.get("detail") or "Docker did not start the container.")
+    return f"Container start not confirmed: {detail}"
+
+
+def preload_ollama_model(model: str | None = None) -> dict[str, object]:
+    selected_model = (model or OLLAMA_CHAT_MODEL).strip() or OLLAMA_CHAT_MODEL
+    keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE
+    if OLLAMA_PRELOAD_KEEP_ALIVE.strip().lstrip("-").isdigit():
+        keep_alive = int(OLLAMA_PRELOAD_KEEP_ALIVE)
+    payload = {
+        "model": selected_model,
+        "stream": False,
+        "keep_alive": keep_alive,
+    }
+    try:
+        response = post_json(f"{OLLAMA_URL}/api/generate", payload, timeout=300.0)
+        load_duration = response.get("load_duration")
+        detail = f"{selected_model} is loaded in memory"
+        if isinstance(load_duration, int):
+            detail += f" · load {load_duration / 1_000_000_000:.1f}s"
+        return {"ok": True, "model": selected_model, "detail": detail, "response": response}
+    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return {"ok": False, "model": selected_model, "detail": f"Model preload failed: {exc}"}
+
+
+def launch_openwebui(model: str | None = None) -> dict[str, object]:
+    details: list[str] = []
+    if not probe_http(OPEN_WEBUI_URL):
+        details.append(launch_docker_desktop())
+        container_detail = None
+        for _ in range(15):
+            container_detail = start_openwebui_container()
+            if container_detail and container_detail.startswith("Container '"):
+                break
+            time.sleep(2)
+        if container_detail:
+            details.append(container_detail)
+    preload = preload_ollama_model(model)
+    openwebui = openwebui_status()
+    ollama = ollama_status()
+    loaded_names = [str(name) for name in ollama.get("loaded", [])]
+    selected_model = str(preload["model"])
+    model_loaded = selected_model in loaded_names
+    if not openwebui["available"]:
+        details.append("Open WebUI is still starting or its container name differs from the configured name.")
+    return {
+        "ok": bool(preload["ok"]),
+        "url": OPEN_WEBUI_URL,
+        "openwebui": openwebui,
+        "model": preload["model"],
+        "ready": bool(preload["ok"] and openwebui["available"] and model_loaded),
+        "ollama": {"state": "online" if preload["ok"] else "offline", "detail": preload["detail"], "loaded": loaded_names},
+        "detail": " ".join(details) if details else "Open WebUI is ready and the model preload was requested.",
+    }
 
 
 def container_status(name: str, detail: str) -> dict[str, object]:
-    raw = run_readonly(["docker.exe", "inspect", "--format", "{{.State.Status}}", name])
+    raw = run_readonly([str(DOCKER_PATH), "inspect", "--format", "{{.State.Status}}", name])
     state = raw.strip().lower()
     if state == "running":
         return {"available": True, "state": "online", "detail": detail}
@@ -476,7 +661,7 @@ def start_lifecycle_watchdog() -> None:
         while True:
             time.sleep(5)
             if time.monotonic() - LAST_BROWSER_HEARTBEAT > BROWSER_HEARTBEAT_TIMEOUT_SECONDS:
-                release_workloads()
+                shutdown_idle_workloads()
 
     LIFECYCLE_THREAD = threading.Thread(target=watch, name="ariadne-lifecycle", daemon=True)
     LIFECYCLE_THREAD.start()
@@ -523,6 +708,8 @@ def quick_launch_status() -> dict[str, object]:
             "detail": "Hera NAS · DSM",
         },
         "ollama": ollama_status(),
+        "openwebui": openwebui_status(),
+        "openai": openai_status(),
         "portainer": container_status("portainer", "Docker management · HTTP 9000"),
         "lmstudio": lmstudio_status(),
         "ariadne-control": ariadne_control_status(),
@@ -571,6 +758,20 @@ def _unload_ollama_models() -> None:
         return
 
 
+def shutdown_idle_workloads() -> None:
+    """Release managed resources once no Ariadne browser session remains."""
+    global IDLE_SHUTDOWN_DONE
+    with SESSION_LOCK:
+        if SESSIONS:
+            IDLE_SHUTDOWN_DONE = False
+            return
+        if IDLE_SHUTDOWN_DONE:
+            return
+        IDLE_SHUTDOWN_DONE = True
+    _unload_ollama_models()
+    release_workloads(force=True)
+
+
 def _terminate_process(process: object) -> None:
     if not isinstance(process, subprocess.Popen) or process.poll() is not None:
         return
@@ -592,7 +793,7 @@ def _close_session(session_id: str) -> bool:
             return False
         job_ids = list(session.get("jobs", set()))
         jobs = [JOBS.get(job_id) for job_id in job_ids]
-        used_ollama = bool(session.get("used_ollama"))
+        last_session = not SESSIONS
     for job in jobs:
         if not job:
             continue
@@ -600,8 +801,8 @@ def _close_session(session_id: str) -> bool:
         with SESSION_LOCK:
             job["state"] = "cancelled"
             job["message"] = "Cancelled when the Ariadne page closed."
-    if used_ollama:
-        _unload_ollama_models()
+    if last_session:
+        shutdown_idle_workloads()
     return True
 
 
@@ -757,17 +958,18 @@ def wsl_environment_action(name: str, action: str) -> dict[str, object]:
         return {"ok": False, "message": "Unknown environment action."}
 
     if name == "docker-desktop":
-        result = run_action(["docker.exe", "desktop", action], timeout=60.0)
-        if not result["ok"]:
-            return {"ok": False, "message": f"Docker Desktop {action} failed: {result['detail'] or 'unknown error'}"}
         if action == "start":
+            launch_detail = launch_docker_desktop()
             deadline = time.monotonic() + 45
             while time.monotonic() < deadline:
                 docker = docker_status()
                 if docker.get("available"):
                     return {"ok": True, "message": "Docker Desktop is running.", "docker": docker}
                 time.sleep(1)
-            return {"ok": False, "message": "Docker Desktop started, but its engine is not ready yet.", "docker": docker_status()}
+            return {"ok": False, "message": f"{launch_detail} Docker engine is not ready yet.", "docker": docker_status()}
+        result = run_action(["taskkill.exe", "/IM", "Docker Desktop.exe", "/T", "/F"], timeout=20.0)
+        if not result["ok"]:
+            return {"ok": False, "message": f"Docker Desktop stop failed: {result['detail'] or 'unknown error'}"}
         return {"ok": True, "message": "Docker Desktop stopped.", "docker": docker_status()}
 
     if action == "start":
@@ -811,7 +1013,7 @@ def wsl_environment_action(name: str, action: str) -> dict[str, object]:
 def docker_status() -> dict[str, object]:
     raw = run_readonly(
         [
-            "docker.exe",
+            str(DOCKER_PATH),
             "ps",
             "-a",
             "--format",
@@ -824,8 +1026,8 @@ def docker_status() -> dict[str, object]:
         "cannot connect to the docker daemon",
         "is the docker daemon running",
         "cannot find the file specified",
+        "permission denied while trying to connect to the docker api",
         "unavailable:",
-        "error",
     )
     if any(marker in normalized for marker in docker_unavailable_markers):
         return {
@@ -908,6 +1110,20 @@ class AriadneHandler(BaseHTTPRequestHandler):
             launch_lmstudio()
             self.send_json({"launched": True, "detail": "LM Studio launch requested."})
             return
+        if path == "/launch/openwebui":
+            self.send_json(launch_openwebui())
+            return
+        if path == "/api/openwebui/models":
+            catalog = ollama_catalog()
+            self.send_json({
+                "ok": bool(catalog["available"]),
+                "default_model": OLLAMA_CHAT_MODEL,
+                "models": catalog.get("models", []),
+                "loaded": catalog.get("loaded", []),
+                "openwebui": openwebui_status(),
+                "detail": catalog.get("detail", "Ollama is ready."),
+            })
+            return
         if path == "/api/status":
             self.send_json(status_payload())
             return
@@ -936,6 +1152,15 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/ariadne-network-backdrop.png":
             self.send_asset("ariadne-network-backdrop.png", "image/png")
             return
+        if path == "/ariadne-original.png":
+            self.send_asset("ariadne-original.png", "image/png")
+            return
+        if path == "/openwebui-loader":
+            self.send_asset("openwebui-loader.html", "text/html; charset=utf-8")
+            return
+        if path == "/openwebui-loader.js":
+            self.send_asset("openwebui-loader.js", "text/javascript; charset=utf-8")
+            return
         if path == "/favicon.svg":
             self.send_asset("favicon.svg", "image/svg+xml")
             return
@@ -961,6 +1186,13 @@ class AriadneHandler(BaseHTTPRequestHandler):
             if path == "/api/docker/stop":
                 self.send_json(wsl_environment_action("docker-desktop", "stop"))
                 return
+            if path == "/api/openwebui/prepare":
+                model = body.get("model")
+                if model is not None and not isinstance(model, str):
+                    self.send_json({"ok": False, "detail": "Model name must be text."}, 400)
+                    return
+                self.send_json(launch_openwebui(model))
+                return
             if path == "/api/profile":
                 profile = body.get("profile")
                 if not isinstance(profile, str):
@@ -976,6 +1208,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/session/start":
                 session_id = uuid.uuid4().hex
+                global IDLE_SHUTDOWN_DONE
+                IDLE_SHUTDOWN_DONE = False
                 with SESSION_LOCK:
                     SESSIONS[session_id] = {"last_seen": time.monotonic(), "jobs": set(), "used_ollama": False}
                 self.send_json({"ok": True, "session_id": session_id, "heartbeat_seconds": 5})
@@ -1040,3 +1274,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
