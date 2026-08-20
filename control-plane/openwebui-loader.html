@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariadne — Prepare OpenWebUI</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="loader-page">
+  <main class="loader-shell">
+    <section class="loader-art" aria-label="Ariadne, keeper of knowledge">
+      <img src="/ariadne-original.png" alt="Ariadne in her neon knowledge library">
+      <div class="loader-art-shade"></div>
+      <div class="loader-art-caption">
+        <span class="eyebrow">ARIADNE</span>
+        <strong>Keeper of knowledge.<br>Weaver of paths.</strong>
+        <small>Knowledge is the way · Intelligence is the path · Wisdom is the goal</small>
+      </div>
+    </section>
+
+    <section class="loader-console" aria-labelledby="loader-title">
+      <div class="loader-brand"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Local AI Control Plane</small></span></div>
+      <div class="loader-heading">
+        <span class="eyebrow">OPENWEBUI LAUNCH GATE</span>
+        <h1 id="loader-title">Prepare your model</h1>
+        <p>Choose the model Ariadne should warm into memory before OpenWebUI opens.</p>
+      </div>
+
+      <label class="loader-field" for="model-select">
+        <span>FIRST MODEL</span>
+        <select id="model-select" disabled><option>Reading local models…</option></select>
+      </label>
+
+      <div class="loader-state" id="loader-state" role="status" aria-live="polite">
+        <span class="loader-orbit" aria-hidden="true"></span>
+        <div><strong id="loader-state-title">Checking the local AI stack</strong><p id="loader-state-detail">Ariadne is checking Ollama, Docker, and OpenWebUI.</p></div>
+      </div>
+
+      <div class="loader-steps" aria-label="Preparation progress">
+        <div class="loader-step" id="step-docker"><span>01</span><div><strong>Services</strong><small id="step-docker-detail">Waiting</small></div></div>
+        <div class="loader-step" id="step-model"><span>02</span><div><strong>Model memory</strong><small id="step-model-detail">Waiting</small></div></div>
+        <div class="loader-step" id="step-ready"><span>03</span><div><strong>OpenWebUI</strong><small id="step-ready-detail">Locked until ready</small></div></div>
+      </div>
+
+      <div class="loader-actions">
+        <button class="loader-button" id="prepare-button" type="button" disabled>Load selected model</button>
+        <button class="loader-button primary" id="open-button" type="button" disabled>Open OpenWebUI</button>
+      </div>
+      <p class="loader-footnote"><a href="/">← Return to Ariadne control plane</a><span id="loader-timer">Standing by</span></p>
+    </section>
+  </main>
+  <script src="/openwebui-loader.js"></script>
+</body>
+</html>
