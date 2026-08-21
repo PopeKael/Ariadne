@@ -23,8 +23,10 @@ from ariadne_embeddings import DEFAULT_MODEL, DEFAULT_OLLAMA_URL, chunk_hash, co
 
 # MCP stdio transport is UTF-8 JSON; Windows PowerShell may otherwise select a
 # legacy console code page when stdout is redirected.
-sys.stdin.reconfigure(encoding="utf-8")
-sys.stdout.reconfigure(encoding="utf-8")
+if getattr(sys, "stdin", None) is not None and hasattr(sys.stdin, "reconfigure"):
+    sys.stdin.reconfigure(encoding="utf-8")
+if getattr(sys, "stdout", None) is not None and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -452,17 +454,23 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
     return {"query": query, "match_count": len(results), "results": results}
 
 
-def ollama_chat(messages: list[dict[str, str]], model: str | None = None) -> str:
+def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
+                context_tokens: int | None = None) -> str:
     """Generate text only through the configured loopback Ollama endpoint."""
     base_url = DEFAULT_OLLAMA_URL
     selected_model = model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
     if not base_url.startswith(("http://127.0.0.1", "http://localhost", "https://127.0.0.1", "https://localhost")):
         raise RuntimeError("Ariadne only permits a loopback Ollama endpoint.")
-    context_tokens = max(1_024, int(os.environ.get("ARIADNE_NUM_CTX", DEFAULT_CONTEXT_TOKENS)))
+    selected_context_tokens = max(
+        1_024,
+        int(context_tokens or os.environ.get("ARIADNE_NUM_CTX", DEFAULT_CONTEXT_TOKENS)),
+    )
     output_tokens = max(128, int(os.environ.get("ARIADNE_NUM_PREDICT", DEFAULT_OUTPUT_TOKENS)))
     body = {"model": selected_model, "messages": messages, "stream": False,
-            "options": {"temperature": 0, "seed": 42, "num_ctx": context_tokens,
+            "options": {"temperature": 0, "seed": 42, "num_ctx": selected_context_tokens,
                         "num_predict": output_tokens}}
+    if selected_model.casefold().startswith("qwen3"):
+        body["think"] = False
     request = urllib.request.Request(
         base_url.rstrip("/") + "/api/chat",
         data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
@@ -540,7 +548,8 @@ def planner_json(text: str) -> dict[str, Any]:
     return value
 
 
-def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mode: str = "answer") -> dict[str, Any]:
+def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mode: str = "answer",
+                            model: str | None = None, context_tokens: int | None = None) -> dict[str, Any]:
     """Interpret a question, retrieve several focused evidence sets, then answer from them."""
     def report(stage: str, message: str, completed: int = 0, total: int = 0) -> None:
         if progress:
@@ -568,7 +577,7 @@ def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mo
     planner_text = ollama_chat([
         {"role": "system", "content": planner_system},
         {"role": "user", "content": query},
-    ])
+    ], model=model, context_tokens=context_tokens)
     plan = planner_json(planner_text)
     original_search = query.strip()[:PLANNER_MAX_QUERY_CHARS]
     searches = [original_search] + [item for item in plan["searches"] if item.casefold() != original_search.casefold()]
@@ -593,7 +602,8 @@ def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mo
     items = items[: max(limit * 2, 12)]
     if not items:
         return {"query": query, "summary": "No relevant vault passages were found.", "sources": [],
-                "plan": plan, "searches": search_reports, "model": os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")}
+                "plan": plan, "searches": search_reports,
+                "model": model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")}
 
     report("synthesizing", "Combining evidence and writing a cited answer…", len(searches), len(searches))
     evidence = []
@@ -623,9 +633,13 @@ def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mo
     )
     answer_user = (f"Original question:\n{query}\n\nAnswer instructions:\n{instructions}\n\n"
                    "Retrieved vault evidence:\n\n" + "\n\n".join(evidence))
-    summary = ollama_chat([{"role": "system", "content": answer_system}, {"role": "user", "content": answer_user}])
+    summary = ollama_chat(
+        [{"role": "system", "content": answer_system}, {"role": "user", "content": answer_user}],
+        model=model,
+        context_tokens=context_tokens,
+    )
     return {"query": query, "summary": summary, "sources": sources, "plan": plan, "searches": search_reports,
-            "model": os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b"),
+            "model": model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b"),
             "identity_kernel": identity_meta}
 
 

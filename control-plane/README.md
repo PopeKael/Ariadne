@@ -9,12 +9,12 @@ from Git.
 - Host: Windows
 - Runtime: Python standard library, plus Pillow and pystray for the tray companion
 - Network exposure: loopback only; it is not published to the LAN
-- Current capabilities: drives, WSL registrations, Docker container metadata
+- Current capabilities: Ariadne Home, local Qwen chat, cited Vault retrieval, episodic activity, drives, WSL registrations, and Docker container metadata
 - Tray companion: open, restart, or exit Ariadne without a console window
 - Open WebUI launch: starts Docker Desktop when needed, opens the local UI, and
   preloads `gpt-oss:20b` into Ollama memory with a five-minute keep-alive.
 
-The active Ollama model store is `F:\AI\Ollama`. The previous C: store is kept
+The active Ollama model store is `F:\AI\Models\Ollama`. The previous C: store is kept
 as `C:\Users\Warren\.ollama\models.rollback-20260817` until the new location
 has had normal use. The dashboard launch behaviour can be adjusted with
 `ARIADNE_OPEN_WEBUI_URL`, `ARIADNE_OPEN_WEBUI_CONTAINER`,

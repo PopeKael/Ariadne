@@ -29,12 +29,16 @@ DOCKER_DESKTOP_PATH = Path(r"C:\Program Files\Docker\Docker\Docker Desktop.exe")
 DOCKER_PATH = Path(r"C:\Program Files\Docker\Docker\resources\bin\docker.exe")
 OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
+HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
+HOME_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_CTX", "16384")))
+HOME_EVENT_LOCK = threading.Lock()
 OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "5m")
 OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://127.0.0.1:3000/")
 OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
 OPENAI_STATUS_URL = "https://status.openai.com/api/v2/summary.json"
 OPENAI_STATUS_CACHE_TTL_SECONDS = 45
 VAULT_ROOT = Path(os.environ.get("ARIADNE_VAULT_ROOT", str(PROJECT_ROOT))).expanduser().resolve()
+HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
 VAULT_WORKER_PATH = ROOT / "vault_worker.py"
 VAULT_JOB_ROOT = ROOT / "runtime" / "vault_jobs"
@@ -1044,6 +1048,238 @@ def docker_status() -> dict[str, object]:
             containers.append({"name": name, "status": status, "image": image})
     return {"available": True, "state": "online", "containers": containers}
 
+def _clean_home_event_text(value: object, limit: int = 420) -> str:
+    text = " ".join(str(value or "").replace("\r", " ").replace("\n", " ").split())
+    return text.replace("·", "/").replace(" — ", " - ")[:limit].strip()
+
+
+def record_home_event(kind: str, summary: str, source: str = "Ariadne Home") -> None:
+    """Append one bounded, human-readable event to the intended Journal file."""
+    safe_kind = _clean_home_event_text(kind, 80) or "event"
+    safe_summary = _clean_home_event_text(summary)
+    safe_source = _clean_home_event_text(source, 100) or "Ariadne Home"
+    try:
+        with HOME_EVENT_LOCK:
+            HOME_EVENTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            if not HOME_EVENTS_PATH.exists():
+                HOME_EVENTS_PATH.write_text("# Ariadne Home Events\n\n", encoding="utf-8")
+            timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+            with HOME_EVENTS_PATH.open("a", encoding="utf-8", newline="\n") as handle:
+                handle.write(f"- {timestamp} · {safe_kind} · {safe_summary} · source={safe_source}\n")
+    except OSError as exc:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Home event was not recorded: {exc}")
+
+
+def read_home_events(limit: int = 12) -> list[dict[str, str]]:
+    try:
+        lines = HOME_EVENTS_PATH.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    events: list[dict[str, str]] = []
+    for line in reversed(lines):
+        if not line.startswith("- "):
+            continue
+        parts = line[2:].split(" · ", 3)
+        if len(parts) != 4:
+            continue
+        timestamp, kind, summary, source = parts
+        events.append({
+            "timestamp": timestamp,
+            "kind": kind,
+            "summary": summary,
+            "source": source.removeprefix("source="),
+        })
+        if len(events) >= limit:
+            break
+    return events
+
+
+def home_index_status() -> dict[str, object]:
+    path = VAULT_SYSTEM / "Data" / "embedding-index.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        entries = payload.get("entries", {}) if isinstance(payload, dict) else {}
+        count = len(entries) if isinstance(entries, dict) else 0
+        updated = payload.get("updated_at") if isinstance(payload, dict) else None
+        return {
+            "state": "healthy" if count else "attention",
+            "detail": f"{count:,} semantic passages indexed" if count else "Semantic index exists but contains no passages",
+            "entries": count,
+            "updated_at": updated,
+        }
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return {
+            "state": "attention",
+            "detail": "Semantic index has not been built on this machine.",
+            "entries": 0,
+            "updated_at": None,
+        }
+
+
+def configured_ollama_store() -> str:
+    value = os.environ.get("OLLAMA_MODELS", "").strip()
+    if os.name == "nt":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment") as key:
+                user_value, _ = winreg.QueryValueEx(key, "OLLAMA_MODELS")
+                if isinstance(user_value, str) and user_value.strip():
+                    value = user_value.strip()
+        except (FileNotFoundError, OSError):
+            pass
+    return value or "not set"
+
+def home_health_payload() -> dict[str, object]:
+    services: list[dict[str, object]] = []
+
+    def add(name: str, state: str, detail: str) -> None:
+        services.append({"name": name, "state": state, "detail": detail})
+
+    add("Ariadne backend", "healthy", "Home API is responding on loopback.")
+    vault_ready = vault_control_available()
+    add(
+        "Knowledge Vault",
+        "healthy" if vault_ready else "offline",
+        "Markdown catalogue and control files are available." if vault_ready else "Vault files are not available.",
+    )
+    retrieval_ready = (VAULT_SYSTEM / "ariadne_mcp.py").is_file() and (VAULT_SYSTEM / "library.json").is_file()
+    add(
+        "MCP / retrieval",
+        "healthy" if retrieval_ready else "offline",
+        "Read-only retrieval path is ready." if retrieval_ready else "Retrieval source files are unavailable.",
+    )
+    ollama = ollama_status()
+    add(
+        "Ollama",
+        "healthy" if ollama.get("state") == "online" else "offline",
+        str(ollama.get("detail") or "Ollama is unavailable."),
+    )
+    index = home_index_status()
+    add("Semantic index", str(index["state"]), str(index["detail"]))
+
+    states = {str(item["state"]) for item in services}
+    overall = "healthy" if states == {"healthy"} else "offline" if "offline" in states and states <= {"healthy", "offline"} else "attention"
+    return {
+        "overall": overall,
+        "services": services,
+        "resident_model": HOME_CHAT_MODEL,
+        "context_tokens": HOME_CONTEXT_TOKENS,
+        "ollama_store": configured_ollama_store(),
+        "ollama": ollama,
+        "index": index,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def home_today_payload(health: dict[str, object]) -> list[dict[str, str]]:
+    signals: list[dict[str, str]] = []
+    for service in health.get("services", []):
+        if not isinstance(service, dict) or service.get("state") == "healthy":
+            continue
+        signals.append({
+            "label": str(service.get("name") or "System"),
+            "detail": str(service.get("detail") or "Needs attention."),
+            "tone": "offline" if service.get("state") == "offline" else "attention",
+        })
+    catalogue = VAULT_SYSTEM / "library.json"
+    try:
+        changed = datetime.fromtimestamp(catalogue.stat().st_mtime).astimezone().strftime("%d %b %H:%M")
+        signals.append({"label": "Vault catalogue", "detail": f"Last changed {changed}.", "tone": "quiet"})
+    except OSError:
+        pass
+    if not signals:
+        signals.append({"label": "System attention", "detail": "No local attention items are currently reported.", "tone": "healthy"})
+    return signals[:6]
+
+
+def home_query_requires_vault(query: str) -> bool:
+    terms = (
+        "my ", " i ", "wazza", "warren", "chanya", "ariadne", "knowledge vault",
+        "knowledgevault", "project", "decision", "setup", "remember", "what do you know",
+        "where did", "when did", "retirement", "garage alchemy", "pope kael",
+    )
+    folded = f" {query.casefold()} "
+    return any(term in folded for term in terms)
+
+
+def _home_mcp():
+    if str(VAULT_SYSTEM) not in sys.path:
+        sys.path.insert(0, str(VAULT_SYSTEM))
+    import ariadne_mcp
+    return ariadne_mcp
+
+
+def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> dict[str, object]:
+    query = query.strip()
+    if not query:
+        raise ValueError("A non-empty question is required.")
+    if len(query) > 8_000:
+        raise ValueError("Keep the question below 8,000 characters.")
+    mode = vault_mode if vault_mode in {"auto", "always", "never"} else "auto"
+    use_vault = mode == "always" or (mode == "auto" and home_query_requires_vault(query))
+    mcp = _home_mcp()
+    safe_history: list[dict[str, str]] = []
+    if isinstance(history, list):
+        for item in history[-8:]:
+            if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+                continue
+            content = str(item.get("content") or "").strip()
+            if content:
+                safe_history.append({"role": str(item["role"]), "content": content[:4_000]})
+    record_home_event("question_submitted", query[:300])
+    try:
+        if use_vault:
+            result = mcp.planned_knowledge_query(
+                query,
+                limit=6,
+                answer_mode="answer",
+                model=HOME_CHAT_MODEL,
+                context_tokens=HOME_CONTEXT_TOKENS,
+            )
+            answer = str(result.get("summary") or "The local librarian returned no answer.")
+            sources = result.get("sources") if isinstance(result.get("sources"), list) else []
+            retrieval = {
+                "match_count": len(sources),
+                "sources": sources,
+                "searches": result.get("searches", []),
+            }
+            record_home_event("vault_retrieval_performed", f"Retrieved {len(sources)} cited passage(s) for this question.")
+        else:
+            identity, identity_meta = mcp.identity_system_prefix()
+            system = identity + (
+                "You are Ariadne Home, Warren's local conversational assistant. "
+                "Answer clearly and directly. Keep identity, conversation state, retrieved knowledge, "
+                "and system output separate. Do not claim to have used the Knowledge Vault unless it was supplied. "
+                "If you do not know something, say so plainly."
+            )
+            messages = [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": query}]
+            answer = mcp.ollama_chat(messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS)
+            sources = []
+            retrieval = {"match_count": 0, "sources": []}
+        record_home_event("model_response_completed", f"Local {HOME_CHAT_MODEL} response completed.")
+        return {
+            "ok": True,
+            "answer": answer,
+            "model": HOME_CHAT_MODEL,
+            "context_tokens": HOME_CONTEXT_TOKENS,
+            "used_vault": use_vault,
+            "sources": sources,
+            "retrieval": retrieval,
+        }
+    except Exception as exc:
+        record_home_event("significant_error", f"Ask Ariadne failed: {exc}", source="Ariadne Home")
+        raise
+
+
+def home_activity_payload() -> dict[str, object]:
+    health = home_health_payload()
+    return {
+        "today": home_today_payload(health),
+        "activity": read_home_events(),
+        "health": health,
+    }
+
+
 def status_payload() -> dict[str, object]:
     global LAST_BROWSER_HEARTBEAT
     LAST_BROWSER_HEARTBEAT = time.monotonic()
@@ -1106,6 +1342,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
         _expire_sessions()
         parsed = urlparse(self.path)
         path = parsed.path
+        if path == "/api/home/health":
+            self.send_json(home_health_payload())
+            return
+        if path == "/api/home/activity":
+            self.send_json(home_activity_payload())
+            return
         if path == "/launch/lmstudio":
             launch_lmstudio()
             self.send_json({"launched": True, "detail": "LM Studio launch requested."})
@@ -1142,6 +1384,19 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": "Job not found."}, 404)
             else:
                 self.send_json(payload)
+            return
+        if path in {"/", "/home"}:
+            record_home_event("home_opened", "Ariadne Home opened.")
+            self.send_asset("home.html", "text/html; charset=utf-8")
+            return
+        if path in {"/system-details", "/details", "/index.html"}:
+            self.send_asset("index.html", "text/html; charset=utf-8")
+            return
+        if path == "/home.css":
+            self.send_asset("home.css", "text/css; charset=utf-8")
+            return
+        if path == "/home.js":
+            self.send_asset("home.js", "text/javascript; charset=utf-8")
             return
         if path in {"/", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
@@ -1212,6 +1467,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 IDLE_SHUTDOWN_DONE = False
                 with SESSION_LOCK:
                     SESSIONS[session_id] = {"last_seen": time.monotonic(), "jobs": set(), "used_ollama": False}
+                record_home_event("session_started", "Ariadne session started.")
                 self.send_json({"ok": True, "session_id": session_id, "heartbeat_seconds": 5})
                 return
             if path in {"/api/session/heartbeat", "/api/session/close"}:
@@ -1232,6 +1488,19 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": "Start an Ariadne session first."}, 409)
                 return
             session_id = str(session_id)
+            if path == "/api/home/chat":
+                query = body.get("message")
+                history = body.get("history", [])
+                vault_mode = body.get("vault_mode", "auto")
+                if not isinstance(query, str):
+                    self.send_json({"ok": False, "message": "A text question is required."}, 400)
+                    return
+                if not isinstance(vault_mode, str):
+                    vault_mode = "auto"
+                with SESSION_LOCK:
+                    SESSIONS[session_id]["used_ollama"] = True
+                self.send_json(home_chat_payload(query, history, vault_mode))
+                return
             if path == "/api/vault/run":
                 action = body.get("action")
                 if not isinstance(action, str) or action not in VAULT_ACTIONS:

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariadne Home</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/home.css">
+</head>
+<body>
+  <div class="home-shell">
+    <header class="home-header">
+      <a class="brand" href="/" aria-label="Ariadne Home"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Home · local intelligence</small></span></a>
+      <div class="header-copy"><span class="eyebrow">ARIADNE HOME</span><h1>Good to see you, Warren.</h1><p>Your local assistant, vault, and daily starting point.</p></div>
+      <div class="header-actions"><span class="local-badge"><i></i> LOCAL ONLY</span><a class="text-button" href="/system-details">System Details</a></div>
+    </header>
+    <main>
+      <section class="health-section" aria-labelledby="health-heading">
+        <div class="section-heading"><div><span class="eyebrow">AT A GLANCE</span><h2 id="health-heading">System health</h2></div><span id="health-updated" class="quiet">Checking…</span></div>
+        <div id="health-strip" class="health-strip" aria-live="polite"><div class="health-loading">Checking Ariadne’s local services…</div></div>
+      </section>
+      <section class="home-grid">
+        <section class="panel ask-panel" aria-labelledby="ask-heading">
+          <div class="panel-heading"><div><span class="eyebrow">CONCIERGE</span><h2 id="ask-heading">Ask Ariadne</h2><p>Have a conversation, or ask about your local Knowledge Vault.</p></div><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div></div>
+          <div id="chat-log" class="chat-log" aria-live="polite"><div class="empty-chat"><span class="orb">◇</span><strong>What’s on your mind?</strong><p>Ask a normal question, or choose “Always use my Vault” when the answer should come from your local notes.</p></div></div>
+          <form id="ask-form" class="ask-form">
+            <label class="sr-only" for="ask-input">Ask Ariadne a question</label>
+            <textarea id="ask-input" rows="3" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea>
+            <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet" role="status">Ready.</span><button id="ask-submit" class="primary-button" type="submit">Ask Ariadne <span>↗</span></button></div>
+          </form>
+        </section>
+        <aside class="side-column">
+          <section class="panel today-panel" aria-labelledby="today-heading"><div class="panel-heading compact"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Today</h2></div><span class="panel-mark">◌</span></div><div id="today-list" class="signal-list"><div class="loading-row">Reading local signals…</div></div></section>
+          <section class="panel continue-panel" aria-labelledby="continue-heading"><div class="panel-heading compact"><div><span class="eyebrow">EPISODIC CAPTURE</span><h2 id="continue-heading">Continue</h2><p>Recent Ariadne activity, kept locally.</p></div><span class="panel-mark">↻</span></div><div id="activity-list" class="activity-list"><div class="loading-row">Reading activity…</div></div><p id="activity-empty" class="quiet empty-state" hidden>No activity recorded yet.</p></section>
+        </aside>
+      </section>
+      <section class="home-footer-note"><span class="shield">✓</span><span><strong>Private by design.</strong> Ariadne Home stays on this computer. Use the Windows tray menu to restart or stop Ariadne.</span><a href="/system-details">Open the detailed console →</a></section>
+    </main>
+  </div>
+  <script src="/home.js"></script>
+</body>
+</html>
