@@ -62,11 +62,17 @@ function addMessage(role, content, metadata) {
   document.querySelector(".empty-chat")?.remove();
   const message = el("article", "message " + role);
   message.append(el("span", "message-label", role === "user" ? "YOU" : "ARIADNE"));
-  message.append(el("div", "message-body", content));
+  const messageBody = el("div", "message-body", content);
+  message.append(messageBody);
   if (role === "assistant" && metadata && metadata.model) {
     const meta = el("div", "message-meta");
     meta.append(el("span", "", metadata.model));
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
+    const readButton = el("button", "read-button", "Read Answer");
+    readButton.type = "button";
+    readButton.title = "Copy this answer to the Windows reader and send Alt+F1";
+    readButton.addEventListener("click", () => readAnswer(messageBody, readButton));
+    meta.append(readButton);
     message.append(meta);
     if (metadata.sources && metadata.sources.length) {
       const details = el("details", "sources");
@@ -82,6 +88,36 @@ function addMessage(role, content, metadata) {
   }
   log.append(message);
   log.scrollTop = log.scrollHeight;
+}
+function selectReadableAnswer(node) {
+  const selection = window.getSelection();
+  if (!selection || !node) return false;
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return selection.toString().trim().length > 0;
+}
+async function readAnswer(messageBody, button) {
+  const status = document.querySelector("#ask-status");
+  if (!state.sessionId) {
+    status.textContent = "The local session is not active. Reload Ariadne and try again.";
+    return;
+  }
+  const text = messageBody.textContent;
+  const selected = selectReadableAnswer(messageBody);
+  button.disabled = true;
+  button.textContent = "Reading…";
+  try {
+    const result = await postJson("/reader/read", {session_id: state.sessionId, answer: text});
+    button.textContent = "Read Answer";
+    status.textContent = (result.message || "Answer copied and reader shortcut sent.") + (selected ? " Answer text selected." : "");
+  } catch (error) {
+    button.textContent = "Read Answer";
+    status.textContent = "Reader handoff failed: " + error.message + ".";
+  } finally {
+    button.disabled = false;
+  }
 }
 async function loadHome() {
   try {

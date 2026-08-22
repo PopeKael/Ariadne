@@ -50,6 +50,7 @@ WAN2GP_LOG = ROOT / "runtime" / "linux-renderer.log"
 SESSION_TTL_SECONDS = 20
 JOB_TIMEOUT_SECONDS = 300
 SESSION_LOCK = threading.RLock()
+READER_LOCK = threading.Lock()
 OPENAI_STATUS_LOCK = threading.Lock()
 OPENAI_STATUS_CACHE: dict[str, object] | None = None
 OPENAI_STATUS_CACHE_AT = 0.0
@@ -73,6 +74,145 @@ VAULT_ACTIONS = {
     "audit_failures": ("Audit-Failed-Ingestion.ps1", []),
     "embedding_rebuild": ("Build-Embeddings.ps1", ["-Rebuild"]),
 }
+
+
+
+
+if os.name == "nt":
+    _ULONG_PTR = ctypes.c_ulonglong if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_ulong
+
+    class _MouseInput(ctypes.Structure):
+        _fields_ = [
+            ("dx", ctypes.c_long),
+            ("dy", ctypes.c_long),
+            ("mouse_data", ctypes.c_ulong),
+            ("flags", ctypes.c_ulong),
+            ("time", ctypes.c_ulong),
+            ("extra_info", _ULONG_PTR),
+        ]
+
+    class _KeyboardInput(ctypes.Structure):
+        _fields_ = [
+            ("virtual_key", ctypes.c_ushort),
+            ("scan_code", ctypes.c_ushort),
+            ("flags", ctypes.c_ulong),
+            ("time", ctypes.c_ulong),
+            ("extra_info", _ULONG_PTR),
+        ]
+
+    class _HardwareInput(ctypes.Structure):
+        _fields_ = [
+            ("message", ctypes.c_ulong),
+            ("parameter_low", ctypes.c_ushort),
+            ("parameter_high", ctypes.c_ushort),
+        ]
+
+    class _InputUnion(ctypes.Union):
+        _fields_ = [
+            ("mouse", _MouseInput),
+            ("keyboard", _KeyboardInput),
+            ("hardware", _HardwareInput),
+        ]
+
+    class _Input(ctypes.Structure):
+        _fields_ = [("input_type", ctypes.c_ulong), ("data", _InputUnion)]
+
+
+def _windows_clipboard_write(text: str) -> None:
+    """Replace the Windows Unicode clipboard without involving the browser."""
+    if os.name != "nt":
+        raise OSError("Windows clipboard handoff is only available on Windows.")
+
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    user32.OpenClipboard.argtypes = [ctypes.c_void_p]
+    user32.OpenClipboard.restype = ctypes.c_bool
+    user32.EmptyClipboard.argtypes = []
+    user32.EmptyClipboard.restype = ctypes.c_bool
+    user32.CloseClipboard.argtypes = []
+    user32.CloseClipboard.restype = ctypes.c_bool
+    user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
+    user32.SetClipboardData.restype = ctypes.c_void_p
+    kernel32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
+    kernel32.GlobalAlloc.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalUnlock.restype = ctypes.c_bool
+    kernel32.GlobalFree.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalFree.restype = ctypes.c_void_p
+
+    data = text.encode("utf-16-le") + b"\x00\x00"
+    memory_handle = None
+    last_error = 0
+    try:
+        for _ in range(8):
+            if user32.OpenClipboard(None):
+                break
+            last_error = ctypes.get_last_error()
+            time.sleep(0.05)
+        else:
+            raise OSError(last_error or 5, "Windows clipboard is busy.")
+
+        try:
+            if not user32.EmptyClipboard():
+                raise ctypes.WinError(ctypes.get_last_error())
+            memory_handle = kernel32.GlobalAlloc(0x0002 | 0x0040, len(data))
+            if not memory_handle:
+                raise ctypes.WinError(ctypes.get_last_error())
+            locked = kernel32.GlobalLock(memory_handle)
+            if not locked:
+                raise ctypes.WinError(ctypes.get_last_error())
+            try:
+                ctypes.memmove(locked, data, len(data))
+            finally:
+                kernel32.GlobalUnlock(memory_handle)
+            if not user32.SetClipboardData(13, memory_handle):  # CF_UNICODETEXT
+                raise ctypes.WinError(ctypes.get_last_error())
+            memory_handle = None  # ownership moved to the clipboard
+        finally:
+            user32.CloseClipboard()
+    finally:
+        if memory_handle:
+            kernel32.GlobalFree(memory_handle)
+
+
+def _send_reader_alt_f1() -> int:
+    """Inject only the fixed reader shortcut as genuine Windows input."""
+    if os.name != "nt":
+        raise OSError("Windows reader shortcut is only available on Windows.")
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    user32.SendInput.argtypes = [ctypes.c_uint, ctypes.POINTER(_Input), ctypes.c_int]
+    user32.SendInput.restype = ctypes.c_uint
+    key_up = 0x0002
+    inputs = (_Input * 4)()
+    inputs[0].input_type = 1  # INPUT_KEYBOARD
+    inputs[0].data.keyboard.virtual_key = 0xA4  # VK_LMENU / Alt
+    inputs[1].input_type = 1
+    inputs[1].data.keyboard.virtual_key = 0x70  # VK_F1
+    inputs[2].input_type = 1
+    inputs[2].data.keyboard.virtual_key = 0x70
+    inputs[2].data.keyboard.flags = key_up
+    inputs[3].input_type = 1
+    inputs[3].data.keyboard.virtual_key = 0xA4
+    inputs[3].data.keyboard.flags = key_up
+    accepted = int(user32.SendInput(4, inputs, ctypes.sizeof(_Input)))
+    if accepted != 4:
+        error_code = ctypes.get_last_error()
+        raise OSError(error_code or 87, f"Windows accepted {accepted} of 4 reader shortcut events.")
+    return accepted
+
+
+def reader_read(text: str) -> dict[str, object]:
+    """Copy an answer and request the existing reader to consume it."""
+    with READER_LOCK:
+        _windows_clipboard_write(text)
+        time.sleep(0.15)
+        try:
+            accepted = _send_reader_alt_f1()
+        except OSError as exc:
+            return {"clipboard_ok": True, "hotkey_ok": False, "input_events": 0, "characters": len(text), "hotkey_error": str(exc)}
+    return {"clipboard_ok": True, "hotkey_ok": True, "input_events": accepted, "characters": len(text)}
 
 
 def decode_output(data: bytes) -> str:
@@ -1488,6 +1628,24 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": "Start an Ariadne session first."}, 409)
                 return
             session_id = str(session_id)
+            if path == "/reader/read":
+                answer = body.get("answer")
+                if not isinstance(answer, str) or not answer.strip():
+                    self.send_json({"ok": False, "clipboard_ok": False, "hotkey_ok": False, "message": "A non-empty answer is required."}, 400)
+                    return
+                if len(answer) > 50_000:
+                    self.send_json({"ok": False, "clipboard_ok": False, "hotkey_ok": False, "message": "The answer is too large for the reader handoff."}, 413)
+                    return
+                try:
+                    result = reader_read(answer)
+                except OSError as exc:
+                    self.send_json({"ok": False, "clipboard_ok": False, "hotkey_ok": False, "message": f"Could not copy the answer to the Windows clipboard: {exc}"}, 500)
+                    return
+                if not result["hotkey_ok"]:
+                    self.send_json({"ok": False, **result, "message": "Answer copied to the Windows clipboard, but Alt+F1 could not be sent. Press Alt+F1 manually."}, 503)
+                    return
+                self.send_json({"ok": True, **result, "message": "Answer copied to the Windows clipboard and Alt+F1 sent."})
+                return
             if path == "/api/home/chat":
                 query = body.get("message")
                 history = body.get("history", [])
