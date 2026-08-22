@@ -16,6 +16,20 @@
     </header>
     <main>
       <section class="home-grid">
+        <aside class="recent-column">
+          <section class="panel recent-panel" aria-labelledby="recent-heading">
+            <div class="panel-heading compact recent-heading">
+              <div><span class="eyebrow">CHAT MEMORY</span><h2 id="recent-heading">Recent Chats</h2><p>Local conversations, kept for seven days.</p></div>
+              <button id="new-chat" class="new-chat-button" type="button">+ New Chat</button>
+            </div>
+            <div class="chat-actions" aria-label="Current chat actions">
+              <button id="save-chat" class="chat-action" type="button">Save to Inbox</button>
+              <button id="export-chat" class="chat-action" type="button">Export Markdown</button>
+              <button id="purge-chat" class="chat-action destructive" type="button">Purge Chat</button>
+            </div>
+            <div id="recent-chat-list" class="recent-chat-list" aria-live="polite"><div class="loading-row">Reading recent chats…</div></div>
+          </section>
+        </aside>
         <section class="panel ask-panel" aria-labelledby="ask-heading">
           <div class="panel-heading"><div><span class="eyebrow">CONCIERGE</span><h2 id="ask-heading">Ask Ariadne</h2><p>Have a conversation, or ask about your local Knowledge Vault.</p></div><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div></div>
           <div id="chat-log" class="chat-log" aria-live="polite"></div>

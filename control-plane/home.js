@@ -74,6 +74,144 @@ function renderActivity(items) {
     root.append(row);
   }
 }
+function localDateKey(value) {
+  const date = new Date(value || 0);
+  return Number.isNaN(date.getTime()) ? "older" : date.toLocaleDateString();
+}
+function recentGroupLabel(value) {
+  const date = new Date(value || 0);
+  if (Number.isNaN(date.getTime())) return "Older";
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (localDateKey(date) === localDateKey(today)) return "Today";
+  if (localDateKey(date) === localDateKey(yesterday)) return "Yesterday";
+  return date.toLocaleDateString([], {day: "numeric", month: "short", year: "numeric"});
+}
+function recentTime(value) {
+  const date = new Date(value || 0);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+}
+function renderRecentChats(chats) {
+  const root = document.querySelector("#recent-chat-list");
+  if (!root) return;
+  root.replaceChildren();
+  if (!chats || !chats.length) {
+    root.append(el("p", "recent-chat-empty", "No temporary chats yet. Start a conversation and it will appear here."));
+    return;
+  }
+  let currentGroup = null;
+  let groupRoot = null;
+  for (const chat of chats) {
+    const group = recentGroupLabel(chat.last_activity_at || chat.started_at);
+    if (group !== currentGroup) {
+      currentGroup = group;
+      groupRoot = el("section", "recent-group");
+      groupRoot.append(el("span", "recent-group-label", group));
+      root.append(groupRoot);
+    }
+    const item = el("button", "recent-chat-item" + (chat.chat_id === state.chatId ? " selected" : ""));
+    item.type = "button";
+    item.dataset.chatId = chat.chat_id;
+    item.setAttribute("aria-pressed", chat.chat_id === state.chatId ? "true" : "false");
+    item.title = chat.title || "Ariadne Home chat";
+    item.append(el("span", "recent-chat-title", chat.title || "Ariadne Home chat"));
+    const meta = el("span", "recent-chat-meta");
+    meta.append(el("span", "", recentTime(chat.last_activity_at || chat.started_at)));
+    meta.append(el("span", "", `${Math.max(1, Math.ceil(Number(chat.message_count || 0) / 2))} turn${Number(chat.message_count || 0) > 2 ? "s" : ""}`));
+    if (chat.status === "closed") meta.append(el("span", "recent-chat-status", "Archived"));
+    if (chat.inbox_path) meta.append(el("span", "recent-chat-badge", "Inbox"));
+    if (chat.has_interrupted) meta.append(el("span", "recent-chat-status", "Interrupted"));
+    item.append(meta);
+    item.addEventListener("click", () => selectRecentChat(chat.chat_id));
+    groupRoot.append(item);
+  }
+}
+async function loadRecentChats() {
+  try {
+    const result = await getJson("/api/home/chats");
+    renderRecentChats(result.chats || []);
+  } catch (error) {
+    const root = document.querySelector("#recent-chat-list");
+    if (root) root.replaceChildren(el("p", "recent-chat-empty", "Recent chats unavailable: " + error.message));
+  }
+}
+function rememberChat(chatId) {
+  state.chatId = chatId;
+  try { localStorage.setItem("ariadne.home.chat_id", chatId); } catch (_) {}
+}
+async function selectRecentChat(chatId) {
+  if (!state.sessionId || chatId === state.chatId) return;
+  try {
+    const result = await postJson("/api/home/chat/select", {session_id: state.sessionId, chat_id: chatId});
+    rememberChat(result.chat.chat_id);
+    restoreMessages(result.chat.messages || []);
+    document.querySelector("#ask-status").textContent = "Restored the selected local chat.";
+    renderRecentChats((await getJson("/api/home/chats")).chats || []);
+  } catch (error) {
+    document.querySelector("#ask-status").textContent = "Could not restore that chat: " + error.message;
+  }
+}
+async function startNewChat() {
+  if (!state.sessionId) return;
+  const button = document.querySelector("#new-chat");
+  button.disabled = true;
+  try {
+    const result = await postJson("/api/home/chat/new", {session_id: state.sessionId, chat_id: state.chatId});
+    rememberChat(result.chat.chat_id);
+    restoreMessages(result.chat.messages || []);
+    document.querySelector("#ask-status").textContent = "New chat started. The previous conversation was archived.";
+    await loadRecentChats();
+  } catch (error) {
+    document.querySelector("#ask-status").textContent = "Could not start a new chat: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+async function saveCurrentChat() {
+  if (!state.sessionId || !state.chatId) return;
+  try {
+    const result = await postJson("/api/home/chat/save", {session_id: state.sessionId, chat_id: state.chatId});
+    document.querySelector("#ask-status").textContent = "Saved to Inbox: " + result.inbox_path;
+    await loadRecentChats();
+  } catch (error) {
+    document.querySelector("#ask-status").textContent = "Save to Inbox failed: " + error.message;
+  }
+}
+async function exportCurrentChat() {
+  if (!state.sessionId || !state.chatId) return;
+  try {
+    const result = await postJson("/api/home/chat/export", {session_id: state.sessionId, chat_id: state.chatId});
+    const blob = new Blob([result.markdown], {type: "text/markdown;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.filename || "ariadne-chat.md";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    document.querySelector("#ask-status").textContent = "Markdown export downloaded.";
+  } catch (error) {
+    document.querySelector("#ask-status").textContent = "Export failed: " + error.message;
+  }
+}
+async function purgeCurrentChat() {
+  if (!state.sessionId || !state.chatId) return;
+  if (!window.confirm("Purge this temporary chat? Its archive and any Inbox copy will remain.")) return;
+  try {
+    const result = await postJson("/api/home/chat/purge", {session_id: state.sessionId, chat_id: state.chatId, confirm: true});
+    if (result.chat) {
+      rememberChat(result.chat.chat_id);
+      restoreMessages(result.chat.messages || []);
+    }
+    document.querySelector("#ask-status").textContent = "Temporary chat purged. Permanent archive and Inbox copies were preserved.";
+    await loadRecentChats();
+  } catch (error) {
+    document.querySelector("#ask-status").textContent = "Purge failed: " + error.message;
+  }
+}
 function addMessage(role, content, metadata) {
   const log = document.querySelector("#chat-log");
   document.querySelector(".empty-chat")?.remove();
@@ -82,7 +220,7 @@ function addMessage(role, content, metadata) {
   const displayContent = content || (metadata && metadata.state === "pending" ? "Response pending…" : metadata && metadata.state === "interrupted" ? "Response interrupted; no complete response was recorded." : "");
   const messageBody = el("div", "message-body", displayContent);
   message.append(messageBody);
-  if (role === "assistant" && metadata && metadata.model) {
+  if (role === "assistant" && metadata && metadata.model && !["pending", "interrupted"].includes(metadata.state)) {
     const meta = el("div", "message-meta");
     meta.append(el("span", "", metadata.model));
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
@@ -214,6 +352,7 @@ async function startSession() {
     state.chatId = result.chat_id;
     try { localStorage.setItem("ariadne.home.chat_id", state.chatId); } catch (_) {}
     restoreMessages(result.messages || []);
+    await loadRecentChats();
     if (result.resumed && result.messages && result.messages.length) {
       document.querySelector("#ask-status").textContent = "Recovered the durable local chat.";
     }
@@ -255,6 +394,7 @@ async function ask(event) {
     const timing = formatTiming(result.timing);
     status.textContent = (result.used_vault ? "Answered with local Vault evidence." : "Answered by the local model.") + (timing ? " · " + timing : "");
     loadHome();
+    loadRecentChats();
   } catch (error) {
     addMessage("assistant", "I could not complete that locally: " + error.message);
     status.textContent = "The local request failed.";
@@ -271,6 +411,10 @@ function closeSession() {
   state.sessionId = null;
 }
 document.querySelector("#ask-form").addEventListener("submit", ask);
+document.querySelector("#new-chat").addEventListener("click", startNewChat);
+document.querySelector("#save-chat").addEventListener("click", saveCurrentChat);
+document.querySelector("#export-chat").addEventListener("click", exportCurrentChat);
+document.querySelector("#purge-chat").addEventListener("click", purgeCurrentChat);
 window.addEventListener("beforeunload", closeSession);
 startSession();
 loadHome();

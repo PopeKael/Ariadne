@@ -3,6 +3,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -37,6 +38,11 @@ class HomeServerPersistenceTests(unittest.TestCase):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return json.loads(response.read().decode("utf-8"))
+
+    def get(self, port, path):
+        request = urllib.request.Request(f"http://127.0.0.1:{port}{path}", method="GET")
         with urllib.request.urlopen(request, timeout=5) as response:
             return json.loads(response.read().decode("utf-8"))
 
@@ -79,6 +85,55 @@ class HomeServerPersistenceTests(unittest.TestCase):
                 self.assertIn("chat_resumed", journal)
                 self.assertIn("chat_closed", journal)
                 self.assertIn("chat_archived", journal)
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                server.HOME_CHAT_STORE = original_store
+                server._home_mcp = original_mcp
+                server.HOME_EVENTS_PATH = original_events_path
+
+    def test_chat_management_http_lifecycle(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_mcp = server._home_mcp
+            original_events_path = server.HOME_EVENTS_PATH
+            fake = FakeMcp()
+            store = ChatStore(Path(temporary))
+            server.HOME_CHAT_STORE = store
+            server._home_mcp = lambda: fake
+            server.HOME_EVENTS_PATH = Path(temporary) / "Journal" / "Ariadne Home Events.md"
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            port = httpd.server_address[1]
+            try:
+                started = self.post(port, "/api/session/start", {"surface": "home"})
+                answered = self.post(port, "/api/home/chat", {"session_id": started["session_id"], "chat_id": started["chat_id"], "message": "Lifecycle question", "history": [], "vault_mode": "never"})
+                self.assertEqual(answered["answer"], "A durable answer.")
+                chats = self.get(port, "/api/home/chats")["chats"]
+                self.assertEqual(chats[0]["chat_id"], started["chat_id"])
+                saved = self.post(port, "/api/home/chat/save", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
+                saved_again = self.post(port, "/api/home/chat/save", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
+                self.assertEqual(saved["inbox_path"], saved_again["inbox_path"])
+                self.assertEqual(len(list((Path(temporary) / "Inbox").glob("*.md"))), 1)
+                exported = self.post(port, "/api/home/chat/export", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
+                self.assertIn("Lifecycle question", exported["markdown"])
+                new_chat = self.post(port, "/api/home/chat/new", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
+                self.assertNotEqual(new_chat["chat"]["chat_id"], started["chat_id"])
+                self.assertTrue((Path(temporary) / new_chat["archive_path"]).is_file())
+                selected = self.post(port, "/api/home/chat/select", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
+                self.assertEqual(selected["chat"]["chat_id"], started["chat_id"])
+                with self.assertRaises(urllib.error.HTTPError):
+                    self.post(port, "/api/home/chat/purge", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
+                purged = self.post(port, "/api/home/chat/purge", {"session_id": started["session_id"], "chat_id": started["chat_id"], "confirm": True})
+                self.assertNotEqual(purged["chat"]["chat_id"], started["chat_id"])
+                self.assertFalse((store.root / f"{started['chat_id']}.json").exists())
+                self.assertTrue((Path(temporary) / new_chat["archive_path"]).is_file())
+                self.assertTrue((Path(temporary) / saved["inbox_path"]).is_file())
+                journal = server.HOME_EVENTS_PATH.read_text(encoding="utf-8")
+                self.assertIn("chat_saved_to_inbox", journal)
+                self.assertIn("chat_exported", journal)
+                self.assertIn("chat_purged", journal)
             finally:
                 httpd.shutdown()
                 httpd.server_close()

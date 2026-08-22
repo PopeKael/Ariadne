@@ -1529,6 +1529,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/home/activity":
             self.send_json(home_activity_payload())
             return
+        if path == "/api/home/chats":
+            expire_home_chats()
+            self.send_json({"ok": True, "chats": HOME_CHAT_STORE.list_recent()})
+            return
         if path == "/launch/lmstudio":
             launch_lmstudio()
             self.send_json({"launched": True, "detail": "LM Studio launch requested."})
@@ -1687,6 +1691,64 @@ class AriadneHandler(BaseHTTPRequestHandler):
             session_id = str(session_id)
             with SESSION_LOCK:
                 active_chat_id = str(SESSIONS[session_id].get("chat_id") or "")
+            if path == "/api/home/chat/select":
+                requested_chat_id = body.get("chat_id")
+                if not isinstance(requested_chat_id, str):
+                    self.send_json({"ok": False, "message": "A chat_id is required."}, 400)
+                    return
+                chat = HOME_CHAT_STORE.resume(requested_chat_id)
+                with SESSION_LOCK:
+                    SESSIONS[session_id]["chat_id"] = requested_chat_id
+                record_home_event("chat_resumed", f"{chat.get('title') or 'Ariadne Home chat'} ({requested_chat_id})")
+                self.send_json({"ok": True, "chat": chat})
+                return
+            if path == "/api/home/chat/new":
+                old_record, archive_path = HOME_CHAT_STORE.close_and_archive(active_chat_id)
+                new_chat = HOME_CHAT_STORE.create(home_identity_kernel_metadata())
+                with SESSION_LOCK:
+                    SESSIONS[session_id]["chat_id"] = new_chat["chat_id"]
+                record_home_event("chat_closed", f"{old_record.get('title') or 'Ariadne Home chat'} ({active_chat_id})")
+                record_home_event("chat_archived", f"{active_chat_id} -> {archive_path}")
+                record_home_event("chat_started", f"{new_chat.get('title') or 'Ariadne Home chat'} ({new_chat['chat_id']})")
+                self.send_json({"ok": True, "chat": new_chat, "archive_path": archive_path})
+                return
+            if path == "/api/home/chat/save":
+                requested_chat_id = body.get("chat_id")
+                if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
+                    self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
+                    return
+                record, inbox_path = HOME_CHAT_STORE.save_to_inbox(active_chat_id)
+                record_home_event("chat_saved_to_inbox", f"{active_chat_id} -> {inbox_path}")
+                self.send_json({"ok": True, "chat_id": active_chat_id, "inbox_path": inbox_path, "title": record.get("title")})
+                return
+            if path == "/api/home/chat/export":
+                requested_chat_id = body.get("chat_id")
+                if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
+                    self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
+                    return
+                markdown, filename = HOME_CHAT_STORE.export_markdown(active_chat_id)
+                record_home_event("chat_exported", f"{active_chat_id} exported as Markdown.")
+                self.send_json({"ok": True, "chat_id": active_chat_id, "filename": filename, "markdown": markdown})
+                return
+            if path == "/api/home/chat/purge":
+                if body.get("confirm") is not True:
+                    self.send_json({"ok": False, "message": "Purge requires explicit confirmation."}, 400)
+                    return
+                target_chat_id = body.get("chat_id") or active_chat_id
+                if not isinstance(target_chat_id, str):
+                    self.send_json({"ok": False, "message": "A chat_id is required."}, 400)
+                    return
+                purged = HOME_CHAT_STORE.purge(target_chat_id)
+                record_home_event("chat_purged", f"{target_chat_id} temporary state removed; archive and Inbox preserved.")
+                if target_chat_id == active_chat_id:
+                    new_chat = HOME_CHAT_STORE.create(home_identity_kernel_metadata())
+                    with SESSION_LOCK:
+                        SESSIONS[session_id]["chat_id"] = new_chat["chat_id"]
+                    record_home_event("chat_started", f"{new_chat.get('title') or 'Ariadne Home chat'} ({new_chat['chat_id']})")
+                    self.send_json({"ok": True, "purged_chat_id": purged["chat_id"], "chat": new_chat})
+                else:
+                    self.send_json({"ok": True, "purged_chat_id": purged["chat_id"], "chat": None})
+                return
             if path == "/api/home/chat/close":
                 requested_chat_id = body.get("chat_id")
                 if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:

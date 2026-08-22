@@ -89,6 +89,55 @@ class HomeChatStoreTests(unittest.TestCase):
         self.assertGreater(parse_iso(record["expires_at"]), initial_expiry)
 
 
+    def test_recent_list_is_newest_first_and_resume_reopens_closed_chat(self):
+        first = self.store.create()
+        self.store.begin_turn(first["chat_id"], "First question", "qwen3.5:9b", {})
+        self.current += timedelta(minutes=1)
+        second = self.store.create()
+        recent = self.store.list_recent()
+        self.assertEqual([item["chat_id"] for item in recent[:2]], [second["chat_id"], first["chat_id"]])
+        self.assertEqual(recent[0]["message_count"], 0)
+        self.store.close_and_archive(first["chat_id"])
+        resumed = self.store.resume(first["chat_id"])
+        self.assertEqual(resumed["status"], "active")
+        self.assertEqual(self.store.get(first["chat_id"])["status"], "active")
+
+    def test_save_to_inbox_is_idempotent_and_export_preserves_transcript_order(self):
+        chat = self.store.create()
+        _, initial_inbox_path = self.store.save_to_inbox(chat["chat_id"])
+        turn_id, _ = self.store.begin_turn(chat["chat_id"], "First saved question", "qwen3.5:9b", {})
+        self.store.complete_turn(
+            chat["chat_id"], turn_id, "First saved answer", model="qwen3.5:9b", used_vault=False,
+            sources=[], retrieval={}, timing={}, identity_kernel={"version": "1.1.0"},
+        )
+        first_record, inbox_path = self.store.save_to_inbox(chat["chat_id"])
+        second_record, same_path = self.store.save_to_inbox(chat["chat_id"])
+        self.assertEqual(initial_inbox_path, inbox_path)
+        self.assertEqual(inbox_path, same_path)
+        self.assertEqual(second_record["inbox_path"], inbox_path)
+        self.assertTrue((self.vault / inbox_path).is_file())
+        self.assertEqual(len(list((self.vault / "Inbox").glob("*.md"))), 1)
+        markdown, filename = self.store.export_markdown(chat["chat_id"])
+        self.assertTrue(filename.startswith("First saved question_"))
+        self.assertTrue(filename.endswith(f"_{chat['chat_id'][:8]}.md"))
+        self.assertLess(markdown.index("First saved question"), markdown.index("First saved answer"))
+        self.assertIn("saved_to_inbox: true", (self.vault / inbox_path).read_text(encoding="utf-8"))
+        self.assertEqual(first_record["chat_id"], second_record["chat_id"])
+
+    def test_purge_removes_only_temporary_json_and_preserves_archive_and_inbox(self):
+        chat = self.store.create()
+        turn_id, _ = self.store.begin_turn(chat["chat_id"], "Keep permanent copies", "qwen3.5:9b", {})
+        self.store.complete_turn(
+            chat["chat_id"], turn_id, "Permanent copies stay", model="qwen3.5:9b", used_vault=False,
+            sources=[], retrieval={}, timing={}, identity_kernel={},
+        )
+        _, inbox_path = self.store.save_to_inbox(chat["chat_id"])
+        _, archive_path = self.store.close_and_archive(chat["chat_id"])
+        self.store.purge(chat["chat_id"])
+        self.assertIsNone(self.store.get(chat["chat_id"]))
+        self.assertTrue((self.vault / inbox_path).is_file())
+        self.assertTrue((self.vault / archive_path).is_file())
+
 def parse_iso(value):
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 

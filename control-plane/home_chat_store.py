@@ -349,6 +349,125 @@ class ChatStore:
             self._write_locked(record)
             return record, archive_path
 
+    def _format_markdown(self, record: dict[str, Any], ended_at: datetime, *, saved_to_inbox: bool = False) -> str:
+        """Render the canonical portable transcript without diagnostic payloads."""
+        lines = [
+            "---",
+            "kind: ariadne-home-chat",
+            f"chat_id: {record['chat_id']}",
+            f"title: {_yaml_string(record.get('title'))}",
+            f"started: {record.get('started_at') or ''}",
+            f"ended: {isoformat(ended_at)}",
+            f"model: {_yaml_string(record.get('model') or '')}",
+            f"identity_kernel: {_yaml_string((record.get('identity_kernel') or {}).get('version') or 'unknown')}",
+        ]
+        if saved_to_inbox:
+            lines.append("saved_to_inbox: true")
+        lines.extend(["---", "", f"# {record.get('title') or 'Ariadne Home chat'}", ""])
+        for item in record.get("messages", []):
+            if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+                continue
+            label = "Wazza" if item.get("role") == "user" else "Ariadne"
+            lines.extend([f"## {label}", ""])
+            state = item.get("state")
+            content = str(item.get("content") or "").strip()
+            if content:
+                lines.extend([content, ""])
+            elif state == "pending":
+                lines.extend(["_Response pending when this chat was archived._", ""])
+            elif state == "interrupted":
+                lines.extend(["_Response interrupted; no complete response was recorded._", ""])
+        return "\n".join(lines).rstrip() + "\n"
+
+    def list_recent(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        with _process_lock(self.lock_path):
+            self.root.mkdir(parents=True, exist_ok=True)
+            for path in sorted(self.root.glob("*.json"), key=lambda item: item.name):
+                try:
+                    record = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, ValueError, json.JSONDecodeError):
+                    continue
+                chat_id = record.get("chat_id") if isinstance(record, dict) else None
+                if not isinstance(chat_id, str) or not _CHAT_ID.fullmatch(chat_id) or path.stem != chat_id:
+                    continue
+                messages = record.get("messages") if isinstance(record.get("messages"), list) else []
+                rows.append({
+                    "chat_id": chat_id,
+                    "title": str(record.get("title") or "Ariadne Home chat"),
+                    "status": str(record.get("status") or "active"),
+                    "started_at": record.get("started_at"),
+                    "last_activity_at": record.get("last_activity_at"),
+                    "expires_at": record.get("expires_at"),
+                    "message_count": len(messages),
+                    "has_interrupted": any(isinstance(item, dict) and item.get("state") == "interrupted" for item in messages),
+                    "archive_path": record.get("archive_path"),
+                    "inbox_path": record.get("inbox_path"),
+                })
+        rows.sort(key=lambda item: str(item.get("last_activity_at") or ""), reverse=True)
+        return rows
+
+    def resume(self, chat_id: str) -> dict[str, Any]:
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record:
+                raise ValueError("Temporary Home chat not found.")
+            if record.get("status") not in {"active", "closed"}:
+                raise ValueError("This temporary Home chat is no longer available.")
+            now = self.now_fn()
+            record["status"] = "active"
+            record["resumed_at"] = isoformat(now)
+            record["last_activity_at"] = isoformat(now)
+            record["expires_at"] = isoformat(now + timedelta(days=RETENTION_DAYS))
+            self._write_locked(record)
+            return record
+
+    def _inbox_path(self, record: dict[str, Any]) -> Path:
+        directory = (self.vault_root / "Inbox").resolve()
+        existing = record.get("inbox_path")
+        if isinstance(existing, str) and existing:
+            existing_path = (self.vault_root / existing).resolve()
+            if existing_path.parent == directory and existing_path.suffix == ".md":
+                return existing_path
+            raise ValueError("Stored Inbox path escaped the vault Inbox directory.")
+        started = parse_time(record.get("started_at")) or self.now_fn()
+        filename = f"{started.astimezone().strftime('%Y-%m-%d_%H%M')}_{_safe_filename(str(record.get('title') or 'chat'))}_{record['chat_id'][:8]}.md"
+        path = (directory / filename).resolve()
+        if path.parent != directory:
+            raise ValueError("Inbox path escaped the vault Inbox directory.")
+        return path
+
+    def save_to_inbox(self, chat_id: str) -> tuple[dict[str, Any], str]:
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record:
+                raise ValueError("Temporary Home chat not found.")
+            now = self.now_fn()
+            path = self._inbox_path(record)
+            _atomic_bytes(path, self._format_markdown(record, now, saved_to_inbox=True).encode("utf-8"))
+            record["inbox_path"] = path.relative_to(self.vault_root).as_posix()
+            record["inbox_saved_at"] = isoformat(now)
+            self._write_locked(record)
+            return record, record["inbox_path"]
+
+    def export_markdown(self, chat_id: str) -> tuple[str, str]:
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record:
+                raise ValueError("Temporary Home chat not found.")
+            now = self.now_fn()
+            filename = f"{_safe_filename(str(record.get('title') or 'chat'))}_{chat_id[:8]}.md"
+            return self._format_markdown(record, now), filename
+
+    def purge(self, chat_id: str) -> dict[str, Any]:
+        with _process_lock(self.lock_path):
+            path = self._path(chat_id)
+            record = self._load_locked(chat_id)
+            if not record:
+                raise ValueError("Temporary Home chat not found.")
+            path.unlink()
+            return record
+
     def cleanup_expired(self) -> list[dict[str, Any]]:
         expired: list[dict[str, Any]] = []
         with _process_lock(self.lock_path):
