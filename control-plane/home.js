@@ -231,8 +231,11 @@ function addMessage(role, content, metadata) {
       const telemetryTrigger = el("span", "telemetry-trigger");
       telemetryTrigger.tabIndex = 0;
       telemetryTrigger.setAttribute("role", "group");
+      telemetryTrigger.setAttribute("aria-haspopup", "dialog");
       telemetryTrigger.setAttribute("aria-label", "Response metrics; focus or hover for details");
-      telemetryTrigger.append(el("span", "timing-badge", timing), buildTelemetryPopover(metadata));
+      const telemetryPopover = buildTelemetryPopover(metadata);
+      telemetryTrigger.append(el("span", "timing-badge", timing), telemetryPopover);
+      wireTelemetryPopover(telemetryTrigger, telemetryPopover);
       meta.append(telemetryTrigger);
     }
     const readButton = el("button", "read-button", "Read Answer");
@@ -337,12 +340,50 @@ function telemetryRow(root, label, value) {
   row.append(el("dt", "", label), el("dd", "", String(value)));
   root.append(row);
 }
+function wireTelemetryPopover(trigger, popover) {
+  let closeTimer = 0;
+  const cancelClose = () => {
+    if (!closeTimer) return;
+    window.clearTimeout(closeTimer);
+    closeTimer = 0;
+  };
+  const setOpen = (open) => {
+    cancelClose();
+    trigger.classList.toggle("telemetry-open", open);
+    popover.setAttribute("aria-hidden", open ? "false" : "true");
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+  const keepOpen = () => setOpen(true);
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer = window.setTimeout(() => {
+      closeTimer = 0;
+      const active = document.activeElement;
+      if (trigger.matches(":hover") || popover.matches(":hover") || trigger.contains(active) || popover.contains(active)) return;
+      setOpen(false);
+    }, 140);
+  };
+  trigger.addEventListener("pointerenter", keepOpen);
+  trigger.addEventListener("pointerleave", scheduleClose);
+  popover.addEventListener("pointerenter", keepOpen);
+  popover.addEventListener("pointerleave", scheduleClose);
+  trigger.addEventListener("focusin", keepOpen);
+  trigger.addEventListener("focusout", scheduleClose);
+  trigger.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    setOpen(false);
+  });
+  popover.setAttribute("aria-hidden", "true");
+  trigger.setAttribute("aria-expanded", "false");
+}
 function buildTelemetryPopover(metadata) {
   const timing = metadata && metadata.timing && typeof metadata.timing === "object" ? metadata.timing : {};
   const native = timing.ollama && typeof timing.ollama === "object" ? timing.ollama : {};
   const details = el("div", "telemetry-popover");
-  details.setAttribute("role", "tooltip");
+  details.setAttribute("role", "dialog");
+  details.setAttribute("aria-label", "Response telemetry details");
   details.append(el("strong", "telemetry-heading", "Response telemetry"));
+  details.append(el("strong", "telemetry-heading telemetry-subheading", "Ollama / model"));
   const modelRows = el("dl", "telemetry-list");
   telemetryRow(modelRows, "Model", metadata.model);
   const inputTokens = finiteMetric(native.prompt_eval_count);
