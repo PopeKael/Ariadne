@@ -2,6 +2,11 @@
 
 `ariadne_mcp.py` exposes the existing KnowledgeVault to an MCP client over standard input/output. It is read-only. Chunk embeddings are optional and are generated only by a locally hosted Ollama model; no vault content is sent to an external embedding service.
 
+`ariadne_mcp_http.py` is the separate SDK-backed external entrypoint. It uses
+the project-managed `mcp==2.0.0` runtime and MCP `2026-07-28` Streamable HTTP
+with `stateless_http=True`. Every request requires an `Authorization: Bearer`
+token from `ARIADNE_MCP_BEARER_TOKEN`; the token is not stored in the vault.
+
 ## Data model
 
 - `00_System/library.json` remains the authoritative catalogue.
@@ -73,6 +78,23 @@ configured chat model defaults to `gpt-oss:20b` and can be changed with
 `ARIADNE_CHAT_MODEL`. Inline source references jump to the source list, which
 links to a read-only local view of the corresponding `Processed/` note and, if
 available, its original source URL. Both operations are read-only.
+
+## Authenticated external endpoint
+
+Create a long random token outside the repository, then start the endpoint
+from the vault root with the project virtual environment:
+
+```powershell
+$env:ARIADNE_MCP_BEARER_TOKEN = '<long-random-token>'
+$env:ARIADNE_MCP_HOST = '127.0.0.1'   # use a private interface or reverse proxy for remote access
+$env:ARIADNE_MCP_PORT = '8790'
+.\.venv\Scripts\python.exe .\00_System\ariadne_mcp_http.py
+```
+
+The MCP endpoint is `http://127.0.0.1:8790/mcp` by default. The transport is
+sessionless for the modern `2026-07-28` revision: clients must not expect an
+`Mcp-Session-Id` response header. Put TLS, network access controls, and token
+rotation at the reverse proxy before binding beyond loopback.
 
 ## Smoke test
 
