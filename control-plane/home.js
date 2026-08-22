@@ -337,6 +337,7 @@ function metricPercent(used, limit) {
 function telemetryRow(root, label, value) {
   if (value === "" || value === null || value === undefined) return;
   const row = el("div", "telemetry-row");
+  row.classList.toggle("telemetry-row-wide", label === "Model" || label === "Context usage");
   row.append(el("dt", "", label), el("dd", "", String(value)));
   root.append(row);
 }
