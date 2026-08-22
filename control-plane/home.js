@@ -1,4 +1,4 @@
-const state = {sessionId: null, messages: [], heartbeat: null, requestTimer: null, requestStarted: 0};
+const state = {sessionId: null, chatId: null, messages: [], heartbeat: null, requestTimer: null, requestStarted: 0};
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -79,7 +79,8 @@ function addMessage(role, content, metadata) {
   document.querySelector(".empty-chat")?.remove();
   const message = el("article", "message " + role);
   message.append(el("span", "message-label", role === "user" ? "YOU" : "ARIADNE"));
-  const messageBody = el("div", "message-body", content);
+  const displayContent = content || (metadata && metadata.state === "pending" ? "Response pending…" : metadata && metadata.state === "interrupted" ? "Response interrupted; no complete response was recorded." : "");
+  const messageBody = el("div", "message-body", displayContent);
   message.append(messageBody);
   if (role === "assistant" && metadata && metadata.model) {
     const meta = el("div", "message-meta");
@@ -110,6 +111,16 @@ function addMessage(role, content, metadata) {
     window.requestAnimationFrame(() => message.scrollIntoView({block: "start", inline: "nearest", behavior: "auto"}));
   } else {
     log.scrollTop = log.scrollHeight;
+  }
+}
+function restoreMessages(messages) {
+  state.messages = [];
+  document.querySelector("#chat-log").replaceChildren();
+  for (const item of messages || []) {
+    if (!item || !["user", "assistant"].includes(item.role)) continue;
+    const content = String(item.content || "");
+    state.messages.push({role: item.role, content});
+    addMessage(item.role, content, item);
   }
 }
 function selectReadableAnswer(node) {
@@ -196,8 +207,16 @@ async function loadHome() {
 }
 async function startSession() {
   try {
-    const result = await postJson("/api/session/start", {surface: "home"});
+    let requestedChatId = null;
+    try { requestedChatId = localStorage.getItem("ariadne.home.chat_id"); } catch (_) {}
+    const result = await postJson("/api/session/start", {surface: "home", chat_id: requestedChatId});
     state.sessionId = result.session_id;
+    state.chatId = result.chat_id;
+    try { localStorage.setItem("ariadne.home.chat_id", state.chatId); } catch (_) {}
+    restoreMessages(result.messages || []);
+    if (result.resumed && result.messages && result.messages.length) {
+      document.querySelector("#ask-status").textContent = "Recovered the durable local chat.";
+    }
     state.heartbeat = window.setInterval(async () => {
       if (!state.sessionId) return;
       try { await postJson("/api/session/heartbeat", {session_id: state.sessionId}); } catch (_) {}
@@ -225,6 +244,7 @@ async function ask(event) {
   try {
     const result = await postJson("/api/home/chat", {
       session_id: state.sessionId,
+      chat_id: state.chatId,
       message: message,
       history: history,
       vault_mode: document.querySelector("#knowledge-mode").value
@@ -246,7 +266,7 @@ async function ask(event) {
 }
 function closeSession() {
   if (!state.sessionId) return;
-  const payload = JSON.stringify({session_id: state.sessionId});
+  const payload = JSON.stringify({session_id: state.sessionId, chat_id: state.chatId});
   navigator.sendBeacon("/api/session/close", new Blob([payload], {type: "application/json"}));
   state.sessionId = null;
 }

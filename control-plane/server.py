@@ -20,6 +20,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
+from home_chat_store import ChatStore
+
 ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = ROOT.parent
 HOST = os.environ.get("ARIADNE_BIND_ADDRESS", "127.0.0.1")
@@ -39,6 +41,7 @@ OPENAI_STATUS_URL = "https://status.openai.com/api/v2/summary.json"
 OPENAI_STATUS_CACHE_TTL_SECONDS = 45
 VAULT_ROOT = Path(os.environ.get("ARIADNE_VAULT_ROOT", str(PROJECT_ROOT))).expanduser().resolve()
 HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
+HOME_CHAT_STORE = ChatStore(VAULT_ROOT)
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
 VAULT_WORKER_PATH = ROOT / "vault_worker.py"
 VAULT_JOB_ROOT = ROOT / "runtime" / "vault_jobs"
@@ -1210,6 +1213,16 @@ def record_home_event(kind: str, summary: str, source: str = "Ariadne Home") -> 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Home event was not recorded: {exc}")
 
 
+def expire_home_chats() -> list[dict[str, object]]:
+    expired = HOME_CHAT_STORE.cleanup_expired()
+    for record in expired:
+        record_home_event(
+            "chat_expired",
+            f"{record.get('title') or 'Ariadne Home chat'} ({record.get('chat_id')}) temporary state expired; archive preserved.",
+        )
+    return expired
+
+
 def read_home_events(limit: int = 12) -> list[dict[str, str]]:
     try:
         lines = HOME_EVENTS_PATH.read_text(encoding="utf-8").splitlines()
@@ -1351,26 +1364,31 @@ def _home_mcp():
     return ariadne_mcp
 
 
-def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> dict[str, object]:
+def home_identity_kernel_metadata() -> dict[str, object]:
+    try:
+        _, metadata = _home_mcp().identity_system_prefix()
+        return metadata
+    except (OSError, RuntimeError, ImportError, ValueError):
+        return {"id": "ariadne", "version": "unknown", "source": None, "scope": "user"}
+
+
+def home_chat_payload(query: str, history: object, vault_mode: str = "auto", chat_id: str | None = None) -> dict[str, object]:
     query = query.strip()
     if not query:
         raise ValueError("A non-empty question is required.")
     if len(query) > 8_000:
         raise ValueError("Keep the question below 8,000 characters.")
+    if not chat_id:
+        raise ValueError("A durable Home chat_id is required.")
     mode = vault_mode if vault_mode in {"auto", "always", "never"} else "auto"
     use_vault = mode == "always" or (mode == "auto" and home_query_requires_vault(query))
     request_started = time.perf_counter()
     timing: dict[str, object] = {}
     mcp = _home_mcp()
-    safe_history: list[dict[str, str]] = []
-    if isinstance(history, list):
-        for item in history[-8:]:
-            if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
-                continue
-            content = str(item.get("content") or "").strip()
-            if content:
-                safe_history.append({"role": str(item["role"]), "content": content[:4_000]})
-    record_home_event("question_submitted", query[:300])
+    safe_history = HOME_CHAT_STORE.model_history(chat_id, limit=8)
+    identity, identity_meta = mcp.identity_system_prefix()
+    turn_id, _ = HOME_CHAT_STORE.begin_turn(chat_id, query, HOME_CHAT_MODEL, identity_meta)
+    record_home_event("question_submitted", f"{query[:300]} · chat_id={chat_id}")
     try:
         if use_vault:
             result = mcp.planned_knowledge_query(
@@ -1390,7 +1408,6 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
             }
             record_home_event("vault_retrieval_performed", f"Retrieved {len(sources)} cited passage(s) for this question.")
         else:
-            identity, identity_meta = mcp.identity_system_prefix()
             system = identity + (
                 "You are Ariadne Home, Warren's local conversational assistant. "
                 "Answer clearly and directly. Keep identity, conversation state, retrieved knowledge, "
@@ -1401,6 +1418,9 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
             answer = mcp.ollama_chat(messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing)
             sources = []
             retrieval = {"match_count": 0, "sources": []}
+        response_identity = result.get("identity_kernel") if use_vault and isinstance(result, dict) else identity_meta
+        if not isinstance(response_identity, dict):
+            response_identity = identity_meta
         record_home_event("model_response_completed", f"Local {HOME_CHAT_MODEL} response completed.")
         calls = timing.get("ollama_calls", []) if isinstance(timing.get("ollama_calls"), list) else []
         if calls:
@@ -1409,6 +1429,10 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
             timing["eval_duration_ns"] = sum(int(call.get("eval_duration", 0)) for call in calls)
         timing["total_duration_ms"] = round((time.perf_counter() - request_started) * 1000)
         timing.pop("ollama_calls", None)
+        HOME_CHAT_STORE.complete_turn(
+            chat_id, turn_id, answer, model=HOME_CHAT_MODEL, used_vault=use_vault,
+            sources=sources, retrieval=retrieval, timing=dict(timing), identity_kernel=response_identity,
+        )
         return {
             "ok": True,
             "answer": answer,
@@ -1418,8 +1442,12 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
             "sources": sources,
             "retrieval": retrieval,
             "timing": timing,
+            "chat_id": chat_id,
+            "turn_id": turn_id,
+            "identity_kernel": response_identity,
         }
     except Exception as exc:
+        HOME_CHAT_STORE.interrupt_turn(chat_id, turn_id, str(exc))
         record_home_event("significant_error", f"Ask Ariadne failed: {exc}", source="Ariadne Home")
         raise
 
@@ -1615,13 +1643,29 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json(stop_wan2gp())
                 return
             if path == "/api/session/start":
+                expire_home_chats()
+                chat, resumed = HOME_CHAT_STORE.get_or_create(
+                    body.get("chat_id"), home_identity_kernel_metadata()
+                )
                 session_id = uuid.uuid4().hex
                 global IDLE_SHUTDOWN_DONE
                 IDLE_SHUTDOWN_DONE = False
                 with SESSION_LOCK:
-                    SESSIONS[session_id] = {"last_seen": time.monotonic(), "jobs": set(), "used_ollama": False}
-                record_home_event("session_started", "Ariadne session started.")
-                self.send_json({"ok": True, "session_id": session_id, "heartbeat_seconds": 5})
+                    SESSIONS[session_id] = {
+                        "last_seen": time.monotonic(), "jobs": set(), "used_ollama": False,
+                        "chat_id": chat["chat_id"],
+                    }
+                lifecycle = "chat_resumed" if resumed else "chat_started"
+                record_home_event(lifecycle, f"{chat.get('title') or 'Ariadne Home chat'} ({chat['chat_id']})")
+                self.send_json({
+                    "ok": True,
+                    "session_id": session_id,
+                    "chat_id": chat["chat_id"],
+                    "resumed": resumed,
+                    "title": chat.get("title"),
+                    "messages": chat.get("messages", []),
+                    "heartbeat_seconds": 5,
+                })
                 return
             if path in {"/api/session/heartbeat", "/api/session/close"}:
                 session_id = body.get("session_id")
@@ -1641,6 +1685,21 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": "Start an Ariadne session first."}, 409)
                 return
             session_id = str(session_id)
+            with SESSION_LOCK:
+                active_chat_id = str(SESSIONS[session_id].get("chat_id") or "")
+            if path == "/api/home/chat/close":
+                requested_chat_id = body.get("chat_id")
+                if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
+                    self.send_json({"ok": False, "message": "The requested chat is not attached to this session."}, 409)
+                    return
+                record, archive_path = HOME_CHAT_STORE.close_and_archive(active_chat_id)
+                record_home_event(
+                    "chat_closed",
+                    f"{record.get('title') or 'Ariadne Home chat'} ({active_chat_id})",
+                )
+                record_home_event("chat_archived", f"{active_chat_id} -> {archive_path}")
+                self.send_json({"ok": True, "chat_id": active_chat_id, "archive_path": archive_path})
+                return
             if path == "/reader/read":
                 answer = body.get("answer")
                 if not isinstance(answer, str) or not answer.strip():
@@ -1668,9 +1727,13 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 if not isinstance(vault_mode, str):
                     vault_mode = "auto"
+                requested_chat_id = body.get("chat_id")
+                if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
+                    self.send_json({"ok": False, "message": "The requested chat is not attached to this session."}, 409)
+                    return
                 with SESSION_LOCK:
                     SESSIONS[session_id]["used_ollama"] = True
-                self.send_json(home_chat_payload(query, history, vault_mode))
+                self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id))
                 return
             if path == "/api/vault/run":
                 action = body.get("action")
@@ -1700,6 +1763,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    expire_home_chats()
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
     start_lifecycle_watchdog()
     print(f"Ariadne listening at http://{HOST}:{PORT}")
