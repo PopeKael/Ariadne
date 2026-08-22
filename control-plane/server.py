@@ -1424,9 +1424,26 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         record_home_event("model_response_completed", f"Local {HOME_CHAT_MODEL} response completed.")
         calls = timing.get("ollama_calls", []) if isinstance(timing.get("ollama_calls"), list) else []
         if calls:
-            timing["load_duration_ms"] = round(sum(float(call.get("load_duration", 0)) for call in calls) / 1_000_000)
-            timing["eval_count"] = sum(int(call.get("eval_count", 0)) for call in calls)
-            timing["eval_duration_ns"] = sum(int(call.get("eval_duration", 0)) for call in calls)
+            native_fields = (
+                "total_duration", "load_duration", "prompt_eval_count",
+                "prompt_eval_duration", "eval_count", "eval_duration",
+            )
+            ollama_telemetry: dict[str, object] = {"call_count": len(calls)}
+            for field in native_fields:
+                values = [call.get(field) for call in calls if isinstance(call, dict) and isinstance(call.get(field), (int, float))]
+                if values:
+                    ollama_telemetry[f"{field}_ns" if field.endswith("duration") else field] = sum(values)
+            timing["ollama"] = ollama_telemetry
+            if isinstance(ollama_telemetry.get("load_duration_ns"), (int, float)):
+                timing["load_duration_ms"] = round(float(ollama_telemetry["load_duration_ns"]) / 1_000_000)
+            if isinstance(ollama_telemetry.get("eval_count"), (int, float)):
+                timing["eval_count"] = int(ollama_telemetry["eval_count"])
+            if isinstance(ollama_telemetry.get("eval_duration_ns"), (int, float)):
+                timing["eval_duration_ns"] = int(ollama_telemetry["eval_duration_ns"])
+            last_prompt_count = calls[-1].get("prompt_eval_count") if isinstance(calls[-1], dict) else None
+            if isinstance(last_prompt_count, (int, float)):
+                timing["context_prompt_tokens"] = int(last_prompt_count)
+                timing["context_limit_tokens"] = HOME_CONTEXT_TOKENS
         timing["total_duration_ms"] = round((time.perf_counter() - request_started) * 1000)
         timing.pop("ollama_calls", None)
         HOME_CHAT_STORE.complete_turn(

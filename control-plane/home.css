@@ -83,3 +83,14 @@ main{padding-top:26px}.section-heading,.panel-heading{display:flex;align-items:f
   .chat-actions { grid-template-columns:repeat(3,1fr); }
   .chat-action { text-align:center; padding-left:5px; padding-right:5px; }
 }
+.telemetry-trigger { position:relative; display:inline-flex; align-items:center; outline:none; }
+.telemetry-trigger:focus-visible { outline:2px solid var(--teal); outline-offset:3px; border-radius:99px; }
+.telemetry-popover { position:absolute; z-index:40; left:0; bottom:calc(100% + 9px); width:300px; max-width:min(300px,calc(100vw - 34px)); max-height:360px; overflow:auto; padding:12px 13px; border:1px solid #3b6572; border-radius:10px; background:#0a202b; color:var(--ink); box-shadow:0 16px 36px rgba(0,0,0,.38); opacity:0; visibility:hidden; pointer-events:none; transform:translateY(4px); transition:opacity .12s ease,visibility .12s ease,transform .12s ease; white-space:normal; }
+.telemetry-trigger:hover .telemetry-popover,.telemetry-trigger:focus .telemetry-popover,.telemetry-trigger:focus-within .telemetry-popover { opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0); }
+.telemetry-heading { display:block; color:var(--teal); font-size:11px; letter-spacing:1px; text-transform:uppercase; }
+.telemetry-heading-spaced { margin-top:13px; padding-top:10px; border-top:1px solid rgba(105,213,210,.18); }
+.telemetry-list { display:grid; gap:5px; margin:8px 0 0; }
+.telemetry-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:baseline; font-size:12px; }
+.telemetry-row dt { color:var(--muted); }
+.telemetry-row dd { margin:0; color:var(--ink); font-variant-numeric:tabular-nums; text-align:right; }
+@media (max-width:720px) { .telemetry-popover { position:fixed; left:12px; right:12px; bottom:12px; width:auto; max-width:none; } }

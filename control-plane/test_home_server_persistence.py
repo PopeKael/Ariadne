@@ -19,12 +19,19 @@ class FakeMcp:
     def __init__(self):
         self.calls = []
         self.fail = False
+        self.telemetry = {
+            "total_duration": 35_300_000_000, "load_duration": 6_800_000_000,
+            "prompt_eval_count": 2_184, "prompt_eval_duration": 1_420_000_000,
+            "eval_count": 763, "eval_duration": 16_000_000_000,
+        }
 
     def identity_system_prefix(self):
         return "IDENTITY", {"id": "ariadne", "version": "1.1.0", "scope": "user"}
 
     def ollama_chat(self, messages, **kwargs):
         self.calls.append(messages)
+        if kwargs.get("metrics") is not None:
+            kwargs["metrics"].setdefault("ollama_calls", []).append(dict(self.telemetry))
         if self.fail:
             raise RuntimeError("simulated model interruption")
         return "A durable answer."
@@ -161,6 +168,10 @@ class HomeServerPersistenceTests(unittest.TestCase):
                 server._home_mcp = original_mcp
                 server.record_home_event = original_event
             self.assertEqual(result["chat_id"], chat["chat_id"])
+            self.assertEqual(result["timing"]["ollama"]["prompt_eval_count"], 2_184)
+            self.assertEqual(result["timing"]["ollama"]["eval_count"], 763)
+            self.assertEqual(result["timing"]["context_prompt_tokens"], 2_184)
+            self.assertEqual(result["timing"]["context_limit_tokens"], server.HOME_CONTEXT_TOKENS)
             self.assertEqual(result["identity_kernel"]["version"], "1.1.0")
             self.assertNotIn("browser-forged history", str(fake.calls[0]))
             record = store.get(chat["chat_id"])

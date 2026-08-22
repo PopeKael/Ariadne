@@ -144,7 +144,7 @@ function rememberChat(chatId) {
 async function selectRecentChat(chatId) {
   if (!state.sessionId || chatId === state.chatId) return;
   try {
-    const result = await postJson("/api/home/chat/select", {session_id: state.sessionId, chat_id: chatId});
+    const result = await postWithSessionRecovery("/api/home/chat/select", {session_id: state.sessionId, chat_id: chatId});
     rememberChat(result.chat.chat_id);
     restoreMessages(result.chat.messages || []);
     document.querySelector("#ask-status").textContent = "Restored the selected local chat.";
@@ -154,17 +154,19 @@ async function selectRecentChat(chatId) {
   }
 }
 async function startNewChat() {
-  if (!state.sessionId) return;
+  const status = document.querySelector("#ask-status");
+  if (!state.sessionId && !(await startSession())) return;
   const button = document.querySelector("#new-chat");
   button.disabled = true;
+  status.textContent = "Starting a fresh durable chat…";
   try {
-    const result = await postJson("/api/home/chat/new", {session_id: state.sessionId, chat_id: state.chatId});
+    const result = await postWithSessionRecovery("/api/home/chat/new", {session_id: state.sessionId, chat_id: state.chatId});
     rememberChat(result.chat.chat_id);
     restoreMessages(result.chat.messages || []);
-    document.querySelector("#ask-status").textContent = "New chat started. The previous conversation was archived.";
+    status.textContent = "New chat started. The previous conversation was archived.";
     await loadRecentChats();
   } catch (error) {
-    document.querySelector("#ask-status").textContent = "Could not start a new chat: " + error.message;
+    status.textContent = "Could not start a new chat: " + error.message;
   } finally {
     button.disabled = false;
   }
@@ -172,7 +174,7 @@ async function startNewChat() {
 async function saveCurrentChat() {
   if (!state.sessionId || !state.chatId) return;
   try {
-    const result = await postJson("/api/home/chat/save", {session_id: state.sessionId, chat_id: state.chatId});
+    const result = await postWithSessionRecovery("/api/home/chat/save", {session_id: state.sessionId, chat_id: state.chatId});
     document.querySelector("#ask-status").textContent = "Saved to Inbox: " + result.inbox_path;
     await loadRecentChats();
   } catch (error) {
@@ -182,7 +184,7 @@ async function saveCurrentChat() {
 async function exportCurrentChat() {
   if (!state.sessionId || !state.chatId) return;
   try {
-    const result = await postJson("/api/home/chat/export", {session_id: state.sessionId, chat_id: state.chatId});
+    const result = await postWithSessionRecovery("/api/home/chat/export", {session_id: state.sessionId, chat_id: state.chatId});
     const blob = new Blob([result.markdown], {type: "text/markdown;charset=utf-8"});
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -201,7 +203,7 @@ async function purgeCurrentChat() {
   if (!state.sessionId || !state.chatId) return;
   if (!window.confirm("Purge this temporary chat? Its archive and any Inbox copy will remain.")) return;
   try {
-    const result = await postJson("/api/home/chat/purge", {session_id: state.sessionId, chat_id: state.chatId, confirm: true});
+    const result = await postWithSessionRecovery("/api/home/chat/purge", {session_id: state.sessionId, chat_id: state.chatId, confirm: true});
     if (result.chat) {
       rememberChat(result.chat.chat_id);
       restoreMessages(result.chat.messages || []);
@@ -225,7 +227,14 @@ function addMessage(role, content, metadata) {
     meta.append(el("span", "", metadata.model));
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
     const timing = formatTiming(metadata.timing);
-    if (timing) meta.append(el("span", "timing-badge", timing));
+    if (timing) {
+      const telemetryTrigger = el("span", "telemetry-trigger");
+      telemetryTrigger.tabIndex = 0;
+      telemetryTrigger.setAttribute("role", "group");
+      telemetryTrigger.setAttribute("aria-label", "Response metrics; focus or hover for details");
+      telemetryTrigger.append(el("span", "timing-badge", timing), buildTelemetryPopover(metadata));
+      meta.append(telemetryTrigger);
+    }
     const readButton = el("button", "read-button", "Read Answer");
     readButton.type = "button";
     readButton.title = "Copy this answer to the Windows reader and send Alt+F1";
@@ -291,6 +300,81 @@ async function readAnswer(messageBody, button) {
     button.disabled = false;
   }
 }
+function finiteMetric(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+function metricInteger(value) {
+  const number = finiteMetric(value);
+  return number === null ? "" : Math.round(number).toLocaleString();
+}
+function metricDurationNs(value) {
+  const nanoseconds = finiteMetric(value);
+  if (nanoseconds === null) return "";
+  const milliseconds = nanoseconds / 1e6;
+  return milliseconds >= 1000 ? (milliseconds / 1000).toFixed(2) + " seconds" : milliseconds.toFixed(milliseconds < 10 ? 2 : 1) + " ms";
+}
+function metricDurationMs(value) {
+  const milliseconds = finiteMetric(value);
+  if (milliseconds === null) return "";
+  return milliseconds >= 1000 ? (milliseconds / 1000).toFixed(2) + " seconds" : milliseconds.toFixed(milliseconds < 10 ? 2 : 1) + " ms";
+}
+function metricRate(count, durationNs) {
+  const tokens = finiteMetric(count);
+  const nanoseconds = finiteMetric(durationNs);
+  if (tokens === null || nanoseconds === null || nanoseconds <= 0) return "";
+  return (tokens / (nanoseconds / 1e9)).toLocaleString([], {maximumFractionDigits: 1}) + " tokens/sec";
+}
+function metricPercent(used, limit) {
+  const tokens = finiteMetric(used);
+  const maximum = finiteMetric(limit);
+  if (tokens === null || maximum === null || maximum <= 0) return "";
+  return ((tokens / maximum) * 100).toFixed(1) + "%";
+}
+function telemetryRow(root, label, value) {
+  if (value === "" || value === null || value === undefined) return;
+  const row = el("div", "telemetry-row");
+  row.append(el("dt", "", label), el("dd", "", String(value)));
+  root.append(row);
+}
+function buildTelemetryPopover(metadata) {
+  const timing = metadata && metadata.timing && typeof metadata.timing === "object" ? metadata.timing : {};
+  const native = timing.ollama && typeof timing.ollama === "object" ? timing.ollama : {};
+  const details = el("div", "telemetry-popover");
+  details.setAttribute("role", "tooltip");
+  details.append(el("strong", "telemetry-heading", "Response telemetry"));
+  const modelRows = el("dl", "telemetry-list");
+  telemetryRow(modelRows, "Model", metadata.model);
+  const inputTokens = finiteMetric(native.prompt_eval_count);
+  const outputTokens = finiteMetric(native.eval_count);
+  const totalTokens = inputTokens !== null && outputTokens !== null ? inputTokens + outputTokens : null;
+  telemetryRow(modelRows, "Input tokens", metricInteger(inputTokens));
+  telemetryRow(modelRows, "Output tokens", metricInteger(outputTokens));
+  telemetryRow(modelRows, "Total tokens", metricInteger(totalTokens));
+  telemetryRow(modelRows, "Prompt processing", metricDurationNs(native.prompt_eval_duration_ns));
+  telemetryRow(modelRows, "Prompt processing speed", metricRate(inputTokens, native.prompt_eval_duration_ns));
+  telemetryRow(modelRows, "Generation time", metricDurationNs(native.eval_duration_ns));
+  telemetryRow(modelRows, "Generation speed", metricRate(outputTokens, native.eval_duration_ns));
+  telemetryRow(modelRows, "Model load time", metricDurationNs(native.load_duration_ns));
+  telemetryRow(modelRows, "Total request time", metricDurationNs(native.total_duration_ns) || metricDurationMs(timing.total_duration_ms));
+  const contextUsed = finiteMetric(timing.context_prompt_tokens);
+  const contextLimit = finiteMetric(timing.context_limit_tokens);
+  if (contextUsed !== null && contextLimit !== null && contextLimit > 0) {
+    telemetryRow(modelRows, "Context usage", `${metricInteger(contextUsed)} / ${metricInteger(contextLimit)} tokens · ${metricPercent(contextUsed, contextLimit)}`);
+  }
+  details.append(modelRows);
+  const retrieval = metadata && metadata.retrieval && typeof metadata.retrieval === "object" ? metadata.retrieval : null;
+  if (typeof metadata?.used_vault === "boolean" || retrieval) {
+    details.append(el("strong", "telemetry-heading telemetry-heading-spaced", "Ariadne retrieval"));
+    const retrievalRows = el("dl", "telemetry-list");
+    telemetryRow(retrievalRows, "Vault evidence", typeof metadata?.used_vault === "boolean" ? (metadata.used_vault ? "Yes" : "No") : "");
+    telemetryRow(retrievalRows, "Retrieved passages", retrieval ? metricInteger(retrieval.match_count) : "");
+    const searches = retrieval && Array.isArray(retrieval.searches) ? retrieval.searches.length : (metadata?.used_vault === false ? 0 : null);
+    telemetryRow(retrievalRows, "Planner searches", searches === null ? "" : metricInteger(searches));
+    details.append(retrievalRows);
+  }
+  return details;
+}
 function formatClock(milliseconds) {
   const seconds = Math.max(0, milliseconds) / 1000;
   return seconds < 60 ? seconds.toFixed(1) + "s" : Math.floor(seconds / 60) + "m " + Math.round(seconds % 60) + "s";
@@ -343,8 +427,24 @@ async function loadHome() {
     document.querySelector("#health-updated").textContent = "Status unavailable";
   }
 }
+function sessionLost(error) {
+  const message = String(error && error.message || "").toLowerCase();
+  return message.includes("session") && (message.includes("not active") || message.includes("already closed") || message.includes("start an ariadne session") || message.includes("http 404") || message.includes("http 409"));
+}
+async function postWithSessionRecovery(url, payload) {
+  try {
+    return await postJson(url, payload);
+  } catch (error) {
+    if (!sessionLost(error)) throw error;
+    state.sessionId = null;
+    if (!(await startSession())) throw error;
+    return postJson(url, {...payload, session_id: state.sessionId});
+  }
+}
 async function startSession() {
   try {
+    if (state.heartbeat) window.clearInterval(state.heartbeat);
+    state.heartbeat = null;
     let requestedChatId = null;
     try { requestedChatId = localStorage.getItem("ariadne.home.chat_id"); } catch (_) {}
     const result = await postJson("/api/session/start", {surface: "home", chat_id: requestedChatId});
@@ -358,10 +458,17 @@ async function startSession() {
     }
     state.heartbeat = window.setInterval(async () => {
       if (!state.sessionId) return;
-      try { await postJson("/api/session/heartbeat", {session_id: state.sessionId}); } catch (_) {}
+       try { await postJson("/api/session/heartbeat", {session_id: state.sessionId}); } catch (error) {
+         if (sessionLost(error)) {
+           state.sessionId = null;
+           await startSession();
+         }
+       }
     }, Math.max(3000, (result.heartbeat_seconds || 5) * 1000));
+    return true;
   } catch (error) {
     document.querySelector("#ask-status").textContent = "Session unavailable: " + error.message;
+    return false;
   }
 }
 async function ask(event) {
