@@ -570,7 +570,7 @@ function setupViewModes() {
   const back = document.createElement("button");
   back.type = "button";
   back.className = "view-back";
-  back.textContent = "<- Overview";
+  back.textContent = "← Overview";
   back.addEventListener("click", () => setViewMode("overview"));
 
   if (badge) actions.append(badge);

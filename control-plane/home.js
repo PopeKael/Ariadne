@@ -1,4 +1,4 @@
-const state = {sessionId: null, messages: [], heartbeat: null};
+const state = {sessionId: null, messages: [], heartbeat: null, requestTimer: null, requestStarted: 0};
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -19,12 +19,29 @@ async function postJson(url, payload) {
   return data;
 }
 function renderHealth(payload) {
-  const root = document.querySelector("#health-strip");
+  const root = document.querySelector("#header-health");
+  if (!root) return;
   root.replaceChildren();
-  for (const service of payload.services || []) {
-    const card = el("article", "health-card " + (service.state || "attention"));
-    card.append(el("span", "health-state", service.state || "attention"), el("strong", "", service.name), el("small", "", service.detail));
-    root.append(card);
+  const compactNames = {"Ariadne backend":"Backend", "Knowledge Vault":"Vault", "MCP / retrieval":"MCP", "Ollama":"Ollama", "Semantic index":"Semantic"};
+  for (const [index, service] of (payload.services || []).entries()) {
+    const stateName = service.state || "attention";
+    const stateLabel = stateName.charAt(0).toUpperCase() + stateName.slice(1);
+    const detail = service.detail || "No detail reported.";
+    const description = `${service.name}. ${stateLabel}. ${detail}`;
+    const indicator = el("button", "health-indicator " + stateName);
+    indicator.type = "button";
+    indicator.setAttribute("aria-label", description);
+    indicator.setAttribute("aria-describedby", "health-tooltip-" + index);
+    indicator.title = description;
+    const dot = el("span", "health-dot");
+    dot.setAttribute("aria-hidden", "true");
+    indicator.append(dot, el("span", "health-label", compactNames[service.name] || service.name));
+    const tooltip = el("span", "health-tooltip");
+    tooltip.id = "health-tooltip-" + index;
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.append(el("strong", "", service.name), el("span", "", stateLabel), el("small", "", detail));
+    indicator.append(tooltip);
+    root.append(indicator);
   }
   document.querySelector("#health-updated").textContent = "Updated " + new Date(payload.timestamp).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
   document.querySelector("#model-name").textContent = payload.resident_model || "Local model";
@@ -68,6 +85,8 @@ function addMessage(role, content, metadata) {
     const meta = el("div", "message-meta");
     meta.append(el("span", "", metadata.model));
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
+    const timing = formatTiming(metadata.timing);
+    if (timing) meta.append(el("span", "timing-badge", timing));
     const readButton = el("button", "read-button", "Read Answer");
     readButton.type = "button";
     readButton.title = "Copy this answer to the Windows reader and send Alt+F1";
@@ -87,7 +106,11 @@ function addMessage(role, content, metadata) {
     }
   }
   log.append(message);
-  log.scrollTop = log.scrollHeight;
+  if (role === "assistant") {
+    window.requestAnimationFrame(() => message.scrollIntoView({block: "start", inline: "nearest", behavior: "auto"}));
+  } else {
+    log.scrollTop = log.scrollHeight;
+  }
 }
 function selectReadableAnswer(node) {
   const selection = window.getSelection();
@@ -119,6 +142,47 @@ async function readAnswer(messageBody, button) {
     button.disabled = false;
   }
 }
+function formatClock(milliseconds) {
+  const seconds = Math.max(0, milliseconds) / 1000;
+  return seconds < 60 ? seconds.toFixed(1) + "s" : Math.floor(seconds / 60) + "m " + Math.round(seconds % 60) + "s";
+}
+function fallbackTiming(answer) {
+  const total = Math.max(1, performance.now() - state.requestStarted);
+  const estimatedTokens = Math.max(1, Math.round(String(answer || "").trim().split(/\s+/).filter(Boolean).length * 1.3));
+  return {total_duration_ms: Math.round(total), eval_count: estimatedTokens, eval_duration_ns: Math.round(total * 1000000), estimated: true};
+}
+function formatTiming(timing) {
+  if (!timing) return "";
+  const total = Number(timing.total_duration_ms || timing.request_ms || 0);
+  const load = Number(timing.load_duration_ms || 0);
+  const evalCount = Number(timing.eval_count || 0);
+  const evalDuration = Number(timing.eval_duration_ns || 0) / 1e9;
+  const rate = evalCount && evalDuration > 0 ? (evalCount / evalDuration).toFixed(1) + " tok/s" : "";
+  const parts = [];
+  if (timing.estimated) parts.push("estimated");
+  if (load > 0) parts.push("load " + formatClock(load));
+  if (rate) parts.push(rate);
+  if (total > 0) parts.push("total " + formatClock(total));
+  return parts.join(" · ");
+}
+function beginRequestStatus(status) {
+  state.requestStarted = performance.now();
+  let phaseStarted = state.requestStarted;
+  let phase = "Loading local model";
+  status.textContent = phase + " · 0.0s";
+  state.requestTimer = window.setInterval(() => {
+    const now = performance.now();
+    if (now - state.requestStarted > 1800 && phase === "Loading local model") {
+      phase = "Thinking locally";
+      phaseStarted = now;
+    }
+    status.textContent = phase + " · " + formatClock(now - phaseStarted);
+  }, 250);
+}
+function endRequestStatus() {
+  if (state.requestTimer) window.clearInterval(state.requestTimer);
+  state.requestTimer = null;
+}
 async function loadHome() {
   try {
     const data = await getJson("/api/home/activity");
@@ -126,7 +190,8 @@ async function loadHome() {
     renderToday(data.today);
     renderActivity(data.activity);
   } catch (error) {
-    document.querySelector("#health-strip").replaceChildren(el("div", "health-loading", "Home could not read local status: " + error.message));
+    document.querySelector("#header-health").replaceChildren(el("span", "header-health-loading", "Status unavailable"));
+    document.querySelector("#health-updated").textContent = "Status unavailable";
   }
 }
 async function startSession() {
@@ -156,7 +221,7 @@ async function ask(event) {
   addMessage("user", message);
   input.value = "";
   submit.disabled = true;
-  status.textContent = "Ariadne is thinking locally…";
+  beginRequestStatus(status);
   try {
     const result = await postJson("/api/home/chat", {
       session_id: state.sessionId,
@@ -164,14 +229,17 @@ async function ask(event) {
       history: history,
       vault_mode: document.querySelector("#knowledge-mode").value
     });
+    result.timing = result.timing || fallbackTiming(result.answer);
     state.messages.push({role: "assistant", content: result.answer});
     addMessage("assistant", result.answer, result);
-    status.textContent = result.used_vault ? "Answered with local Vault evidence." : "Answered by the local model.";
+    const timing = formatTiming(result.timing);
+    status.textContent = (result.used_vault ? "Answered with local Vault evidence." : "Answered by the local model.") + (timing ? " · " + timing : "");
     loadHome();
   } catch (error) {
     addMessage("assistant", "I could not complete that locally: " + error.message);
     status.textContent = "The local request failed.";
   } finally {
+    endRequestStatus();
     submit.disabled = false;
     input.focus();
   }

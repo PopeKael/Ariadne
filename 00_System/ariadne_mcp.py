@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+import time
 import argparse
 import hashlib
 import urllib.error
@@ -455,7 +456,8 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
 
 
 def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
-                context_tokens: int | None = None) -> str:
+                context_tokens: int | None = None,
+                metrics: dict[str, Any] | None = None) -> str:
     """Generate text only through the configured loopback Ollama endpoint."""
     base_url = DEFAULT_OLLAMA_URL
     selected_model = model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
@@ -482,6 +484,13 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
         raise RuntimeError(f"Ollama chat is unavailable at {base_url}: {exc.reason}") from exc
     except (TimeoutError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"Ollama chat request failed: {exc}") from exc
+    if metrics is not None:
+        metrics.setdefault("ollama_calls", []).append({
+            key: payload.get(key) for key in (
+                "total_duration", "load_duration", "prompt_eval_count",
+                "prompt_eval_duration", "eval_count", "eval_duration"
+            ) if payload.get(key) is not None
+        })
     content = payload.get("message", {}).get("content")
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError(f"Ollama returned no final answer; ensure model '{selected_model}' is installed.")
@@ -549,7 +558,8 @@ def planner_json(text: str) -> dict[str, Any]:
 
 
 def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mode: str = "answer",
-                            model: str | None = None, context_tokens: int | None = None) -> dict[str, Any]:
+                            model: str | None = None, context_tokens: int | None = None,
+                            metrics: dict[str, Any] | None = None) -> dict[str, Any]:
     """Interpret a question, retrieve several focused evidence sets, then answer from them."""
     def report(stage: str, message: str, completed: int = 0, total: int = 0) -> None:
         if progress:
@@ -574,10 +584,13 @@ def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mo
         "Do not add thumbnail, image, packaging, branding, or content-creation terms unless the user explicitly asks for them. "
         "Do not use placeholders such as [institution], and do not formulate searches as if querying the public web."
     )
+    planning_started = time.perf_counter()
     planner_text = ollama_chat([
         {"role": "system", "content": planner_system},
         {"role": "user", "content": query},
-    ], model=model, context_tokens=context_tokens)
+    ], model=model, context_tokens=context_tokens, metrics=metrics)
+    if metrics is not None:
+        metrics.setdefault("stage_durations_ms", {})["planning"] = round((time.perf_counter() - planning_started) * 1000)
     plan = planner_json(planner_text)
     original_search = query.strip()[:PLANNER_MAX_QUERY_CHARS]
     searches = [original_search] + [item for item in plan["searches"] if item.casefold() != original_search.casefold()]
@@ -633,11 +646,15 @@ def planned_knowledge_query(query: str, limit: int = 6, progress=None, answer_mo
     )
     answer_user = (f"Original question:\n{query}\n\nAnswer instructions:\n{instructions}\n\n"
                    "Retrieved vault evidence:\n\n" + "\n\n".join(evidence))
+    synthesis_started = time.perf_counter()
     summary = ollama_chat(
         [{"role": "system", "content": answer_system}, {"role": "user", "content": answer_user}],
         model=model,
         context_tokens=context_tokens,
+        metrics=metrics,
     )
+    if metrics is not None:
+        metrics.setdefault("stage_durations_ms", {})["synthesis"] = round((time.perf_counter() - synthesis_started) * 1000)
     return {"query": query, "summary": summary, "sources": sources, "plan": plan, "searches": search_reports,
             "model": model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b"),
             "identity_kernel": identity_meta}

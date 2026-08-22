@@ -1,0 +1,2342 @@
+{
+  "benchmark": "frozen-21",
+  "mode": "auto",
+  "created_at": "2026-08-21T12:16:37Z",
+  "results": [
+    {
+      "number": 1,
+      "question": "Why did we decide to keep the Knowledge Vault separate from Ariadne",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 5,
+      "source_titles": [
+        "Where will I find the Time",
+        "Social Profile - Journaling Workflow System",
+        "Social Profile - Journaling Workflow System",
+        "Vault Query?",
+        "Vault Query?",
+        "Vault Query?",
+        "Vault Query?",
+        "First GitHub repo update on Ariadne",
+        "Where will I find the Time",
+        "Vault Query?",
+        "Social Profile - Journaling Workflow System",
+        "Vault Query?"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "youtube:0u3rrlMEYQk#chunk-4",
+          "title": "Where will I find the Time",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.516667
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-2",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.515493
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-3",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.515493
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-4",
+          "title": "Vault Query?",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.515493
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-6",
+          "title": "Vault Query?",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.515493
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-8",
+          "title": "Vault Query?",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.515493
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-7",
+          "title": "Vault Query?",
+          "lexical_score": 53.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.507692
+        },
+        {
+          "chunk_id": "youtube:oKrpJKVgN20#chunk-11",
+          "title": "First GitHub repo update on Ariadne",
+          "lexical_score": 53.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.507692
+        },
+        {
+          "chunk_id": "youtube:0u3rrlMEYQk#chunk-3",
+          "title": "Where will I find the Time",
+          "lexical_score": 51.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.504762
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-12",
+          "title": "Vault Query?",
+          "lexical_score": 50.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.503226
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-4",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 47.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.498305
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-2",
+          "title": "Vault Query?",
+          "lexical_score": 47.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.498305
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "Why did we decide to keep the Knowledge Vault separate from Ariadne",
+          "match_count": 6
+        },
+        {
+          "query": "Why is the Knowledge Vault separate from Ariadne",
+          "match_count": 6
+        },
+        {
+          "query": "reasons for separating Knowledge Vault and Ariadne identity",
+          "match_count": 6
+        },
+        {
+          "query": "architectural decision keeping Knowledge Vault distinct from Ariadne",
+          "match_count": 6
+        },
+        {
+          "query": "benefits of separate Knowledge Vault versus integrated Ariadne",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 2,
+      "question": "What is the current architecture of Ariadne, the Knowledge Vault and the MCP",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+        "Vault Query?",
+        "Pope Kael TV - Project Progress Review",
+        "Pope Kael TV - Project Progress Review",
+        "Pope Kael TV - Project Progress Review",
+        "Vault Query?",
+        "Vault Query?"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-1",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 87.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.539394
+        },
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-0",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 84.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.5375
+        },
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-3",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 84.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.5375
+        },
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-4",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 84.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.5375
+        },
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-5",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 84.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.5375
+        },
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-6",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 84.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.5375
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-10",
+          "title": "Vault Query?",
+          "lexical_score": 56.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.511765
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9-pope-kael-tv/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628#chunk-2",
+          "title": "Pope Kael TV - Project Progress Review",
+          "lexical_score": 55.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.510448
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628#chunk-1",
+          "title": "Pope Kael TV - Project Progress Review",
+          "lexical_score": 55.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.510448
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628#chunk-2",
+          "title": "Pope Kael TV - Project Progress Review",
+          "lexical_score": 55.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.510448
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-4",
+          "title": "Vault Query?",
+          "lexical_score": 53.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.507692
+        },
+        {
+          "chunk_id": "youtube:7ejK17ML_do#chunk-5",
+          "title": "Vault Query?",
+          "lexical_score": 53.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.507692
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What is the current architecture of Ariadne, the Knowledge Vault and the MCP",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne Knowledge Vault architecture MCP integration",
+          "match_count": 6
+        },
+        {
+          "query": "current design Ariadne Knowledge Vault and MCP components",
+          "match_count": 6
+        },
+        {
+          "query": "how Ariadne connects Knowledge Vault to MCP servers",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne system architecture overview vault and protocol",
+          "match_count": 6
+        },
+        {
+          "query": "technical structure of Ariadne Knowledge Vault MCP",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 3,
+      "question": "What did we decide about keeping the MCP read-only",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "WAZZA",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "MCP Meaning in Project",
+        "MCP retrieval",
+        "MCP retrieval",
+        "MCP retrieval",
+        "MCP retrieval",
+        "MCP retrieval"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://warren.dia.net.au/#chunk-0",
+          "title": "WAZZA",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.463636
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-0",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 46.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.463218
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-10",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.457576
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-1",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 40.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.451282
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-2",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 40.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.451282
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-3",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 40.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.451282
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a5f0684-9c48-83ec-8b84-307b49cb372b#chunk-0",
+          "title": "MCP Meaning in Project",
+          "lexical_score": 35.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.439007
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-0",
+          "title": "MCP retrieval",
+          "lexical_score": 35.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.439007
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-1",
+          "title": "MCP retrieval",
+          "lexical_score": 35.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.439007
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-9",
+          "title": "MCP retrieval",
+          "lexical_score": 35.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.439007
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-5",
+          "title": "MCP retrieval",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.430303
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-8",
+          "title": "MCP retrieval",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.430303
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What did we decide about keeping the MCP read-only",
+          "match_count": 6
+        },
+        {
+          "query": "MCP read-only decision",
+          "match_count": 6
+        },
+        {
+          "query": "MCP read-only status discussion",
+          "match_count": 6
+        },
+        {
+          "query": "Garage Alchemy MCP configuration",
+          "match_count": 6
+        },
+        {
+          "query": "Chanya Wazza MCP read-only",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne MCP access permissions",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 4,
+      "question": "What have we said about building visual memory and image retrieval",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "Image Translation Request",
+        "Pope Kael TV - Project Progress Review",
+        "Image Translation Request",
+        "Image Translation Request",
+        "Pope Kael TV - Project Progress Review",
+        "Pope Kael TV - Project Progress Review",
+        "How to Build a Personal Context MCP",
+        "How to Build a Personal Context MCP",
+        "How to Build a Personal Context MCP",
+        "How to Build a Personal Context MCP",
+        "How to Build a Personal Context MCP",
+        "How to Build a Personal Context MCP"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a4310da-ea28-83ec-ba84-d0745e6d7b65#chunk-1",
+          "title": "Image Translation Request",
+          "lexical_score": 50.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.469892
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9-pope-kael-tv/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628#chunk-0",
+          "title": "Pope Kael TV - Project Progress Review",
+          "lexical_score": 50.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.469892
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a4310da-ea28-83ec-ba84-d0745e6d7b65#chunk-0",
+          "title": "Image Translation Request",
+          "lexical_score": 47.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.464972
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a4310da-ea28-83ec-ba84-d0745e6d7b65#chunk-2",
+          "title": "Image Translation Request",
+          "lexical_score": 47.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.464972
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628#chunk-0",
+          "title": "Pope Kael TV - Project Progress Review",
+          "lexical_score": 47.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.464972
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9-pope-kael-tv/c/6a54aeb4-a3b8-83ec-a843-2a9f77d6e628#chunk-1",
+          "title": "Pope Kael TV - Project Progress Review",
+          "lexical_score": 44.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.459524
+        },
+        {
+          "chunk_id": "youtube:TVJ8lt4UfLY#chunk-0",
+          "title": "How to Build a Personal Context MCP",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.453333
+        },
+        {
+          "chunk_id": "youtube:TVJ8lt4UfLY#chunk-11",
+          "title": "How to Build a Personal Context MCP",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.453333
+        },
+        {
+          "chunk_id": "youtube:TVJ8lt4UfLY#chunk-13",
+          "title": "How to Build a Personal Context MCP",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.453333
+        },
+        {
+          "chunk_id": "youtube:TVJ8lt4UfLY#chunk-17",
+          "title": "How to Build a Personal Context MCP",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.453333
+        },
+        {
+          "chunk_id": "youtube:TVJ8lt4UfLY#chunk-4",
+          "title": "How to Build a Personal Context MCP",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.453333
+        },
+        {
+          "chunk_id": "youtube:TVJ8lt4UfLY#chunk-1",
+          "title": "How to Build a Personal Context MCP",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.45
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What have we said about building visual memory and image retrieval",
+          "match_count": 6
+        },
+        {
+          "query": "building visual memory image retrieval",
+          "match_count": 6
+        },
+        {
+          "query": "visual memory techniques image recall strategies",
+          "match_count": 6
+        },
+        {
+          "query": "how to build visual memory and retrieve images",
+          "match_count": 6
+        },
+        {
+          "query": "Warren Gerdes notes on visual memory and image retrieval",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne Identity Kernel visual memory guidelines",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 5,
+      "question": "What are the future features we’ve parked for Ariadne",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "Come join the Tribe",
+        "Come join the Tribe",
+        "Come join the Tribe",
+        "Come join the Tribe",
+        "Come join the Tribe",
+        "Come join the Tribe",
+        "MCP retrieval",
+        "MCP retrieval",
+        "MCP retrieval",
+        "MCP retrieval",
+        "MCP retrieval",
+        "MCP retrieval"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "youtube:nLHHxbKS0LQ#chunk-2",
+          "title": "Come join the Tribe",
+          "lexical_score": 45.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.461404
+        },
+        {
+          "chunk_id": "youtube:nLHHxbKS0LQ#chunk-3",
+          "title": "Come join the Tribe",
+          "lexical_score": 42.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.455556
+        },
+        {
+          "chunk_id": "youtube:nLHHxbKS0LQ#chunk-6",
+          "title": "Come join the Tribe",
+          "lexical_score": 42.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.455556
+        },
+        {
+          "chunk_id": "youtube:nLHHxbKS0LQ#chunk-8",
+          "title": "Come join the Tribe",
+          "lexical_score": 42.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.455556
+        },
+        {
+          "chunk_id": "youtube:nLHHxbKS0LQ#chunk-9",
+          "title": "Come join the Tribe",
+          "lexical_score": 42.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.455556
+        },
+        {
+          "chunk_id": "youtube:nLHHxbKS0LQ#chunk-4",
+          "title": "Come join the Tribe",
+          "lexical_score": 39.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.44902
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-0",
+          "title": "MCP retrieval",
+          "lexical_score": 34.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.436232
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-1",
+          "title": "MCP retrieval",
+          "lexical_score": 34.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.436232
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-3",
+          "title": "MCP retrieval",
+          "lexical_score": 34.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.436232
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-4",
+          "title": "MCP retrieval",
+          "lexical_score": 31.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.427132
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-5",
+          "title": "MCP retrieval",
+          "lexical_score": 31.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.427132
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-6",
+          "title": "MCP retrieval",
+          "lexical_score": 31.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.427132
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What are the future features we’ve parked for Ariadne",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne future features parked",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne roadmap deferred items",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne backlog feature ideas",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne planned capabilities not yet built",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne project notes future enhancements",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 6,
+      "question": "What have we discussed about running local AI models and model routing",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "YouTube AI Channel",
+        "Pope Kael TV - Branch · AI Cost and Errors",
+        "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+        "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Pope Kael TV - Branch · AI Cost and Errors",
+        "Pope Kael TV - Branch · AI Cost and Errors",
+        "Pope Kael TV - Branch · AI Cost and Errors"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-6",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 84.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.5375
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-3",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 78.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.533333
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-4",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 78.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.533333
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-7",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 78.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.533333
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a733880-ba5c-83ec-80a8-29be5f66503e#chunk-1",
+          "title": "YouTube AI Channel",
+          "lexical_score": 77.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.532584
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a1a2eb3-f864-83ec-b899-a1e9300990ed#chunk-1",
+          "title": "Pope Kael TV - Branch · AI Cost and Errors",
+          "lexical_score": 75.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.531034
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9aa1c-21c4-8399-b014-b26a83bd97cd#chunk-3",
+          "title": "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+          "lexical_score": 72.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.528571
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9aa1c-21c4-8399-b014-b26a83bd97cd#chunk-4",
+          "title": "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+          "lexical_score": 72.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.528571
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-2",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 69.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.525926
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a1a2eb3-f864-83ec-b899-a1e9300990ed#chunk-0",
+          "title": "Pope Kael TV - Branch · AI Cost and Errors",
+          "lexical_score": 66.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.523077
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a1a2eb3-f864-83ec-b899-a1e9300990ed#chunk-3",
+          "title": "Pope Kael TV - Branch · AI Cost and Errors",
+          "lexical_score": 66.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.523077
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a1a2eb3-f864-83ec-b899-a1e9300990ed#chunk-4",
+          "title": "Pope Kael TV - Branch · AI Cost and Errors",
+          "lexical_score": 66.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.523077
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What have we discussed about running local AI models and model routing",
+          "match_count": 6
+        },
+        {
+          "query": "local AI models and model routing discussion",
+          "match_count": 6
+        },
+        {
+          "query": "running local LLMs and routing strategy notes",
+          "match_count": 6
+        },
+        {
+          "query": "Warren Gerdes local model inference routing",
+          "match_count": 6
+        },
+        {
+          "query": "Garage Alchemy local AI setup and model switching",
+          "match_count": 6
+        },
+        {
+          "query": "Chanya and Wazza local model routing conversation",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 7,
+      "question": "What did we decide about Ariadne Home and the daily console",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+        "WAZZA",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval",
+        "Biography of Chanya and Wazza - Life Summaries Retrieval"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-3",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 62.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.485586
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-6",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 62.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.485586
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-5",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.48216
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-7",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.48216
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-2",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 56.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.478431
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a79909bd3081918472e00827785ac5-code-stuff-i-don-t-understand/c/6a302de4-2868-83ec-a041-354e8eec342a#chunk-4",
+          "title": "Code Stuff I don't Understand - The AI Librarian and Cartographer",
+          "lexical_score": 56.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.478431
+        },
+        {
+          "chunk_id": "url:https://warren.dia.net.au/#chunk-0",
+          "title": "WAZZA",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.463636
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-0",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 46.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.463218
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-10",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.457576
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-7",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.457576
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-1",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 40.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.451282
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69dde985f95c8191bf1ad6847c4b3890/c/69ddc4e2-37fc-83a0-aed2-36017048f9fa#chunk-2",
+          "title": "Biography of Chanya and Wazza - Life Summaries Retrieval",
+          "lexical_score": 40.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.451282
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What did we decide about Ariadne Home and the daily console",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne Home daily console decision",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne Home console setup plan",
+          "match_count": 6
+        },
+        {
+          "query": "Garage Alchemy Ariadne Home console",
+          "match_count": 6
+        },
+        {
+          "query": "Chanya Wazza Ariadne Home console",
+          "match_count": 6
+        },
+        {
+          "query": "daily console Ariadne Home notes",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 8,
+      "question": "What have we said about preserving identity separately from memory",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 5,
+      "source_titles": [
+        "Ariadne, the librarian",
+        "Ariadne, the librarian",
+        "Ariadne, the librarian",
+        "Correspondence - Professional Email Signature",
+        "Correspondence - Professional Email Signature",
+        "Ariadne, the librarian",
+        "MCP retrieval",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy",
+        "Three big Census changes Australians need to know about",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "youtube:1isr91GNrhU#chunk-10",
+          "title": "Ariadne, the librarian",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.463636
+        },
+        {
+          "chunk_id": "youtube:1isr91GNrhU#chunk-4",
+          "title": "Ariadne, the librarian",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.463636
+        },
+        {
+          "chunk_id": "youtube:1isr91GNrhU#chunk-8",
+          "title": "Ariadne, the librarian",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.463636
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a6e330620881918b85fc8b9a8b0fc0/c/69ab869d-031c-839d-88df-6f42c17dfa71#chunk-0",
+          "title": "Correspondence - Professional Email Signature",
+          "lexical_score": 31.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.460465
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a6e330620881918b85fc8b9a8b0fc0/c/69ab869d-031c-839d-88df-6f42c17dfa71#chunk-1",
+          "title": "Correspondence - Professional Email Signature",
+          "lexical_score": 31.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.460465
+        },
+        {
+          "chunk_id": "youtube:1isr91GNrhU#chunk-0",
+          "title": "Ariadne, the librarian",
+          "lexical_score": 29.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.453659
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-0",
+          "title": "MCP retrieval",
+          "lexical_score": 33.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.433333
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-0",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 46.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.429885
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-1",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 46.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.429885
+        },
+        {
+          "chunk_id": "url:https://www.news.com.au/finance/culture/trends/three-big-changes-coming-to-the-2026-census-with-one-expected-to-raise-eyebrows-in-many-households/news-story/88ffc94b60bd8c14463145fae9f9355d?utm_source=News.com.au&utm_medium=Facebook&utm_campaign=EditorialSB&utm_content=SocialBakers#chunk-5",
+          "title": "Three big Census changes Australians need to know about",
+          "lexical_score": 45.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.42807
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-3",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.424242
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-4",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.424242
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What have we said about preserving identity separately from memory",
+          "match_count": 6
+        },
+        {
+          "query": "preserving identity separately from memory",
+          "match_count": 6
+        },
+        {
+          "query": "identity kernel behavioural guidance only",
+          "match_count": 6
+        },
+        {
+          "query": "Warren Gerdes Ariadne identity vs memory distinction",
+          "match_count": 6
+        },
+        {
+          "query": "Garage Alchemy project notes identity separation",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 9,
+      "question": "Give me a summary of how my thinking about Ariadne has changed over the last month.",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 5,
+      "source_titles": [
+        "The Rabbit Hole - US Middle East Policy",
+        "The Rabbit Hole - US Middle East Policy",
+        "The Rabbit Hole - US Middle East Policy",
+        "The Most Plausible Origin of SARS-CoV-2",
+        "The Most Plausible Origin of SARS-CoV-2",
+        "The Most Plausible Origin of SARS-CoV-2",
+        "The Rabbit Hole - 🔟 Unified Field Theory of Conscious Evolution",
+        "The Rabbit Hole - 🔟 Unified Field Theory of Conscious Evolution",
+        "MCP retrieval",
+        "My Hosting - Ariadne Project Session 004",
+        "MCP retrieval",
+        "MCP retrieval"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d103cc-c8ec-8398-a02b-576af3a1d995#chunk-2",
+          "title": "The Rabbit Hole - US Middle East Policy",
+          "lexical_score": 56.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.511765
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d103cc-c8ec-8398-a02b-576af3a1d995#chunk-0",
+          "title": "The Rabbit Hole - US Middle East Policy",
+          "lexical_score": 53.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.507692
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d103cc-c8ec-8398-a02b-576af3a1d995#chunk-1",
+          "title": "The Rabbit Hole - US Middle East Policy",
+          "lexical_score": 50.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.503226
+        },
+        {
+          "chunk_id": "url:https://www.jeffsachs.org/newspaper-articles/rngbe3h7aw3s956yd7lkhxcyghdkbm#chunk-15",
+          "title": "The Most Plausible Origin of SARS-CoV-2",
+          "lexical_score": 65.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.488745
+        },
+        {
+          "chunk_id": "url:https://www.jeffsachs.org/newspaper-articles/rngbe3h7aw3s956yd7lkhxcyghdkbm#chunk-29",
+          "title": "The Most Plausible Origin of SARS-CoV-2",
+          "lexical_score": 65.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.488745
+        },
+        {
+          "chunk_id": "url:https://www.jeffsachs.org/newspaper-articles/rngbe3h7aw3s956yd7lkhxcyghdkbm#chunk-31",
+          "title": "The Most Plausible Origin of SARS-CoV-2",
+          "lexical_score": 65.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.488745
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/68d887c4-44d4-8327-81cf-b31aba80996b#chunk-0",
+          "title": "The Rabbit Hole - 🔟 Unified Field Theory of Conscious Evolution",
+          "lexical_score": 29.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.420325
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/68d887c4-44d4-8327-81cf-b31aba80996b#chunk-1",
+          "title": "The Rabbit Hole - 🔟 Unified Field Theory of Conscious Evolution",
+          "lexical_score": 26.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.408772
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-9",
+          "title": "MCP retrieval",
+          "lexical_score": 23.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.395238
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-hosting/c/6a4a8fa4-6a10-83ec-98ea-153830f81d83#chunk-0",
+          "title": "My Hosting - Ariadne Project Session 004",
+          "lexical_score": 29.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.386992
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-12",
+          "title": "MCP retrieval",
+          "lexical_score": 20.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.379167
+        },
+        {
+          "chunk_id": "youtube:fcJZghMc5hk#chunk-6",
+          "title": "MCP retrieval",
+          "lexical_score": 20.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.379167
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "Give me a summary of how my thinking about Ariadne has changed over the last month.",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne thinking changes last month",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne reflections recent month",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne perspective shift summary",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne thoughts evolution timeline",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 10,
+      "question": "What have I forgotten that we said we were going to come back to?",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "Thailand Content Ideas",
+        "Linux How To: I Ran the Huge GLM 5.2 Model on a “Too Small” Linux Laptop Using Colibri",
+        "Thailand Content Ideas",
+        "Thailand Content Ideas",
+        "(5) Andrej Karpathy on X: \\\"LLM Knowledge BasesSomething I'm finding very useful recently: using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token throughput is going less into manipulating code, and more into manipulating\\",
+        "(5) Andrej Karpathy on X: \\\"LLM Knowledge BasesSomething I'm finding very useful recently: using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token throughput is going less into manipulating code, and more into manipulating\\",
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "YouTube Archive Refresh - Rat Race to Thailand",
+        "I’m an Ebola expert – it is out of control in Congo, and worse is to come"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a22d199-3208-83ec-bf14-759d90edf7ee#chunk-1",
+          "title": "Thailand Content Ideas",
+          "lexical_score": 35.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.439007
+        },
+        {
+          "chunk_id": "youtube:nk-e_OwBoq0#chunk-9",
+          "title": "Linux How To: I Ran the Huge GLM 5.2 Model on a “Too Small” Linux Laptop Using Colibri",
+          "lexical_score": 48.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.433333
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a22d199-3208-83ec-bf14-759d90edf7ee#chunk-0",
+          "title": "Thailand Content Ideas",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.430303
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a22d199-3208-83ec-bf14-759d90edf7ee#chunk-2",
+          "title": "Thailand Content Ideas",
+          "lexical_score": 32.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.430303
+        },
+        {
+          "chunk_id": "url:https://x.com/karpathy/status/2039805659525644595#chunk-0",
+          "title": "(5) Andrej Karpathy on X: \\\"LLM Knowledge BasesSomething I'm finding very useful recently: using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token throughput is going less into manipulating code, and more into manipulating\\",
+          "lexical_score": 72.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.0,
+          "combined_score": 0.428571
+        },
+        {
+          "chunk_id": "url:https://x.com/karpathy/status/2039805659525644595#chunk-2",
+          "title": "(5) Andrej Karpathy on X: \\\"LLM Knowledge BasesSomething I'm finding very useful recently: using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token throughput is going less into manipulating code, and more into manipulating\\",
+          "lexical_score": 72.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.0,
+          "combined_score": 0.428571
+        },
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-8",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.0,
+          "combined_score": 0.416667
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-12",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.0,
+          "combined_score": 0.416667
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-15",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.0,
+          "combined_score": 0.416667
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-7",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.0,
+          "combined_score": 0.416667
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69c95bd22c108191882c2afb21b2411b/c/69cd1eb7-2c50-839b-a999-b7d3f5666724#chunk-2",
+          "title": "YouTube Archive Refresh - Rat Race to Thailand",
+          "lexical_score": 38.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.413333
+        },
+        {
+          "chunk_id": "url:https://www.independent.co.uk/world/ebola-outbreak-democratic-republic-of-congo-b3019451.html#chunk-0",
+          "title": "I’m an Ebola expert – it is out of control in Congo, and worse is to come",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.0,
+          "combined_score": 0.413043
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What have I forgotten that we said we were going to come back to?",
+          "match_count": 6
+        },
+        {
+          "query": "what did we say we would come back to",
+          "match_count": 6
+        },
+        {
+          "query": "unfinished tasks we promised to revisit",
+          "match_count": 6
+        },
+        {
+          "query": "topics Warren and I agreed to return to later",
+          "match_count": 6
+        },
+        {
+          "query": "pending discussion points from recent chats",
+          "match_count": 6
+        },
+        {
+          "query": "things we forgot to finish talking about",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 11,
+      "question": "Where is our Knowledge Vault located",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 5,
+      "source_titles": [
+        "Social Profile - Journaling Workflow System",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "Social Profile - Journaling Workflow System",
+        "Social Profile - Journaling Workflow System",
+        "Social Profile - Journaling Workflow System",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "Social Profile - Journaling Workflow System",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "(5) Andrej Karpathy on X: \\\"LLM Knowledge BasesSomething I'm finding very useful recently: using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token throughput is going less into manipulating code, and more into manipulating\\"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-3",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 44.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.492857
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-8",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 66.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.489744
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-1",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 41.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.486792
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-2",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 41.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.486792
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-4",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 41.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.486792
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-0",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.486667
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-1",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.486667
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-6",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 63.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.486667
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-6a5b0a63a4608191be2aaf8af7d4a50c/c/6a5e30ff-5ba4-83ec-a80f-60ecfd314300#chunk-5",
+          "title": "Social Profile - Journaling Workflow System",
+          "lexical_score": 38.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.48
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-2",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.47971
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-3",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.47971
+        },
+        {
+          "chunk_id": "url:https://x.com/karpathy/status/2039805659525644595#chunk-2",
+          "title": "(5) Andrej Karpathy on X: \\\"LLM Knowledge BasesSomething I'm finding very useful recently: using LLMs to build personal knowledge bases for various topics of research interest. In this way, a large fraction of my recent token throughput is going less into manipulating code, and more into manipulating\\",
+          "lexical_score": 48.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.466667
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "Where is our Knowledge Vault located",
+          "match_count": 6
+        },
+        {
+          "query": "KnowledgeVault location path",
+          "match_count": 6
+        },
+        {
+          "query": "where is our Knowledge Vault stored",
+          "match_count": 6
+        },
+        {
+          "query": "vault directory structure Ariadne",
+          "match_count": 6
+        },
+        {
+          "query": "Markdown knowledge base file path",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 12,
+      "question": "What have we discussed about Ollama",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "OpenWebUI Search Issue",
+        "OpenWebUI Search Issue",
+        "OpenWebUI Search Issue",
+        "OpenWebUI Search Issue",
+        "OpenWebUI Search Issue",
+        "OpenWebUI Search Issue",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+        "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7#chunk-1",
+          "title": "OpenWebUI Search Issue",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.47971
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7#chunk-2",
+          "title": "OpenWebUI Search Issue",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.47971
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7#chunk-3",
+          "title": "OpenWebUI Search Issue",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.47971
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7#chunk-4",
+          "title": "OpenWebUI Search Issue",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.47971
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7#chunk-0",
+          "title": "OpenWebUI Search Issue",
+          "lexical_score": 42.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.455556
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7#chunk-5",
+          "title": "OpenWebUI Search Issue",
+          "lexical_score": 42.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.455556
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-12",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 36.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.441667
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-11",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 33.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.433333
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-1",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 30.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.42381
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-15",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 30.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.42381
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-7",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 30.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.42381
+        },
+        {
+          "chunk_id": "youtube:_7BHqZayPOc#chunk-9",
+          "title": "I Tried PewDiePie’s Odysseus AI So You Don’t Have To (Its FREE)",
+          "lexical_score": 30.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.42381
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What have we discussed about Ollama",
+          "match_count": 6
+        },
+        {
+          "query": "Ollama",
+          "match_count": 6
+        },
+        {
+          "query": "Ollama discussion",
+          "match_count": 6
+        },
+        {
+          "query": "Ollama notes",
+          "match_count": 6
+        },
+        {
+          "query": "Ollama project",
+          "match_count": 6
+        },
+        {
+          "query": "Ollama chat transcript",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 13,
+      "question": "What do you know about GPT-OSS 20B on my local machine",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 5,
+      "source_titles": [
+        "My Local System",
+        "My Local System",
+        "My Local System",
+        "My Local System",
+        "My Local System",
+        "My Local System",
+        "My Local System",
+        "My Local System",
+        "My Local System - Building Personal Profile Query",
+        "My Local System - Building Personal Profile Query",
+        "My Local System - Building Personal Profile Query",
+        "Grug 27B QAT Q4 tested vs Qwen 27B Q4 - 16GB Local LLM setup"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a66d3c7-35e0-83ec-8bc3-d50cc872bc90#chunk-1",
+          "title": "My Local System",
+          "lexical_score": 46.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.496552
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a66d3c7-35e0-83ec-8bc3-d50cc872bc90#chunk-2",
+          "title": "My Local System",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.490909
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a5b44a3-377c-83ec-b100-7e82e4d55b24#chunk-0",
+          "title": "My Local System",
+          "lexical_score": 59.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.48216
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a5b44a3-377c-83ec-b100-7e82e4d55b24#chunk-3",
+          "title": "My Local System",
+          "lexical_score": 56.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.478431
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a5b44a3-377c-83ec-b100-7e82e4d55b24#chunk-4",
+          "title": "My Local System",
+          "lexical_score": 56.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.478431
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a5b44a3-377c-83ec-b100-7e82e4d55b24#chunk-5",
+          "title": "My Local System",
+          "lexical_score": 56.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.478431
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a5b44a3-377c-83ec-b100-7e82e4d55b24#chunk-1",
+          "title": "My Local System",
+          "lexical_score": 50.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.469892
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a5b44a3-377c-83ec-b100-7e82e4d55b24#chunk-6",
+          "title": "My Local System",
+          "lexical_score": 50.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.469892
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a66d3c7-35e0-83ec-8bc3-d50cc872bc90#chunk-0",
+          "title": "My Local System - Building Personal Profile Query",
+          "lexical_score": 37.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.444218
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a66d3c7-35e0-83ec-8bc3-d50cc872bc90#chunk-1",
+          "title": "My Local System - Building Personal Profile Query",
+          "lexical_score": 37.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.444218
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a66d3c7-35e0-83ec-8bc3-d50cc872bc90#chunk-2",
+          "title": "My Local System - Building Personal Profile Query",
+          "lexical_score": 34.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.436232
+        },
+        {
+          "chunk_id": "youtube:k386G2WOmqw#chunk-0",
+          "title": "Grug 27B QAT Q4 tested vs Qwen 27B Q4 - 16GB Local LLM setup",
+          "lexical_score": 48.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.433333
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What do you know about GPT-OSS 20B on my local machine",
+          "match_count": 6
+        },
+        {
+          "query": "GPT-OSS 20B local machine",
+          "match_count": 6
+        },
+        {
+          "query": "GPT-OSS 20B installation notes",
+          "match_count": 6
+        },
+        {
+          "query": "local LLM GPT-OSS 20B experience",
+          "match_count": 6
+        },
+        {
+          "query": "Warren Gerdes GPT-OSS 20B local setup",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 14,
+      "question": "What have we discussed about Open WebUI?",
+      "used_vault": true,
+      "retrieval_match_count": 8,
+      "planner_search_count": 6,
+      "source_titles": [
+        "📚 Math Problem Solution • Open WebUI",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "📚 Math Problem Solution • Open WebUI",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "📚 Markdown Knowledge Base • Open WebUI",
+        "A deeper look into how AI works (not what we thought!)",
+        "📚 Markdown Knowledge Base • Open WebUI"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:http://192.168.1.150:3000/c/af3c6121-1818-405f-955b-668a3d1d3fa6#chunk-0",
+          "title": "📚 Math Problem Solution • Open WebUI",
+          "lexical_score": 49.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.434973
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-0",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.424242
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-8",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.424242
+        },
+        {
+          "chunk_id": "url:http://192.168.1.150:3000/c/af3c6121-1818-405f-955b-668a3d1d3fa6#chunk-1",
+          "title": "📚 Math Problem Solution • Open WebUI",
+          "lexical_score": 40.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.417949
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-6",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 40.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.417949
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-3",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 37.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.410884
+        },
+        {
+          "chunk_id": "youtube:bjHuGNo3spk#chunk-1",
+          "title": "A deeper look into how AI works (not what we thought!)",
+          "lexical_score": 37.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.410884
+        },
+        {
+          "chunk_id": "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7#chunk-1",
+          "title": "📚 Markdown Knowledge Base • Open WebUI",
+          "lexical_score": 34.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.402899
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What have we discussed about Open WebUI?",
+          "match_count": 6
+        },
+        {
+          "query": "Open WebUI discussion",
+          "match_count": 6
+        },
+        {
+          "query": "Open WebUI notes",
+          "match_count": 6
+        },
+        {
+          "query": "Open WebUI project ideas",
+          "match_count": 6
+        },
+        {
+          "query": "Open WebUI configuration",
+          "match_count": 6
+        },
+        {
+          "query": "Open WebUI features",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 15,
+      "question": "What local AI models have I used?",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+        "I Stopped Prompting AI One Task At A Time. This Works Better.",
+        "I'm disappointed",
+        "I'm disappointed",
+        "I'm disappointed",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy",
+        "The Rabbit Hole - AI Apocalypse Analysis",
+        "The Rabbit Hole - AI Apocalypse Analysis",
+        "The Rabbit Hole - AI Apocalypse Analysis",
+        "YouTube AI Channel",
+        "YouTube AI Channel"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d9aa1c-21c4-8399-b014-b26a83bd97cd#chunk-3",
+          "title": "The Rabbit Hole - Branch · AI Apocalypse Analysis",
+          "lexical_score": 61.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.517808
+        },
+        {
+          "chunk_id": "youtube:A4zMyjkL0Dc#chunk-2",
+          "title": "I Stopped Prompting AI One Task At A Time. This Works Better.",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.516667
+        },
+        {
+          "chunk_id": "youtube:N80TzPCHbNg#chunk-19",
+          "title": "I'm disappointed",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.516667
+        },
+        {
+          "chunk_id": "youtube:N80TzPCHbNg#chunk-37",
+          "title": "I'm disappointed",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.516667
+        },
+        {
+          "chunk_id": "youtube:N80TzPCHbNg#chunk-43",
+          "title": "I'm disappointed",
+          "lexical_score": 60.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.516667
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-0",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 58.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.514286
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-1",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 58.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.514286
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d99cf9-4fac-8398-a2cc-bd8273010640#chunk-0",
+          "title": "The Rabbit Hole - AI Apocalypse Analysis",
+          "lexical_score": 58.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.514286
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d99cf9-4fac-8398-a2cc-bd8273010640#chunk-1",
+          "title": "The Rabbit Hole - AI Apocalypse Analysis",
+          "lexical_score": 58.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.514286
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a4ef86524c8191be0301c425967e0d/c/69d99cf9-4fac-8398-a2cc-bd8273010640#chunk-2",
+          "title": "The Rabbit Hole - AI Apocalypse Analysis",
+          "lexical_score": 58.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.514286
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a733880-ba5c-83ec-80a8-29be5f66503e#chunk-0",
+          "title": "YouTube AI Channel",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.513043
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a733880-ba5c-83ec-80a8-29be5f66503e#chunk-1",
+          "title": "YouTube AI Channel",
+          "lexical_score": 57.0,
+          "semantic_score": 0.0,
+          "graph_score": 1.0,
+          "combined_score": 0.513043
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What local AI models have I used?",
+          "match_count": 6
+        },
+        {
+          "query": "local AI models used",
+          "match_count": 6
+        },
+        {
+          "query": "local LLMs deployed",
+          "match_count": 6
+        },
+        {
+          "query": "Warren Gerdes local model history",
+          "match_count": 6
+        },
+        {
+          "query": "Garage Alchemy AI tools",
+          "match_count": 6
+        },
+        {
+          "query": "Chanya and Wazza local inference",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 16,
+      "question": "What have we discussed about choosing different models for different tasks?",
+      "used_vault": true,
+      "retrieval_match_count": 12,
+      "planner_search_count": 6,
+      "source_titles": [
+        "AI Task Classification",
+        "AI Task Classification",
+        "AI Task Classification",
+        "A deeper look into how AI works (not what we thought!)",
+        "A deeper look into how AI works (not what we thought!)",
+        "A deeper look into how AI works (not what we thought!)",
+        "A deeper look into how AI works (not what we thought!)",
+        "A deeper look into how AI works (not what we thought!)",
+        "A deeper look into how AI works (not what we thought!)",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy",
+        "Pope Kael TV - Pope Kael vs Garage Alchemy"
+      ],
+      "score_details": [
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a510bcc-9bc8-83ec-b36f-992ed5924613#chunk-0",
+          "title": "AI Task Classification",
+          "lexical_score": 47.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.464972
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a510bcc-9bc8-83ec-b36f-992ed5924613#chunk-1",
+          "title": "AI Task Classification",
+          "lexical_score": 44.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.459524
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/c/6a510bcc-9bc8-83ec-b36f-992ed5924613#chunk-2",
+          "title": "AI Task Classification",
+          "lexical_score": 41.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.666667,
+          "combined_score": 0.453459
+        },
+        {
+          "chunk_id": "youtube:bjHuGNo3spk#chunk-12",
+          "title": "A deeper look into how AI works (not what we thought!)",
+          "lexical_score": 54.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.442424
+        },
+        {
+          "chunk_id": "youtube:bjHuGNo3spk#chunk-3",
+          "title": "A deeper look into how AI works (not what we thought!)",
+          "lexical_score": 54.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.442424
+        },
+        {
+          "chunk_id": "youtube:bjHuGNo3spk#chunk-4",
+          "title": "A deeper look into how AI works (not what we thought!)",
+          "lexical_score": 54.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.442424
+        },
+        {
+          "chunk_id": "youtube:bjHuGNo3spk#chunk-6",
+          "title": "A deeper look into how AI works (not what we thought!)",
+          "lexical_score": 54.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.442424
+        },
+        {
+          "chunk_id": "youtube:bjHuGNo3spk#chunk-1",
+          "title": "A deeper look into how AI works (not what we thought!)",
+          "lexical_score": 51.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.438095
+        },
+        {
+          "chunk_id": "youtube:bjHuGNo3spk#chunk-2",
+          "title": "A deeper look into how AI works (not what we thought!)",
+          "lexical_score": 51.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.438095
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-0",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 46.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.429885
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-1",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 46.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.429885
+        },
+        {
+          "chunk_id": "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/69d9caa6-f264-8398-9b3c-336c4532fec8#chunk-3",
+          "title": "Pope Kael TV - Pope Kael vs Garage Alchemy",
+          "lexical_score": 43.0,
+          "semantic_score": 0.0,
+          "graph_score": 0.333333,
+          "combined_score": 0.424242
+        }
+      ],
+      "planner_searches": [
+        {
+          "query": "What have we discussed about choosing different models for different tasks?",
+          "match_count": 6
+        },
+        {
+          "query": "choosing different models for different tasks",
+          "match_count": 6
+        },
+        {
+          "query": "selecting models based on task requirements",
+          "match_count": 6
+        },
+        {
+          "query": "Warren Gerdes model selection strategy",
+          "match_count": 6
+        },
+        {
+          "query": "Garage Alchemy multi-model approach",
+          "match_count": 6
+        },
+        {
+          "query": "Ariadne Identity Kernel task-specific models",
+          "match_count": 6
+        }
+      ],
+      "error": null
+    },
+    {
+      "number": 17,
+      "question": "A company has three data centres connected in a triangle. Each link has 10 Gbps capacity. Traffic between Site A and Site B normally uses the direct link, but if that link fails it must reroute through Site C. During peak load, A–B carries 7 Gbps, A–C carries 5 Gbps, and B–C carries 4 Gbps. Can the network survive failure of the A–B link without congestion? Explain your reasoning and identify any assumptions.",
+      "used_vault": false,
+      "retrieval_match_count": 0,
+      "planner_search_count": 0,
+      "source_titles": [],
+      "score_details": [],
+      "planner_searches": [],
+      "error": null
+    },
+    {
+      "number": 18,
+      "question": "You are designing a backup system for 50 TB of business data. The company requires a recovery point objective of four hours, a recovery time objective of eight hours, protection against ransomware, and recovery after complete loss of the primary site. Propose an architecture and explain the major trade-offs.",
+      "used_vault": false,
+      "retrieval_match_count": 0,
+      "planner_search_count": 0,
+      "source_titles": [],
+      "score_details": [],
+      "planner_searches": [],
+      "error": null
+    },
+    {
+      "number": 19,
+      "question": "Two AI models give conflicting answers to a technical question. Model A is larger and generally scores higher on benchmarks, but Model B provides citations that appear relevant. Describe a rigorous process for deciding which answer should be trusted without simply choosing the larger model.",
+      "used_vault": false,
+      "retrieval_match_count": 0,
+      "planner_search_count": 0,
+      "source_titles": [],
+      "score_details": [],
+      "planner_searches": [],
+      "error": null
+    },
+    {
+      "number": 20,
+      "question": "A Python service becomes progressively slower over several days but returns to normal immediately after being restarted. CPU utilisation remains below 30%, available RAM slowly decreases, and the number of open network connections steadily increases. Give the three most likely causes and describe how you would distinguish between them.",
+      "used_vault": false,
+      "retrieval_match_count": 0,
+      "planner_search_count": 0,
+      "source_titles": [],
+      "score_details": [],
+      "planner_searches": [],
+      "error": null
+    },
+    {
+      "number": 21,
+      "question": "An organisation wants to move a critical application from a traditional virtual-machine environment to Kubernetes. The application is reliable today but was not designed for containers. Decide whether the migration should proceed and explain what evidence you would require before making the final decision.",
+      "used_vault": false,
+      "retrieval_match_count": 0,
+      "planner_search_count": 0,
+      "source_titles": [],
+      "score_details": [],
+      "planner_searches": [],
+      "error": null
+    }
+  ]
+}

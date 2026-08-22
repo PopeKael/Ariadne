@@ -1335,7 +1335,9 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, str]]:
 def home_query_requires_vault(query: str) -> bool:
     terms = (
         "my ", " i ", "wazza", "warren", "chanya", "ariadne", "knowledge vault",
-        "knowledgevault", "project", "decision", "setup", "remember", "what do you know",
+        "knowledgevault", "project", "setup", "remember", "what do you know",
+        "what have we discussed", "what did we decide", "what have we said",
+        "what do we know about", "what have we used/tested", "what have i forgotten",
         "where did", "when did", "retirement", "garage alchemy", "pope kael",
     )
     folded = f" {query.casefold()} "
@@ -1357,6 +1359,8 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
         raise ValueError("Keep the question below 8,000 characters.")
     mode = vault_mode if vault_mode in {"auto", "always", "never"} else "auto"
     use_vault = mode == "always" or (mode == "auto" and home_query_requires_vault(query))
+    request_started = time.perf_counter()
+    timing: dict[str, object] = {}
     mcp = _home_mcp()
     safe_history: list[dict[str, str]] = []
     if isinstance(history, list):
@@ -1375,6 +1379,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
                 answer_mode="answer",
                 model=HOME_CHAT_MODEL,
                 context_tokens=HOME_CONTEXT_TOKENS,
+                metrics=timing,
             )
             answer = str(result.get("summary") or "The local librarian returned no answer.")
             sources = result.get("sources") if isinstance(result.get("sources"), list) else []
@@ -1393,10 +1398,17 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
                 "If you do not know something, say so plainly."
             )
             messages = [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": query}]
-            answer = mcp.ollama_chat(messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS)
+            answer = mcp.ollama_chat(messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing)
             sources = []
             retrieval = {"match_count": 0, "sources": []}
         record_home_event("model_response_completed", f"Local {HOME_CHAT_MODEL} response completed.")
+        calls = timing.get("ollama_calls", []) if isinstance(timing.get("ollama_calls"), list) else []
+        if calls:
+            timing["load_duration_ms"] = round(sum(float(call.get("load_duration", 0)) for call in calls) / 1_000_000)
+            timing["eval_count"] = sum(int(call.get("eval_count", 0)) for call in calls)
+            timing["eval_duration_ns"] = sum(int(call.get("eval_duration", 0)) for call in calls)
+        timing["total_duration_ms"] = round((time.perf_counter() - request_started) * 1000)
+        timing.pop("ollama_calls", None)
         return {
             "ok": True,
             "answer": answer,
@@ -1405,6 +1417,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto") -> 
             "used_vault": use_vault,
             "sources": sources,
             "retrieval": retrieval,
+            "timing": timing,
         }
     except Exception as exc:
         record_home_event("significant_error", f"Ask Ariadne failed: {exc}", source="Ariadne Home")

@@ -1,50 +1,50 @@
 [
   {
-    "content_sha256": "3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+    "source_name": "CODEX-C-DRIVE-FOLDER-AUDIT-2026-08-13.md",
     "document_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
-    "entities": [
-      "C:\\Users\\Warren\\Documents\\Codex",
-      "D:\\Documents\\Codex",
-      "D:\\Downloads\\Codex-Archive\\2026-08-13"
-    ],
+    "stable_source_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+    "source_url": null,
     "external_identity": null,
-    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
-    "links": [],
-    "map_entry": "C-drive Codex folder audit",
     "page_title": "C-drive Codex folder audit",
-    "people": [],
+    "content_sha256": "3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
     "primary_topic": "Infrastructure",
-    "processed_path": "Processed/CODEX-C-DRIVE-FOLDER-AUDIT-2026-08-13.md",
+    "secondary_domains": [
+      "Knowledge Management"
+    ],
     "proposed_domains": [
       "Infrastructure",
       "Knowledge Management"
     ],
-    "related_notes": [],
-    "retrieval_metadata": {
-      "content_sha256": "3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
-      "enrichment_completed_at": "2026-08-21T12:17:55.311161Z",
-      "model_confidence": 0.9,
-      "stable_source_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb"
-    },
-    "retrieval_status": "active",
-    "review_path": "Review/rebuild-v1/sha256_3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb.md",
-    "secondary_domains": [
-      "Knowledge Management"
-    ],
-    "source_language": "en",
-    "source_name": "CODEX-C-DRIVE-FOLDER-AUDIT-2026-08-13.md",
-    "source_type": "markdown",
-    "source_url": null,
-    "stable_source_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
     "subtopics": [],
-    "summary": "The audit found that most dated folders have been archived to D‑drive, leaving four C‑drive folders. The local music‑video renderer folder contains unique generated outputs and keyframes not present in the D‑drive copy or archive. Empty workspace folders are candidates for removal after confirming inactivity. The openai‑docs‑cache is a shared support cache and should be retained unless a separate cleanup is decided.",
     "tags": [
       "C:\\Users\\Warren\\Documents\\Codex",
       "D:\\Documents\\Codex",
       "D:\\Downloads\\Codex-Archive\\2026-08-13"
     ],
+    "links": [],
+    "entities": [
+      "C:\\Users\\Warren\\Documents\\Codex",
+      "D:\\Documents\\Codex",
+      "D:\\Downloads\\Codex-Archive\\2026-08-13"
+    ],
+    "people": [],
+    "related_notes": [],
+    "map_entry": "C-drive Codex folder audit",
+    "summary": "The audit found that most dated folders have been archived to D‑drive, leaving four C‑drive folders. The local music‑video renderer folder contains unique generated outputs and keyframes not present in the D‑drive copy or archive. Empty workspace folders are candidates for removal after confirming inactivity. The openai‑docs‑cache is a shared support cache and should be retained unless a separate cleanup is decided.",
+    "source_type": "markdown",
+    "source_language": "en",
+    "workflow_status": "accepted",
+    "retrieval_status": "active",
+    "retrieval_metadata": {
+      "stable_source_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+      "content_sha256": "3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+      "model_confidence": 0.9,
+      "enrichment_completed_at": "2026-08-21T12:17:55.311161Z"
+    },
+    "review_path": "Review/rebuild-v1/sha256_3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb.md",
+    "processed_path": "Processed/CODEX-C-DRIVE-FOLDER-AUDIT-2026-08-13.md",
     "wiki_path": "Wiki/index.md#infrastructure",
-    "workflow_status": "accepted"
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00"
   },
   {
     "content_sha256": "315a16b8b1e7e6e470e6644d7d9a8b87dc3fe0ab82bdc9fb1fbf9874c1bc1c14",
@@ -322,61 +322,61 @@
     "workflow_status": "accepted"
   },
   {
-    "content_sha256": "95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+    "source_name": "CODEX-HANDOVER-2026-08-13-AI-STORAGE-ARIADNE.md",
     "document_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
-    "entities": [
-      "Codex workspace",
-      "AI model storage",
-      "Ariadne homepage"
-    ],
+    "stable_source_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+    "source_url": null,
     "external_identity": null,
-    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
-    "links": [
-      "http://127.0.0.1:8765/"
-    ],
-    "map_entry": "Codex handover — AI storage and Ariadne homepage",
     "page_title": "Codex handover — AI storage and Ariadne homepage",
-    "people": [
-      "Warren"
-    ],
+    "content_sha256": "95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
     "primary_topic": "Projects",
-    "processed_path": "Processed/CODEX-HANDOVER-2026-08-13-AI-STORAGE-ARIADNE.md",
+    "secondary_domains": [
+      "AI & LLMs",
+      "Infrastructure"
+    ],
     "proposed_domains": [
       "Projects",
       "AI & LLMs",
       "Infrastructure"
     ],
-    "related_notes": [],
-    "retrieval_metadata": {
-      "content_sha256": "95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
-      "enrichment_completed_at": "2026-08-21T12:18:11.958543Z",
-      "model_confidence": 0.9,
-      "stable_source_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b"
-    },
-    "retrieval_status": "active",
-    "review_path": "Review/rebuild-v1/sha256_95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b.md",
-    "secondary_domains": [
-      "AI & LLMs",
-      "Infrastructure"
-    ],
-    "source_language": "en",
-    "source_name": "CODEX-HANDOVER-2026-08-13-AI-STORAGE-ARIADNE.md",
-    "source_type": "markdown",
-    "source_url": null,
-    "stable_source_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
     "subtopics": [
       "junction",
       "forward-only arrangement",
       "read-only service"
     ],
-    "summary": "Continuing Codex workspace organization and Ariadne homepage development, moving AI models to D drive, establishing junctions, and verifying storage.",
     "tags": [
       "Codex workspace",
       "AI model storage",
       "Ariadne homepage"
     ],
+    "links": [
+      "http://127.0.0.1:8765/"
+    ],
+    "entities": [
+      "Codex workspace",
+      "AI model storage",
+      "Ariadne homepage"
+    ],
+    "people": [
+      "Warren"
+    ],
+    "related_notes": [],
+    "map_entry": "Codex handover — AI storage and Ariadne homepage",
+    "summary": "Continuing Codex workspace organization and Ariadne homepage development, moving AI models to D drive, establishing junctions, and verifying storage.",
+    "source_type": "markdown",
+    "source_language": "en",
+    "workflow_status": "accepted",
+    "retrieval_status": "active",
+    "retrieval_metadata": {
+      "stable_source_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+      "content_sha256": "95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+      "model_confidence": 0.9,
+      "enrichment_completed_at": "2026-08-21T12:18:11.958543Z"
+    },
+    "review_path": "Review/rebuild-v1/sha256_95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b.md",
+    "processed_path": "Processed/CODEX-HANDOVER-2026-08-13-AI-STORAGE-ARIADNE.md",
     "wiki_path": "Wiki/index.md#projects",
-    "workflow_status": "accepted"
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00"
   },
   {
     "content_sha256": "9a80b9a47b18fdcf1a092e2af54aafac15b00811c7264cc726e5f2c8b4a27369",
@@ -14482,69 +14482,49 @@
   {
     "content_sha256": "54ff667c602c8d7315114bb3518b0e19603f1d01ecc22c3511f151672e708d9d",
     "document_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
-    "entities": [
-      "Synology NAS",
-      "Ollama",
-      "DSM Task Scheduler",
-      "Bash script",
-      "temporary state file",
-      "ChatGPT"
-    ],
+    "entities": [],
     "external_identity": {
       "kind": "url",
       "value": "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
     },
-    "indexed_at": "2026-08-21T16:24:16.885807+00:00",
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
     "links": [
-      "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
-      "https://www.businessinsider.com/sam-altman-openai-the-singularity-agi-prediction-anthropic-nvidia-2026-7?utm_source=chatgpt.com"
+      "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
     ],
     "map_entry": "Email Alert Optimization",
     "page_title": "Email Alert Optimization",
-    "people": [
-      "Sam Altman"
-    ],
+    "people": [],
     "primary_topic": "AI & LLMs",
-    "processed_path": "Processed/Email Alert Optimization2026-08-03T17_08_16+07_00.md",
+    "processed_path": "Processed/Email Alert Optimization2026-08-03T11_03_01+07_00.md",
     "proposed_domains": [
       "AI & LLMs",
-      "Archive",
-      "Business"
+      "Infrastructure"
     ],
     "related_notes": [],
     "retrieval_metadata": {
       "content_sha256": "54ff667c602c8d7315114bb3518b0e19603f1d01ecc22c3511f151672e708d9d",
-      "enrichment_completed_at": "2026-08-21T16:24:16.112207Z",
-      "model_confidence": 0.92,
+      "enrichment_completed_at": "2026-08-12T02:22:13.222733Z",
+      "model_confidence": 0.95,
       "stable_source_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
     },
     "retrieval_status": "active",
     "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee.md",
     "secondary_domains": [
-      "Archive",
-      "Business"
+      "Infrastructure"
     ],
     "source_language": "en",
-    "source_name": "Email Alert Optimization2026-08-03T17_08_16+07_00.md",
+    "source_name": "Email Alert Optimization2026-08-03T11_03_01+07_00.md",
     "source_type": "chatgpt",
     "source_url": "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
     "stable_source_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
     "subtopics": [
-      "AI reliability",
-      "singularity",
-      "token usage",
-      "state persistence",
-      "email alert optimization"
-    ],
-    "summary": "The source is a ChatGPT conversation titled \"Email Alert Optimization\" that discusses a script to monitor an Ollama service on a Synology NAS. The conversation includes a proposed Bash script that uses a temporary state file in /tmp to avoid repeated email alerts when the service is down. The discussion also touches on token usage and the broader context of AI reliability versus hype.",
-    "tags": [
-      "Synology NAS",
+      "Synology DSM Task Scheduler",
       "Ollama",
-      "DSM Task Scheduler",
-      "Bash script",
-      "temporary state file",
-      "ChatGPT"
+      "state file",
+      "/tmp"
     ],
+    "summary": "The conversation discusses simplifying a Synology DSM Task Scheduler script that monitors an Ollama service. The solution recommends using the temporary directory (/tmp) for a state file to avoid creating shared folders, thereby limiting email alerts to one per outage and resetting when the service recovers.",
+    "tags": [],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
@@ -40853,57 +40833,26 @@
     "workflow_status": "accepted"
   },
   {
-    "content_sha256": "151c7c2295709b913bf100eed486adc0f7d148868fa8e555b2451f648307c007",
+    "source_name": "My Local System2026-08-13T18_52_21+07_00.md",
     "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
-    "entities": [
-      "Ariadne",
-      "Jeff Su",
-      "Memory.md",
-      "Router.md",
-      "Identity.md",
-      "State files",
-      "AUTO",
-      "REVIEW"
-    ],
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
     "external_identity": {
       "kind": "url",
       "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65"
     },
-    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
-    "links": [
-      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65"
-    ],
-    "map_entry": "My Local System",
     "page_title": "My Local System",
-    "people": [
-      "Megan",
-      "Wazza"
-    ],
+    "content_sha256": "151c7c2295709b913bf100eed486adc0f7d148868fa8e555b2451f648307c007",
     "primary_topic": "AI & LLMs",
-    "processed_path": "Processed/My Local System2026-08-13T18_52_21+07_00.md",
+    "secondary_domains": [
+      "Knowledge Management",
+      "Projects"
+    ],
     "proposed_domains": [
       "AI & LLMs",
       "Knowledge Management",
       "Projects"
     ],
-    "related_notes": [],
-    "retrieval_metadata": {
-      "content_sha256": "151c7c2295709b913bf100eed486adc0f7d148868fa8e555b2451f648307c007",
-      "enrichment_completed_at": "2026-08-21T12:18:53.310190Z",
-      "model_confidence": 0.95,
-      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65"
-    },
-    "retrieval_status": "active",
-    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65.md",
-    "secondary_domains": [
-      "Knowledge Management",
-      "Projects"
-    ],
-    "source_language": "en",
-    "source_name": "My Local System2026-08-13T18_52_21+07_00.md",
-    "source_type": "chatgpt",
-    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
-    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
     "subtopics": [
       "User‑owned memory",
       "Semantic routing",
@@ -40914,7 +40863,6 @@
       "Graph for understanding",
       "Active‑state layer"
     ],
-    "summary": "The excerpt outlines how to incorporate Jeff Su’s memory model into Ariadne, emphasizing user‑owned plain‑text memory, a lightweight routing file, formal session closure, distinct write classes (AUTO, REVIEW, PROTECTED), and a clear separation between long‑term knowledge and short‑term active state. It also discusses semantic routing, a tiny active‑state layer, and a stable identity layer above routing.",
     "tags": [
       "Ariadne",
       "Jeff Su",
@@ -40925,8 +40873,40 @@
       "AUTO",
       "REVIEW"
     ],
+    "links": [
+      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65"
+    ],
+    "entities": [
+      "Ariadne",
+      "Jeff Su",
+      "Memory.md",
+      "Router.md",
+      "Identity.md",
+      "State files",
+      "AUTO",
+      "REVIEW"
+    ],
+    "people": [
+      "Megan",
+      "Wazza"
+    ],
+    "related_notes": [],
+    "map_entry": "My Local System",
+    "summary": "The excerpt outlines how to incorporate Jeff Su’s memory model into Ariadne, emphasizing user‑owned plain‑text memory, a lightweight routing file, formal session closure, distinct write classes (AUTO, REVIEW, PROTECTED), and a clear separation between long‑term knowledge and short‑term active state. It also discusses semantic routing, a tiny active‑state layer, and a stable identity layer above routing.",
+    "source_type": "chatgpt",
+    "source_language": "en",
+    "workflow_status": "accepted",
+    "retrieval_status": "active",
+    "retrieval_metadata": {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
+      "content_sha256": "151c7c2295709b913bf100eed486adc0f7d148868fa8e555b2451f648307c007",
+      "model_confidence": 0.95,
+      "enrichment_completed_at": "2026-08-21T12:18:53.310190Z"
+    },
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65.md",
+    "processed_path": "Processed/My Local System2026-08-13T18_52_21+07_00.md",
     "wiki_path": "Wiki/index.md#ai-llms",
-    "workflow_status": "accepted"
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00"
   },
   {
     "content_sha256": "bf96ed948125348e0f39a1a4c9d897d35f0dc97d97b32e154b4a311d69490e91",
@@ -52531,45 +52511,45 @@
     "workflow_status": "accepted"
   },
   {
-    "content_sha256": "85077342768093843043d256fdde4bb7020bbef608f645d29466bc6d9fae6e86",
+    "source_name": "Dunning Kruger Effect Wrong, Scientists Claim2026-08-12T19_30_47+07_002026-08-11T09_00_12-07_00[[Sabine Hossenfelder]].md",
     "document_id": "youtube:0XcEsuFs5Y8",
-    "entities": [],
+    "stable_source_id": "youtube:0XcEsuFs5Y8",
+    "source_url": "https://www.youtube.com/watch?v=0XcEsuFs5Y8",
     "external_identity": {
       "kind": "youtube",
       "value": "0XcEsuFs5Y8"
     },
-    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
-    "links": [],
-    "map_entry": "Dunning Kruger Effect Wrong, Scientists Claim",
     "page_title": "Dunning Kruger Effect Wrong, Scientists Claim",
-    "people": [
-      "Sabine Hossenfelder"
-    ],
+    "content_sha256": "85077342768093843043d256fdde4bb7020bbef608f645d29466bc6d9fae6e86",
     "primary_topic": "Science & Technology",
-    "processed_path": "Processed/Dunning Kruger Effect Wrong, Scientists Claim2026-08-12T19_30_47+07_002026-08-11T09_00_12-07_00[[Sabine Hossenfelder]].md",
+    "secondary_domains": [],
     "proposed_domains": [
       "Science & Technology"
     ],
-    "related_notes": [],
-    "retrieval_metadata": {
-      "content_sha256": "85077342768093843043d256fdde4bb7020bbef608f645d29466bc6d9fae6e86",
-      "enrichment_completed_at": "2026-08-21T12:18:22.872516Z",
-      "model_confidence": 0.9,
-      "stable_source_id": "youtube:0XcEsuFs5Y8"
-    },
-    "retrieval_status": "active",
-    "review_path": "Review/rebuild-v1/youtube_0XcEsuFs5Y8.md",
-    "secondary_domains": [],
-    "source_language": "en",
-    "source_name": "Dunning Kruger Effect Wrong, Scientists Claim2026-08-12T19_30_47+07_002026-08-11T09_00_12-07_00[[Sabine Hossenfelder]].md",
-    "source_type": "youtube",
-    "source_url": "https://www.youtube.com/watch?v=0XcEsuFs5Y8",
-    "stable_source_id": "youtube:0XcEsuFs5Y8",
     "subtopics": [],
-    "summary": "The video discusses a new paper that challenges the traditional interpretation of the Dunning‑Kruger effect, arguing that confidence is actually a good predictor of performance. It critiques previous analyses and presents an alternative regression approach that suggests people tend to overestimate their abilities, especially at higher performance levels. The speaker also touches on the broader implications of the effect for public perception and the importance of teaching relevant skills to improve both performance and self‑awareness.",
     "tags": [],
+    "links": [],
+    "entities": [],
+    "people": [
+      "Sabine Hossenfelder"
+    ],
+    "related_notes": [],
+    "map_entry": "Dunning Kruger Effect Wrong, Scientists Claim",
+    "summary": "The video discusses a new paper that challenges the traditional interpretation of the Dunning‑Kruger effect, arguing that confidence is actually a good predictor of performance. It critiques previous analyses and presents an alternative regression approach that suggests people tend to overestimate their abilities, especially at higher performance levels. The speaker also touches on the broader implications of the effect for public perception and the importance of teaching relevant skills to improve both performance and self‑awareness.",
+    "source_type": "youtube",
+    "source_language": "en",
+    "workflow_status": "accepted",
+    "retrieval_status": "active",
+    "retrieval_metadata": {
+      "stable_source_id": "youtube:0XcEsuFs5Y8",
+      "content_sha256": "85077342768093843043d256fdde4bb7020bbef608f645d29466bc6d9fae6e86",
+      "model_confidence": 0.9,
+      "enrichment_completed_at": "2026-08-21T12:18:22.872516Z"
+    },
+    "review_path": "Review/rebuild-v1/youtube_0XcEsuFs5Y8.md",
+    "processed_path": "Processed/Dunning Kruger Effect Wrong, Scientists Claim2026-08-12T19_30_47+07_002026-08-11T09_00_12-07_00[[Sabine Hossenfelder]].md",
     "wiki_path": "Wiki/index.md#science-technology",
-    "workflow_status": "accepted"
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00"
   },
   {
     "content_sha256": "f87522e6e3eee5beccc087ad9fd4044aa6bd3b1515bd4cb3d227fbbc04492e84",
@@ -55783,57 +55763,26 @@
     "workflow_status": "accepted"
   },
   {
-    "content_sha256": "f775bfcbb788329a243a7fbab63fdd9e24374b69433c7986f24ab3839b3ebd9f",
+    "source_name": "This Claude Skill Graphs Your Knowledge Base Blind Spots2026-08-12T22_29_22+07_002026-08-10T08_45_07-07_00[[Nodus Labs]].md",
     "document_id": "youtube:SJUuKObN1Bw",
-    "entities": [
-      "InfraNodus",
-      "Claude",
-      "MCP server",
-      "knowledge graph",
-      "second brain",
-      "Obsidian",
-      "Cursor AI"
-    ],
+    "stable_source_id": "youtube:SJUuKObN1Bw",
+    "source_url": "https://www.youtube.com/watch?v=SJUuKObN1Bw",
     "external_identity": {
       "kind": "youtube",
       "value": "SJUuKObN1Bw"
     },
-    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
-    "links": [
-      "https://www.youtube.com/watch?v=SJUuKObN1Bw",
-      "https://infranodus.com/skills/infranodus",
-      "https://infranodus.com/about/knowledge-base"
-    ],
-    "map_entry": "This Claude Skill Graphs Your Knowledge Base Blind Spots",
     "page_title": "This Claude Skill Graphs Your Knowledge Base Blind Spots",
-    "people": [
-      "Nodus Labs"
-    ],
+    "content_sha256": "f775bfcbb788329a243a7fbab63fdd9e24374b69433c7986f24ab3839b3ebd9f",
     "primary_topic": "Knowledge Management",
-    "processed_path": "Processed/This Claude Skill Graphs Your Knowledge Base Blind Spots2026-08-12T22_29_22+07_002026-08-10T08_45_07-07_00[[Nodus Labs]].md",
+    "secondary_domains": [
+      "AI & LLMs",
+      "Science & Technology"
+    ],
     "proposed_domains": [
       "Knowledge Management",
       "AI & LLMs",
       "Science & Technology"
     ],
-    "related_notes": [],
-    "retrieval_metadata": {
-      "content_sha256": "f775bfcbb788329a243a7fbab63fdd9e24374b69433c7986f24ab3839b3ebd9f",
-      "enrichment_completed_at": "2026-08-21T12:19:08.699703Z",
-      "model_confidence": 0.95,
-      "stable_source_id": "youtube:SJUuKObN1Bw"
-    },
-    "retrieval_status": "active",
-    "review_path": "Review/rebuild-v1/youtube_SJUuKObN1Bw.md",
-    "secondary_domains": [
-      "AI & LLMs",
-      "Science & Technology"
-    ],
-    "source_language": "en",
-    "source_name": "This Claude Skill Graphs Your Knowledge Base Blind Spots2026-08-12T22_29_22+07_002026-08-10T08_45_07-07_00[[Nodus Labs]].md",
-    "source_type": "youtube",
-    "source_url": "https://www.youtube.com/watch?v=SJUuKObN1Bw",
-    "stable_source_id": "youtube:SJUuKObN1Bw",
     "subtopics": [
       "knowledge graph",
       "semantic layer",
@@ -55842,7 +55791,6 @@
       "knowledge base",
       "idea generation"
     ],
-    "summary": "This YouTube video demonstrates how to use InfraNodus knowledge graphs integrated with Claude skills to identify blind spots in a knowledge base and generate new ideas that bridge those gaps. The tutorial covers adding the InfraNodus skill and MCP server, mapping a folder to a knowledge graph, visualizing the graph, and querying it to uncover gaps and generate insights.",
     "tags": [
       "InfraNodus",
       "Claude",
@@ -55852,8 +55800,40 @@
       "Obsidian",
       "Cursor AI"
     ],
+    "links": [
+      "https://www.youtube.com/watch?v=SJUuKObN1Bw",
+      "https://infranodus.com/skills/infranodus",
+      "https://infranodus.com/about/knowledge-base"
+    ],
+    "entities": [
+      "InfraNodus",
+      "Claude",
+      "MCP server",
+      "knowledge graph",
+      "second brain",
+      "Obsidian",
+      "Cursor AI"
+    ],
+    "people": [
+      "Nodus Labs"
+    ],
+    "related_notes": [],
+    "map_entry": "This Claude Skill Graphs Your Knowledge Base Blind Spots",
+    "summary": "This YouTube video demonstrates how to use InfraNodus knowledge graphs integrated with Claude skills to identify blind spots in a knowledge base and generate new ideas that bridge those gaps. The tutorial covers adding the InfraNodus skill and MCP server, mapping a folder to a knowledge graph, visualizing the graph, and querying it to uncover gaps and generate insights.",
+    "source_type": "youtube",
+    "source_language": "en",
+    "workflow_status": "accepted",
+    "retrieval_status": "active",
+    "retrieval_metadata": {
+      "stable_source_id": "youtube:SJUuKObN1Bw",
+      "content_sha256": "f775bfcbb788329a243a7fbab63fdd9e24374b69433c7986f24ab3839b3ebd9f",
+      "model_confidence": 0.95,
+      "enrichment_completed_at": "2026-08-21T12:19:08.699703Z"
+    },
+    "review_path": "Review/rebuild-v1/youtube_SJUuKObN1Bw.md",
+    "processed_path": "Processed/This Claude Skill Graphs Your Knowledge Base Blind Spots2026-08-12T22_29_22+07_002026-08-10T08_45_07-07_00[[Nodus Labs]].md",
     "wiki_path": "Wiki/index.md#knowledge-management",
-    "workflow_status": "accepted"
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00"
   },
   {
     "content_sha256": "9e1d58490a19f1b79eb4a6b5e56ff3aca01039a57cf41b20d1bf414e9f821f75",
@@ -57455,61 +57435,24 @@
     "workflow_status": "accepted"
   },
   {
-    "content_sha256": "0307195e1faf6d0e63edadcefef5367bd486db6ef3692799680b0e86c1834ccb",
+    "source_name": "How to Give AI Perfect Memory (a complete guide)2026-08-13T18_43_30+07_002026-08-12T06_15_33-07_00[[Jeff Su]].md",
     "document_id": "youtube:cEEw1AbeysI",
-    "entities": [
-      "AI Memory",
-      "Granola AI",
-      "ChatGPT",
-      "Claude",
-      "Gemini",
-      "Cowork Academy",
-      "Workspace Academy",
-      "Notion Command Center"
-    ],
+    "stable_source_id": "youtube:cEEw1AbeysI",
+    "source_url": "https://www.youtube.com/watch?v=cEEw1AbeysI&t=11s",
     "external_identity": {
       "kind": "youtube",
       "value": "cEEw1AbeysI"
     },
-    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
-    "links": [
-      "https://www.youtube.com/watch?v=cEEw1AbeysI&t=11s",
-      "https://go.granola.ai/jeff-su",
-      "https://coworkacademy.ai/?utm_source=youtube&utm_medium=video&utm_campaign=v208",
-      "https://coworkacademy.ai/toolkit?utm_source=youtube&utm_medium=video&utm_campaign=v208",
-      "https://academy.jeffsu.org/workspace-academy?utm_source=youtube&utm_medium=video&utm_campaign=v208",
-      "https://www.pressplay.cc/link/s/DE1C4C50",
-      "https://www.jeffsu.org/newsletter/?utm_source=youtube&utm_medium=video&utm_campaign=description",
-      "https://instagram.com/j.sushie"
-    ],
-    "map_entry": "How to Give AI Perfect Memory (a complete guide)",
     "page_title": "How to Give AI Perfect Memory (a complete guide)",
-    "people": [
-      "Jeff Su"
-    ],
+    "content_sha256": "0307195e1faf6d0e63edadcefef5367bd486db6ef3692799680b0e86c1834ccb",
     "primary_topic": "AI & LLMs",
-    "processed_path": "Processed/How to Give AI Perfect Memory (a complete guide)2026-08-13T18_43_30+07_002026-08-12T06_15_33-07_00[[Jeff Su]].md",
+    "secondary_domains": [
+      "Knowledge Management"
+    ],
     "proposed_domains": [
       "AI & LLMs",
       "Knowledge Management"
     ],
-    "related_notes": [],
-    "retrieval_metadata": {
-      "content_sha256": "0307195e1faf6d0e63edadcefef5367bd486db6ef3692799680b0e86c1834ccb",
-      "enrichment_completed_at": "2026-08-21T12:18:39.211548Z",
-      "model_confidence": 0.95,
-      "stable_source_id": "youtube:cEEw1AbeysI"
-    },
-    "retrieval_status": "active",
-    "review_path": "Review/rebuild-v1/youtube_cEEw1AbeysI.md",
-    "secondary_domains": [
-      "Knowledge Management"
-    ],
-    "source_language": "en",
-    "source_name": "How to Give AI Perfect Memory (a complete guide)2026-08-13T18_43_30+07_002026-08-12T06_15_33-07_00[[Jeff Su]].md",
-    "source_type": "youtube",
-    "source_url": "https://www.youtube.com/watch?v=cEEw1AbeysI&t=11s",
-    "stable_source_id": "youtube:cEEw1AbeysI",
     "subtopics": [
       "global memory",
       "project memory",
@@ -57519,7 +57462,6 @@
       "transcription",
       "AI-enhanced notes"
     ],
-    "summary": "The video explains the three levels of AI memory—global, project, and custom—highlighting how current AI systems handle memory and offering tools like Granola AI to bridge gaps in note-taking and memory retention.",
     "tags": [
       "AI Memory",
       "Granola AI",
@@ -57530,8 +57472,46 @@
       "Workspace Academy",
       "Notion Command Center"
     ],
+    "links": [
+      "https://www.youtube.com/watch?v=cEEw1AbeysI&t=11s",
+      "https://go.granola.ai/jeff-su",
+      "https://coworkacademy.ai/?utm_source=youtube&utm_medium=video&utm_campaign=v208",
+      "https://coworkacademy.ai/toolkit?utm_source=youtube&utm_medium=video&utm_campaign=v208",
+      "https://academy.jeffsu.org/workspace-academy?utm_source=youtube&utm_medium=video&utm_campaign=v208",
+      "https://www.pressplay.cc/link/s/DE1C4C50",
+      "https://www.jeffsu.org/newsletter/?utm_source=youtube&utm_medium=video&utm_campaign=description",
+      "https://instagram.com/j.sushie"
+    ],
+    "entities": [
+      "AI Memory",
+      "Granola AI",
+      "ChatGPT",
+      "Claude",
+      "Gemini",
+      "Cowork Academy",
+      "Workspace Academy",
+      "Notion Command Center"
+    ],
+    "people": [
+      "Jeff Su"
+    ],
+    "related_notes": [],
+    "map_entry": "How to Give AI Perfect Memory (a complete guide)",
+    "summary": "The video explains the three levels of AI memory—global, project, and custom—highlighting how current AI systems handle memory and offering tools like Granola AI to bridge gaps in note-taking and memory retention.",
+    "source_type": "youtube",
+    "source_language": "en",
+    "workflow_status": "accepted",
+    "retrieval_status": "active",
+    "retrieval_metadata": {
+      "stable_source_id": "youtube:cEEw1AbeysI",
+      "content_sha256": "0307195e1faf6d0e63edadcefef5367bd486db6ef3692799680b0e86c1834ccb",
+      "model_confidence": 0.95,
+      "enrichment_completed_at": "2026-08-21T12:18:39.211548Z"
+    },
+    "review_path": "Review/rebuild-v1/youtube_cEEw1AbeysI.md",
+    "processed_path": "Processed/How to Give AI Perfect Memory (a complete guide)2026-08-13T18_43_30+07_002026-08-12T06_15_33-07_00[[Jeff Su]].md",
     "wiki_path": "Wiki/index.md#ai-llms",
-    "workflow_status": "accepted"
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00"
   },
   {
     "content_sha256": "237a9450a0b12b8da03b45b21119725f17a5d0e34a77f1b84d62a6aaebd5d5a8",
