@@ -162,3 +162,13 @@ build/
 !.env.example
 Reports/Ariadne/
 Reports/rebuild-v1-*
+
+# Control-plane local state
+runtime/
+secrets/
+credentials/
+private/
+*.pem
+*.key
+*.pfx
+*.p12

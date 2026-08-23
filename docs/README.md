@@ -8,6 +8,17 @@ Unlike the KnowledgeVault, which stores information managed by Ariadne, this fol
 
 Think of this folder as the project's technical manual.
 
+Start with:
+
+- [Four architectural parcels](FOUR-PARCELS.md) — Knowledge Vault, MCP,
+  Toolshed, and Workspace/interface.
+- [Current checkpoint](CHECKPOINT-2026-08-15.md) — merged and running system
+  state.
+- [Current handover](HANDOVER-2026-08-15.md) — consolidated state, rabbit
+  holes, and the next sensible step.
+- [Clone and deploy](CLONE-AND-DEPLOY.md) — the starting path for a new
+  independent local installation.
+
 ## Typical contents
 
 Examples include:

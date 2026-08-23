@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariadne — Local AI Control Plane</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">◈</div>
+        <div><strong>Ariadne</strong><span>Local AI Control Plane</span></div>
+      </div>
+      <div class="top-greeting">
+        <span class="eyebrow">DESKTOP AI RIG</span>
+        <strong id="greeting">Good morning, Warren.</strong>
+        <span id="hero-copy">Ariadne is checking the host before any workloads are started.</span>
+      </div>
+      <div class="top-metrics" aria-label="Live resource gauges">
+        <article class="resource-gauge" id="memory-gauge">
+          <div class="resource-head"><span class="label">SYSTEM MEMORY</span><strong id="memory-used">—</strong></div>
+          <div class="resource-bar"><span id="memory-bar"></span></div>
+          <div class="resource-foot"><span id="memory-free">Reading…</span><span id="memory-percent">—</span></div>
+        </article>
+        <article class="resource-gauge" id="gpu-gauge">
+          <div class="resource-head"><span class="label">GPU VRAM</span><strong id="gpu-used">—</strong></div>
+          <div class="resource-bar"><span id="gpu-bar"></span></div>
+          <div class="resource-foot"><span id="gpu-free">Reading…</span><span id="gpu-percent">—</span></div>
+        </article>
+      </div>
+      <div class="profile-card top-profile">
+        <span class="label">CURRENT PROFILE</span>
+        <strong id="profile">General</strong>
+        <span class="small">Read-only foundation</span>
+      </div>
+      <div class="top-service">
+        <span class="dot"></span>
+        <div class="top-service-copy">
+          <span class="label">SERVICE STATUS</span>
+          <strong id="service-state">Connecting…</strong>
+          <span class="small">Ariadne host · localhost</span>
+        </div>
+        <span class="pill online" id="service-pill">Online</span>
+      </div>
+    </header>
+
+    <main>
+  <section class="workspace-grid">
+    <div class="main-column">
+      <section class="grid two status-grid">
+        <article class="panel status-card">
+          <div class="card-head"><span>WSL</span><span class="pill" id="wsl-pill">Checking</span></div>
+          <strong id="wsl-metric">—</strong>
+          <p>Linux distributions detected on this host.</p>
+          <div class="resource-toolbar"><span>Drag to sort · rename · start/stop</span><button type="button" class="resource-reset" data-reset-resources="wsl">Reset</button></div>
+          <div id="wsl-list" class="state-list"><div class="loading">Reading distribution state…</div></div>
+        </article>
+        <article class="panel status-card">
+          <div class="card-head"><span>Docker</span><span class="pill" id="docker-pill">Checking</span></div>
+          <strong id="docker-metric">—</strong>
+          <p>Containers known to Docker on this host.</p>
+          <div class="resource-toolbar"><span>Drag to sort · rename · start/stop</span><button type="button" class="resource-reset" data-reset-resources="docker">Reset</button></div>
+          <div id="docker-list" class="state-list"><div class="loading">Reading container state…</div></div>
+        </article>
+      </section>
+
+      <section class="panel storage-panel">
+        <div class="section-head"><div><h2>Storage map</h2><p>Capacity is finite. Ariadne keeps it visible.</p></div><span class="badge">LIVE</span></div>
+        <div id="drives" class="drive-list"><div class="loading">Reading drives…</div></div>
+      </section>
+    </div>
+
+    <aside class="side-column">
+      <section class="panel quick-launch">
+        <div class="section-head quick-launch-head">
+          <div><h2>Quick Launch</h2><p>Open the services Ariadne works with.</p></div>
+          <span class="badge">LINKS</span>
+        </div>
+        <div class="launch-list">
+          <a class="launch-row" href="https://status.openai.com/" target="_blank" rel="noopener">
+            <span class="launch-icon openai-icon">✦</span>
+            <span class="launch-copy"><strong>ChatGPT / OpenAI</strong><small id="openai-status-detail">Public service status</small></span>
+            <span class="launch-status" id="openai-status">Checking</span><span class="launch-arrow">↗</span>
+          </a>
+          <a class="launch-row" href="http://192.168.1.200:5000/" target="_blank" rel="noopener">
+            <span class="launch-icon synology-icon">▣</span>
+            <span class="launch-copy"><strong>Synology</strong><small>Hera NAS · DSM</small></span>
+            <span class="launch-status" id="synology-status">Checking</span><span class="launch-arrow">↗</span>
+          </a>
+          <a class="launch-row" id="openwebui-launch" href="/openwebui-loader" target="_blank" rel="noopener">
+            <span class="launch-icon ollama-icon">◉</span>
+            <span class="launch-copy"><strong>Open WebUI</strong><small>Ollama · local models</small></span>
+            <span class="launch-status" id="openwebui-status">Checking</span><span class="launch-arrow">↗</span>
+          </a>
+          <a class="launch-row" href="http://127.0.0.1:9000/" target="_blank" rel="noopener">
+            <span class="launch-icon portainer-icon">◆</span>
+            <span class="launch-copy"><strong>Portainer</strong><small>Docker management · HTTP</small></span>
+            <span class="launch-status" id="portainer-status">Checking</span><span class="launch-arrow">↗</span>
+          </a>
+          <a class="launch-row" href="obsidian://open?vault=KnowledgeVault">
+            <span class="launch-icon vault-icon">⌘</span>
+            <span class="launch-copy"><strong>Knowledge Vault</strong><small>Obsidian · local vault</small></span>
+            <span class="launch-status local" id="knowledge-vault-status">Local</span><span class="launch-arrow">↗</span>
+          </a>
+          <a class="launch-row" href="https://github.com/PopeKael/Ariadne" target="_blank" rel="noopener">
+            <span class="launch-icon github-icon">●</span>
+            <span class="launch-copy"><strong>GitHub</strong><small>PopeKael · Ariadne repository</small></span>
+            <span class="launch-status local" id="github-status">External</span><span class="launch-arrow">↗</span>
+          </a>
+          <a class="launch-row" href="#knowledge-vault">
+            <span class="launch-icon ariadne-control-icon">◈</span>
+            <span class="launch-copy"><strong>Ariadne Control</strong><small>Knowledge Vault · integrated</small></span>
+            <span class="launch-status" id="ariadne-control-status">Ready</span><span class="launch-arrow">↗</span>
+          </a>
+          <a class="launch-row" href="/launch/lmstudio">
+            <span class="launch-icon lmstudio-icon">◈</span>
+            <span class="launch-copy"><strong>LM Studio</strong><small>Desktop app · server 1234</small></span>
+            <span class="launch-status" id="lmstudio-status">Checking</span><span class="launch-arrow">↗</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head"><div><h2>Operating profiles</h2><p>Controls are intentionally not enabled yet.</p></div><span class="badge muted-badge">DESIGN</span></div>
+        <div class="profile-list">
+          <button type="button" class="profile-option" data-profile="General"><span class="profile-icon">⌂</span><span><strong>General</strong><small>Windows work and browsing</small></span><span class="selected">Current</span></button>
+          <button type="button" class="profile-option" data-profile="Interactive AI"><span class="profile-icon">◉</span><span><strong>Interactive AI</strong><small>Ubuntu Linux and video processor</small></span><span class="planned">Open</span></button>
+          <div><span class="profile-icon">◆</span><span><strong>Rendering</strong><small>Reserve GPU for an approved job</small></span><span class="planned">Planned</span></div>
+          <div><span class="profile-icon">▣</span><span><strong>Gaming</strong><small>Release AI workloads first</small></span><span class="planned">Planned</span></div>
+        </div>
+      </section>
+    </aside>
+  </section>
+  <section class="interactive-ai-view" id="interactive-ai-view" aria-label="Interactive AI profile">
+    <div class="profile-view-head"><div><span class="eyebrow">INTERACTIVE AI PROFILE</span><h1>Linux workspace and video processor</h1><p>Ubuntu is the working environment. Local Music Video Renderer is the explicit GPU workload.</p></div><button type="button" class="view-back" data-profile="General">← General</button></div>
+    <section class="ai-runtime-grid"><article class="panel ai-runtime-card"><div class="card-head"><span>Ubuntu Linux Environment</span><span class="pill" id="ubuntu-profile-state">Checking</span></div><strong>Ubuntu 24.04 LTS</strong><p>WSL 2 scratchpad and active Linux tools.</p><button type="button" class="profile-action" id="ubuntu-session-button">Start Ubuntu session</button></article><article class="panel ai-runtime-card"><div class="card-head"><span>Local Music Video Renderer</span><span class="pill" id="wan2gp-profile-state">Checking</span></div><strong>Image-to-Video</strong><p id="wan2gp-profile-detail">GPU processor · models on F: · output to F:\AI\Local Music Video Renderer\outputs.</p><div class="runtime-actions"><button type="button" class="profile-action" id="wan2gp-launch-button">Start video processor</button><a id="wan2gp-open-button" class="profile-action secondary-action" href="http://127.0.0.1:8766/" target="_blank" rel="noopener" hidden>Open video processor</a></div></article></section>
+    <section class="panel processor-workspace"><div class="section-head"><div><h2>Video processor workspace</h2><p>Prepare the job here, then open Local Music Video Renderer when the GPU profile is ready.</p></div><span class="badge">LINUX RENDERER</span></div><div class="processor-grid"><div class="processor-slot"><span class="label">INPUT</span><strong>Image or prompt</strong><small>Choose an image-to-video source in Local Music Video Renderer.</small></div><div class="processor-slot"><span class="label">MODEL</span><strong>Local Music Video Renderer model library</strong><small>Checkpoints and LoRAs remain on F:.</small></div><div class="processor-slot"><span class="label">OUTPUT</span><strong>F:\AI\Local Music Video Renderer\outputs</strong><small>Generated video files stay local.</small></div></div></section>
+  </section>
+
+  <section class="panel vault-panel" id="knowledge-vault">
+    <div class="section-head">
+      <div><h2>Knowledge Vault Control</h2><p>Run bounded librarian and vault workflows inside this Ariadne session.</p></div>
+      <span class="badge" id="vault-session-state">Starting session</span>
+    </div>
+    <div class="vault-grid">
+      <article class="vault-card"><div><h3>Process Inbox</h3><p>Run the rebuild-v1 intake for genuinely new Inbox files.</p></div><button data-vault-action="ingest">Run intake</button></article>
+      <article class="vault-card"><div><h3>Embedding Index</h3><p>Check the local semantic-search index without changing vault notes.</p></div><button data-vault-action="embedding_status">Check status</button></article>
+      <article class="vault-card"><div><h3>Evaluate Retrieval</h3><p>Run the versioned chunk-retrieval benchmark.</p></div><button data-vault-action="retrieval_evaluation">Run evaluation</button></article>
+      <article class="vault-card"><div><h3>Regression Tests</h3><p>Validate the rebuild-v1 Python test suite.</p></div><button data-vault-action="regression_tests">Run tests</button></article>
+      <article class="vault-card"><div><h3>Downloads Preview</h3><p>Show proposed filing moves. No files move in preview mode.</p></div><button data-vault-action="downloads_preview">Preview moves</button></article>
+      <article class="vault-card"><div><h3>Failure Audit</h3><p>Generate a read-only report from retained ingestion evidence.</p></div><button data-vault-action="audit_failures">Run audit</button></article>
+      <article class="vault-card warning-card"><div><h3>Rebuild Embeddings</h3><p>Regenerate derived search data. Source Markdown is not altered.</p></div><button data-vault-action="embedding_rebuild" data-confirm="Rebuild the local embedding index now?">Rebuild index</button></article>
+    </div>
+    <div class="vault-query">
+      <div class="vault-query-head"><div><h3>Ask the Knowledge Vault</h3><p>Search the local corpus or ask the librarian for a cited answer.</p></div><span class="badge muted-badge">LOCAL ONLY</span></div>
+      <form id="vault-query-form">
+        <textarea id="vault-query-input" placeholder="Ask a question about the Knowledge Vault…" required></textarea>
+        <div class="vault-query-actions"><button type="submit">Search vault</button><button type="button" id="vault-summary-button">Summarize findings</button><button type="button" id="vault-librarian-button">Ask the librarian</button></div>
+      </form>
+      <p id="vault-query-status" class="vault-status" role="status" aria-live="polite">Ready when the session is active.</p>
+      <div id="vault-query-results" class="vault-results" aria-live="polite"></div>
+    </div>
+  </section>
+  <section class="panel notice">
+    <div class="notice-icon">✓</div>
+    <div><strong>Session-owned workloads</strong><p id="notice">Leave this page open for deliberate background work. When the last Ariadne session closes or expires, local jobs are cancelled, Ollama models are unloaded, and managed workloads are stopped.</p></div>
+    <span class="last-update" id="last-update">—</span>
+  </section>
+</main>
+    <footer>Private · Local · Under your control <span>•</span> No data leaves this computer</footer>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
+
