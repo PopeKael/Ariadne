@@ -35,7 +35,7 @@
           <div id="chat-log" class="chat-log" aria-live="polite"></div>
           <form id="ask-form" class="ask-form">
             <label class="sr-only" for="ask-input">Ask Ariadne a question</label>
-            <textarea id="ask-input" rows="3" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea>
+            <textarea id="ask-input" rows="3" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea><div class="tool-row"><label class="attach-button" for="document-input">+ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
             <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet" role="status">Ready.</span><button id="ask-submit" class="primary-button" type="submit">Ask Ariadne <span>↗</span></button></div><p class="empty-helper">Normal questions stay local. Ariadne can use your Vault when relevant.</p>
           </form>
         </section>

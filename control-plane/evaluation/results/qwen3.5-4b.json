@@ -1,0 +1,3416 @@
+{
+  "captured_at": "2026-08-23T14:18:21+0700",
+  "model": "qwen3.5:4b",
+  "suite": "control-plane\\evaluation\\planner_cases.json",
+  "summary": {
+    "model": "qwen3.5:4b",
+    "cases": 60,
+    "core_correct": 50,
+    "core_accuracy": 0.8333,
+    "schema_valid": 60,
+    "fallbacks": 0,
+    "constraint_violations": 2,
+    "cold_latency_ms": [
+      7293
+    ],
+    "warm_latency_ms": [
+      1629,
+      2364,
+      2023,
+      2180,
+      1807,
+      1531,
+      2119,
+      1963,
+      1496,
+      1557,
+      1670,
+      1202,
+      1681,
+      1603,
+      1555,
+      1774,
+      1778,
+      1796,
+      1775,
+      1935,
+      1765,
+      2401,
+      1513,
+      1498,
+      1865,
+      2018,
+      2084,
+      1689,
+      1900,
+      1751,
+      1926,
+      2087,
+      1881,
+      2069,
+      2315,
+      1977,
+      2346,
+      2116,
+      2457,
+      2481,
+      2039,
+      2041,
+      1844,
+      1753,
+      2079,
+      1651,
+      1824,
+      1679,
+      1758,
+      1536,
+      1635,
+      1726,
+      1522,
+      2379,
+      2166,
+      2449,
+      2029,
+      1964,
+      2515
+    ],
+    "warm_p50_ms": 1865,
+    "warm_p95_ms": 2449,
+    "confidence_mean": 0.9475,
+    "high_confidence_incorrect": 9
+  },
+  "cases": [
+    {
+      "id": "ordinary-01",
+      "category": "ordinary",
+      "request": "How are you going today?",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Greeting and status inquiry",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Acknowledge the user's greeting.",
+          "Provide a status update based on the current date and time."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 7293,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 7274,
+        "planner_latency_ms": 7293,
+        "load_duration_ms": 5234,
+        "model_load_occurred": true,
+        "prompt_tokens": 948,
+        "output_tokens": 104,
+        "residency_before": false,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-02",
+      "category": "ordinary",
+      "request": "What is the capital of Thailand?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Factual query about a country's capital",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the capital city of Thailand as a static geographical fact."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1629,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1626,
+        "planner_latency_ms": 1629,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 950,
+        "output_tokens": 98,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-03",
+      "category": "ordinary",
+      "request": "Give me three ideas for lunch today.",
+      "expected": {
+        "intent": "ordinary_ideas",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Generate three lunch ideas based on the current date and time.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the user's need for lunch ideas based on the current date and time.",
+          "Determine if current information is required given the specific date and time context.",
+          "Select the appropriate primary source for generating the response.",
+          "Formulate three distinct lunch suggestions suitable for the specified location and time."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2364,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2360,
+        "planner_latency_ms": 2364,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 951,
+        "output_tokens": 153,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-04",
+      "category": "ordinary",
+      "request": "Explain what a checksum is in plain English.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Define and explain the concept of a checksum in simple terms.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Define what a checksum is using plain English.",
+          "Explain the purpose of a checksum (data integrity verification).",
+          "Provide a simple analogy or example to illustrate how it works."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2023,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2021,
+        "planner_latency_ms": 2023,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 955,
+        "output_tokens": 128,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-05",
+      "category": "ordinary",
+      "request": "Can you help me write a polite message to a neighbour?",
+      "expected": {
+        "intent": "ordinary_writing",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Draft a polite message to a neighbour",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the purpose of the message (e.g., greeting, complaint, request) to tailor the tone and content.",
+          "Generate a polite, concise draft suitable for a neighbour relationship.",
+          "Provide options for different scenarios if the specific context is unclear."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2180,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2177,
+        "planner_latency_ms": 2180,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 960,
+        "output_tokens": 138,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-06",
+      "category": "ordinary",
+      "request": "What does the word pragmatic mean?",
+      "expected": {
+        "intent": "ordinary_definition",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Define the meaning of the word 'pragmatic'",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Provide a clear definition of the word 'pragmatic'",
+          "Offer common usage examples to illustrate the concept"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1807,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1780,
+        "planner_latency_ms": 1807,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 950,
+        "output_tokens": 111,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-07",
+      "category": "ordinary",
+      "request": "Tell me a short joke about old computers.",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Entertain with a joke about old computers",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Generate a short joke about old computers"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1531,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1528,
+        "planner_latency_ms": 1531,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 953,
+        "output_tokens": 93,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-08",
+      "category": "ordinary",
+      "request": "What is the difference between RAM and storage?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Explain the technical difference between RAM and storage",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Define Random Access Memory (RAM) and its role in computing.",
+          "Define Storage (including HDD/SSD) and its role in computing.",
+          "Compare key characteristics such as speed, volatility, capacity, and use cases."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2119,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2073,
+        "planner_latency_ms": 2119,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 135,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-09",
+      "category": "ordinary",
+      "request": "Help me make a simple packing list for a weekend.",
+      "expected": {
+        "intent": "ordinary_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Create a simple packing list for a weekend trip.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify essential items for a general weekend trip.",
+          "Categorize items into clothing, toiletries, and electronics.",
+          "Provide a concise list suitable for a simple packing request."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1963,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1947,
+        "planner_latency_ms": 1963,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 957,
+        "output_tokens": 126,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-10",
+      "category": "ordinary",
+      "request": "What is two plus two?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Simple arithmetic calculation",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Calculate the sum of two and two."
+        ],
+        "confidence": 1.0
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1496,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1494,
+        "planner_latency_ms": 1496,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 948,
+        "output_tokens": 87,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-01",
+      "category": "vault",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve discussion history regarding local AI models",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for discussions about local AI models"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1557,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1555,
+        "planner_latency_ms": 1557,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 93,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-02",
+      "category": "vault",
+      "request": "What did we decide about moving the Ollama model store?",
+      "expected": {
+        "intent": "vault_decision_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve past decision regarding Ollama model store relocation",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for decisions about moving the Ollama model store"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1670,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1651,
+        "planner_latency_ms": 1670,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 962,
+        "output_tokens": 100,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-03",
+      "category": "vault",
+      "request": "What do we know about the Ariadne Home routing work?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve information about Ariadne Home routing work",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Summarize known facts about the Ariadne Home routing work based on available knowledge"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1202,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1200,
+        "planner_latency_ms": 1202,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 960,
+        "output_tokens": 67,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-04",
+      "category": "vault",
+      "request": "Didn't we talk about the native reader shortcut?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve information about a previously discussed topic (native reader shortcut).",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for discussions regarding the native reader shortcut."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1681,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1656,
+        "planner_latency_ms": 1681,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 956,
+        "output_tokens": 99,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-05",
+      "category": "vault",
+      "request": "What ideas did we have for the Knowledge Vault?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve past ideas and discussions regarding the Knowledge Vault project.",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for mentions of 'Knowledge Vault'."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1604,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1601,
+        "planner_latency_ms": 1603,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 956,
+        "output_tokens": 97,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-06",
+      "category": "vault",
+      "request": "What were we planning for semantic routing?",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve past plans regarding semantic routing",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for plans or discussions about semantic routing."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1555,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1538,
+        "planner_latency_ms": 1555,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 952,
+        "output_tokens": 93,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-07",
+      "category": "vault",
+      "request": "What have I forgotten about the Ariadne model tests?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve forgotten details about Ariadne model tests from personal history",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for mentions of Ariadne model tests",
+          "Identify specific forgotten details or outcomes from prior discussions"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1774,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1772,
+        "planner_latency_ms": 1774,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 958,
+        "output_tokens": 112,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-08",
+      "category": "vault",
+      "request": "What have we tested with local inference so far?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve history of local inference tests",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Query conversation history for records of local inference testing attempts.",
+          "Summarize previous test cases, results, and observations regarding local inference."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1778,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1776,
+        "planner_latency_ms": 1778,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 956,
+        "output_tokens": 111,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-09",
+      "category": "vault",
+      "request": "Where did we leave off with the Home retrieval diagnosis?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Locate previous discussion point regarding Home retrieval diagnosis",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for 'Home retrieval diagnosis'",
+          "Identify the last known status or conclusion from that discussion"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1796,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1794,
+        "planner_latency_ms": 1796,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 958,
+        "output_tokens": 109,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-10",
+      "category": "vault",
+      "request": "Can you remind me what we learned from the frozen benchmark?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve learning outcomes from a previously discussed frozen benchmark.",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the frozen benchmark discussion history in the vault.",
+          "Extract key learning outcomes and conclusions from that discussion."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1775,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1773,
+        "planner_latency_ms": 1775,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 960,
+        "output_tokens": 109,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-01",
+      "category": "current",
+      "request": "Is this information still current?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Verify the currency of provided information",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Assess whether the user's request for current information can be satisfied with available context or requires external verification given the date.",
+          "Determine if any live data is needed to answer the question about information currency."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1936,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1933,
+        "planner_latency_ms": 1935,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 948,
+        "output_tokens": 126,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-02",
+      "category": "current",
+      "request": "What is the latest news about Thailand today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve latest news about Thailand",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Query external sources for the latest news regarding Thailand as of today.",
+          "Synthesize findings into a concise summary of current events."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1765,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1751,
+        "planner_latency_ms": 1765,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 108,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-03",
+      "category": "current",
+      "request": "Check the current Ollama documentation for structured outputs.",
+      "expected": {
+        "intent": "current_research",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve current information about Ollama's structured output features from official or up-to-12",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Verify if Ollama documentation has been updated regarding structured output capabilities.",
+          "Identify any recent changes or new features related to structured outputs in the current documentation."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2401,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2398,
+        "planner_latency_ms": 2401,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 957,
+        "output_tokens": 127,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-04",
+      "category": "current",
+      "request": "What is the exchange rate today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve current exchange rate",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Query external data source for today's exchange rate"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1513,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1510,
+        "planner_latency_ms": 1513,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 950,
+        "output_tokens": 90,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-05",
+      "category": "current",
+      "request": "Is this software version still supported?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Determine if a specific software version is currently supported",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Check current support status for the mentioned software version"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1498,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1496,
+        "planner_latency_ms": 1498,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 950,
+        "output_tokens": 96,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-06",
+      "category": "current",
+      "request": "Look up the latest weather forecast for Bangkok.",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve live weather forecast data",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Query external weather service for Bangkok forecast",
+          "Extract temperature and conditions for today (2026-08-23)",
+          "Return summary of the latest weather report"
+        ],
+        "confidence": 1.0
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1865,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1837,
+        "planner_latency_ms": 1865,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 953,
+        "output_tokens": 120,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-07",
+      "category": "current",
+      "request": "Who is the current CEO of that company?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Identify the current CEO of a specific company",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Determine which company is being referred to based on context or assume a generic lookup if unspecified.",
+          "Query external sources for the current CEO of that company as of August 23, 2026."
+        ],
+        "confidence": 0.85
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2018,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1992,
+        "planner_latency_ms": 2018,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 130,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-08",
+      "category": "current",
+      "request": "What date is tomorrow?",
+      "expected": {
+        "intent": "runtime_date",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Calculate the date for tomorrow based on the current runtime date.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the current local date from the runtime context (2026-08-23).",
+          "Increment the day by one to determine tomorrow's date.",
+          "Return the calculated date."
+        ],
+        "confidence": 1.0
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2084,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2082,
+        "planner_latency_ms": 2084,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 946,
+        "output_tokens": 132,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-01",
+      "category": "attachment",
+      "request": "Summarise this.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "summarize attachment",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "summarize the provided article.md attachment using document-analysis tool"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1689,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1687,
+        "planner_latency_ms": 1689,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 997,
+        "output_tokens": 102,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-02",
+      "category": "attachment",
+      "request": "Explain the main argument in this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarize the main argument of an attached article.",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Analyze the provided article.md attachment to extract the core argument.",
+          "Synthesize the main points into a concise explanation."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1900,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1898,
+        "planner_latency_ms": 1900,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 1005,
+        "output_tokens": 121,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-03",
+      "category": "attachment",
+      "request": "Extract the principal claims from the article.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Extract principal claims from an attached article.",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Analyze the attached article.md using document-analysis to extract principal claims."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1751,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1749,
+        "planner_latency_ms": 1751,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 1003,
+        "output_tokens": 106,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-04",
+      "category": "attachment",
+      "request": "What does this say about the proposed date?",
+      "expected": {
+        "intent": "attachment_question",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Extract information about a proposed date from an attached document",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Analyze the attached article.md to identify any mention of a proposed date",
+          "Extract the specific date mentioned in the document"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1926,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1924,
+        "planner_latency_ms": 1926,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 1006,
+        "output_tokens": 122,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-05",
+      "category": "attachment",
+      "request": "Don't search anything else; just explain this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Explain the provided document",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Analyze the content of the attached article.md using document-analysis",
+          "Summarize the key points and claims made in the document",
+          "Provide a clear explanation of the document's subject matter based on its analysis"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2087,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2085,
+        "planner_latency_ms": 2087,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 1009,
+        "output_tokens": 137,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-06",
+      "category": "attachment",
+      "request": "Let's chat about this article.",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Discuss the provided article",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Analyze the provided article using document analysis tools to understand its content and claims.",
+          "Prepare a summary or key points from the article for discussion."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1881,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1867,
+        "planner_latency_ms": 1881,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 1001,
+        "output_tokens": 120,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-01",
+      "category": "heavy",
+      "request": "Design an architecture that keeps the Vault provider-independent while supporting several AI clients.",
+      "expected": {
+        "intent": "heavy_architecture",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Design a provider-independent architecture for multiple AI clients",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Analyze requirements for provider-independent architecture supporting multiple AI clients",
+          "Identify key architectural patterns for abstraction and decoupling",
+          "Propose a solution design balancing flexibility, performance, and maintainability"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2069,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2046,
+        "planner_latency_ms": 2069,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 965,
+        "output_tokens": 130,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-02",
+      "category": "heavy",
+      "request": "Compare these three approaches across cost, latency, portability, and failure recovery.",
+      "expected": {
+        "intent": "heavy_comparison",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Compare three unspecified approaches across cost, latency, portability, and failure recovery.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Identify the three approaches implied by the context or request.",
+          "Analyze each approach regarding cost factors.",
+          "Evaluate latency characteristics for each approach.",
+          "Assess portability across different environments.",
+          "Determine failure recovery mechanisms for each approach.",
+          "Synthesize a comparative analysis based on the four criteria."
+        ],
+        "confidence": 0.85
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2315,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2292,
+        "planner_latency_ms": 2315,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 967,
+        "output_tokens": 162,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-03",
+      "category": "heavy",
+      "request": "Work through the competing constraints and give me a careful engineering decision.",
+      "expected": {
+        "intent": "heavy_reasoning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Engineering decision based on competing constraints",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Identify the specific competing constraints mentioned in the request.",
+          "Analyze the trade-offs and implications of each constraint.",
+          "Synthesize a careful engineering decision that balances these factors.",
+          "Provide a clear recommendation with supporting reasoning."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1977,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1959,
+        "planner_latency_ms": 1977,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 961,
+        "output_tokens": 133,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-04",
+      "category": "heavy",
+      "request": "Diagnose this intermittent failure by tracing the likely causes and ranking the tests that would distinguish them.",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Diagnose an intermittent software failure, identify root causes, and rank diagnostic tests.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Analyze the request to understand the nature of the intermittent failure.",
+          "Identify likely root causes based on common software failure patterns.",
+          "Generate a ranked list of diagnostic tests to distinguish between identified causes.",
+          "Synthesize findings into a structured diagnosis and testing plan."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2346,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2321,
+        "planner_latency_ms": 2346,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 975,
+        "output_tokens": 151,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-05",
+      "category": "heavy",
+      "request": "Synthesize the trade-offs and recommend a migration order with rollback points.",
+      "expected": {
+        "intent": "heavy_synthesis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Synthesize trade-offs and recommend migration order with rollback points",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Analyze the trade-offs involved in system migration strategies.",
+          "Determine the optimal order for migrating components based on dependencies and risk.",
+          "Identify specific rollback points at each stage of the migration plan."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2116,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2099,
+        "planner_latency_ms": 2116,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 963,
+        "output_tokens": 132,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-06",
+      "category": "heavy",
+      "request": "Reason through why the observed measurements contradict the original hypothesis.",
+      "expected": {
+        "intent": "heavy_diagnosis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Analyze logical contradiction between observations and a hypothesis",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Identify the original hypothesis from the context or user message.",
+          "Extract the observed measurements provided in the input.",
+          "Compare the hypothesis predictions against the observed data to find discrepancies.",
+          "Formulate reasons for the contradiction based on logical analysis.",
+          "Synthesize a coherent explanation of why the measurements contradict the hypothesis."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2458,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2456,
+        "planner_latency_ms": 2457,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 957,
+        "output_tokens": 155,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-07",
+      "category": "heavy",
+      "request": "Give me a robust plan that handles security, data integrity, and operational recovery together.",
+      "expected": {
+        "intent": "heavy_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Create a robust integrated plan for security, data integrity, and operational recovery.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Analyze the interdependencies between security, data integrity, and operational recovery.",
+          "Identify key failure scenarios affecting all three domains simultaneously.",
+          "Design a unified control framework to address these scenarios.",
+          "Propose specific mechanisms for automated detection and response.",
+          "Synthesize a comprehensive implementation strategy with trade-off analysis.",
+          "Generate the final robust plan document."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2481,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2436,
+        "planner_latency_ms": 2481,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 969,
+        "output_tokens": 170,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-08",
+      "category": "heavy",
+      "request": "What is the difference between a list and a tuple in Python?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Explain the difference between a list and a tuple in Python",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Define the characteristics of a Python list.",
+          "Define the characteristics of a Python tuple.",
+          "Compare mutability between lists and tuples.",
+          "Explain use cases for each data structure."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2039,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2013,
+        "planner_latency_ms": 2039,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 962,
+        "output_tokens": 131,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-01",
+      "category": "messy",
+      "request": "what did we do with that ollama thing again mate",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve past actions or decisions regarding a specific topic (Ollama) from conversation history",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for mentions of 'Ollama' or related topics",
+          "Identify specific actions, decisions, or plans made regarding Ollama in past discussions"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2041,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2039,
+        "planner_latency_ms": 2041,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 958,
+        "output_tokens": 129,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-02",
+      "category": "messy",
+      "request": "Can u just have a squiz at this?",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Analyze attached document",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Analyze the provided article.md attachment to summarize its content and extract key claims."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1844,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1806,
+        "planner_latency_ms": 1844,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 1008,
+        "output_tokens": 105,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-03",
+      "category": "messy",
+      "request": "nah dont web it, what was our plan for the home page",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve previous discussion plans regarding the homepage",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the user's plan for the homepage from previous discussions or notes."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1753,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1726,
+        "planner_latency_ms": 1753,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 962,
+        "output_tokens": 98,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-04",
+      "category": "messy",
+      "request": "I reckon this is wrong - can you work out why without going all fancy?",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Debug a perceived error in the previous response with simple reasoning",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the specific claim or logic the user believes is incorrect.",
+          "Re-evaluate the reasoning using clear, non-complex steps.",
+          "Provide a corrected explanation if an error exists."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2079,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2062,
+        "planner_latency_ms": 2079,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 968,
+        "output_tokens": 129,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-05",
+      "category": "messy",
+      "request": "what's the go with qwen residency",
+      "expected": {
+        "intent": "vault_or_current_ambiguous",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "inquire about current status of Qwen residency program",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Determine the current status and requirements for the Qwen residency program."
+        ],
+        "confidence": 0.85
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1651,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1649,
+        "planner_latency_ms": 1651,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 952,
+        "output_tokens": 100,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-06",
+      "category": "messy",
+      "request": "Summarise this, but don't go searching the vault, eh.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarize an attached article without using the vault.",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Summarize the content of the attached article.md using document-analysis."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1824,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1804,
+        "planner_latency_ms": 1824,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 1017,
+        "output_tokens": 109,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-07",
+      "category": "messy",
+      "request": "I forgot the name of the thing we tested last week",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Retrieve the name of a specific test conducted in the past.",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify the name of the test performed last week from conversation history."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1679,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1648,
+        "planner_latency_ms": 1679,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 958,
+        "output_tokens": 101,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-08",
+      "category": "messy",
+      "request": "Can you explain blorpification? No idea if that's even a word.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Define and verify the term 'blorpification'.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Verify if 'blorpification' is a recognized word.",
+          "Provide an explanation of the term if it exists."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1758,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1754,
+        "planner_latency_ms": 1758,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 967,
+        "output_tokens": 112,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-01",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "plan": {
+        "intent": "Retrieve discussion history regarding local AI models",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for discussions about local AI models"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": false
+      },
+      "constraint_violation": true,
+      "wrapper_latency_ms": 1536,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1503,
+        "planner_latency_ms": 1536,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 93,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-02",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarize the provided document",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Analyze the provided Markdown attachment to generate a summary."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1635,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1632,
+        "planner_latency_ms": 1635,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 999,
+        "output_tokens": 102,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-03",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarize the provided attachment",
+        "primary_source": "attachment",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Read and analyze the content of the attached document 'article.md'",
+          "Generate a concise summary of the article's key points"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1726,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1724,
+        "planner_latency_ms": 1726,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 938,
+        "output_tokens": 109,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-04",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "plan": {
+        "intent": "Retrieve discussion history regarding local AI models",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "Search conversation history for discussions about local AI models"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": false
+      },
+      "constraint_violation": true,
+      "wrapper_latency_ms": 1522,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1503,
+        "planner_latency_ms": 1522,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 956,
+        "output_tokens": 93,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-05",
+      "category": "constraints",
+      "request": "Check whether this is still current.",
+      "expected": {
+        "intent": "attachment_current_check",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "plan": {
+        "intent": "Verify the currency of information in an attached article.",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Analyze the attached article to determine its publication date and content scope.",
+          "Compare the article's date with the current runtime date (2026-08-23) to assess currency.",
+          "Evaluate whether the information remains valid or if it is outdated based on the analysis."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2379,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2356,
+        "planner_latency_ms": 2379,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 1003,
+        "output_tokens": 156,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-01",
+      "category": "mixed",
+      "request": "Compare this article with what we've discussed before.",
+      "expected": {
+        "intent": "attachment_vault_comparison",
+        "primary_source": "attachment",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Compare the provided article with previous discussion points.",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Retrieve relevant prior discussions and decisions from conversation history.",
+          "Analyze the provided article content to extract key claims and themes.",
+          "Synthesize a comparison between the article's points and previously discussed topics.",
+          "Identify new insights or contradictions arising from the comparison."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2166,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2148,
+        "planner_latency_ms": 2166,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 1007,
+        "output_tokens": 141,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-02",
+      "category": "mixed",
+      "request": "Explain this document and reason through its strongest and weakest claims.",
+      "expected": {
+        "intent": "attachment_heavy_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Analyze an attached article for explanation and critical evaluation of its claims.",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Summarize the content of the attached article.",
+          "Extract and list the strongest claims made in the document.",
+          "Extract and list the weakest or most questionable claims made in the document.",
+          "Provide reasoning for why certain claims are strong or weak based on evidence within the text."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2449,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2425,
+        "planner_latency_ms": 2449,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 1013,
+        "output_tokens": 159,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-03",
+      "category": "mixed",
+      "request": "What did we decide about this, and is that decision still current?",
+      "expected": {
+        "intent": "vault_current_check",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Retrieve past decisions regarding the topic and verify their current validity",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Identify any prior decisions made in the conversation history or project vault regarding this topic.",
+          "Determine if those decisions remain valid and current as of 2026-08-23."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2029,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2026,
+        "planner_latency_ms": 2029,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 964,
+        "output_tokens": 130,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-04",
+      "category": "mixed",
+      "request": "Use our prior notes to design the next safe migration step.",
+      "expected": {
+        "intent": "vault_heavy_planning",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Design a safe migration step using prior project notes",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "Retrieve relevant prior notes and migration plans from the vault.",
+          "Analyze existing migration steps for potential risks or gaps.",
+          "Synthesize a safe next step based on historical context and constraints."
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 1964,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 1947,
+        "planner_latency_ms": 1964,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 959,
+        "output_tokens": 126,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-05",
+      "category": "mixed",
+      "request": "Check current reporting on this article, then explain what it means.",
+      "expected": {
+        "intent": "attachment_current_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Analyze attached article for current reporting status and explain its meaning",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tasks": [
+          "Retrieve and summarize the content of the attached article 'article.md'",
+          "Verify if the article's reporting status is current based on its publication date relative to the runtime date (2026-08-23)",
+          "Explain the meaning and implications of the reported events or claims found in the document"
+        ],
+        "confidence": 0.95
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 2515,
+      "telemetry": {
+        "planner_model": "qwen3.5:4b",
+        "keep_alive": -1,
+        "planning_duration_ms": 2480,
+        "planner_latency_ms": 2515,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 1013,
+        "output_tokens": 164,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3.5:4b"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

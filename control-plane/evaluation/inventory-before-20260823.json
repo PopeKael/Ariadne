@@ -1,0 +1,38 @@
+{
+  "captured_at": "2026-08-23",
+  "repository": "D:\\Downloads\\Ariadne",
+  "ollama_store": "F:\\AI\\Models\\Ollama",
+  "pre_existing_models": [
+    "qwen3.5:9b-q4_K_M",
+    "qwen2.5vl:7b",
+    "nomic-embed-text:latest",
+    "gpt-oss:20b"
+  ],
+  "experiment_models_before_bakeoff": ["qwen3:0.6b"],
+  "disk_free_bytes": {
+    "F": 426469130240,
+    "D": 595885871104
+  },
+  "endpoints": {
+    "127.0.0.1": {
+      "models": [
+        {"name": "qwen3:0.6b", "size": 522653767},
+        {"name": "qwen3.5:9b-q4_K_M", "size": 6594474711},
+        {"name": "qwen2.5vl:7b", "size": 5969245856},
+        {"name": "nomic-embed-text:latest", "size": 274302450},
+        {"name": "gpt-oss:20b", "size": 13793441244}
+      ],
+      "loaded": ["qwen3:0.6b"]
+    },
+    "[::1]": {
+      "models": [
+        {"name": "qwen3:0.6b", "size": 522653767},
+        {"name": "qwen3.5:9b-q4_K_M", "size": 6594474711},
+        {"name": "qwen2.5vl:7b", "size": 5969245856},
+        {"name": "nomic-embed-text:latest", "size": 274302450},
+        {"name": "gpt-oss:20b", "size": 13793441244}
+      ],
+      "loaded": ["qwen3:0.6b"]
+    }
+  }
+}

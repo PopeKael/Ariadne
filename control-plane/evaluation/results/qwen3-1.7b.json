@@ -1,0 +1,6437 @@
+{
+  "captured_at": "2026-08-23T17:09:03+0700",
+  "model": "qwen3:1.7b",
+  "suite": "control-plane\\evaluation\\planner_cases.json",
+  "summary": {
+    "model": "qwen3:1.7b",
+    "cases": 60,
+    "semantic_cases_scored": 60,
+    "semantic_correct": 199,
+    "intent_exact_accuracy": 0.0167,
+    "semantic_accuracy_without_intent": 0.8216,
+    "semantic_total": 301,
+    "semantic_accuracy": 0.6611,
+    "semantic_field_accuracy": {
+      "intent": {
+        "correct": 1,
+        "total": 60
+      },
+      "needs_personal_history": {
+        "correct": 44,
+        "total": 60
+      },
+      "needs_current_information": {
+        "correct": 51,
+        "total": 60
+      },
+      "needs_attachment": {
+        "correct": 60,
+        "total": 60
+      },
+      "reasoning_complexity": {
+        "correct": 43,
+        "total": 60
+      },
+      "ambiguity": {
+        "correct": 0,
+        "total": 1
+      }
+    },
+    "final_route_correct": 23,
+    "final_route_accuracy": 0.3833,
+    "core_correct": 23,
+    "core_accuracy": 0.3833,
+    "schema_valid": 60,
+    "fallbacks": 0,
+    "constraint_violations": 0,
+    "fallback_route_correct": 0,
+    "policy_overrides": 0,
+    "capability_gaps": 7,
+    "cold_latency_ms": [
+      3098
+    ],
+    "warm_latency_ms": [
+      529,
+      511,
+      595,
+      492,
+      495,
+      525,
+      513,
+      529,
+      517,
+      507,
+      512,
+      521,
+      495,
+      564,
+      508,
+      539,
+      535,
+      536,
+      574,
+      566,
+      565,
+      584,
+      487,
+      549,
+      519,
+      504,
+      510,
+      540,
+      615,
+      576,
+      542,
+      553,
+      511,
+      548,
+      529,
+      542,
+      538,
+      638,
+      549,
+      558,
+      537,
+      506,
+      595,
+      561,
+      533,
+      549,
+      564,
+      517,
+      561,
+      541,
+      561,
+      543,
+      539,
+      576,
+      535,
+      626,
+      569,
+      592,
+      551
+    ],
+    "warm_p50_ms": 540,
+    "warm_p95_ms": 595,
+    "confidence_mean": 0.9483,
+    "high_confidence_incorrect": 57
+  },
+  "cases": [
+    {
+      "id": "ordinary-01",
+      "category": "ordinary",
+      "request": "How are you going today?",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_conversation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Greeting and well-wishing",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Greeting and well-wishing",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 3098,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 3073,
+        "planner_latency_ms": 3098,
+        "interpreter_latency_ms": 3098,
+        "load_duration_ms": 2320,
+        "model_load_occurred": true,
+        "prompt_tokens": 640,
+        "output_tokens": 64,
+        "residency_before": false,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-02",
+      "category": "ordinary",
+      "request": "What is the capital of Thailand?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_factual",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "fact_query",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "fact_query",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 529,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 527,
+        "planner_latency_ms": 529,
+        "interpreter_latency_ms": 529,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 642,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-03",
+      "category": "ordinary",
+      "request": "Give me three ideas for lunch today.",
+      "expected": {
+        "intent": "ordinary_ideas",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_ideas",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_ideas",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Generate lunch ideas",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Generate lunch ideas",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 511,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 510,
+        "planner_latency_ms": 511,
+        "interpreter_latency_ms": 511,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 643,
+        "output_tokens": 61,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-04",
+      "category": "ordinary",
+      "request": "Explain what a checksum is in plain English.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Explain what a checksum is in plain English",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Explain what a checksum is in plain English",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 595,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 568,
+        "planner_latency_ms": 595,
+        "interpreter_latency_ms": 595,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 647,
+        "output_tokens": 67,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-05",
+      "category": "ordinary",
+      "request": "Can you help me write a polite message to a neighbour?",
+      "expected": {
+        "intent": "ordinary_writing",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_writing",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_writing",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "request",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "request",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 492,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 491,
+        "planner_latency_ms": 492,
+        "interpreter_latency_ms": 492,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 652,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-06",
+      "category": "ordinary",
+      "request": "What does the word pragmatic mean?",
+      "expected": {
+        "intent": "ordinary_definition",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_definition",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_definition",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "define",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "define",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 495,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 494,
+        "planner_latency_ms": 495,
+        "interpreter_latency_ms": 495,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 642,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-07",
+      "category": "ordinary",
+      "request": "Tell me a short joke about old computers.",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_conversation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Generate a joke about old computers",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Generate a joke about old computers",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 525,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 524,
+        "planner_latency_ms": 525,
+        "interpreter_latency_ms": 525,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 645,
+        "output_tokens": 64,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-08",
+      "category": "ordinary",
+      "request": "What is the difference between RAM and storage?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "information",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "information",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 513,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 512,
+        "planner_latency_ms": 513,
+        "interpreter_latency_ms": 513,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 646,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-09",
+      "category": "ordinary",
+      "request": "Help me make a simple packing list for a weekend.",
+      "expected": {
+        "intent": "ordinary_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_planning",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Generate a packing list",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Generate a packing list",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 529,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 528,
+        "planner_latency_ms": 529,
+        "interpreter_latency_ms": 529,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 649,
+        "output_tokens": 62,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-10",
+      "category": "ordinary",
+      "request": "What is two plus two?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_factual",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "answer question",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "answer question",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 517,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 496,
+        "planner_latency_ms": 517,
+        "interpreter_latency_ms": 517,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 640,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-01",
+      "category": "vault",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "knowledge",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "knowledge",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 507,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 506,
+        "planner_latency_ms": 507,
+        "interpreter_latency_ms": 507,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 646,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-02",
+      "category": "vault",
+      "request": "What did we decide about moving the Ollama model store?",
+      "expected": {
+        "intent": "vault_decision_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_decision_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_decision_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Query",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Query",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 512,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 510,
+        "planner_latency_ms": 512,
+        "interpreter_latency_ms": 512,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 654,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-03",
+      "category": "vault",
+      "request": "What do we know about the Ariadne Home routing work?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "knowledge_query",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "knowledge_query",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 521,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 520,
+        "planner_latency_ms": 521,
+        "interpreter_latency_ms": 521,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 654,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-04",
+      "category": "vault",
+      "request": "Didn't we talk about the native reader shortcut?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "confirmation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "confirmation",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 495,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 494,
+        "planner_latency_ms": 495,
+        "interpreter_latency_ms": 495,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 648,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-05",
+      "category": "vault",
+      "request": "What ideas did we have for the Knowledge Vault?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Query about prior ideas for the Knowledge Vault",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Query about prior ideas for the Knowledge Vault",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 564,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 538,
+        "planner_latency_ms": 564,
+        "interpreter_latency_ms": 564,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 648,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-06",
+      "category": "vault",
+      "request": "What were we planning for semantic routing?",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_planning_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "answer question",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "answer question",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 508,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 507,
+        "planner_latency_ms": 508,
+        "interpreter_latency_ms": 508,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 644,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-07",
+      "category": "vault",
+      "request": "What have I forgotten about the Ariadne model tests?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "recall",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "recall",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 539,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 537,
+        "planner_latency_ms": 539,
+        "interpreter_latency_ms": 539,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 652,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-08",
+      "category": "vault",
+      "request": "What have we tested with local inference so far?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Query about tested local inference",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Query about tested local inference",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 535,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 534,
+        "planner_latency_ms": 535,
+        "interpreter_latency_ms": 535,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 648,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-09",
+      "category": "vault",
+      "request": "Where did we leave off with the Home retrieval diagnosis?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Retrieval Diagnosis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Retrieval Diagnosis",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 536,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 535,
+        "planner_latency_ms": 536,
+        "interpreter_latency_ms": 536,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 650,
+        "output_tokens": 62,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-10",
+      "category": "vault",
+      "request": "Can you remind me what we learned from the frozen benchmark?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Reminder of learned content from a frozen benchmark",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Reminder of learned content from a frozen benchmark",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 574,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 572,
+        "planner_latency_ms": 574,
+        "interpreter_latency_ms": 574,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 652,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-01",
+      "category": "current",
+      "request": "Is this information still current?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": true,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tasks": [
+          "obtain genuinely current information",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [
+          "current_source_unavailable"
+        ],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 566,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 564,
+        "planner_latency_ms": 566,
+        "interpreter_latency_ms": 566,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 640,
+        "output_tokens": 62,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-02",
+      "category": "current",
+      "request": "What is the latest news about Thailand today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Query for current news about Thailand",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.8
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Query for current news about Thailand",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tasks": [
+          "obtain genuinely current information",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.8
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [
+          "current_source_unavailable"
+        ],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 565,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 563,
+        "planner_latency_ms": 565,
+        "interpreter_latency_ms": 565,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 646,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-03",
+      "category": "current",
+      "request": "Check the current Ollama documentation for structured outputs.",
+      "expected": {
+        "intent": "current_research",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_research",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_research",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Check the current Ollama documentation for structured outputs",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Check the current Ollama documentation for structured outputs",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 584,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 583,
+        "planner_latency_ms": 584,
+        "interpreter_latency_ms": 584,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 649,
+        "output_tokens": 68,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-04",
+      "category": "current",
+      "request": "What is the exchange rate today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Query",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Query",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 487,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 486,
+        "planner_latency_ms": 487,
+        "interpreter_latency_ms": 487,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 642,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-05",
+      "category": "current",
+      "request": "Is this software version still supported?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Check software version support status",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Check software version support status",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 549,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 548,
+        "planner_latency_ms": 549,
+        "interpreter_latency_ms": 549,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 642,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-06",
+      "category": "current",
+      "request": "Look up the latest weather forecast for Bangkok.",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Query",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Query",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 519,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 518,
+        "planner_latency_ms": 519,
+        "interpreter_latency_ms": 519,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 645,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-07",
+      "category": "current",
+      "request": "Who is the current CEO of that company?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Query",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Query",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 504,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 503,
+        "planner_latency_ms": 504,
+        "interpreter_latency_ms": 504,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 646,
+        "output_tokens": 59,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-08",
+      "category": "current",
+      "request": "What date is tomorrow?",
+      "expected": {
+        "intent": "runtime_date",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "runtime_date",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "runtime_date",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "obtain genuinely current information"
+        ],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [
+          "current_source_unavailable"
+        ],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 510,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 509,
+        "planner_latency_ms": 510,
+        "interpreter_latency_ms": 510,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 638,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-01",
+      "category": "attachment",
+      "request": "Summarise this.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "summarize",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "summarize",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 540,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 538,
+        "planner_latency_ms": 540,
+        "interpreter_latency_ms": 540,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 687,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-02",
+      "category": "attachment",
+      "request": "Explain the main argument in this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Explain the main argument in this document",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Explain the main argument in this document",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 615,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 590,
+        "planner_latency_ms": 615,
+        "interpreter_latency_ms": 615,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 695,
+        "output_tokens": 68,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-03",
+      "category": "attachment",
+      "request": "Extract the principal claims from the article.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Extract the principal claims from the article",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Extract the principal claims from the article",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 576,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 575,
+        "planner_latency_ms": 576,
+        "interpreter_latency_ms": 576,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 693,
+        "output_tokens": 67,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-04",
+      "category": "attachment",
+      "request": "What does this say about the proposed date?",
+      "expected": {
+        "intent": "attachment_question",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_question",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_question",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Question about the proposed date",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.8
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Question about the proposed date",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "obtain genuinely current information",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.8
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [
+          "current_source_unavailable"
+        ],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 542,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 541,
+        "planner_latency_ms": 542,
+        "interpreter_latency_ms": 542,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 696,
+        "output_tokens": 65,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-05",
+      "category": "attachment",
+      "request": "Don't search anything else; just explain this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Explain the document",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Explain the document",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 553,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 552,
+        "planner_latency_ms": 553,
+        "interpreter_latency_ms": 553,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 699,
+        "output_tokens": 64,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-06",
+      "category": "attachment",
+      "request": "Let's chat about this article.",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_discussion",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "chat",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "chat",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 511,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 510,
+        "planner_latency_ms": 511,
+        "interpreter_latency_ms": 511,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 691,
+        "output_tokens": 61,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-01",
+      "category": "heavy",
+      "request": "Design an architecture that keeps the Vault provider-independent while supporting several AI clients.",
+      "expected": {
+        "intent": "heavy_architecture",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_architecture",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_architecture",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Design an architecture",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Design an architecture",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 548,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 524,
+        "planner_latency_ms": 548,
+        "interpreter_latency_ms": 548,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 657,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-02",
+      "category": "heavy",
+      "request": "Compare these three approaches across cost, latency, portability, and failure recovery.",
+      "expected": {
+        "intent": "heavy_comparison",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_comparison",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_comparison",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Comparison",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "medium",
+        "ambiguity": "low",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Comparison",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 529,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 515,
+        "planner_latency_ms": 529,
+        "interpreter_latency_ms": 529,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 659,
+        "output_tokens": 61,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-03",
+      "category": "heavy",
+      "request": "Work through the competing constraints and give me a careful engineering decision.",
+      "expected": {
+        "intent": "heavy_reasoning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_reasoning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_reasoning",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Engineering decision",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Engineering decision",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 542,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 541,
+        "planner_latency_ms": 542,
+        "interpreter_latency_ms": 542,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 653,
+        "output_tokens": 62,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-04",
+      "category": "heavy",
+      "request": "Diagnose this intermittent failure by tracing the likely causes and ranking the tests that would distinguish them.",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_debugging",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Diagnose",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Diagnose",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 538,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 537,
+        "planner_latency_ms": 538,
+        "interpreter_latency_ms": 538,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 667,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-05",
+      "category": "heavy",
+      "request": "Synthesize the trade-offs and recommend a migration order with rollback points.",
+      "expected": {
+        "intent": "heavy_synthesis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_synthesis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_synthesis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Synthesize the trade-offs and recommend a migration order with rollback points",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Synthesize the trade-offs and recommend a migration order with rollback points",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 638,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 637,
+        "planner_latency_ms": 638,
+        "interpreter_latency_ms": 638,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 655,
+        "output_tokens": 73,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-06",
+      "category": "heavy",
+      "request": "Reason through why the observed measurements contradict the original hypothesis.",
+      "expected": {
+        "intent": "heavy_diagnosis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_diagnosis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_diagnosis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "reasoning",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "reasoning",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 549,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 548,
+        "planner_latency_ms": 549,
+        "interpreter_latency_ms": 549,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 649,
+        "output_tokens": 62,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-07",
+      "category": "heavy",
+      "request": "Give me a robust plan that handles security, data integrity, and operational recovery together.",
+      "expected": {
+        "intent": "heavy_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_planning",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "plan",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "plan",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 559,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 557,
+        "planner_latency_ms": 558,
+        "interpreter_latency_ms": 558,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 661,
+        "output_tokens": 61,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-08",
+      "category": "heavy",
+      "request": "What is the difference between a list and a tuple in Python?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "answer_question",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "answer_question",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 537,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 536,
+        "planner_latency_ms": 537,
+        "interpreter_latency_ms": 537,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 654,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-01",
+      "category": "messy",
+      "request": "what did we do with that ollama thing again mate",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Clarification",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Clarification",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 506,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 505,
+        "planner_latency_ms": 506,
+        "interpreter_latency_ms": 506,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 652,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-02",
+      "category": "messy",
+      "request": "Can u just have a squiz at this?",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_discussion",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Ask for a summary or analysis of a provided document",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Ask for a summary or analysis of a provided document",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 595,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 593,
+        "planner_latency_ms": 595,
+        "interpreter_latency_ms": 595,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 698,
+        "output_tokens": 70,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-03",
+      "category": "messy",
+      "request": "nah dont web it, what was our plan for the home page",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_planning_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Retrieve information about the home page plan",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "medium",
+        "ambiguity": "low",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Retrieve information about the home page plan",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 561,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 545,
+        "planner_latency_ms": 561,
+        "interpreter_latency_ms": 561,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 654,
+        "output_tokens": 67,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-04",
+      "category": "messy",
+      "request": "I reckon this is wrong - can you work out why without going all fancy?",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_debugging",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "assessment",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "medium",
+        "ambiguity": "high",
+        "confidence": 0.8
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "assessment",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.8
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 533,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 532,
+        "planner_latency_ms": 533,
+        "interpreter_latency_ms": 533,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 660,
+        "output_tokens": 61,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-05",
+      "category": "messy",
+      "request": "what's the go with qwen residency",
+      "expected": {
+        "intent": "vault_or_current_ambiguous",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_or_current_ambiguous",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_or_current_ambiguous",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high"
+      },
+      "semantic": {
+        "intent": "Query about Qwen residency",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true,
+          "ambiguity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity",
+          "ambiguity"
+        ]
+      },
+      "plan": {
+        "intent": "Query about Qwen residency",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 549,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 547,
+        "planner_latency_ms": 549,
+        "interpreter_latency_ms": 549,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 644,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-06",
+      "category": "messy",
+      "request": "Summarise this, but don't go searching the vault, eh.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Summarize",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Summarize",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 565,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 563,
+        "planner_latency_ms": 564,
+        "interpreter_latency_ms": 564,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 707,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-07",
+      "category": "messy",
+      "request": "I forgot the name of the thing we tested last week",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Retrieve information",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Retrieve information",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 517,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 496,
+        "planner_latency_ms": 517,
+        "interpreter_latency_ms": 517,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 650,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-08",
+      "category": "messy",
+      "request": "Can you explain blorpification? No idea if that's even a word.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Explaining a term",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Explaining a term",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 562,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 535,
+        "planner_latency_ms": 561,
+        "interpreter_latency_ms": 561,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 659,
+        "output_tokens": 62,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-01",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "knowledge",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "knowledge",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 541,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 515,
+        "planner_latency_ms": 541,
+        "interpreter_latency_ms": 541,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 646,
+        "output_tokens": 61,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-02",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "summarise",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "summarise",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 561,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 535,
+        "planner_latency_ms": 561,
+        "interpreter_latency_ms": 561,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 689,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-03",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Summarise",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Summarise",
+        "primary_source": "attachment",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [
+          "document-analysis_unavailable"
+        ],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 544,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 522,
+        "planner_latency_ms": 543,
+        "interpreter_latency_ms": 543,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 630,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-04",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Retrieve information about discussions on local AI models",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "low",
+        "confidence": 1.0
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Retrieve information about discussions on local AI models",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 1.0
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 539,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 538,
+        "planner_latency_ms": 539,
+        "interpreter_latency_ms": 539,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 648,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-05",
+      "category": "constraints",
+      "request": "Check whether this is still current.",
+      "expected": {
+        "intent": "attachment_current_check",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "final_route_expected": {
+        "intent": "attachment_current_check",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "semantic_expected": {
+        "intent": "attachment_current_check",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": true,
+        "reasoning_complexity": "medium",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Check whether this is still current",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Check whether this is still current",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "obtain genuinely current information",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [
+          "current_source_unavailable"
+        ],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 576,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 575,
+        "planner_latency_ms": 576,
+        "interpreter_latency_ms": 576,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 693,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-01",
+      "category": "mixed",
+      "request": "Compare this article with what we've discussed before.",
+      "expected": {
+        "intent": "attachment_vault_comparison",
+        "primary_source": "attachment",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "attachment_vault_comparison",
+        "primary_source": "attachment",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "attachment_vault_comparison",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "medium",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Compare",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Compare",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 535,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 534,
+        "planner_latency_ms": 535,
+        "interpreter_latency_ms": 535,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 697,
+        "output_tokens": 61,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-02",
+      "category": "mixed",
+      "request": "Explain this document and reason through its strongest and weakest claims.",
+      "expected": {
+        "intent": "attachment_heavy_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "attachment_heavy_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "attachment_heavy_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Explain a document and reason through its strongest and weakest claims",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Explain a document and reason through its strongest and weakest claims",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 626,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 610,
+        "planner_latency_ms": 626,
+        "interpreter_latency_ms": 626,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 703,
+        "output_tokens": 72,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-03",
+      "category": "mixed",
+      "request": "What did we decide about this, and is that decision still current?",
+      "expected": {
+        "intent": "vault_current_check",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "vault_current_check",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "vault_current_check",
+        "needs_personal_history": true,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "medium",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Confirmation of prior decision",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "medium",
+        "ambiguity": "low",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Confirmation of prior decision",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [
+          "retrieve relevant personal or project history"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 569,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 568,
+        "planner_latency_ms": 569,
+        "interpreter_latency_ms": 569,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 656,
+        "output_tokens": 64,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-04",
+      "category": "mixed",
+      "request": "Use our prior notes to design the next safe migration step.",
+      "expected": {
+        "intent": "vault_heavy_planning",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "vault_heavy_planning",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "vault_heavy_planning",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "prior_personal_history",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "prior_personal_history",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tasks": [
+          "retrieve relevant personal or project history",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 592,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 578,
+        "planner_latency_ms": 592,
+        "interpreter_latency_ms": 592,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 651,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-05",
+      "category": "mixed",
+      "request": "Check current reporting on this article, then explain what it means.",
+      "expected": {
+        "intent": "attachment_current_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "attachment_current_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "attachment_current_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "Check current reporting on this article",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": "high",
+        "confidence": 0.9
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "Check current reporting on this article",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tasks": [
+          "analyze attached evidence",
+          "obtain genuinely current information",
+          "use the high reasoning tier"
+        ],
+        "confidence": 0.9
+      },
+      "fallback_route_correct": false,
+      "core_correct": true,
+      "final_route_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [],
+        "capability_gaps": [
+          "current_source_unavailable"
+        ],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 552,
+      "telemetry": {
+        "planner_model": "qwen3:1.7b",
+        "interpreter_model": "qwen3:1.7b",
+        "keep_alive": -1,
+        "planning_duration_ms": 550,
+        "planner_latency_ms": 551,
+        "interpreter_latency_ms": 551,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 703,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "qwen3:1.7b",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

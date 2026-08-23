@@ -1,4 +1,4 @@
-const state = {sessionId: null, chatId: null, messages: [], heartbeat: null, requestTimer: null, requestStarted: 0};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, requestStarted: 0};
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -17,6 +17,97 @@ async function postJson(url, payload) {
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || ("HTTP " + response.status));
   return data;
+}
+function renderTools(tools) {
+  state.tools = Array.isArray(tools) ? tools : [];
+  const root = document.querySelector("#tools-palette");
+  if (!root) return;
+  root.replaceChildren();
+  const available = state.tools.filter(tool => tool && tool.enabled !== false);
+  if (!available.length) {
+    root.append(el("small", "quiet", "No tools are currently available."));
+    return;
+  }
+  for (const tool of available) {
+    const label = el("label", "tool-option");
+    const checkbox = el("input");
+    checkbox.type = "checkbox";
+    checkbox.value = tool.tool_id;
+    checkbox.checked = state.selectedToolIds.has(tool.tool_id);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) state.selectedToolIds.add(tool.tool_id);
+      else state.selectedToolIds.delete(tool.tool_id);
+      const palette = document.querySelector("#tools-palette");
+      const button = document.querySelector("#tools-button");
+      if (palette && button) {
+        palette.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+      }
+    });
+    const copy = el("span");
+    copy.append(el("strong", "", tool.display_name || tool.tool_id), el("small", "", tool.description || ""));
+    label.append(checkbox, copy);
+    root.append(label);
+  }
+}
+function renderAttachments(documents) {
+  state.attachments = Array.isArray(documents) ? documents : [];
+  const root = document.querySelector("#attachment-list");
+  if (!root) return;
+  root.replaceChildren();
+  for (const document of state.attachments) {
+    const chip = el("span", "attachment-chip");
+    chip.append(el("span", "", document.filename || document.title || "Attached document"));
+    const remove = el("button", "attachment-remove", "×");
+    remove.type = "button";
+    remove.title = "Remove temporary attachment";
+    remove.addEventListener("click", () => removeAttachment(document.document_id));
+    chip.append(remove);
+    root.append(chip);
+  }
+}
+async function loadTools() {
+  try {
+    const result = await getJson("/api/home/tools");
+    renderTools(result.tools || []);
+  } catch (error) {
+    renderTools([]);
+    document.querySelector("#ask-status").textContent = "Tools unavailable: " + error.message;
+  }
+}
+async function attachFile(file) {
+  const status = document.querySelector("#ask-status");
+  if (!file || !state.sessionId) return;
+  if (!/\.(md|txt)$/i.test(file.name)) {
+    status.textContent = "Only Markdown and text attachments are supported.";
+    return;
+  }
+  if (file.size > 6000000) {
+    status.textContent = "Keep each attachment below 6 MB.";
+    return;
+  }
+  status.textContent = "Reading " + file.name + " locally…";
+  try {
+    const content = await file.text();
+    const result = await postWithSessionRecovery("/api/home/documents/attach", {
+      session_id: state.sessionId, chat_id: state.chatId, filename: file.name, content
+    });
+    renderAttachments([...state.attachments, result.document]);
+    status.textContent = "Attached " + file.name + " as temporary working context.";
+  } catch (error) {
+    status.textContent = "Could not attach " + file.name + ": " + error.message;
+  }
+}
+async function removeAttachment(documentId) {
+  try {
+    const result = await postWithSessionRecovery("/api/home/documents/remove", {
+      session_id: state.sessionId, chat_id: state.chatId, document_id: documentId
+    });
+    renderAttachments(result.documents || []);
+    document.querySelector("#ask-status").textContent = "Temporary attachment removed.";
+  } catch (error) {
+    document.querySelector("#ask-status").textContent = "Could not remove attachment: " + error.message;
+  }
 }
 function renderHealth(payload) {
   const root = document.querySelector("#header-health");
@@ -147,6 +238,7 @@ async function selectRecentChat(chatId) {
     const result = await postWithSessionRecovery("/api/home/chat/select", {session_id: state.sessionId, chat_id: chatId});
     rememberChat(result.chat.chat_id);
     restoreMessages(result.chat.messages || []);
+    renderAttachments(result.documents || []);
     document.querySelector("#ask-status").textContent = "Restored the selected local chat.";
     renderRecentChats((await getJson("/api/home/chats")).chats || []);
   } catch (error) {
@@ -163,6 +255,7 @@ async function startNewChat() {
     const result = await postWithSessionRecovery("/api/home/chat/new", {session_id: state.sessionId, chat_id: state.chatId});
     rememberChat(result.chat.chat_id);
     restoreMessages(result.chat.messages || []);
+    renderAttachments(result.documents || []);
     status.textContent = "New chat started. The previous conversation was archived.";
     await loadRecentChats();
   } catch (error) {
@@ -207,6 +300,7 @@ async function purgeCurrentChat() {
     if (result.chat) {
       rememberChat(result.chat.chat_id);
       restoreMessages(result.chat.messages || []);
+      renderAttachments(result.documents || []);
     }
     document.querySelector("#ask-status").textContent = "Temporary chat purged. Permanent archive and Inbox copies were preserved.";
     await loadRecentChats();
@@ -226,6 +320,7 @@ function addMessage(role, content, metadata) {
     const meta = el("div", "message-meta");
     meta.append(el("span", "", metadata.model));
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
+    if (metadata.used_documents) meta.append(el("span", "message-attachment-badge", "Temporary document used"));
     const timing = formatTiming(metadata.timing);
     if (timing) {
       const telemetryTrigger = el("span", "telemetry-trigger");
@@ -341,8 +436,29 @@ function telemetryRow(root, label, value) {
   row.append(el("dt", "", label), el("dd", "", String(value)));
   root.append(row);
 }
+function positionTelemetryPopover(trigger, popover) {
+  const margin = 12;
+  const width = Math.min(420, Math.max(0, window.innerWidth - (margin * 2)));
+  const rect = trigger.getBoundingClientRect();
+  const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+  const left = Math.min(Math.max(margin, rect.left), maxLeft);
+  popover.style.width = String(width) + "px";
+  popover.style.left = String(left) + "px";
+  popover.style.right = "auto";
+  popover.style.bottom = "auto";
+
+  const height = popover.getBoundingClientRect().height;
+  const above = rect.top - height - 8;
+  const below = rect.bottom + 8;
+  const maxTop = Math.max(margin, window.innerHeight - height - margin);
+  popover.style.top = String(above >= margin ? above : Math.min(below, maxTop)) + "px";
+}
 function wireTelemetryPopover(trigger, popover) {
   let closeTimer = 0;
+  let floating = false;
+  const reposition = () => {
+    if (floating) positionTelemetryPopover(trigger, popover);
+  };
   const cancelClose = () => {
     if (!closeTimer) return;
     window.clearTimeout(closeTimer);
@@ -351,6 +467,20 @@ function wireTelemetryPopover(trigger, popover) {
   const setOpen = (open) => {
     cancelClose();
     trigger.classList.toggle("telemetry-open", open);
+    if (open) {
+      if (popover.parentElement !== document.body) document.body.append(popover);
+      popover.classList.add("telemetry-floating", "telemetry-visible");
+      floating = true;
+      positionTelemetryPopover(trigger, popover);
+      window.addEventListener("resize", reposition);
+      window.addEventListener("scroll", reposition, true);
+    } else {
+      floating = false;
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+      popover.classList.remove("telemetry-visible", "telemetry-floating");
+      if (popover.parentElement !== trigger) trigger.append(popover);
+    }
     popover.setAttribute("aria-hidden", open ? "false" : "true");
     trigger.setAttribute("aria-expanded", open ? "true" : "false");
   };
@@ -410,6 +540,8 @@ function buildTelemetryPopover(metadata) {
     details.append(el("strong", "telemetry-heading telemetry-heading-spaced", "Ariadne retrieval"));
     const retrievalRows = el("dl", "telemetry-list");
     telemetryRow(retrievalRows, "Vault evidence", typeof metadata?.used_vault === "boolean" ? (metadata.used_vault ? "Yes" : "No") : "");
+    const documentAnalysis = retrieval && retrieval.document_analysis && typeof retrieval.document_analysis === "object" ? retrieval.document_analysis : metadata?.document_analysis;
+    telemetryRow(retrievalRows, "Temporary chunks", documentAnalysis ? metricInteger(documentAnalysis.retrieved_chunks) : "");
     telemetryRow(retrievalRows, "Retrieved passages", retrieval ? metricInteger(retrieval.match_count) : "");
     const searches = retrieval && Array.isArray(retrieval.searches) ? retrieval.searches.length : (metadata?.used_vault === false ? 0 : null);
     telemetryRow(retrievalRows, "Planner searches", searches === null ? "" : metricInteger(searches));
@@ -494,6 +626,7 @@ async function startSession() {
     state.chatId = result.chat_id;
     try { localStorage.setItem("ariadne.home.chat_id", state.chatId); } catch (_) {}
     restoreMessages(result.messages || []);
+    renderAttachments(result.documents || []);
     await loadRecentChats();
     if (result.resumed && result.messages && result.messages.length) {
       document.querySelector("#ask-status").textContent = "Recovered the durable local chat.";
@@ -535,13 +668,15 @@ async function ask(event) {
       chat_id: state.chatId,
       message: message,
       history: history,
-      vault_mode: document.querySelector("#knowledge-mode").value
+      vault_mode: document.querySelector("#knowledge-mode").value,
+      tool_ids: Array.from(state.selectedToolIds)
     });
     result.timing = result.timing || fallbackTiming(result.answer);
     state.messages.push({role: "assistant", content: result.answer});
     addMessage("assistant", result.answer, result);
     const timing = formatTiming(result.timing);
-    status.textContent = (result.used_vault ? "Answered with local Vault evidence." : "Answered by the local model.") + (timing ? " · " + timing : "");
+    status.textContent = result.used_documents ? "Answered from temporary document context." : (result.used_vault ? "Answered with local Vault evidence." : "Answered by the local model.");
+    if (timing) status.textContent += " · " + timing;
     loadHome();
     loadRecentChats();
   } catch (error) {
@@ -560,11 +695,23 @@ function closeSession() {
   state.sessionId = null;
 }
 document.querySelector("#ask-form").addEventListener("submit", ask);
+document.querySelector("#document-input").addEventListener("change", async event => {
+  for (const file of Array.from(event.target.files || [])) await attachFile(file);
+  event.target.value = "";
+});
+document.querySelector("#tools-button").addEventListener("click", () => {
+  const palette = document.querySelector("#tools-palette");
+  const button = document.querySelector("#tools-button");
+  const open = palette.hidden;
+  palette.hidden = !open;
+  button.setAttribute("aria-expanded", open ? "true" : "false");
+});
 document.querySelector("#new-chat").addEventListener("click", startNewChat);
 document.querySelector("#save-chat").addEventListener("click", saveCurrentChat);
 document.querySelector("#export-chat").addEventListener("click", exportCurrentChat);
 document.querySelector("#purge-chat").addEventListener("click", purgeCurrentChat);
 window.addEventListener("beforeunload", closeSession);
 startSession();
+loadTools();
 loadHome();
 window.setInterval(loadHome, 15000);

@@ -1,0 +1,5511 @@
+{
+  "captured_at": "2026-08-23T15:26:30+0700",
+  "model": "qwen3:0.6b",
+  "suite": "control-plane\\evaluation\\planner_cases.json",
+  "summary": {
+    "model": "qwen3:0.6b",
+    "cases": 60,
+    "semantic_cases_scored": 0,
+    "semantic_correct": 0,
+    "intent_exact_accuracy": 0,
+    "semantic_accuracy_without_intent": 0,
+    "semantic_total": 0,
+    "semantic_accuracy": 0,
+    "semantic_field_accuracy": {
+      "intent": {
+        "correct": 0,
+        "total": 0
+      },
+      "needs_personal_history": {
+        "correct": 0,
+        "total": 0
+      },
+      "needs_current_information": {
+        "correct": 0,
+        "total": 0
+      },
+      "needs_attachment": {
+        "correct": 0,
+        "total": 0
+      },
+      "reasoning_complexity": {
+        "correct": 0,
+        "total": 0
+      },
+      "ambiguity": {
+        "correct": 0,
+        "total": 0
+      }
+    },
+    "final_route_correct": 0,
+    "final_route_accuracy": 0.0,
+    "core_correct": 0,
+    "core_accuracy": 0.0,
+    "schema_valid": 0,
+    "fallbacks": 60,
+    "constraint_violations": 0,
+    "fallback_route_correct": 32,
+    "policy_overrides": 60,
+    "capability_gaps": 0,
+    "cold_latency_ms": [],
+    "warm_latency_ms": [],
+    "warm_p50_ms": null,
+    "warm_p95_ms": null,
+    "confidence_mean": 0.0,
+    "high_confidence_incorrect": 0
+  },
+  "cases": [
+    {
+      "id": "ordinary-01",
+      "category": "ordinary",
+      "request": "How are you going today?",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_conversation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 3142,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-02",
+      "category": "ordinary",
+      "request": "What is the capital of Thailand?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_factual",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 543,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-03",
+      "category": "ordinary",
+      "request": "Give me three ideas for lunch today.",
+      "expected": {
+        "intent": "ordinary_ideas",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_ideas",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_ideas",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 521,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-04",
+      "category": "ordinary",
+      "request": "Explain what a checksum is in plain English.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 465,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-05",
+      "category": "ordinary",
+      "request": "Can you help me write a polite message to a neighbour?",
+      "expected": {
+        "intent": "ordinary_writing",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_writing",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_writing",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 469,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-06",
+      "category": "ordinary",
+      "request": "What does the word pragmatic mean?",
+      "expected": {
+        "intent": "ordinary_definition",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_definition",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_definition",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 547,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-07",
+      "category": "ordinary",
+      "request": "Tell me a short joke about old computers.",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_conversation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 529,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-08",
+      "category": "ordinary",
+      "request": "What is the difference between RAM and storage?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 474,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-09",
+      "category": "ordinary",
+      "request": "Help me make a simple packing list for a weekend.",
+      "expected": {
+        "intent": "ordinary_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_planning",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 538,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "ordinary-10",
+      "category": "ordinary",
+      "request": "What is two plus two?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_factual",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 514,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-01",
+      "category": "vault",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 498,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-02",
+      "category": "vault",
+      "request": "What did we decide about moving the Ollama model store?",
+      "expected": {
+        "intent": "vault_decision_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_decision_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_decision_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 507,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-03",
+      "category": "vault",
+      "request": "What do we know about the Ariadne Home routing work?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 534,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-04",
+      "category": "vault",
+      "request": "Didn't we talk about the native reader shortcut?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 511,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-05",
+      "category": "vault",
+      "request": "What ideas did we have for the Knowledge Vault?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 483,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-06",
+      "category": "vault",
+      "request": "What were we planning for semantic routing?",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_planning_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 483,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-07",
+      "category": "vault",
+      "request": "What have I forgotten about the Ariadne model tests?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 499,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-08",
+      "category": "vault",
+      "request": "What have we tested with local inference so far?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 541,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-09",
+      "category": "vault",
+      "request": "Where did we leave off with the Home retrieval diagnosis?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 497,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "vault-10",
+      "category": "vault",
+      "request": "Can you remind me what we learned from the frozen benchmark?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 486,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-01",
+      "category": "current",
+      "request": "Is this information still current?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 539,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-02",
+      "category": "current",
+      "request": "What is the latest news about Thailand today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 494,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-03",
+      "category": "current",
+      "request": "Check the current Ollama documentation for structured outputs.",
+      "expected": {
+        "intent": "current_research",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_research",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_research",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 535,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-04",
+      "category": "current",
+      "request": "What is the exchange rate today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 484,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-05",
+      "category": "current",
+      "request": "Is this software version still supported?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 520,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-06",
+      "category": "current",
+      "request": "Look up the latest weather forecast for Bangkok.",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 537,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-07",
+      "category": "current",
+      "request": "Who is the current CEO of that company?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "current_information",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 540,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "current-08",
+      "category": "current",
+      "request": "What date is tomorrow?",
+      "expected": {
+        "intent": "runtime_date",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "runtime_date",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "runtime_date",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 538,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "attachment-01",
+      "category": "attachment",
+      "request": "Summarise this.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 496,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "attachment-02",
+      "category": "attachment",
+      "request": "Explain the main argument in this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 508,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "attachment-03",
+      "category": "attachment",
+      "request": "Extract the principal claims from the article.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 489,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "attachment-04",
+      "category": "attachment",
+      "request": "What does this say about the proposed date?",
+      "expected": {
+        "intent": "attachment_question",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_question",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_question",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 472,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "attachment-05",
+      "category": "attachment",
+      "request": "Don't search anything else; just explain this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 519,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "attachment-06",
+      "category": "attachment",
+      "request": "Let's chat about this article.",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_discussion",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 540,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-01",
+      "category": "heavy",
+      "request": "Design an architecture that keeps the Vault provider-independent while supporting several AI clients.",
+      "expected": {
+        "intent": "heavy_architecture",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_architecture",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_architecture",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 553,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-02",
+      "category": "heavy",
+      "request": "Compare these three approaches across cost, latency, portability, and failure recovery.",
+      "expected": {
+        "intent": "heavy_comparison",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_comparison",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_comparison",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 498,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-03",
+      "category": "heavy",
+      "request": "Work through the competing constraints and give me a careful engineering decision.",
+      "expected": {
+        "intent": "heavy_reasoning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_reasoning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_reasoning",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 492,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-04",
+      "category": "heavy",
+      "request": "Diagnose this intermittent failure by tracing the likely causes and ranking the tests that would distinguish them.",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_debugging",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 492,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-05",
+      "category": "heavy",
+      "request": "Synthesize the trade-offs and recommend a migration order with rollback points.",
+      "expected": {
+        "intent": "heavy_synthesis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_synthesis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_synthesis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 506,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-06",
+      "category": "heavy",
+      "request": "Reason through why the observed measurements contradict the original hypothesis.",
+      "expected": {
+        "intent": "heavy_diagnosis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_diagnosis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_diagnosis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 489,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-07",
+      "category": "heavy",
+      "request": "Give me a robust plan that handles security, data integrity, and operational recovery together.",
+      "expected": {
+        "intent": "heavy_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_planning",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 526,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "heavy-08",
+      "category": "heavy",
+      "request": "What is the difference between a list and a tuple in Python?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 490,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-01",
+      "category": "messy",
+      "request": "what did we do with that ollama thing again mate",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 564,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-02",
+      "category": "messy",
+      "request": "Can u just have a squiz at this?",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_discussion",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 547,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-03",
+      "category": "messy",
+      "request": "nah dont web it, what was our plan for the home page",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_planning_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 502,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-04",
+      "category": "messy",
+      "request": "I reckon this is wrong - can you work out why without going all fancy?",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "heavy_debugging",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 496,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-05",
+      "category": "messy",
+      "request": "what's the go with qwen residency",
+      "expected": {
+        "intent": "vault_or_current_ambiguous",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_or_current_ambiguous",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_or_current_ambiguous",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high"
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": true,
+          "ambiguity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity",
+          "ambiguity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 481,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-06",
+      "category": "messy",
+      "request": "Summarise this, but don't go searching the vault, eh.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 518,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-07",
+      "category": "messy",
+      "request": "I forgot the name of the thing we tested last week",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 497,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "messy-08",
+      "category": "messy",
+      "request": "Can you explain blorpification? No idea if that's even a word.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "final_route_expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "semantic_expected": {
+        "intent": "ordinary_explanation",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": true,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 487,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "constraint-01",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 505,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "constraint-02",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 493,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "constraint-03",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "final_route_expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "semantic_expected": {
+        "intent": "attachment_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 530,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "constraint-04",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "final_route_expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "semantic_expected": {
+        "intent": "vault_recall",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": true
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": true,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 498,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "constraint-05",
+      "category": "constraints",
+      "request": "Check whether this is still current.",
+      "expected": {
+        "intent": "attachment_current_check",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "final_route_expected": {
+        "intent": "attachment_current_check",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "semantic_expected": {
+        "intent": "attachment_current_check",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": true,
+        "reasoning_complexity": "medium",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 456,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "mixed-01",
+      "category": "mixed",
+      "request": "Compare this article with what we've discussed before.",
+      "expected": {
+        "intent": "attachment_vault_comparison",
+        "primary_source": "attachment",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "attachment_vault_comparison",
+        "primary_source": "attachment",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "attachment_vault_comparison",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "medium",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 484,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "mixed-02",
+      "category": "mixed",
+      "request": "Explain this document and reason through its strongest and weakest claims.",
+      "expected": {
+        "intent": "attachment_heavy_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "attachment_heavy_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "attachment_heavy_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 501,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "mixed-03",
+      "category": "mixed",
+      "request": "What did we decide about this, and is that decision still current?",
+      "expected": {
+        "intent": "vault_current_check",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "vault_current_check",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "vault_current_check",
+        "needs_personal_history": true,
+        "needs_current_information": true,
+        "needs_attachment": false,
+        "reasoning_complexity": "medium",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "vault",
+        "tools": [],
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": true,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 494,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "mixed-04",
+      "category": "mixed",
+      "request": "Use our prior notes to design the next safe migration step.",
+      "expected": {
+        "intent": "vault_heavy_planning",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "vault_heavy_planning",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "vault_heavy_planning",
+        "needs_personal_history": true,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": false,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": false,
+          "needs_current_information": true,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 501,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    },
+    {
+      "id": "mixed-05",
+      "category": "mixed",
+      "request": "Check current reporting on this article, then explain what it means.",
+      "expected": {
+        "intent": "attachment_current_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "final_route_expected": {
+        "intent": "attachment_current_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "semantic_expected": {
+        "intent": "attachment_current_analysis",
+        "needs_personal_history": false,
+        "needs_current_information": true,
+        "needs_attachment": true,
+        "reasoning_complexity": "high",
+        "ambiguity": null
+      },
+      "semantic": {
+        "intent": "legacy_safe_fallback",
+        "needs_personal_history": false,
+        "needs_current_information": false,
+        "needs_attachment": true,
+        "reasoning_complexity": "low",
+        "ambiguity": "high",
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "semantic_score": {
+        "correct": false,
+        "matches": {
+          "intent": false,
+          "needs_personal_history": true,
+          "needs_current_information": false,
+          "needs_attachment": true,
+          "reasoning_complexity": false
+        },
+        "scored_fields": [
+          "intent",
+          "needs_personal_history",
+          "needs_current_information",
+          "needs_attachment",
+          "reasoning_complexity"
+        ]
+      },
+      "plan": {
+        "intent": "legacy_safe_fallback",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tasks": [],
+        "confidence": 0.0,
+        "fallback_reason": "Semantic confidence must be a number from 0 to 1."
+      },
+      "fallback_route_correct": false,
+      "core_correct": false,
+      "final_route_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "policy_overrides": [
+          "interpreter_fallback"
+        ],
+        "capability_gaps": [],
+        "controller_authoritative": true,
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 490,
+      "telemetry": {},
+      "error": "Semantic confidence must be a number from 0 to 1."
+    }
+  ]
+}
