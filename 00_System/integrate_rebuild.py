@@ -334,11 +334,18 @@ def main() -> int:
     atomic_write(root / "Wiki/index.md", md.encode("utf-8"))
     atomic_write(root / "Wiki/index.html", html_doc.encode("utf-8"))
     atomic_write(root / "Wiki/KnowledgeMap.md", map_doc.encode("utf-8"))
+    status_counts = defaultdict(int)
+    for item in catalogue_run:
+        status_counts[str(item.get("status") or "unknown")] += 1
     report = {
         "integration_version": 1, "completed_at": datetime.now(timezone.utc).isoformat(),
         "run_dir": run_dir.relative_to(root).as_posix(), "rollback_dir": rollback.relative_to(root).as_posix(),
         "preserved_previous_outputs": preserved, "accepted": sum(1 for x in catalogue_run if x["status"] == "accepted"),
-        "rejected": sum(1 for x in catalogue_run if x["status"] == "rejected"), "failed": 0,
+        "rejected": status_counts.get("rejected_content", 0) + status_counts.get("rejected", 0),
+        "retryable_processing_failure": status_counts.get("retryable_processing_failure", 0),
+        "manual_review": status_counts.get("manual_review", 0),
+        "status_counts": dict(sorted(status_counts.items())),
+        "failed": 0,
         "active_catalogue_records": len(active), "review_queue_count": len(review_queue),
         "movement_report": movement_path.relative_to(root).as_posix(), "active_catalogue": "00_System/library.json",
         "active_catalogue_copy": "00_System/Data/rebuild-v1/active-catalogue.json",

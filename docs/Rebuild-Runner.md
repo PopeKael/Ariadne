@@ -18,12 +18,12 @@ The Ollama request uses temperature zero and a fixed seed (`42`) so an unchanged
 
 Do not use `00_System/ariadne.ps1` for daily intake. That script is the legacy v0.7 pipeline and uses `/api/generate`.
 
-Use the rebuild-v1 daily runner from the vault root:
+Use the rebuild-v1 daily runner from the configured live Vault root:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\00_System\Daily-Ingest.ps1"
 ```
 
-The daily runner reads only new Markdown in `Inbox/`, creates stable source IDs and canonical content hashes, resolves repeated readable Inbox snapshots by selecting the newest file and archiving older snapshots under `Archive/Duplicates/`, calls local GPT-OSS through `/api/chat`, reads `message.content`, applies the rebuild-v1 schema and semantic validators, and records accepted/rejected outcomes in a checkpoint under `00_System/Data/rebuild-v1/`. It then merges accepted records into the active catalogue, keeps uncertain candidates in the review queue, updates the local embedding index, and files sources into `Processed/` or `Failed/` without changing Markdown bytes. Active JSON/checkpoint/index replacements are atomic and retry bounded Windows sharing violations. Each deduplication decision is retained in the run manifest and `deduplication-report.json`.
+The daily runner reads only new Markdown in `Inbox/`, creates stable source IDs and canonical content hashes, resolves repeated readable Inbox snapshots by selecting the newest file and archiving older snapshots under `Archive/Duplicates/`, calls local GPT-OSS through `/api/chat`, reads `message.content`, applies the rebuild-v1 schema and semantic validators, and records outcomes in a checkpoint under `00_System/Data/rebuild-v1/`. Outcomes distinguish `accepted`, `rejected_content`, `retryable_processing_failure`, and `manual_review`; a transient empty or malformed model response is not classified as bad source content. It then merges accepted records into the active catalogue, keeps uncertain candidates in the review queue, updates the local embedding index, and files sources into `Processed/` or `Failed/` without changing Markdown bytes. Active JSON/checkpoint/index replacements are atomic and retry bounded Windows sharing violations. Each deduplication decision is retained in the run manifest and `deduplication-report.json`.
 
 The `pytest` command is not part of normal operation. The repository tests use Python's built-in `unittest`; `pytest` is optional developer tooling only.

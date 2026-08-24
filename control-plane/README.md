@@ -27,7 +27,9 @@ page open when a deliberate background task must continue.
 
 Reference architecture and the public/private boundary are documented in
 `docs/`. The Vault root can be overridden temporarily with
-`ARIADNE_VAULT_ROOT`; by default it is the repository root.
+`ARIADNE_VAULT_ROOT`; by default it is the configured live store
+`D:\Downloads\KnowledgeVault`. The Ariadne repository is application code,
+not an implicit Vault root.
 
 For somebody deploying their own copy, start with
 [`../docs/CLONE-AND-DEPLOY.md`](../docs/CLONE-AND-DEPLOY.md). The tray

@@ -1,16 +1,16 @@
 {
-  "captured_at": "2026-08-23T17:23:58+0700",
+  "captured_at": "2026-08-23T22:48:26+0700",
   "model": "qwen3.5:9b-q4_K_M",
   "suite": "control-plane\\evaluation\\planner_cases.json",
   "summary": {
     "model": "qwen3.5:9b-q4_K_M",
     "cases": 60,
     "semantic_cases_scored": 60,
-    "semantic_correct": 208,
+    "semantic_correct": 206,
     "intent_exact_accuracy": 0.0,
-    "semantic_accuracy_without_intent": 0.8631,
+    "semantic_accuracy_without_intent": 0.8548,
     "semantic_total": 301,
-    "semantic_accuracy": 0.691,
+    "semantic_accuracy": 0.6844,
     "semantic_field_accuracy": {
       "intent": {
         "correct": 0,
@@ -29,7 +29,7 @@
         "total": 60
       },
       "reasoning_complexity": {
-        "correct": 38,
+        "correct": 36,
         "total": 60
       },
       "ambiguity": {
@@ -47,73 +47,72 @@
     "fallback_route_correct": 0,
     "policy_overrides": 2,
     "capability_gaps": 18,
-    "cold_latency_ms": [
-      9223
-    ],
+    "cold_latency_ms": [],
     "warm_latency_ms": [
-      1859,
-      2034,
-      1979,
-      1978,
-      1884,
-      1955,
-      2107,
-      2018,
-      1876,
-      2002,
-      2175,
-      2134,
-      1959,
-      2242,
-      2104,
-      2067,
-      2387,
-      2097,
-      1914,
-      1826,
-      2151,
-      1916,
-      2002,
-      1965,
-      2015,
-      2053,
-      1893,
-      1943,
-      2077,
-      2007,
-      2057,
-      1929,
-      1874,
-      1925,
-      1790,
-      1917,
-      4290,
-      3817,
-      3881,
-      3849,
-      4541,
-      4263,
-      2300,
-      2024,
-      1897,
-      2068,
-      1839,
-      1887,
-      1860,
-      2026,
-      1929,
+      11881,
+      1619,
+      1754,
+      1623,
+      1684,
+      1600,
+      1636,
+      1829,
+      1751,
+      1640,
+      1758,
+      1857,
+      1821,
+      1658,
       1910,
-      1970,
-      2035,
-      1851,
-      2364,
-      2040,
-      1979,
-      2232
+      1766,
+      1739,
+      1836,
+      1803,
+      1636,
+      1567,
+      1793,
+      1621,
+      1746,
+      1694,
+      1760,
+      1785,
+      1619,
+      1679,
+      1786,
+      1643,
+      1791,
+      1653,
+      1591,
+      1614,
+      1535,
+      1619,
+      1632,
+      1676,
+      1749,
+      1844,
+      1778,
+      1651,
+      1954,
+      1780,
+      1668,
+      2026,
+      1629,
+      1599,
+      1631,
+      1704,
+      1652,
+      1600,
+      1742,
+      1766,
+      1572,
+      1976,
+      1776,
+      1750,
+      1824
     ],
-    "warm_p50_ms": 2007,
-    "warm_p95_ms": 3881,
-    "confidence_mean": 0.9522,
+    "warm_p50_ms": 1721.5,
+    "warm_p95_ms": 1954,
+    "confidence_mean": 0.9528,
     "high_confidence_incorrect": 60
   },
   "cases": [
@@ -198,23 +197,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 9223,
+      "wrapper_latency_ms": 11881,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 9198,
-        "planner_latency_ms": 9223,
-        "interpreter_latency_ms": 9223,
-        "load_duration_ms": 7124,
-        "model_load_occurred": true,
+        "planning_duration_ms": 11880,
+        "planner_latency_ms": 11881,
+        "interpreter_latency_ms": 11881,
+        "load_duration_ms": 10107,
+        "model_load_occurred": false,
         "prompt_tokens": 639,
         "output_tokens": 72,
-        "residency_before": false,
+        "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -300,14 +299,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1859,
+      "wrapper_latency_ms": 1619,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1858,
-        "planner_latency_ms": 1859,
-        "interpreter_latency_ms": 1859,
+        "planning_duration_ms": 1618,
+        "planner_latency_ms": 1619,
+        "interpreter_latency_ms": 1619,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 641,
@@ -316,7 +315,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -402,14 +401,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2034,
+      "wrapper_latency_ms": 1754,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2033,
-        "planner_latency_ms": 2034,
-        "interpreter_latency_ms": 2034,
+        "planning_duration_ms": 1735,
+        "planner_latency_ms": 1754,
+        "interpreter_latency_ms": 1754,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 642,
@@ -418,7 +417,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -504,15 +503,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1979,
+      "wrapper_latency_ms": 1623,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1978,
-        "planner_latency_ms": 1979,
-        "interpreter_latency_ms": 1979,
-        "load_duration_ms": 2,
+        "planning_duration_ms": 1622,
+        "planner_latency_ms": 1623,
+        "interpreter_latency_ms": 1623,
+        "load_duration_ms": 3,
         "model_load_occurred": false,
         "prompt_tokens": 646,
         "output_tokens": 72,
@@ -520,7 +519,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -606,14 +605,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1978,
+      "wrapper_latency_ms": 1684,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1977,
-        "planner_latency_ms": 1978,
-        "interpreter_latency_ms": 1978,
+        "planning_duration_ms": 1683,
+        "planner_latency_ms": 1684,
+        "interpreter_latency_ms": 1684,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 651,
@@ -622,7 +621,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -708,15 +707,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1884,
+      "wrapper_latency_ms": 1600,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1861,
-        "planner_latency_ms": 1884,
-        "interpreter_latency_ms": 1884,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1599,
+        "planner_latency_ms": 1600,
+        "interpreter_latency_ms": 1600,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 641,
         "output_tokens": 69,
@@ -724,7 +723,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -810,14 +809,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1955,
+      "wrapper_latency_ms": 1636,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1930,
-        "planner_latency_ms": 1955,
-        "interpreter_latency_ms": 1955,
+        "planning_duration_ms": 1635,
+        "planner_latency_ms": 1636,
+        "interpreter_latency_ms": 1636,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 644,
@@ -826,7 +825,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -912,14 +911,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2107,
+      "wrapper_latency_ms": 1829,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2106,
-        "planner_latency_ms": 2107,
-        "interpreter_latency_ms": 2107,
+        "planning_duration_ms": 1819,
+        "planner_latency_ms": 1829,
+        "interpreter_latency_ms": 1829,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 645,
@@ -928,7 +927,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1014,14 +1013,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2019,
+      "wrapper_latency_ms": 1751,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2001,
-        "planner_latency_ms": 2018,
-        "interpreter_latency_ms": 2018,
+        "planning_duration_ms": 1726,
+        "planner_latency_ms": 1751,
+        "interpreter_latency_ms": 1751,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 648,
@@ -1030,7 +1029,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1116,14 +1115,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1876,
+      "wrapper_latency_ms": 1640,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1875,
-        "planner_latency_ms": 1876,
-        "interpreter_latency_ms": 1876,
+        "planning_duration_ms": 1628,
+        "planner_latency_ms": 1640,
+        "interpreter_latency_ms": 1640,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 639,
@@ -1132,7 +1131,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1220,14 +1219,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2002,
+      "wrapper_latency_ms": 1758,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2001,
-        "planner_latency_ms": 2002,
-        "interpreter_latency_ms": 2002,
+        "planning_duration_ms": 1741,
+        "planner_latency_ms": 1758,
+        "interpreter_latency_ms": 1758,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 645,
@@ -1236,7 +1235,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1324,14 +1323,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2175,
+      "wrapper_latency_ms": 1857,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2154,
-        "planner_latency_ms": 2175,
-        "interpreter_latency_ms": 2175,
+        "planning_duration_ms": 1836,
+        "planner_latency_ms": 1857,
+        "interpreter_latency_ms": 1857,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 653,
@@ -1340,7 +1339,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1428,15 +1427,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2134,
+      "wrapper_latency_ms": 1821,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2120,
-        "planner_latency_ms": 2134,
-        "interpreter_latency_ms": 2134,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1798,
+        "planner_latency_ms": 1821,
+        "interpreter_latency_ms": 1821,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 651,
         "output_tokens": 82,
@@ -1444,7 +1443,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1532,14 +1531,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1959,
+      "wrapper_latency_ms": 1658,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1958,
-        "planner_latency_ms": 1959,
-        "interpreter_latency_ms": 1959,
+        "planning_duration_ms": 1657,
+        "planner_latency_ms": 1658,
+        "interpreter_latency_ms": 1658,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 647,
@@ -1548,7 +1547,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1636,15 +1635,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2242,
+      "wrapper_latency_ms": 1910,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2231,
-        "planner_latency_ms": 2242,
-        "interpreter_latency_ms": 2242,
-        "load_duration_ms": 2,
+        "planning_duration_ms": 1893,
+        "planner_latency_ms": 1910,
+        "interpreter_latency_ms": 1910,
+        "load_duration_ms": 3,
         "model_load_occurred": false,
         "prompt_tokens": 647,
         "output_tokens": 83,
@@ -1652,7 +1651,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1740,15 +1739,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2104,
+      "wrapper_latency_ms": 1766,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2082,
-        "planner_latency_ms": 2104,
-        "interpreter_latency_ms": 2104,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1764,
+        "planner_latency_ms": 1766,
+        "interpreter_latency_ms": 1766,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 643,
         "output_tokens": 80,
@@ -1756,7 +1755,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1792,7 +1791,7 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "Retrieve prior project history regarding specific test outcomes or notes.",
+        "intent": "Retrieve prior project history regarding specific test results or notes.",
         "needs_personal_history": true,
         "needs_current_information": false,
         "needs_attachment": false,
@@ -1818,7 +1817,7 @@
         ]
       },
       "plan": {
-        "intent": "Retrieve prior project history regarding specific test outcomes or notes.",
+        "intent": "Retrieve prior project history regarding specific test results or notes.",
         "primary_source": "vault",
         "tools": [],
         "use_vault": true,
@@ -1844,15 +1843,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2067,
+      "wrapper_latency_ms": 1739,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2043,
-        "planner_latency_ms": 2067,
-        "interpreter_latency_ms": 2067,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1738,
+        "planner_latency_ms": 1739,
+        "interpreter_latency_ms": 1739,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 649,
         "output_tokens": 78,
@@ -1860,7 +1859,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -1896,7 +1895,7 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "Retrieve a summary of past experiments or tests conducted specifically regarding 'local' model",
+        "intent": "Retrieve a history of experiments or tests conducted specifically regarding 'local inference'.",
         "needs_personal_history": true,
         "needs_current_information": false,
         "needs_attachment": false,
@@ -1922,7 +1921,7 @@
         ]
       },
       "plan": {
-        "intent": "Retrieve a summary of past experiments or tests conducted specifically regarding 'local' model",
+        "intent": "Retrieve a history of experiments or tests conducted specifically regarding 'local inference'.",
         "primary_source": "vault",
         "tools": [],
         "use_vault": true,
@@ -1948,23 +1947,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2387,
+      "wrapper_latency_ms": 1836,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2386,
-        "planner_latency_ms": 2387,
-        "interpreter_latency_ms": 2387,
+        "planning_duration_ms": 1835,
+        "planner_latency_ms": 1836,
+        "interpreter_latency_ms": 1836,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 647,
-        "output_tokens": 83,
+        "output_tokens": 82,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2052,15 +2051,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2097,
+      "wrapper_latency_ms": 1804,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2083,
-        "planner_latency_ms": 2097,
-        "interpreter_latency_ms": 2097,
-        "load_duration_ms": 4,
+        "planning_duration_ms": 1802,
+        "planner_latency_ms": 1803,
+        "interpreter_latency_ms": 1803,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 649,
         "output_tokens": 80,
@@ -2068,7 +2067,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2104,7 +2103,7 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "retrieve_prior_project_learning",
+        "intent": "retrieve_prior_conversation_decisions",
         "needs_personal_history": true,
         "needs_current_information": false,
         "needs_attachment": false,
@@ -2130,7 +2129,7 @@
         ]
       },
       "plan": {
-        "intent": "retrieve_prior_project_learning",
+        "intent": "retrieve_prior_conversation_decisions",
         "primary_source": "vault",
         "tools": [],
         "use_vault": true,
@@ -2156,23 +2155,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1914,
+      "wrapper_latency_ms": 1636,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1912,
-        "planner_latency_ms": 1914,
-        "interpreter_latency_ms": 1914,
+        "planning_duration_ms": 1635,
+        "planner_latency_ms": 1636,
+        "interpreter_latency_ms": 1636,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 651,
-        "output_tokens": 72,
+        "output_tokens": 74,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2263,14 +2262,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1826,
+      "wrapper_latency_ms": 1567,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1825,
-        "planner_latency_ms": 1826,
-        "interpreter_latency_ms": 1826,
+        "planning_duration_ms": 1566,
+        "planner_latency_ms": 1567,
+        "interpreter_latency_ms": 1567,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 639,
@@ -2279,7 +2278,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2315,7 +2314,7 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "Retrieve current news information about a specific location (Thailand) for a specific date.",
+        "intent": "Retrieve current news information about a specific location (Thailand).",
         "needs_personal_history": false,
         "needs_current_information": true,
         "needs_attachment": false,
@@ -2341,7 +2340,7 @@
         ]
       },
       "plan": {
-        "intent": "Retrieve current news information about a specific location (Thailand) for a specific date.",
+        "intent": "Retrieve current news information about a specific location (Thailand).",
         "primary_source": "external",
         "tools": [],
         "use_vault": false,
@@ -2369,23 +2368,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2151,
+      "wrapper_latency_ms": 1793,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2150,
-        "planner_latency_ms": 2151,
-        "interpreter_latency_ms": 2151,
+        "planning_duration_ms": 1792,
+        "planner_latency_ms": 1793,
+        "interpreter_latency_ms": 1793,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 645,
-        "output_tokens": 84,
+        "output_tokens": 80,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2475,15 +2474,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1916,
+      "wrapper_latency_ms": 1621,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1914,
-        "planner_latency_ms": 1916,
-        "interpreter_latency_ms": 1916,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1597,
+        "planner_latency_ms": 1621,
+        "interpreter_latency_ms": 1621,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 648,
         "output_tokens": 70,
@@ -2491,7 +2490,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2581,15 +2580,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2002,
+      "wrapper_latency_ms": 1746,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2001,
-        "planner_latency_ms": 2002,
-        "interpreter_latency_ms": 2002,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1729,
+        "planner_latency_ms": 1746,
+        "interpreter_latency_ms": 1746,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 641,
         "output_tokens": 76,
@@ -2597,7 +2596,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2688,15 +2687,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1965,
+      "wrapper_latency_ms": 1694,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1964,
-        "planner_latency_ms": 1965,
-        "interpreter_latency_ms": 1965,
-        "load_duration_ms": 2,
+        "planning_duration_ms": 1693,
+        "planner_latency_ms": 1694,
+        "interpreter_latency_ms": 1694,
+        "load_duration_ms": 3,
         "model_load_occurred": false,
         "prompt_tokens": 641,
         "output_tokens": 72,
@@ -2704,7 +2703,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2794,14 +2793,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2015,
+      "wrapper_latency_ms": 1760,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2014,
-        "planner_latency_ms": 2015,
-        "interpreter_latency_ms": 2015,
+        "planning_duration_ms": 1743,
+        "planner_latency_ms": 1760,
+        "interpreter_latency_ms": 1760,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 644,
@@ -2810,7 +2809,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -2900,15 +2899,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2053,
+      "wrapper_latency_ms": 1785,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2052,
-        "planner_latency_ms": 2053,
-        "interpreter_latency_ms": 2053,
-        "load_duration_ms": 2,
+        "planning_duration_ms": 1783,
+        "planner_latency_ms": 1785,
+        "interpreter_latency_ms": 1785,
+        "load_duration_ms": 3,
         "model_load_occurred": false,
         "prompt_tokens": 645,
         "output_tokens": 78,
@@ -2916,7 +2915,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3002,14 +3001,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1893,
+      "wrapper_latency_ms": 1619,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1892,
-        "planner_latency_ms": 1893,
-        "interpreter_latency_ms": 1893,
+        "planning_duration_ms": 1617,
+        "planner_latency_ms": 1619,
+        "interpreter_latency_ms": 1619,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 637,
@@ -3018,7 +3017,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3114,15 +3113,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1943,
+      "wrapper_latency_ms": 1679,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1941,
-        "planner_latency_ms": 1943,
-        "interpreter_latency_ms": 1943,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1655,
+        "planner_latency_ms": 1679,
+        "interpreter_latency_ms": 1679,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 686,
         "output_tokens": 71,
@@ -3130,7 +3129,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3174,7 +3173,7 @@
         "needs_personal_history": false,
         "needs_current_information": false,
         "needs_attachment": true,
-        "reasoning_complexity": "low",
+        "reasoning_complexity": "medium",
         "ambiguity": "low",
         "confidence": 0.95
       },
@@ -3185,7 +3184,7 @@
           "needs_personal_history": true,
           "needs_current_information": true,
           "needs_attachment": true,
-          "reasoning_complexity": true
+          "reasoning_complexity": false
         },
         "scored_fields": [
           "intent",
@@ -3226,14 +3225,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2077,
+      "wrapper_latency_ms": 1786,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2075,
-        "planner_latency_ms": 2077,
-        "interpreter_latency_ms": 2077,
+        "planning_duration_ms": 1765,
+        "planner_latency_ms": 1786,
+        "interpreter_latency_ms": 1786,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 694,
@@ -3242,7 +3241,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3286,7 +3285,7 @@
         "needs_personal_history": false,
         "needs_current_information": false,
         "needs_attachment": true,
-        "reasoning_complexity": "medium",
+        "reasoning_complexity": "low",
         "ambiguity": "low",
         "confidence": 0.95
       },
@@ -3297,7 +3296,7 @@
           "needs_personal_history": true,
           "needs_current_information": true,
           "needs_attachment": true,
-          "reasoning_complexity": false
+          "reasoning_complexity": true
         },
         "scored_fields": [
           "intent",
@@ -3338,14 +3337,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2007,
+      "wrapper_latency_ms": 1643,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2006,
-        "planner_latency_ms": 2007,
-        "interpreter_latency_ms": 2007,
+        "planning_duration_ms": 1629,
+        "planner_latency_ms": 1643,
+        "interpreter_latency_ms": 1643,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 692,
@@ -3354,7 +3353,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3450,15 +3449,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2057,
+      "wrapper_latency_ms": 1791,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2055,
-        "planner_latency_ms": 2057,
-        "interpreter_latency_ms": 2057,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1777,
+        "planner_latency_ms": 1791,
+        "interpreter_latency_ms": 1791,
+        "load_duration_ms": 4,
         "model_load_occurred": false,
         "prompt_tokens": 695,
         "output_tokens": 80,
@@ -3466,7 +3465,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3562,14 +3561,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1929,
+      "wrapper_latency_ms": 1653,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1927,
-        "planner_latency_ms": 1929,
-        "interpreter_latency_ms": 1929,
+        "planning_duration_ms": 1652,
+        "planner_latency_ms": 1653,
+        "interpreter_latency_ms": 1653,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 698,
@@ -3578,7 +3577,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3674,14 +3673,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1874,
+      "wrapper_latency_ms": 1591,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1873,
-        "planner_latency_ms": 1874,
-        "interpreter_latency_ms": 1874,
+        "planning_duration_ms": 1567,
+        "planner_latency_ms": 1591,
+        "interpreter_latency_ms": 1591,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 690,
@@ -3690,7 +3689,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3778,15 +3777,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1925,
+      "wrapper_latency_ms": 1614,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1907,
-        "planner_latency_ms": 1925,
-        "interpreter_latency_ms": 1925,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1612,
+        "planner_latency_ms": 1614,
+        "interpreter_latency_ms": 1614,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 656,
         "output_tokens": 70,
@@ -3794,7 +3793,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3884,15 +3883,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1791,
+      "wrapper_latency_ms": 1535,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1789,
-        "planner_latency_ms": 1790,
-        "interpreter_latency_ms": 1790,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1534,
+        "planner_latency_ms": 1535,
+        "interpreter_latency_ms": 1535,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 658,
         "output_tokens": 69,
@@ -3900,7 +3899,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -3990,14 +3989,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1917,
+      "wrapper_latency_ms": 1619,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1915,
-        "planner_latency_ms": 1917,
-        "interpreter_latency_ms": 1917,
+        "planning_duration_ms": 1618,
+        "planner_latency_ms": 1619,
+        "interpreter_latency_ms": 1619,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 652,
@@ -4006,7 +4005,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4096,15 +4095,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 4290,
+      "wrapper_latency_ms": 1632,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 4288,
-        "planner_latency_ms": 4290,
-        "interpreter_latency_ms": 4290,
-        "load_duration_ms": 4,
+        "planning_duration_ms": 1631,
+        "planner_latency_ms": 1632,
+        "interpreter_latency_ms": 1632,
+        "load_duration_ms": 3,
         "model_load_occurred": false,
         "prompt_tokens": 666,
         "output_tokens": 70,
@@ -4112,7 +4111,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4202,14 +4201,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 3817,
+      "wrapper_latency_ms": 1676,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 3793,
-        "planner_latency_ms": 3817,
-        "interpreter_latency_ms": 3817,
+        "planning_duration_ms": 1664,
+        "planner_latency_ms": 1676,
+        "interpreter_latency_ms": 1676,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 654,
@@ -4218,7 +4217,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4254,7 +4253,7 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "Analyze the discrepancy between observed measurements and an original hypothesis.",
+        "intent": "Explain the discrepancy between observed measurements and an original hypothesis.",
         "needs_personal_history": false,
         "needs_current_information": false,
         "needs_attachment": true,
@@ -4280,7 +4279,7 @@
         ]
       },
       "plan": {
-        "intent": "Analyze the discrepancy between observed measurements and an original hypothesis.",
+        "intent": "Explain the discrepancy between observed measurements and an original hypothesis.",
         "primary_source": "user_message",
         "tools": [],
         "use_vault": false,
@@ -4308,15 +4307,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 3881,
+      "wrapper_latency_ms": 1749,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 3880,
-        "planner_latency_ms": 3881,
-        "interpreter_latency_ms": 3881,
-        "load_duration_ms": 6,
+        "planning_duration_ms": 1748,
+        "planner_latency_ms": 1749,
+        "interpreter_latency_ms": 1749,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 648,
         "output_tokens": 79,
@@ -4324,7 +4323,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4412,14 +4411,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 3849,
+      "wrapper_latency_ms": 1845,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 3848,
-        "planner_latency_ms": 3849,
-        "interpreter_latency_ms": 3849,
+        "planning_duration_ms": 1818,
+        "planner_latency_ms": 1844,
+        "interpreter_latency_ms": 1844,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 660,
@@ -4428,7 +4427,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4464,13 +4463,13 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "Explain the semantic differences between Python lists and tuples (mutability, syntax, use cases,",
+        "intent": "Explain the conceptual and practical differences between Python lists and tuples.",
         "needs_personal_history": false,
         "needs_current_information": false,
         "needs_attachment": false,
         "reasoning_complexity": "low",
         "ambiguity": "low",
-        "confidence": 0.95
+        "confidence": 0.99
       },
       "semantic_score": {
         "correct": false,
@@ -4490,14 +4489,14 @@
         ]
       },
       "plan": {
-        "intent": "Explain the semantic differences between Python lists and tuples (mutability, syntax, use cases,",
+        "intent": "Explain the conceptual and practical differences between Python lists and tuples.",
         "primary_source": "user_message",
         "tools": [],
         "use_vault": false,
         "needs_current_information": false,
         "use_heavy_model": false,
         "tasks": [],
-        "confidence": 0.95
+        "confidence": 0.99
       },
       "fallback_route_correct": false,
       "core_correct": true,
@@ -4514,23 +4513,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 4542,
+      "wrapper_latency_ms": 1778,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 4522,
-        "planner_latency_ms": 4541,
-        "interpreter_latency_ms": 4541,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1777,
+        "planner_latency_ms": 1778,
+        "interpreter_latency_ms": 1778,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 653,
-        "output_tokens": 87,
+        "output_tokens": 80,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4566,11 +4565,11 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "retrieve_prior_conversation_history",
+        "intent": "retrieve_prior_decision",
         "needs_personal_history": true,
         "needs_current_information": false,
         "needs_attachment": false,
-        "reasoning_complexity": "low",
+        "reasoning_complexity": "medium",
         "ambiguity": "low",
         "confidence": 0.95
       },
@@ -4581,7 +4580,7 @@
           "needs_personal_history": true,
           "needs_current_information": true,
           "needs_attachment": true,
-          "reasoning_complexity": true
+          "reasoning_complexity": false
         },
         "scored_fields": [
           "intent",
@@ -4592,7 +4591,7 @@
         ]
       },
       "plan": {
-        "intent": "retrieve_prior_conversation_history",
+        "intent": "retrieve_prior_decision",
         "primary_source": "vault",
         "tools": [],
         "use_vault": true,
@@ -4618,23 +4617,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 4263,
+      "wrapper_latency_ms": 1651,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 4261,
-        "planner_latency_ms": 4263,
-        "interpreter_latency_ms": 4263,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1636,
+        "planner_latency_ms": 1651,
+        "interpreter_latency_ms": 1651,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 649,
-        "output_tokens": 73,
+        "output_tokens": 71,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4678,7 +4677,7 @@
         "needs_personal_history": false,
         "needs_current_information": false,
         "needs_attachment": true,
-        "reasoning_complexity": "low",
+        "reasoning_complexity": "medium",
         "ambiguity": "low",
         "confidence": 0.95
       },
@@ -4689,7 +4688,7 @@
           "needs_personal_history": true,
           "needs_current_information": true,
           "needs_attachment": true,
-          "reasoning_complexity": true
+          "reasoning_complexity": false
         },
         "scored_fields": [
           "intent",
@@ -4730,15 +4729,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2300,
+      "wrapper_latency_ms": 1954,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2278,
-        "planner_latency_ms": 2300,
-        "interpreter_latency_ms": 2300,
-        "load_duration_ms": 4,
+        "planning_duration_ms": 1953,
+        "planner_latency_ms": 1954,
+        "interpreter_latency_ms": 1954,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 697,
         "output_tokens": 86,
@@ -4746,7 +4745,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4834,15 +4833,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2024,
+      "wrapper_latency_ms": 1780,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2023,
-        "planner_latency_ms": 2024,
-        "interpreter_latency_ms": 2024,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1763,
+        "planner_latency_ms": 1780,
+        "interpreter_latency_ms": 1780,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 653,
         "output_tokens": 80,
@@ -4850,7 +4849,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4938,15 +4937,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1897,
+      "wrapper_latency_ms": 1668,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1877,
-        "planner_latency_ms": 1897,
-        "interpreter_latency_ms": 1897,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1647,
+        "planner_latency_ms": 1668,
+        "interpreter_latency_ms": 1668,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 659,
         "output_tokens": 73,
@@ -4954,7 +4953,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -4990,7 +4989,7 @@
         "ambiguity": "high"
       },
       "semantic": {
-        "intent": "Information retrieval about a specific product feature or status ('qwen residency')",
+        "intent": "User is asking for an update or status on 'Qwen Residency', which likely refers to a specific AI",
         "needs_personal_history": false,
         "needs_current_information": true,
         "needs_attachment": false,
@@ -5018,7 +5017,7 @@
         ]
       },
       "plan": {
-        "intent": "Information retrieval about a specific product feature or status ('qwen residency')",
+        "intent": "User is asking for an update or status on 'Qwen Residency', which likely refers to a specific AI",
         "primary_source": "external",
         "tools": [],
         "use_vault": false,
@@ -5046,23 +5045,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2068,
+      "wrapper_latency_ms": 2026,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2067,
-        "planner_latency_ms": 2068,
-        "interpreter_latency_ms": 2068,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 2010,
+        "planner_latency_ms": 2026,
+        "interpreter_latency_ms": 2026,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 643,
-        "output_tokens": 82,
+        "output_tokens": 88,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5158,15 +5157,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1839,
+      "wrapper_latency_ms": 1629,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1838,
-        "planner_latency_ms": 1839,
-        "interpreter_latency_ms": 1839,
-        "load_duration_ms": 2,
+        "planning_duration_ms": 1605,
+        "planner_latency_ms": 1629,
+        "interpreter_latency_ms": 1629,
+        "load_duration_ms": 3,
         "model_load_occurred": false,
         "prompt_tokens": 706,
         "output_tokens": 71,
@@ -5174,7 +5173,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5262,15 +5261,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1887,
+      "wrapper_latency_ms": 1599,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1886,
-        "planner_latency_ms": 1887,
-        "interpreter_latency_ms": 1887,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1576,
+        "planner_latency_ms": 1599,
+        "interpreter_latency_ms": 1599,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 649,
         "output_tokens": 72,
@@ -5278,7 +5277,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5364,15 +5363,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1860,
+      "wrapper_latency_ms": 1631,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1858,
-        "planner_latency_ms": 1860,
-        "interpreter_latency_ms": 1860,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1630,
+        "planner_latency_ms": 1631,
+        "interpreter_latency_ms": 1631,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 658,
         "output_tokens": 69,
@@ -5380,7 +5379,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5470,15 +5469,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2026,
+      "wrapper_latency_ms": 1705,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2011,
-        "planner_latency_ms": 2026,
-        "interpreter_latency_ms": 2026,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1703,
+        "planner_latency_ms": 1704,
+        "interpreter_latency_ms": 1704,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 645,
         "output_tokens": 78,
@@ -5486,7 +5485,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5582,15 +5581,15 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1929,
+      "wrapper_latency_ms": 1652,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1914,
-        "planner_latency_ms": 1929,
-        "interpreter_latency_ms": 1929,
-        "load_duration_ms": 4,
+        "planning_duration_ms": 1634,
+        "planner_latency_ms": 1652,
+        "interpreter_latency_ms": 1652,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 688,
         "output_tokens": 71,
@@ -5598,7 +5597,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5688,14 +5687,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1910,
+      "wrapper_latency_ms": 1600,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1895,
-        "planner_latency_ms": 1910,
-        "interpreter_latency_ms": 1910,
+        "planning_duration_ms": 1586,
+        "planner_latency_ms": 1600,
+        "interpreter_latency_ms": 1600,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 629,
@@ -5704,7 +5703,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5794,14 +5793,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1970,
+      "wrapper_latency_ms": 1742,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1969,
-        "planner_latency_ms": 1970,
-        "interpreter_latency_ms": 1970,
+        "planning_duration_ms": 1719,
+        "planner_latency_ms": 1742,
+        "interpreter_latency_ms": 1742,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 647,
@@ -5810,7 +5809,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -5911,14 +5910,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2035,
+      "wrapper_latency_ms": 1766,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2034,
-        "planner_latency_ms": 2035,
-        "interpreter_latency_ms": 2035,
+        "planning_duration_ms": 1765,
+        "planner_latency_ms": 1766,
+        "interpreter_latency_ms": 1766,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 692,
@@ -5927,7 +5926,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -6025,14 +6024,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1851,
+      "wrapper_latency_ms": 1572,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1850,
-        "planner_latency_ms": 1851,
-        "interpreter_latency_ms": 1851,
+        "planning_duration_ms": 1549,
+        "planner_latency_ms": 1572,
+        "interpreter_latency_ms": 1572,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 696,
@@ -6041,7 +6040,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -6081,7 +6080,7 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "Analyze a provided text attachment to explain its content and evaluate the strength of its main,",
+        "intent": "Analyze a provided text attachment to summarize its content and evaluate the strength of its key",
         "needs_personal_history": false,
         "needs_current_information": false,
         "needs_attachment": true,
@@ -6107,7 +6106,7 @@
         ]
       },
       "plan": {
-        "intent": "Analyze a provided text attachment to explain its content and evaluate the strength of its main,",
+        "intent": "Analyze a provided text attachment to summarize its content and evaluate the strength of its key",
         "primary_source": "attachment",
         "tools": [
           "document-analysis"
@@ -6137,23 +6136,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2364,
+      "wrapper_latency_ms": 1976,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2363,
-        "planner_latency_ms": 2364,
-        "interpreter_latency_ms": 2364,
-        "load_duration_ms": 3,
+        "planning_duration_ms": 1959,
+        "planner_latency_ms": 1976,
+        "interpreter_latency_ms": 1976,
+        "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 702,
-        "output_tokens": 86,
+        "output_tokens": 85,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -6241,14 +6240,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2040,
+      "wrapper_latency_ms": 1776,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2039,
-        "planner_latency_ms": 2040,
-        "interpreter_latency_ms": 2040,
+        "planning_duration_ms": 1774,
+        "planner_latency_ms": 1776,
+        "interpreter_latency_ms": 1776,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 655,
@@ -6257,7 +6256,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -6346,14 +6345,14 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 1979,
+      "wrapper_latency_ms": 1750,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 1978,
-        "planner_latency_ms": 1979,
-        "interpreter_latency_ms": 1979,
+        "planning_duration_ms": 1749,
+        "planner_latency_ms": 1750,
+        "interpreter_latency_ms": 1750,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 650,
@@ -6362,7 +6361,7 @@
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null
@@ -6402,7 +6401,7 @@
         "ambiguity": null
       },
       "semantic": {
-        "intent": "Analyze the provided article to extract its claims and meaning, then synthesize an explanation.",
+        "intent": "Analyze the provided article to extract its claims and summarize its meaning.",
         "needs_personal_history": false,
         "needs_current_information": false,
         "needs_attachment": true,
@@ -6428,7 +6427,7 @@
         ]
       },
       "plan": {
-        "intent": "Analyze the provided article to extract its claims and meaning, then synthesize an explanation.",
+        "intent": "Analyze the provided article to extract its claims and summarize its meaning.",
         "primary_source": "attachment",
         "tools": [
           "document-analysis"
@@ -6458,23 +6457,23 @@
         "vault_constraint_satisfied": true
       },
       "constraint_violation": false,
-      "wrapper_latency_ms": 2232,
+      "wrapper_latency_ms": 1825,
       "telemetry": {
         "planner_model": "qwen3.5:9b-q4_K_M",
         "interpreter_model": "qwen3.5:9b-q4_K_M",
         "keep_alive": -1,
-        "planning_duration_ms": 2211,
-        "planner_latency_ms": 2232,
-        "interpreter_latency_ms": 2232,
+        "planning_duration_ms": 1805,
+        "planner_latency_ms": 1824,
+        "interpreter_latency_ms": 1824,
         "load_duration_ms": 2,
         "model_load_occurred": false,
         "prompt_tokens": 702,
-        "output_tokens": 85,
+        "output_tokens": 81,
         "residency_before": true,
         "residency_verified": true,
         "loaded_models": [
           "qwen3.5:9b-q4_K_M",
-          "qwen3:0.6b"
+          "nomic-embed-text:latest"
         ]
       },
       "error": null

@@ -16,10 +16,13 @@ class OllamaAdapterTests(unittest.TestCase):
         self.assertFalse(request["stream"])
         self.assertIn("messages", request)
         self.assertNotIn("prompt", request)
-        self.assertNotIn("think", request)
+        self.assertEqual(request["think"], "low")
         self.assertEqual(request["format"]["required"], ["proposed_domains", "summary", "entities", "people", "concepts", "links", "confidence", "notes"])
         self.assertEqual(request["format"]["properties"]["proposed_domains"]["items"]["enum"], ["Infrastructure"])
-        self.assertEqual(request["options"], {"temperature": 0, "seed": 42})
+        self.assertEqual(request["options"]["temperature"], 0)
+        self.assertGreaterEqual(request["options"]["num_ctx"], 8192)
+        self.assertGreaterEqual(request["options"]["num_predict"], 256)
+        self.assertIn('"type":"object"', request["messages"][0]["content"])
 
     def test_reads_chat_final_content_and_thinking(self) -> None:
         content, thinking = final_content({"message": {"content": '{"answer":"Cerberus"}', "thinking": "brief reasoning"}})

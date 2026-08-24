@@ -55,6 +55,15 @@ class LibrarianHarnessTests(unittest.TestCase):
         self.assertTrue(always["plan"]["use_vault"])
         self.assertIn("vault_always", always["policy_overrides"])
 
+    def test_personal_world_reference_is_a_vault_floor(self):
+        result = resolve_policy(
+            semantic(),
+            context(request="Give me some ideas for my main video channel."),
+        )
+        self.assertTrue(result["plan"]["use_vault"])
+        self.assertEqual(result["plan"]["primary_source"], "vault")
+        self.assertIn("personal_context_floor", result["policy_overrides"])
+
     def test_unavailable_current_capability_does_not_change_semantics(self):
         result = resolve_policy(
             semantic(needs_current_information=True),

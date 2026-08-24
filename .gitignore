@@ -78,6 +78,9 @@ Wiki/**
 /00_System/Data/embedding-index.json
 /00_System/Data/rebuild-v1/
 
+# Derived local SELF + NOW projection; refreshable from Vault sources.
+/00_System/Data/WorldState/*
+
 # Local browser librarian jobs and session caches.
 /00_System/Data/QueryJobs/*
 /00_System/Data/QueryCache/*

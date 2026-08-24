@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -16,6 +17,37 @@ from run_rebuild_pilot import (MAX_TRANSPORT_ATTEMPTS, final_content, invoke_oll
                                model_request, response_metrics, reviewable_candidates, select_pilot,
                                validate_proposal, validate_semantics)
 from vault_rebuild import build_manifest, manifest_bytes, write_manifest
+
+
+RETRYABLE_PROCESSING_REASONS = frozenset({
+    "empty_model_response",
+    "invalid_json_in_model_response",
+    "response_is_not_object",
+    "schema_keys_mismatch",
+    "invalid_domain_proposal",
+    "invalid_entities",
+    "invalid_people",
+    "invalid_concepts",
+    "invalid_links",
+    "invalid_scalar_field",
+})
+
+
+def classify_outcome(reason: str | None, source_text: str, error: str | None = None) -> str:
+    """Separate model/pipeline failures from source-quality decisions.
+
+    A valid source must not be described as rejected merely because the local
+    model returned no usable final answer.  A short generated summary remains
+    a human-review decision unless the source itself is effectively empty.
+    """
+    if error or reason in RETRYABLE_PROCESSING_REASONS:
+        return "retryable_processing_failure"
+    if reason == "summary_too_short":
+        body = re.sub(r"(?s)^---.*?---\s*", "", source_text).strip()
+        return "rejected_content" if len(body) < 40 else "manual_review"
+    if reason in {"policy_refusal_or_non_enrichment", "generic_filler_summary"}:
+        return "manual_review"
+    return "manual_review" if reason else "accepted"
 
 
 def atomic_bytes(path: Path, data: bytes, attempts: int = 8) -> None:
@@ -63,6 +95,7 @@ def run_record(root: Path, record: dict[str, Any], domains: list[str]) -> tuple[
     envelope = None
     error = None
     content = ""
+    reason = None
     for attempt_number in range(1, MAX_TRANSPORT_ATTEMPTS + 1):
         request = model_request(record, text, domains)
         started = time.perf_counter()
@@ -73,7 +106,18 @@ def run_record(root: Path, record: dict[str, Any], domains: list[str]) -> tuple[
                          "response_envelope": envelope, "message_content": content,
                          "message_thinking": thinking, "error": error,
                          "metrics": response_metrics(envelope, raw, latency_ms)})
-        if not error:
+        reason = error
+        if not reason and not content.strip():
+            reason = "empty_model_response"
+        if not reason:
+            try:
+                proposal, reason = validate_proposal(json.loads(content), domains)
+            except json.JSONDecodeError:
+                reason = "invalid_json_in_model_response"
+        # Empty, malformed, or schema-invalid output is a processing failure;
+        # give the bounded retry budget another chance. Semantic content
+        # decisions are not retried as if the source were broken.
+        if not reason or reason not in RETRYABLE_PROCESSING_REASONS:
             break
     proposal = None
     reason = error
@@ -88,7 +132,7 @@ def run_record(root: Path, record: dict[str, Any], domains: list[str]) -> tuple[
                     proposal = None
         except json.JSONDecodeError:
             reason = "invalid_json_in_model_response"
-    status = "accepted" if proposal else ("failed" if error else "rejected")
+    status = "accepted" if proposal else classify_outcome(reason, text, error)
     outcome = {"stable_source_id": record["stable_source_id"], "relative_path": record["relative_path"],
                "status": status, "reason": reason, "proposal": proposal,
                "generic_candidates_held": reviewable_candidates(proposal) if proposal else {},
