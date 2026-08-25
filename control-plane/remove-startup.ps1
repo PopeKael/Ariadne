@@ -3,15 +3,21 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$startMenu = [Environment]::GetFolderPath('Programs')
 $startup = [Environment]::GetFolderPath('Startup')
-$shortcutPath = Join-Path $startup 'Ariadne Host.lnk'
+$shortcutPaths = @(
+    (Join-Path $startMenu 'Ariadne.lnk'),
+    (Join-Path $startup 'Ariadne Host.lnk')
+)
 $legacyTaskName = 'Ariadne Local Control Plane'
 
-if (Test-Path -LiteralPath $shortcutPath -PathType Leaf) {
-    Remove-Item -LiteralPath $shortcutPath -Force
-    Write-Output "Removed Startup shortcut: $shortcutPath"
-} else {
-    Write-Output "Startup shortcut not present: $shortcutPath"
+foreach ($shortcutPath in $shortcutPaths) {
+    if (Test-Path -LiteralPath $shortcutPath -PathType Leaf) {
+        Remove-Item -LiteralPath $shortcutPath -Force
+        Write-Output "Removed Ariadne shortcut: $shortcutPath"
+    } else {
+        Write-Output "Ariadne shortcut not present: $shortcutPath"
+    }
 }
 
 $legacyTask = Get-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue

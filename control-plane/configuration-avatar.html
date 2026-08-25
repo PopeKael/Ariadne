@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="avatar-page">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/configuration-avatar.css">
   <link rel="stylesheet" href="/page-shell.css">
 </head>
-<body class="ariadne-page">
+<body class="ariadne-page avatar-page">
   <div class="configuration-shell avatar-configuration-shell">
     <header class="configuration-header">
       <a class="configuration-brand" href="/" aria-label="Back to Ariadne Home"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Home · local intelligence</small></span></a>
@@ -25,10 +25,11 @@
           <label class="path-field"><span class="field-label">Avatar Pack Folder <small>absolute local directory containing avatar_states.json</small></span><input id="avatar-asset-directory" type="text" autocomplete="off" spellcheck="false"><span id="avatar-directory-status" class="field-status">Checking…</span></label>
         </div>
         <div class="avatar-actions"><button id="open-folder" class="secondary-button" type="button">Open folder</button><button id="validate-assets" class="secondary-button" type="button">Validate assets</button><button id="use-default-pack" class="secondary-button" type="button">Use default pack</button><button id="save-avatar" class="primary-button" type="button">Save avatar configuration</button></div>
-        <p class="configuration-note">The manifest determines filenames. Semantic Avatar State names stay fixed so a future animated pack can use the same protocol.</p>
+        <p class="configuration-note">The manifest supplies defaults. A saved per-state selection overrides that default without changing the canonical Avatar State names.</p>
       </section>
       <section class="configuration-card avatar-states-card">
-        <div class="card-heading"><div><span class="eyebrow">AVATAR STATES</span><h2>Manifest validation</h2><p id="pack-summary">Reading the selected pack…</p></div><span id="pack-badge" class="active-vault-badge">Checking</span></div>
+        <div class="card-heading"><div><span class="eyebrow">AVATAR STATES</span><h2>Image and action editor</h2><p id="pack-summary">Reading the selected pack…</p></div><span id="pack-badge" class="active-vault-badge">Checking</span></div>
+        <div class="avatar-test-toolbar"><button id="test-all-states" class="primary-button" type="button">Test All States</button><span id="test-all-feedback" role="status" aria-live="polite">Tests are temporary and do not change saved configuration.</span></div>
         <div id="avatar-states-grid" class="avatar-states-grid"></div>
         <div class="avatar-preview-actions"><button id="return-idle" class="secondary-button" type="button">Return to Idle</button><span id="preview-status" role="status" aria-live="polite">Preview uses the existing named-pipe Avatar State event.</span></div>
       </section>

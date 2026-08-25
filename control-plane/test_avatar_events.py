@@ -29,6 +29,12 @@ class AvatarEventTests(unittest.TestCase):
             payload = json.loads(write.call_args.args[0])
         self.assertEqual(payload, {"v": 1, "type": "reload_avatar"})
 
+    def test_clear_status_is_versioned(self) -> None:
+        with patch.object(avatar_events, "_write_windows_pipe", return_value=True) as write:
+            self.assertTrue(avatar_events.clear_status())
+            payload = json.loads(write.call_args.args[0])
+        self.assertEqual(payload, {"v": 1, "type": "clear_status"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import csv
+import base64
+import binascii
+from collections.abc import Callable
 from contextlib import contextmanager
 import ctypes
 import io
@@ -18,6 +21,8 @@ import urllib.error
 import urllib.request
 import importlib.util
 import mimetypes
+import re
+import tempfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,10 +37,11 @@ from ariadne_config import (
     configuration_snapshot,
     default_avatar_directory,
     effective_avatar,
+    normalize_avatar_assets,
     save_avatar,
     save_storage,
 )
-from avatar_events import emit, emit_say, emit_state
+from avatar_events import clear_status, emit, emit_say, emit_state
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
     fallback_interpretation,
@@ -1853,20 +1859,86 @@ def configuration_folder_status(path_value: str, *, operational: bool = False) -
     }
 
 
-def avatar_configuration_payload(asset_directory: str | None = None) -> dict[str, object]:
+def avatar_configuration_payload(
+    asset_directory: str | None = None,
+    state_assets: object = None,
+) -> dict[str, object]:
     snapshot = configuration_snapshot()
     avatar = dict(snapshot["avatar"])
     selected_directory = asset_directory or str(avatar["asset_directory"])
-    pack = avatar_pack_status(selected_directory)
+    selected_assets = normalize_avatar_assets(avatar.get("state_assets") if state_assets is None else state_assets)
+    pack = avatar_pack_status(selected_directory, selected_assets)
     return {
         "enabled": bool(avatar["enabled"]),
         "asset_directory": str(selected_directory),
+        "state_assets": dict(selected_assets or {}),
         "default_asset_directory": str(default_avatar_directory().resolve()),
         "sources": snapshot.get("avatar_sources", {}),
         "pack": pack,
         "canonical_states": list(CANONICAL_AVATAR_STATES),
         "supported_asset_format": "Static PNG is currently supported by the Rust renderer; Avatar State protocol is format-independent.",
     }
+
+
+def import_avatar_assets(avatar: dict[str, object], imports: object) -> dict[str, object]:
+    """Import staged PNGs into the selected pack and return updated mappings."""
+    if imports in (None, []):
+        return dict(avatar)
+    if not isinstance(imports, list) or len(imports) > len(CANONICAL_AVATAR_STATES):
+        raise ValueError("Avatar image imports must be a list of at most 16 items.")
+    directory = Path(str(avatar.get("asset_directory") or "")).resolve()
+    if not directory.is_dir():
+        raise ValueError("The selected Avatar Pack folder must exist before importing an image.")
+    mappings = normalize_avatar_assets(avatar.get("state_assets"))
+    seen: set[str] = set()
+    import_directory = directory / "imports"
+    for item in imports:
+        if not isinstance(item, dict):
+            raise ValueError("Each Avatar image import must be an object.")
+        state = item.get("state")
+        filename = item.get("filename")
+        encoded = item.get("content_base64")
+        if state not in CANONICAL_AVATAR_STATES or state in seen:
+            raise ValueError("Each imported image must target one unique canonical Avatar State.")
+        if not isinstance(filename, str) or not isinstance(encoded, str):
+            raise ValueError("Each imported image requires a filename and PNG content.")
+        if Path(filename).suffix.lower() != ".png":
+            raise ValueError("Ariadne currently accepts PNG avatar images.")
+        try:
+            payload = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("An Avatar PNG could not be decoded.") from exc
+        if len(payload) > 16 * 1024 * 1024 or payload[:8] != b"\x89PNG\r\n\x1a\n":
+            raise ValueError("Avatar images must be valid PNG files no larger than 16 MiB.")
+        stem = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(filename).stem).strip("_")[:60] or "avatar"
+        relative = Path("imports") / f"{state}-{stem}.png"
+        target = (directory / relative).resolve()
+        target.relative_to(directory)
+        import_directory.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(prefix="ariadne-avatar-", suffix=".tmp", dir=import_directory)
+        try:
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_name, target)
+        finally:
+            try:
+                os.unlink(temporary_name)
+            except FileNotFoundError:
+                pass
+        mappings[state] = relative.as_posix()
+        seen.add(state)
+    return {**avatar, "state_assets": mappings}
+
+
+def _send_avatar_event_with_retry(sender: Callable[[], bool], attempts: int = 4) -> bool:
+    for attempt in range(attempts):
+        if sender():
+            return True
+        if attempt + 1 < attempts:
+            time.sleep(0.075)
+    return False
 
 
 def open_avatar_folder() -> dict[str, object]:
@@ -1888,21 +1960,53 @@ def open_avatar_folder() -> dict[str, object]:
     return {"ok": True, "folder": str(folder), "detail": "Avatar pack folder opened."}
 
 
-def avatar_preview(state: object) -> dict[str, object]:
+def avatar_preview(state: object, status: object = None) -> dict[str, object]:
     if not isinstance(state, str) or state not in CANONICAL_AVATAR_STATES:
         return {"ok": False, "detail": "Choose one of the canonical Avatar States."}
-    sent = emit_state(state)
+    pack = avatar_pack_status(str(effective_avatar()[0]["asset_directory"]))
+    row = next((item for item in pack["states"] if item["key"] == state), None)
+    idle = next((item for item in pack["states"] if item["key"] == "idle"), None)
+    asset_available = bool(row and row.get("state") == "available")
+    fallback_expected = bool(
+        state != "idle"
+        and not asset_available
+        and idle
+        and idle.get("state") == "available"
+    )
+    state_sent = _send_avatar_event_with_retry(lambda: emit_state(state))
+    status_sent = True
+    if isinstance(status, str) and status.strip():
+        status_sent = _send_avatar_event_with_retry(lambda: emit_say(status))
+    return {
+        "ok": state_sent and status_sent,
+        "state": state,
+        "state_sent": state_sent,
+        "status_sent": status_sent,
+        "asset_available": asset_available,
+        "fallback_expected": fallback_expected,
+        "detail": (
+            "Avatar State sent; the host will use the idle fallback for this missing asset."
+            if state_sent and fallback_expected
+            else "Preview event sent to Ariadne Host."
+            if state_sent and status_sent
+            else "Ariadne Host is unavailable; the preview event was not sent."
+        ),
+    }
+
+
+def avatar_clear_status() -> dict[str, object]:
+    sent = _send_avatar_event_with_retry(clear_status)
     return {
         "ok": sent,
-        "state": state,
-        "detail": "Preview event sent to Ariadne Host." if sent else "Ariadne Host is unavailable; the preview event was not sent.",
+        "detail": "Temporary Avatar status cleared." if sent else "Ariadne Host is unavailable; status was not cleared.",
     }
 
 
 def avatar_asset_response(state: str) -> tuple[bytes, str] | None:
     if state not in CANONICAL_AVATAR_STATES:
         return None
-    pack = avatar_pack_status(str(effective_avatar()[0]["asset_directory"]))
+    avatar, _ = effective_avatar()
+    pack = avatar_pack_status(str(avatar["asset_directory"]), avatar.get("state_assets"))
     row = next((item for item in pack["states"] if item["key"] == state), None)
     if not row or row.get("state") != "available" or not isinstance(row.get("filename"), str):
         return None
@@ -3031,6 +3135,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "message": "Avatar configuration is required."}, 400)
                     return
                 try:
+                    avatar = import_avatar_assets(avatar, body.get("imports"))
                     save_avatar(avatar)
                 except ValueError as exc:
                     try:
@@ -3054,13 +3159,19 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 selected_directory = avatar.get("asset_directory")
                 if not isinstance(selected_directory, str) or not selected_directory.strip():
                     selected_directory = str(effective_avatar()[0]["asset_directory"])
-                self.send_json({"ok": True, "avatar": avatar_configuration_payload(selected_directory)})
+                self.send_json({
+                    "ok": True,
+                    "avatar": avatar_configuration_payload(selected_directory, avatar.get("state_assets")),
+                })
                 return
             if path == "/api/configuration/avatar/open-folder":
                 self.send_json(open_avatar_folder(), 200)
                 return
             if path == "/api/configuration/avatar/preview":
-                self.send_json(avatar_preview(body.get("state")), 200)
+                if body.get("clear_status"):
+                    self.send_json(avatar_clear_status(), 200)
+                else:
+                    self.send_json(avatar_preview(body.get("state"), body.get("status")), 200)
                 return
             if path == "/api/wsl/start":
                 self.send_json(wsl_environment_action(str(body.get("name") or ""), "start"))

@@ -59,6 +59,8 @@ STORAGE_LABELS = {
     "intake_root": "Raw Documents / Intake Root",
 }
 
+AVATAR_IMAGE_SUFFIXES = (".png",)
+
 
 def default_avatar_directory() -> Path:
     """Resolve the installation-relative default avatar pack directory."""
@@ -121,12 +123,15 @@ def effective_avatar(path: Path | None = None) -> tuple[dict[str, object], dict[
         directory_source = "installation default"
     else:
         directory_source = "saved Ariadne configuration"
+    state_assets = _normalized_state_assets(saved.get("state_assets"))
     return {
         "enabled": enabled,
         "asset_directory": str(configured),
+        "state_assets": state_assets,
     }, {
         "enabled": "saved Ariadne configuration" if "enabled" in saved else "safe default",
         "asset_directory": directory_source,
+        "state_assets": "saved Ariadne configuration" if state_assets else "avatar manifest defaults",
     }
 
 
@@ -137,6 +142,34 @@ def _path_for(value: object) -> Path | None:
     if not candidate.is_absolute():
         return None
     return candidate.resolve()
+
+
+def _safe_avatar_asset(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    candidate = Path(value.strip())
+    if candidate.is_absolute() or any(part in {"", ".", ".."} for part in candidate.parts):
+        return None
+    if candidate.suffix.lower() not in AVATAR_IMAGE_SUFFIXES:
+        return None
+    return candidate.as_posix()
+
+
+def _normalized_state_assets(value: object) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        key: asset
+        for key, raw_asset in value.items()
+        if isinstance(key, str)
+        and key in CANONICAL_AVATAR_STATES
+        and (asset := _safe_avatar_asset(raw_asset)) is not None
+    }
+
+
+def normalize_avatar_assets(value: object) -> dict[str, str]:
+    """Return only canonical, safe relative avatar mapping entries."""
+    return _normalized_state_assets(value)
 
 
 def validate_storage(storage: dict[str, object]) -> dict[str, str]:
@@ -164,6 +197,15 @@ def validate_avatar(avatar: dict[str, object]) -> dict[str, str]:
         errors["asset_directory"] = "Enter an absolute local folder path."
     elif asset_directory.exists() and not asset_directory.is_dir():
         errors["asset_directory"] = "The avatar asset path must be a folder."
+    state_assets = avatar.get("state_assets", {})
+    if not isinstance(state_assets, dict):
+        errors["state_assets"] = "Avatar State mappings must be an object."
+    else:
+        for key, value in state_assets.items():
+            if key not in CANONICAL_AVATAR_STATES:
+                errors[f"state_assets.{key}"] = "Unknown Avatar State mapping."
+            elif _safe_avatar_asset(value) is None:
+                errors[f"state_assets.{key}"] = "Mappings must use relative PNG paths inside the selected pack."
     return errors
 
 
@@ -205,7 +247,8 @@ def save_configuration(
     }
     current_avatar, _ = effective_avatar(target)
     selected_storage = storage if storage is not None else current_storage
-    selected_avatar = avatar if avatar is not None else current_avatar
+    selected_avatar = dict(avatar) if avatar is not None else dict(current_avatar)
+    selected_avatar.setdefault("state_assets", current_avatar.get("state_assets", {}))
     storage_errors = validate_storage(selected_storage)
     avatar_errors = validate_avatar(selected_avatar)
     errors = {**storage_errors, **{f"avatar.{key}": value for key, value in avatar_errors.items()}}
@@ -218,6 +261,7 @@ def save_configuration(
         "avatar": {
             "enabled": bool(selected_avatar["enabled"]),
             "asset_directory": str(_path_for(selected_avatar["asset_directory"])),
+            "state_assets": _normalized_state_assets(selected_avatar.get("state_assets")),
         },
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
@@ -232,7 +276,7 @@ def save_avatar(avatar: dict[str, object], path: Path | None = None) -> dict[str
     return save_configuration(avatar=avatar, path=path)
 
 
-def avatar_pack_status(directory: str | Path) -> dict[str, Any]:
+def avatar_pack_status(directory: str | Path, state_assets: object = None) -> dict[str, Any]:
     """Inspect a selected avatar pack without changing configuration."""
     base = _path_for(str(directory))
     if base is None:
@@ -290,28 +334,30 @@ def avatar_pack_status(directory: str | Path) -> dict[str, Any]:
             "available_count": 0,
         }
     resolved_base = base.resolve()
+    configured_assets = _normalized_state_assets(state_assets)
     state_rows: list[dict[str, object]] = []
     available_count = 0
     for key in CANONICAL_AVATAR_STATES:
-        filename = mappings.get(key)
+        filename = configured_assets.get(key) or mappings.get(key)
+        mapping_source = "configuration" if key in configured_assets else "manifest"
         if not isinstance(filename, str) or not filename.strip():
-            state_rows.append({"key": key, "filename": None, "state": "missing", "detail": "No manifest mapping."})
+            state_rows.append({"key": key, "filename": None, "state": "missing", "source": mapping_source, "detail": "No Avatar State mapping."})
             continue
         candidate = Path(filename)
         if candidate.is_absolute() or any(part == ".." for part in candidate.parts):
-            state_rows.append({"key": key, "filename": filename, "state": "invalid", "detail": "Manifest path must stay inside the avatar pack."})
+            state_rows.append({"key": key, "filename": filename, "state": "invalid", "source": mapping_source, "detail": "Avatar State path must stay inside the avatar pack."})
             continue
         asset_path = (base / candidate).resolve()
         try:
             asset_path.relative_to(resolved_base)
         except ValueError:
-            state_rows.append({"key": key, "filename": filename, "state": "invalid", "detail": "Manifest path escapes the avatar pack."})
+            state_rows.append({"key": key, "filename": filename, "state": "invalid", "source": mapping_source, "detail": "Avatar State path escapes the avatar pack."})
             continue
         if asset_path.is_file():
             available_count += 1
-            state_rows.append({"key": key, "filename": filename, "state": "available", "detail": "Asset file is available."})
+            state_rows.append({"key": key, "filename": filename, "state": "available", "source": mapping_source, "detail": "Asset file is available."})
         else:
-            state_rows.append({"key": key, "filename": filename, "state": "missing", "detail": "Mapped asset file is missing."})
+            state_rows.append({"key": key, "filename": filename, "state": "missing", "source": mapping_source, "detail": "Mapped asset file is missing."})
     pack_state = "ready" if available_count == len(CANONICAL_AVATAR_STATES) else "partial"
     return {
         "state": pack_state,

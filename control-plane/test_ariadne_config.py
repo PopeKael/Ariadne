@@ -95,6 +95,34 @@ class AriadneConfigurationTests(unittest.TestCase):
             self.assertEqual(status["available_count"], 1)
             self.assertEqual(status["states"][2]["state"], "invalid")
 
+    def test_avatar_state_mapping_overrides_manifest_without_changing_canonical_states(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "avatars"
+            root.mkdir()
+            (root / "avatar_states.json").write_text(
+                '{"version": 1, "states": {"idle": "idle.png", "thinking": "thinking.png"}}',
+                encoding="utf-8",
+            )
+            (root / "idle.png").write_bytes(b"idle")
+            (root / "custom-thinking.png").write_bytes(b"custom")
+            status = avatar_pack_status(root, {"thinking": "custom-thinking.png"})
+            thinking = next(item for item in status["states"] if item["key"] == "thinking")
+            self.assertEqual(thinking["filename"], "custom-thinking.png")
+            self.assertEqual(thinking["source"], "configuration")
+
+    def test_avatar_state_mapping_is_persisted_and_legacy_configs_still_load(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "avatars"
+            root.mkdir()
+            path = Path(temporary) / "configuration.json"
+            save_avatar({
+                "enabled": True,
+                "asset_directory": str(root),
+                "state_assets": {"idle": "imports/idle-custom.png"},
+            }, path)
+            avatar, _ = effective_avatar(path)
+            self.assertEqual(avatar["state_assets"], {"idle": "imports/idle-custom.png"})
+
 
 if __name__ == "__main__":
     unittest.main()

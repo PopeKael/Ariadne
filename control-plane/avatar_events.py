@@ -82,6 +82,10 @@ def reload_avatar() -> bool:
     return emit("reload_avatar")
 
 
+def clear_status() -> bool:
+    return emit("clear_status")
+
+
 def emit_say(text: str) -> bool:
     if not isinstance(text, str):
         return False
@@ -104,5 +108,5 @@ def move(x: int, y: int) -> bool:
 
 __all__ = [
     "AVATAR_STATES", "CANONICAL_AVATAR_STATES", "PIPE_NAME", "emit", "emit_state",
-    "emit_say", "reload_avatar", "show", "hide", "move",
+    "emit_say", "reload_avatar", "clear_status", "show", "hide", "move",
 ]

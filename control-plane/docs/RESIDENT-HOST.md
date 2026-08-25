@@ -42,6 +42,7 @@ unknown-version, and unknown-state messages:
 {"v":1,"type":"hide"}
 {"v":1,"type":"move","x":1600,"y":700}
 {"v":1,"type":"reload_avatar"}
+{"v":1,"type":"clear_status"}
 ```
 
 Canonical states are: `idle`, `listening`, `thinking`, `searching_vault`,
@@ -69,21 +70,30 @@ sixteen canonical Avatar States, shows available thumbnails, sends Preview
 events, and can open the selected folder. `reload_avatar` makes the running
 host reread the file without restarting Python. Disabling the avatar hides
 only the overlay; the host, tray, Python core, Home, and IPC remain active.
+The setup page can temporarily test each canonical state or run the full
+sequence; `clear_status` removes only the temporary status bubble and leaves
+the current Avatar State unchanged.
 Missing or invalid assets are logged once per state and fall back to `idle`;
 if that is also unavailable, the overlay is hidden without terminating the
 host. Manifest paths must remain inside the selected pack.
 
 ## Startup migration
 
-The normal startup entry is a shortcut to `ariadne-host.exe` in the current
-user's `shell:startup` folder:
+The normal user-facing entry is `Ariadne.lnk` in the current user's Start Menu
+Programs folder. The separate startup entry is `Ariadne Host.lnk` in the
+current user's `shell:startup` folder. Both target the release
+`ariadne-host.exe` and use `host/assets/branding/ariadne.ico`:
 
 ```powershell
 .\control-plane\install-startup.ps1
 ```
 
-The installer refuses to install while the legacy Scheduled Task
-`Ariadne Local Control Plane` exists. After confirming the host manually:
+The installer audits and removes duplicate Ariadne-named shortcuts from the
+user/common Start Menu and Startup roots before creating exactly those two
+entries. It also refuses to install while the legacy Scheduled Task exists
+unless `-RemoveLegacyTask` is supplied.
+
+After confirming the host manually, remove the legacy task during migration:
 
 ```powershell
 .\control-plane\install-startup.ps1 -RemoveLegacyTask
