@@ -41,6 +41,7 @@ unknown-version, and unknown-state messages:
 {"v":1,"type":"show"}
 {"v":1,"type":"hide"}
 {"v":1,"type":"move","x":1600,"y":700}
+{"v":1,"type":"reload_avatar"}
 ```
 
 Canonical states are: `idle`, `listening`, `thinking`, `searching_vault`,
@@ -59,6 +60,18 @@ files, but the renderer boundary is filename-based rather than extension-
 based. Missing or invalid assets are logged and do not terminate the host.
 The transparent, borderless, topmost overlay has no taskbar button; close is
 treated as hide. Its last position is stored under `%LOCALAPPDATA%\Ariadne`.
+
+An Avatar Pack is a directory containing `avatar_states.json` and the files
+named by its `states` object. The selected directory is stored in
+`%LOCALAPPDATA%\Ariadne\configuration.json` under `avatar.enabled` and
+`avatar.asset_directory`. The `/configuration/avatar` page validates all
+sixteen canonical Avatar States, shows available thumbnails, sends Preview
+events, and can open the selected folder. `reload_avatar` makes the running
+host reread the file without restarting Python. Disabling the avatar hides
+only the overlay; the host, tray, Python core, Home, and IPC remain active.
+Missing or invalid assets are logged once per state and fall back to `idle`;
+if that is also unavailable, the overlay is hidden without terminating the
+host. Manifest paths must remain inside the selected pack.
 
 ## Startup migration
 
@@ -94,10 +107,13 @@ startup paths.
 3. Confirm `http://127.0.0.1:8765/` and `/api/status` work.
 4. Use the tray menu to open Home, hide/show the avatar, restart the core, and
    exit. The host should remain alive when Python is unavailable or crashes.
-5. With a supplied test asset, send a `thinking` event from Python and confirm
-   the visible pose changes. Delete that asset and confirm only a bounded host
-   log entry is produced.
-6. Inspect `%LOCALAPPDATA%\Ariadne\host.log`; it records lifecycle and
+5. Open `/configuration/avatar`, validate all sixteen states, save a test
+   pack, Preview a state, switch to Disabled, then re-enable it and confirm
+   the running host reloads the setting.
+6. With a supplied test asset, send a `thinking` event from Python and confirm
+   the visible pose changes. Delete that asset and confirm the idle fallback
+   and bounded host log entry.
+7. Inspect `%LOCALAPPDATA%\Ariadne\host.log`; it records lifecycle and
    transport diagnostics, not query contents.
 
 ## Rollback

@@ -16,6 +16,24 @@ from typing import Any
 
 
 CONFIG_VERSION = 1
+CANONICAL_AVATAR_STATES = (
+    "idle",
+    "listening",
+    "thinking",
+    "searching_vault",
+    "reading",
+    "cross_referencing",
+    "loading_model",
+    "working",
+    "speaking",
+    "waiting",
+    "success",
+    "warning",
+    "confused",
+    "recovering",
+    "error",
+    "offline",
+)
 DEFAULT_STORAGE = {
     "knowledge_vault": r"D:\Downloads\KnowledgeVault",
     "documents": r"D:\Downloads\Docs",
@@ -40,6 +58,12 @@ STORAGE_LABELS = {
     "screenshots": "Screenshots",
     "intake_root": "Raw Documents / Intake Root",
 }
+
+
+def default_avatar_directory() -> Path:
+    """Resolve the installation-relative default avatar pack directory."""
+    project_root = Path(__file__).resolve().parent.parent
+    return project_root / "control-plane" / "host" / "assets" / "avatar"
 
 
 def configuration_path() -> Path:
@@ -84,6 +108,28 @@ def effective_storage(path: Path | None = None) -> tuple[dict[str, str], dict[st
     return values, sources
 
 
+def effective_avatar(path: Path | None = None) -> tuple[dict[str, object], dict[str, str]]:
+    saved = _read_saved(path).get("avatar", {})
+    if not isinstance(saved, dict):
+        saved = {}
+    enabled = saved.get("enabled", True)
+    if not isinstance(enabled, bool):
+        enabled = True
+    configured = _path_for(saved.get("asset_directory"))
+    if configured is None:
+        configured = default_avatar_directory().resolve()
+        directory_source = "installation default"
+    else:
+        directory_source = "saved Ariadne configuration"
+    return {
+        "enabled": enabled,
+        "asset_directory": str(configured),
+    }, {
+        "enabled": "saved Ariadne configuration" if "enabled" in saved else "safe default",
+        "asset_directory": directory_source,
+    }
+
+
 def _path_for(value: object) -> Path | None:
     if not isinstance(value, str) or not value.strip():
         return None
@@ -108,17 +154,21 @@ def validate_storage(storage: dict[str, object]) -> dict[str, str]:
     return errors
 
 
-def save_storage(storage: dict[str, object], path: Path | None = None) -> dict[str, Any]:
-    errors = validate_storage(storage)
-    if errors:
-        raise ValueError(json.dumps(errors, ensure_ascii=False))
-    target = path or configuration_path()
+def validate_avatar(avatar: dict[str, object]) -> dict[str, str]:
+    errors: dict[str, str] = {}
+    enabled = avatar.get("enabled")
+    if not isinstance(enabled, bool):
+        errors["enabled"] = "Choose Enabled or Disabled."
+    asset_directory = _path_for(avatar.get("asset_directory"))
+    if asset_directory is None:
+        errors["asset_directory"] = "Enter an absolute local folder path."
+    elif asset_directory.exists() and not asset_directory.is_dir():
+        errors["asset_directory"] = "The avatar asset path must be a folder."
+    return errors
+
+
+def _atomic_write_configuration(payload: dict[str, Any], target: Path) -> dict[str, Any]:
     target.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "version": CONFIG_VERSION,
-        "storage": {key: str(_path_for(storage[key])) for key in DEFAULT_STORAGE},
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
     descriptor, temporary_name = tempfile.mkstemp(prefix="ariadne-config-", suffix=".tmp", dir=target.parent)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
@@ -135,8 +185,147 @@ def save_storage(storage: dict[str, object], path: Path | None = None) -> dict[s
     return payload
 
 
+def save_configuration(
+    storage: dict[str, object] | None = None,
+    avatar: dict[str, object] | None = None,
+    path: Path | None = None,
+) -> dict[str, Any]:
+    target = path or configuration_path()
+    current = _read_saved(target)
+    saved_storage = current.get("storage", {})
+    if not isinstance(saved_storage, dict):
+        saved_storage = {}
+    current_storage = {
+        key: saved_storage.get(key, DEFAULT_STORAGE[key])
+        for key in DEFAULT_STORAGE
+    }
+    current_storage = {
+        key: str(_path_for(value) or Path(DEFAULT_STORAGE[key]).resolve())
+        for key, value in current_storage.items()
+    }
+    current_avatar, _ = effective_avatar(target)
+    selected_storage = storage if storage is not None else current_storage
+    selected_avatar = avatar if avatar is not None else current_avatar
+    storage_errors = validate_storage(selected_storage)
+    avatar_errors = validate_avatar(selected_avatar)
+    errors = {**storage_errors, **{f"avatar.{key}": value for key, value in avatar_errors.items()}}
+    if errors:
+        raise ValueError(json.dumps(errors, ensure_ascii=False))
+    payload = dict(current)
+    payload.update({
+        "version": CONFIG_VERSION,
+        "storage": {key: str(_path_for(selected_storage[key])) for key in DEFAULT_STORAGE},
+        "avatar": {
+            "enabled": bool(selected_avatar["enabled"]),
+            "asset_directory": str(_path_for(selected_avatar["asset_directory"])),
+        },
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return _atomic_write_configuration(payload, target)
+
+
+def save_storage(storage: dict[str, object], path: Path | None = None) -> dict[str, Any]:
+    return save_configuration(storage=storage, path=path)
+
+
+def save_avatar(avatar: dict[str, object], path: Path | None = None) -> dict[str, Any]:
+    return save_configuration(avatar=avatar, path=path)
+
+
+def avatar_pack_status(directory: str | Path) -> dict[str, Any]:
+    """Inspect a selected avatar pack without changing configuration."""
+    base = _path_for(str(directory))
+    if base is None:
+        return {
+            "state": "invalid",
+            "detail": "The avatar asset directory must be an absolute local folder path.",
+            "directory": str(directory),
+            "manifest": None,
+            "states": [],
+            "available_count": 0,
+        }
+    manifest_path = base / "avatar_states.json"
+    empty_states = [
+        {"key": key, "filename": None, "state": "missing", "detail": "Manifest mapping unavailable."}
+        for key in CANONICAL_AVATAR_STATES
+    ]
+    if not base.is_dir():
+        return {
+            "state": "missing",
+            "detail": "Avatar pack folder does not exist.",
+            "directory": str(base),
+            "manifest": None,
+            "states": empty_states,
+            "available_count": 0,
+        }
+    if not manifest_path.is_file():
+        return {
+            "state": "missing",
+            "detail": "avatar_states.json is missing from this avatar pack.",
+            "directory": str(base),
+            "manifest": None,
+            "states": empty_states,
+            "available_count": 0,
+        }
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return {
+            "state": "invalid",
+            "detail": f"avatar_states.json could not be read: {exc}",
+            "directory": str(base),
+            "manifest": {"path": str(manifest_path), "version": None},
+            "states": empty_states,
+            "available_count": 0,
+        }
+    mappings = manifest.get("states") if isinstance(manifest, dict) else None
+    version = manifest.get("version") if isinstance(manifest, dict) else None
+    if not isinstance(mappings, dict) or version != 1:
+        return {
+            "state": "invalid",
+            "detail": "avatar_states.json must contain version 1 and a states object.",
+            "directory": str(base),
+            "manifest": {"path": str(manifest_path), "version": version},
+            "states": empty_states,
+            "available_count": 0,
+        }
+    resolved_base = base.resolve()
+    state_rows: list[dict[str, object]] = []
+    available_count = 0
+    for key in CANONICAL_AVATAR_STATES:
+        filename = mappings.get(key)
+        if not isinstance(filename, str) or not filename.strip():
+            state_rows.append({"key": key, "filename": None, "state": "missing", "detail": "No manifest mapping."})
+            continue
+        candidate = Path(filename)
+        if candidate.is_absolute() or any(part == ".." for part in candidate.parts):
+            state_rows.append({"key": key, "filename": filename, "state": "invalid", "detail": "Manifest path must stay inside the avatar pack."})
+            continue
+        asset_path = (base / candidate).resolve()
+        try:
+            asset_path.relative_to(resolved_base)
+        except ValueError:
+            state_rows.append({"key": key, "filename": filename, "state": "invalid", "detail": "Manifest path escapes the avatar pack."})
+            continue
+        if asset_path.is_file():
+            available_count += 1
+            state_rows.append({"key": key, "filename": filename, "state": "available", "detail": "Asset file is available."})
+        else:
+            state_rows.append({"key": key, "filename": filename, "state": "missing", "detail": "Mapped asset file is missing."})
+    pack_state = "ready" if available_count == len(CANONICAL_AVATAR_STATES) else "partial"
+    return {
+        "state": pack_state,
+        "detail": f"{available_count} of {len(CANONICAL_AVATAR_STATES)} Avatar States have available assets.",
+        "directory": str(base),
+        "manifest": {"path": str(manifest_path), "version": version},
+        "states": state_rows,
+        "available_count": available_count,
+    }
+
+
 def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
     values, sources = effective_storage(path)
+    avatar, avatar_sources = effective_avatar(path)
     return {
         "path": str(path or configuration_path()),
         "version": CONFIG_VERSION,
@@ -147,4 +336,6 @@ def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
         ],
         "storage": values,
         "sources": sources,
+        "avatar": avatar,
+        "avatar_sources": avatar_sources,
     }

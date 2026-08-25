@@ -1,7 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
 use std::ffi::c_void;
 use std::fs::{self, OpenOptions};
@@ -66,6 +66,22 @@ static LOG_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 struct AvatarManifest {
     version: u32,
     states: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct AriadneConfiguration {
+    avatar: Option<AvatarConfiguration>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct AvatarConfiguration {
+    enabled: Option<bool>,
+    asset_directory: Option<String>,
+}
+
+struct AvatarSettings {
+    enabled: bool,
+    asset_root: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
@@ -471,6 +487,52 @@ fn load_manifest(asset_root: &Path) -> AvatarManifest {
     }
 }
 
+fn configuration_path() -> PathBuf {
+    if let Some(explicit) = env::var_os("ARIADNE_CONFIG_PATH") {
+        let path = PathBuf::from(explicit);
+        if !path.as_os_str().is_empty() {
+            return path;
+        }
+    }
+    env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("Ariadne\\configuration.json")
+}
+
+fn load_avatar_settings(exe: &Path, project_root: &Path) -> AvatarSettings {
+    let default_root = find_asset_root(exe, project_root);
+    let saved = fs::read_to_string(configuration_path())
+        .ok()
+        .and_then(|text| serde_json::from_str::<AriadneConfiguration>(&text).ok());
+    let Some(avatar) = saved.and_then(|configuration| configuration.avatar) else {
+        return AvatarSettings {
+            enabled: true,
+            asset_root: default_root,
+        };
+    };
+
+    let asset_root = match avatar.asset_directory.as_deref() {
+        Some(value) if !value.trim().is_empty() => {
+            let candidate = PathBuf::from(value);
+            if candidate.is_absolute() {
+                candidate
+            } else {
+                log_line(format!(
+                    "avatar asset directory is not absolute; using default: {}",
+                    value
+                ));
+                default_root
+            }
+        }
+        _ => default_root,
+    };
+    AvatarSettings {
+        enabled: avatar.enabled.unwrap_or(true),
+        asset_root,
+    }
+}
+
 fn find_asset_root(exe: &Path, project_root: &Path) -> PathBuf {
     let candidates = [
         exe.parent()
@@ -493,14 +555,22 @@ struct AvatarPosition {
 
 struct AvatarOverlay {
     hwnd: HWND,
+    executable: PathBuf,
+    project_root: PathBuf,
     asset_root: PathBuf,
     manifest: AvatarManifest,
     position: AvatarPosition,
     state: String,
+    enabled: bool,
+    logged_missing: HashSet<String>,
 }
 
 impl AvatarOverlay {
-    unsafe fn new(instance: HINSTANCE, asset_root: PathBuf) -> windows::core::Result<Self> {
+    unsafe fn new(
+        instance: HINSTANCE,
+        executable: PathBuf,
+        project_root: PathBuf,
+    ) -> windows::core::Result<Self> {
         let hwnd = CreateWindowExW(
             WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT,
             w!("AriadneAvatarWindow"),
@@ -516,16 +586,24 @@ impl AvatarOverlay {
             None,
         )?;
         let position = load_position();
+        let settings = load_avatar_settings(&executable, &project_root);
         Ok(Self {
             hwnd,
-            asset_root: asset_root.clone(),
-            manifest: load_manifest(&asset_root),
+            executable,
+            project_root,
+            asset_root: settings.asset_root.clone(),
+            manifest: load_manifest(&settings.asset_root),
             position,
             state: "idle".into(),
+            enabled: settings.enabled,
+            logged_missing: HashSet::new(),
         })
     }
 
     fn show(&self) {
+        if !self.enabled {
+            return;
+        }
         unsafe {
             let _ = ShowWindow(self.hwnd, SW_SHOWNOACTIVATE);
         }
@@ -552,28 +630,99 @@ impl AvatarOverlay {
         }
     }
 
+    fn reload_from_configuration(&mut self) {
+        let settings = load_avatar_settings(&self.executable, &self.project_root);
+        self.enabled = settings.enabled;
+        self.asset_root = settings.asset_root;
+        self.manifest = load_manifest(&self.asset_root);
+        self.logged_missing.clear();
+        if !self.enabled {
+            self.hide();
+            log_line("avatar overlay disabled by configuration");
+            return;
+        }
+        let state = self.state.clone();
+        self.set_state(&state);
+        log_line(format!(
+            "avatar configuration reloaded: enabled={}, asset_root={}",
+            self.enabled,
+            self.asset_root.display()
+        ));
+    }
+
+    fn log_missing_once(&mut self, key: String, message: String) {
+        if self.logged_missing.insert(key) {
+            log_line(message);
+        }
+    }
+
+    fn safe_asset_path(&self, filename: &str) -> Option<PathBuf> {
+        let relative = Path::new(filename);
+        if relative.is_absolute()
+            || relative
+                .components()
+                .any(|component| matches!(component, std::path::Component::ParentDir))
+        {
+            return None;
+        }
+        Some(self.asset_root.join(relative))
+    }
+
+    fn render_state_asset(&mut self, state: &str) -> bool {
+        let Some(filename) = self.manifest.states.get(state).cloned() else {
+            self.log_missing_once(
+                format!("manifest:{state}"),
+                format!("avatar state is absent from manifest: {state}"),
+            );
+            return false;
+        };
+        let Some(path) = self.safe_asset_path(&filename) else {
+            self.log_missing_once(
+                format!("unsafe:{state}"),
+                format!("avatar asset path rejected for {state}: {filename}"),
+            );
+            return false;
+        };
+        if !path.is_file() {
+            self.log_missing_once(
+                format!("missing:{state}"),
+                format!("missing avatar asset for {}: {}", state, path.display()),
+            );
+            return false;
+        }
+        match self.render_png(&path) {
+            Ok(()) => true,
+            Err(error) => {
+                self.log_missing_once(
+                    format!("invalid:{state}"),
+                    format!("avatar asset failed for {}: {}", state, error),
+                );
+                false
+            }
+        }
+    }
+
     fn set_state(&mut self, state: &str) {
         if !canonical_state(state) {
             log_line(format!("ignored unknown avatar state: {}", state));
             return;
         }
         self.state = state.to_string();
-        let Some(filename) = self.manifest.states.get(state) else {
-            log_line(format!("avatar state is absent from manifest: {}", state));
-            return;
-        };
-        let path = self.asset_root.join(filename);
-        if !path.is_file() {
-            log_line(format!(
-                "missing avatar asset for {}: {}",
-                state,
-                path.display()
-            ));
+        if !self.enabled {
+            self.hide();
             return;
         }
-        if let Err(error) = self.render_png(&path) {
-            log_line(format!("avatar asset failed for {}: {}", state, error));
+        if self.render_state_asset(state) {
+            return;
         }
+        if state != "idle" && self.render_state_asset("idle") {
+            self.log_missing_once(
+                format!("fallback:{state}"),
+                format!("avatar state {} fell back to idle", state),
+            );
+            return;
+        }
+        self.hide();
     }
 
     fn render_png(&mut self, path: &Path) -> Result<(), String> {
@@ -816,6 +965,7 @@ fn process_events(queue: &UiQueue, avatar: &mut AvatarOverlay, supervisor: &Core
                 }
                 "show" => avatar.show(),
                 "hide" => avatar.hide(),
+                "reload_avatar" => avatar.reload_from_configuration(),
                 "move" => {
                     if let (Some(x), Some(y)) = (message.x, message.y) {
                         avatar.set_position(x, y);
@@ -872,12 +1022,15 @@ fn run() -> Result<(), String> {
         };
         let stop_pipe = Arc::new(AtomicBool::new(false));
         let pipe_thread = pipe_receiver(queue.clone(), stop_pipe.clone());
-        let supervisor = CoreSupervisor::start(project_root, queue.clone());
-        let asset_root = find_asset_root(&exe, &find_project_root(&exe));
+        let supervisor = CoreSupervisor::start(project_root.clone(), queue.clone());
         let mut avatar =
-            AvatarOverlay::new(instance, asset_root).map_err(|error| error.to_string())?;
+            AvatarOverlay::new(instance, exe, project_root).map_err(|error| error.to_string())?;
         avatar.set_state("idle");
-        avatar.show();
+        if avatar.enabled {
+            avatar.show();
+        } else {
+            avatar.hide();
+        }
         let tray = tray_add(message_hwnd);
         let mut message = MSG::default();
         while GetMessageW(&mut message, None, 0, 0).0 > 0 {

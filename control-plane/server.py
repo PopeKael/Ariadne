@@ -17,16 +17,25 @@ import uuid
 import urllib.error
 import urllib.request
 import importlib.util
+import mimetypes
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 
 from home_chat_store import ChatStore
 from ariadne_tools import TOOL_REGISTRY, attach_document, clear_documents, list_documents, remove_document, retrieve_documents
-from ariadne_config import configuration_snapshot, save_storage
-from avatar_events import emit_state, emit_say
+from ariadne_config import (
+    CANONICAL_AVATAR_STATES,
+    avatar_pack_status,
+    configuration_snapshot,
+    default_avatar_directory,
+    effective_avatar,
+    save_avatar,
+    save_storage,
+)
+from avatar_events import emit, emit_say, emit_state
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
     fallback_interpretation,
@@ -1844,6 +1853,68 @@ def configuration_folder_status(path_value: str, *, operational: bool = False) -
     }
 
 
+def avatar_configuration_payload(asset_directory: str | None = None) -> dict[str, object]:
+    snapshot = configuration_snapshot()
+    avatar = dict(snapshot["avatar"])
+    selected_directory = asset_directory or str(avatar["asset_directory"])
+    pack = avatar_pack_status(selected_directory)
+    return {
+        "enabled": bool(avatar["enabled"]),
+        "asset_directory": str(selected_directory),
+        "default_asset_directory": str(default_avatar_directory().resolve()),
+        "sources": snapshot.get("avatar_sources", {}),
+        "pack": pack,
+        "canonical_states": list(CANONICAL_AVATAR_STATES),
+        "supported_asset_format": "Static PNG is currently supported by the Rust renderer; Avatar State protocol is format-independent.",
+    }
+
+
+def open_avatar_folder() -> dict[str, object]:
+    avatar, _ = effective_avatar()
+    folder = Path(str(avatar["asset_directory"])).resolve()
+    if not folder.is_dir():
+        return {"ok": False, "detail": f"Avatar pack folder does not exist: {folder}"}
+    try:
+        if os.name == "nt":
+            subprocess.Popen(
+                ["explorer.exe", str(folder)],
+                cwd=str(folder),
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        else:
+            subprocess.Popen(["xdg-open", str(folder)], cwd=str(folder))
+    except OSError as exc:
+        return {"ok": False, "detail": f"Could not open the avatar pack folder: {exc}"}
+    return {"ok": True, "folder": str(folder), "detail": "Avatar pack folder opened."}
+
+
+def avatar_preview(state: object) -> dict[str, object]:
+    if not isinstance(state, str) or state not in CANONICAL_AVATAR_STATES:
+        return {"ok": False, "detail": "Choose one of the canonical Avatar States."}
+    sent = emit_state(state)
+    return {
+        "ok": sent,
+        "state": state,
+        "detail": "Preview event sent to Ariadne Host." if sent else "Ariadne Host is unavailable; the preview event was not sent.",
+    }
+
+
+def avatar_asset_response(state: str) -> tuple[bytes, str] | None:
+    if state not in CANONICAL_AVATAR_STATES:
+        return None
+    pack = avatar_pack_status(str(effective_avatar()[0]["asset_directory"]))
+    row = next((item for item in pack["states"] if item["key"] == state), None)
+    if not row or row.get("state") != "available" or not isinstance(row.get("filename"), str):
+        return None
+    path = (Path(str(pack["directory"])) / str(row["filename"])).resolve()
+    try:
+        path.relative_to(Path(str(pack["directory"])).resolve())
+        payload = path.read_bytes()
+    except (OSError, ValueError):
+        return None
+    return payload, mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+
+
 def _file_timestamp(path: Path) -> str | None:
     try:
         return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
@@ -1917,6 +1988,7 @@ def configuration_status_payload() -> dict[str, object]:
     return {
         "ok": True,
         "config": snapshot,
+        "avatar": avatar_configuration_payload(),
         "storage": storage,
         "vault": vault,
         "runtime": {
@@ -2823,6 +2895,17 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/configuration":
             self.send_json(configuration_status_payload())
             return
+        if path == "/api/configuration/avatar":
+            self.send_json({"ok": True, "avatar": avatar_configuration_payload()})
+            return
+        if path == "/api/configuration/avatar/asset":
+            state = parse_qs(parsed.query).get("state", [""])[0]
+            asset = avatar_asset_response(state)
+            if asset is None:
+                self.send_bytes(b"Avatar State asset is unavailable.", "text/plain; charset=utf-8", 404)
+            else:
+                self.send_bytes(asset[0], asset[1])
+            return
         if path == "/launch/lmstudio":
             launch_lmstudio()
             self.send_json({"launched": True, "detail": "LM Studio launch requested."})
@@ -2867,6 +2950,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path in {"/configuration", "/setup"}:
             self.send_asset("configuration.html", "text/html; charset=utf-8")
             return
+        if path == "/configuration/avatar":
+            self.send_asset("configuration-avatar.html", "text/html; charset=utf-8")
+            return
         if path in {"/system-details", "/details", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
             return
@@ -2881,6 +2967,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/configuration.js":
             self.send_asset("configuration.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/configuration-avatar.css":
+            self.send_asset("configuration-avatar.css", "text/css; charset=utf-8")
+            return
+        if path == "/configuration-avatar.js":
+            self.send_asset("configuration-avatar.js", "text/javascript; charset=utf-8")
             return
         if path == "/page-shell.css":
             self.send_asset("page-shell.css", "text/css; charset=utf-8")
@@ -2932,6 +3024,43 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 apply_runtime_configuration()
                 self.send_json({"ok": True, "message": "Configuration saved. Safe runtime paths were refreshed.", **configuration_status_payload()})
+                return
+            if path == "/api/configuration/avatar":
+                avatar = body.get("avatar")
+                if not isinstance(avatar, dict):
+                    self.send_json({"ok": False, "message": "Avatar configuration is required."}, 400)
+                    return
+                try:
+                    save_avatar(avatar)
+                except ValueError as exc:
+                    try:
+                        errors = json.loads(str(exc))
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        errors = {"avatar": str(exc)}
+                    self.send_json({"ok": False, "message": "The avatar configuration could not be saved.", "errors": errors}, 400)
+                    return
+                apply_runtime_configuration()
+                reload_sent = emit("reload_avatar")
+                self.send_json({
+                    "ok": True,
+                    "message": "Avatar configuration saved and reload requested." if reload_sent else "Avatar configuration saved. Ariadne Host will use it on its next start.",
+                    "reload_sent": reload_sent,
+                    "avatar": avatar_configuration_payload(),
+                    "configuration": configuration_status_payload(),
+                })
+                return
+            if path == "/api/configuration/avatar/validate":
+                avatar = body.get("avatar") if isinstance(body.get("avatar"), dict) else {}
+                selected_directory = avatar.get("asset_directory")
+                if not isinstance(selected_directory, str) or not selected_directory.strip():
+                    selected_directory = str(effective_avatar()[0]["asset_directory"])
+                self.send_json({"ok": True, "avatar": avatar_configuration_payload(selected_directory)})
+                return
+            if path == "/api/configuration/avatar/open-folder":
+                self.send_json(open_avatar_folder(), 200)
+                return
+            if path == "/api/configuration/avatar/preview":
+                self.send_json(avatar_preview(body.get("state")), 200)
                 return
             if path == "/api/wsl/start":
                 self.send_json(wsl_environment_action(str(body.get("name") or ""), "start"))

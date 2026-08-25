@@ -13,11 +13,12 @@ from typing import Any
 
 PIPE_NAME = r"\\.\pipe\ariadne-control"
 PROTOCOL_VERSION = 1
-AVATAR_STATES = frozenset({
+CANONICAL_AVATAR_STATES = (
     "idle", "listening", "thinking", "searching_vault", "reading",
     "cross_referencing", "loading_model", "working", "speaking", "waiting",
     "success", "warning", "confused", "recovering", "error", "offline",
-})
+)
+AVATAR_STATES = frozenset(CANONICAL_AVATAR_STATES)
 
 
 def _write_windows_pipe(payload: bytes) -> bool:
@@ -77,6 +78,10 @@ def emit_state(state: str) -> bool:
     return emit("state", state=state)
 
 
+def reload_avatar() -> bool:
+    return emit("reload_avatar")
+
+
 def emit_say(text: str) -> bool:
     if not isinstance(text, str):
         return False
@@ -97,4 +102,7 @@ def move(x: int, y: int) -> bool:
     return emit("move", x=int(x), y=int(y))
 
 
-__all__ = ["AVATAR_STATES", "PIPE_NAME", "emit", "emit_state", "emit_say", "show", "hide", "move"]
+__all__ = [
+    "AVATAR_STATES", "CANONICAL_AVATAR_STATES", "PIPE_NAME", "emit", "emit_state",
+    "emit_say", "reload_avatar", "show", "hide", "move",
+]

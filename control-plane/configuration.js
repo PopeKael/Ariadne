@@ -1,5 +1,6 @@
 const STORAGE_KEYS = ["knowledge_vault", "documents", "images", "videos", "screenshots", "intake_root"];
 let dirty = false;
+let currentAvatar = null;
 
 async function configurationJson(url, options) {
   const response = await fetch(url, {cache: "no-store", ...options});
@@ -42,7 +43,15 @@ function renderRuntime(payload) {
   setText("vault-source-note", `${vault.path || runtime.active_vault || "Unknown"} · ${vault.source || "configured"}`);
   const badge = document.querySelector("#vault-active-badge"); if (badge) { badge.textContent = vault.active ? "ACTIVE SOURCE" : "CHECK PATH"; badge.className = `active-vault-badge ${vault.active ? "active" : "attention"}`; }
 }
-function render(payload) { renderStorage(payload); renderRuntime(payload); }
+function renderAvatar(payload) {
+  currentAvatar = payload || null;
+  const enabled = Boolean(payload?.enabled);
+  const status = document.querySelector("#avatar-enabled-status");
+  const toggle = document.querySelector("#avatar-toggle");
+  if (status) { status.textContent = enabled ? "Enabled" : "Disabled"; status.className = `active-vault-badge ${enabled ? "active" : "attention"}`; }
+  if (toggle) toggle.textContent = enabled ? "Disable avatar" : "Enable avatar";
+}
+function render(payload) { renderStorage(payload); renderRuntime(payload); renderAvatar(payload.avatar); }
 function formStorage() { return Object.fromEntries(STORAGE_KEYS.map(key => [key, document.querySelector(`#${key}`).value.trim()])); }
 async function load() {
   try { const payload = await configurationJson("/api/configuration"); render(payload); setStatus("Current configuration loaded. Changes are not saved until you press Save."); }
@@ -59,8 +68,19 @@ async function save(event) {
     setStatus(error.message, "error");
   }
 }
+async function toggleAvatar() {
+  if (!currentAvatar) return;
+  const enabled = !Boolean(currentAvatar.enabled);
+  setStatus(`${enabled ? "Enabling" : "Disabling"} desktop avatar…`);
+  try {
+    const payload = await configurationJson("/api/configuration/avatar", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({avatar: {enabled, asset_directory: currentAvatar.asset_directory}})});
+    render(payload.configuration || {avatar: payload.avatar});
+    setStatus(payload.message || "Avatar setting saved.", "success");
+  } catch (error) { setStatus(`Could not change avatar setting: ${error.message}`, "error"); }
+}
 document.querySelectorAll("#configuration-form input").forEach(input => input.addEventListener("input", () => { dirty = true; }));
 document.querySelector("#configuration-form").addEventListener("submit", save);
+document.querySelector("#avatar-toggle").addEventListener("click", toggleAvatar);
 document.querySelector("#back-link").addEventListener("click", event => { if (dirty && !window.confirm("Discard unsaved configuration changes?")) event.preventDefault(); });
 window.addEventListener("beforeunload", event => { if (dirty) { event.preventDefault(); event.returnValue = ""; } });
 load();

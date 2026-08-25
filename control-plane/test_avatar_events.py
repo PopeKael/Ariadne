@@ -23,6 +23,12 @@ class AvatarEventTests(unittest.TestCase):
         with patch.object(avatar_events, "_write_windows_pipe", side_effect=OSError("offline")):
             self.assertFalse(avatar_events.emit("show"))
 
+    def test_reload_avatar_is_versioned(self) -> None:
+        with patch.object(avatar_events, "_write_windows_pipe", return_value=True) as write:
+            self.assertTrue(avatar_events.reload_avatar())
+            payload = json.loads(write.call_args.args[0])
+        self.assertEqual(payload, {"v": 1, "type": "reload_avatar"})
+
 
 if __name__ == "__main__":
     unittest.main()

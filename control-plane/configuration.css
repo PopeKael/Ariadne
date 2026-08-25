@@ -31,3 +31,6 @@
   .configuration-actions{flex:none;margin-top:10px}
   .configuration-footer{flex:none;padding-top:8px}
 }
+
+.desktop-avatar-compact{margin-top:18px;padding-top:15px;border-top:1px solid rgba(37,64,77,.75)}
+.compact-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.compact-heading h3{margin:4px 0 0;font-size:16px}.compact-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.compact-actions .secondary-button{font-size:12px;padding:8px 10px}
