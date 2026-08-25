@@ -2,28 +2,21 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
+from ariadne_config import DEFAULT_STORAGE, configuration_snapshot
 
-# The application repository is not a KnowledgeVault.  This default is
-# deliberately explicit so a missing environment variable cannot silently
-# turn the repository checkout into a second, stale corpus.
-DEFAULT_VAULT_ROOT = Path(r"D:\Downloads\KnowledgeVault")
+DEFAULT_VAULT_ROOT = Path(DEFAULT_STORAGE["knowledge_vault"])
 
 
-def configured_vault_root() -> tuple[Path, str]:
-    override = os.environ.get("ARIADNE_VAULT_ROOT", "").strip()
-    if override:
-        return Path(override).expanduser().resolve(), "environment override"
-    return DEFAULT_VAULT_ROOT.resolve(), "configured default"
+_configuration = configuration_snapshot()
+VAULT_ROOT = Path(_configuration["storage"]["knowledge_vault"])
+VAULT_ROOT_SOURCE = str(_configuration["sources"]["knowledge_vault"])
 
 
-VAULT_ROOT, VAULT_ROOT_SOURCE = configured_vault_root()
-
-
-def vault_counts(root: Path = VAULT_ROOT) -> dict[str, object]:
+def vault_counts(root: Path | None = None) -> dict[str, object]:
     """Return inspectable catalogue and embedding counts for startup/health."""
+    root = root or VAULT_ROOT
     system = root / "00_System"
     result: dict[str, object] = {
         "root": str(root),

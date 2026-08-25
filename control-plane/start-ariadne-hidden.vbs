@@ -1,5 +1,7 @@
 Option Explicit
 
+' Legacy rollback wrapper. Normal startup now points directly to ariadne-host.exe.
+
 Dim shell, files, scriptPath, powershellPath, command
 Set shell = CreateObject("WScript.Shell")
 Set files = CreateObject("Scripting.FileSystemObject")

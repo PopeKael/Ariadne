@@ -1,17 +1,28 @@
 param(
-    [switch]$OpenBrowser
+    [switch]$OpenBrowser,
+    [switch]$LegacyPythonTray
 )
 
 $ErrorActionPreference = 'Stop'
 
 $controlPlane = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $controlPlane
-$vaultRoot = if ($env:ARIADNE_VAULT_ROOT) { (Resolve-Path -LiteralPath $env:ARIADNE_VAULT_ROOT).Path } else { 'D:\Downloads\KnowledgeVault' }
+$explicitVaultRoot = $env:ARIADNE_VAULT_ROOT
+$configPath = if ($env:ARIADNE_CONFIG_PATH) { $env:ARIADNE_CONFIG_PATH } else { Join-Path $env:LOCALAPPDATA 'Ariadne\configuration.json' }
+$savedVaultRoot = $null
+if (-not $explicitVaultRoot -and (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+    try {
+        $savedConfiguration = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $savedVaultRoot = $savedConfiguration.storage.knowledge_vault
+    }
+    catch { $savedVaultRoot = $null }
+}
+$vaultRoot = if ($explicitVaultRoot) { (Resolve-Path -LiteralPath $explicitVaultRoot).Path } elseif ($savedVaultRoot) { (Resolve-Path -LiteralPath $savedVaultRoot).Path } else { 'D:\Downloads\KnowledgeVault' }
 $vaultSystem = Join-Path $vaultRoot '00_System'
 if (-not (Test-Path -LiteralPath $vaultSystem -PathType Container)) {
     throw "Configured Ariadne Vault root is unavailable: $vaultRoot"
 }
-$env:ARIADNE_VAULT_ROOT = $vaultRoot
+if ($explicitVaultRoot) { $env:ARIADNE_VAULT_ROOT = $vaultRoot } else { Remove-Item Env:ARIADNE_VAULT_ROOT -ErrorAction SilentlyContinue }
 $catalogueCount = 0
 $embeddingDocuments = 0
 $embeddingChunks = 0
@@ -29,8 +40,40 @@ if (Test-Path -LiteralPath $embeddingPath) {
 }
 Write-Host "Ariadne Vault root: $vaultRoot" -ForegroundColor Cyan
 Write-Host ("Catalogue: {0:N0} records | Embeddings: {1:N0} documents / {2:N0} chunks" -f $catalogueCount, $embeddingDocuments, $embeddingChunks) -ForegroundColor Cyan
+$hostCandidates = @(
+    (Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'),
+    (Join-Path $controlPlane 'host\target\release\ariadne-host.exe'),
+    (Join-Path $controlPlane 'host\ariadne-host.exe')
+)
+$hostExe = $hostCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 $tray = Join-Path $controlPlane 'tray.py'
 $url = 'http://localhost:8765/'
+
+if ($hostExe -and -not $LegacyPythonTray) {
+    Write-Host "Starting Ariadne Rust Host: $hostExe" -ForegroundColor Green
+    Start-Process -FilePath (Resolve-Path -LiteralPath $hostExe).Path -WorkingDirectory $projectRoot -WindowStyle Hidden
+    if ($OpenBrowser) {
+        $opened = $false
+        for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            try {
+                $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 1
+                if ($response.StatusCode -eq 200) {
+                    Start-Process $url
+                    $opened = $true
+                    break
+                }
+            }
+            catch { }
+            Start-Sleep -Milliseconds 250
+        }
+        if (-not $opened) { Start-Process $url }
+    }
+    return
+}
+
+if (-not $LegacyPythonTray) {
+    Write-Warning "Rust Ariadne Host is not built. Falling back to the legacy Python tray; use -LegacyPythonTray explicitly during rollback."
+}
 
 if (-not (Test-Path -LiteralPath $tray -PathType Leaf)) {
     throw "Ariadne tray entry point not found: $tray"

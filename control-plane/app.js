@@ -426,8 +426,9 @@ function renderInteractiveAI(runtime) {
     const root = document.querySelector(selector);
     if (!root) return;
     const state = value?.state || "offline";
-    root.textContent = state === "online" ? "Online" : state === "starting" ? "Starting" : state === "standby" ? "Standby" : state === "error" ? "Error" : "Offline";
-    root.classList.toggle("online", state === "online");
+    const lifecycle = value?.lifecycle_state;
+    root.textContent = lifecycle === "READY" ? "Ready" : lifecycle === "BUSY" ? "Busy" : lifecycle === "STOPPING" ? "Stopping" : lifecycle === "ERROR" || state === "error" ? "Error" : state === "online" ? "Online" : state === "starting" ? "Starting" : state === "standby" ? "Standby" : "Offline";
+    root.classList.toggle("online", state === "online" && lifecycle !== "BUSY");
     root.classList.toggle("starting", state === "starting");
     root.classList.toggle("error", state === "error");
   };
@@ -435,12 +436,20 @@ function renderInteractiveAI(runtime) {
   setState("#wan2gp-profile-state", runtime.wan2gp);
   const detail = document.querySelector("#wan2gp-profile-detail");
   if (detail && runtime.wan2gp?.detail) detail.textContent = runtime.wan2gp.detail;
+  const ownership = document.querySelector("#gpu-ownership");
+  if (ownership) {
+    const gpu = runtime.gpu || {};
+    ownership.textContent = `GPU ownership: ${gpu.current_gpu_owner || "NONE"}${gpu.transition_state && gpu.transition_state !== "IDLE" ? ` · ${gpu.transition_state}` : ""}`;
+  }
+  const progress = document.querySelector("#wan2gp-progress");
+  if (progress) progress.textContent = runtime.gpu?.transition_state !== "IDLE" ? runtime.gpu?.detail || "Transitioning GPU workload…" : runtime.wan2gp?.detail || "";
   const processor = document.querySelector("#wan2gp-launch-button");
   const openProcessor = document.querySelector("#wan2gp-open-button");
   if (processor) {
     const state = runtime.wan2gp?.state || "offline";
-    processor.textContent = state === "online" ? "Stop video processor" : state === "starting" ? "Starting..." : "Start video processor";
-    processor.disabled = state === "starting";
+    const stopping = runtime.wan2gp?.lifecycle_state === "STOPPING" || runtime.gpu?.transition_state === "STOPPING_RENDERER";
+    processor.textContent = stopping ? "Stopping..." : state === "online" ? "Stop video processor" : state === "starting" ? "Starting..." : "Start video processor";
+    processor.disabled = state === "starting" || stopping;
     processor.dataset.action = state === "online" ? "stop" : "start";
   }
   if (openProcessor) {
@@ -453,7 +462,7 @@ function renderInteractiveAI(runtime) {
 }
 
 async function waitForWan2GP() {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  for (let attempt = 0; attempt < 195; attempt += 1) {
     const response = await fetch("/api/status", {cache: "no-store"});
     const status = await response.json();
     const runtime = status.interactive_ai || {};
@@ -462,7 +471,7 @@ async function waitForWan2GP() {
     if (runtime.wan2gp?.state === "error") throw new Error(runtime.wan2gp.detail || "Linux video renderer stopped during startup.");
     await new Promise((resolve) => window.setTimeout(resolve, 1000));
   }
-  throw new Error("Linux video renderer did not become ready within two minutes. Check the Ariadne runtime log.");
+  throw new Error("Linux video renderer did not become ready before the Ariadne startup deadline. Check the lifecycle status and runtime log.");
 }
 
 async function launchWan2GP(action) {
@@ -496,8 +505,10 @@ async function launchWan2GP(action) {
     await refresh();
   } catch (error) {
     if (rendererWindow && !rendererWindow.closed) rendererWindow.close();
-    if (button) { button.disabled = false; button.textContent = "Start video processor"; }
-    window.alert(error.message);
+    if (button) { button.disabled = false; button.textContent = "Retry video processor"; }
+    const progress = document.querySelector("#wan2gp-progress");
+    if (progress) progress.textContent = error.message || "The renderer transition needs attention.";
+    await refresh();
   }
 }
 async function activateProfile(profile) {
@@ -507,7 +518,8 @@ async function activateProfile(profile) {
     renderInteractiveAI(result.interactive_ai || {});
     await refresh();
   } catch (error) {
-    window.alert(error.message);
+    const progress = document.querySelector("#wan2gp-progress");
+    if (progress) progress.textContent = error.message || "The Ariadne profile transition needs attention.";
   }
 }
 

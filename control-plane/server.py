@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import csv
+from contextlib import contextmanager
 import ctypes
 import io
 import json
 import os
+import socket
 import shutil
 import subprocess
 import ssl
@@ -23,6 +25,8 @@ from urllib.parse import urlparse
 
 from home_chat_store import ChatStore
 from ariadne_tools import TOOL_REGISTRY, attach_document, clear_documents, list_documents, remove_document, retrieve_documents
+from ariadne_config import configuration_snapshot, save_storage
+from avatar_events import emit_state, emit_say
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
     fallback_interpretation,
@@ -44,15 +48,16 @@ OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 HOME_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_CTX", "16384")))
 PLANNER_MODEL = os.environ.get("ARIADNE_PLANNER_MODEL", "qwen3.5:9b-q4_K_M")
-PLANNER_KEEP_ALIVE: int | str = os.environ.get("ARIADNE_PLANNER_KEEP_ALIVE", "-1")
+PLANNER_KEEP_ALIVE: int | str = os.environ.get("ARIADNE_PLANNER_KEEP_ALIVE", "adaptive")
 if isinstance(PLANNER_KEEP_ALIVE, str) and PLANNER_KEEP_ALIVE.strip().lstrip("-").isdigit():
     PLANNER_KEEP_ALIVE = int(PLANNER_KEEP_ALIVE)
 PLANNER_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_PLANNER_NUM_CTX", "4096")))
 PLANNER_OUTPUT_TOKENS = max(64, int(os.environ.get("ARIADNE_PLANNER_NUM_PREDICT", "256")))
+MODEL_MONITOR_INTERVAL_SECONDS = 30.0
 HOME_EVENT_LOCK = threading.Lock()
 LIBRARIAN_EVENTS_PATH = Path(os.environ.get("ARIADNE_LIBRARIAN_EVENTS_PATH", str(ROOT / "runtime" / "librarian-events.jsonl")))
 LIBRARIAN_EVENT_STREAM = LibrarianEventStream(LIBRARIAN_EVENTS_PATH)
-OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "5m")
+OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "adaptive")
 OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://127.0.0.1:3000/")
 OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
 OPENAI_STATUS_URL = "https://status.openai.com/api/v2/summary.json"
@@ -86,6 +91,26 @@ WAN2GP_PROCESS: subprocess.Popen | None = None
 BROWSER_HEARTBEAT_TIMEOUT_SECONDS = 20
 LAST_BROWSER_HEARTBEAT = time.monotonic()
 LIFECYCLE_THREAD: threading.Thread | None = None
+MODEL_ACTIVITY_LOCK = threading.RLock()
+MODEL_IN_FLIGHT: dict[str, int] = {}
+MODEL_LAST_USED: dict[str, float] = {}
+GPU_ARBITRATION_LOCK = threading.RLock()
+GPU_OWNER = "NONE"
+GPU_AI_ADMISSIONS = 0
+GPU_TRANSITION_STATE = "IDLE"
+GPU_TRANSITION_DETAIL = "GPU is available to the next approved workload."
+GPU_TRANSITION_OPERATION: str | None = None
+GPU_TRANSITION_STARTED_AT: float | None = None
+RENDERER_START_THREAD: threading.Thread | None = None
+RENDERER_STOP_THREAD: threading.Thread | None = None
+RENDERER_OPERATION_ID: str | None = None
+RENDERER_STOP_REQUESTED = False
+RENDERER_LIFECYCLE_STATE = "STOPPED"
+RENDERER_LIFECYCLE_ERROR: str | None = None
+RENDERER_START_DEADLINE_SECONDS = max(60.0, float(os.environ.get("ARIADNE_RENDERER_START_DEADLINE", "180")))
+RENDERER_MIN_FREE_VRAM_GB = max(1.0, float(os.environ.get("ARIADNE_RENDERER_MIN_FREE_VRAM_GB", "4")))
+RENDERER_POLL_INTERVAL_SECONDS = max(0.5, float(os.environ.get("ARIADNE_RENDERER_POLL_INTERVAL", "1")))
+RENDERER_LIFECYCLE_LOG = ROOT / "runtime" / "renderer-lifecycle.jsonl"
 WSL_SESSION_PROCESSES: dict[str, subprocess.Popen] = {}
 IDLE_SHUTDOWN_DONE = False
 VAULT_ACTIONS = {
@@ -97,6 +122,21 @@ VAULT_ACTIONS = {
     "audit_failures": ("Audit-Failed-Ingestion.ps1", []),
     "embedding_rebuild": ("Build-Embeddings.ps1", ["-Rebuild"]),
 }
+
+
+def apply_runtime_configuration() -> dict[str, object]:
+    """Refresh safe path consumers after a saved configuration change."""
+    global VAULT_ROOT, VAULT_ROOT_SOURCE, VAULT_SYSTEM, HOME_EVENTS_PATH, HOME_CHAT_STORE
+    snapshot = configuration_snapshot()
+    VAULT_ROOT = Path(str(snapshot["storage"]["knowledge_vault"]))
+    VAULT_ROOT_SOURCE = str(snapshot["sources"]["knowledge_vault"])
+    VAULT_SYSTEM = VAULT_ROOT / "00_System"
+    HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
+    HOME_CHAT_STORE = ChatStore(VAULT_ROOT)
+    # The retrieval module and its World State companion resolve ROOT at load
+    # time.  Force the next Home request to load them against this same root.
+    sys.modules.pop("ariadne_mcp_active_vault", None)
+    return snapshot
 
 
 
@@ -453,6 +493,129 @@ def json_http(url: str, timeout: float = 2.5) -> dict[str, object]:
         return json.loads(response.read().decode("utf-8"))
 
 
+def model_residency_policy(gpu: dict[str, object] | None = None) -> dict[str, object]:
+    """Choose model idle/pressure limits from the actual GPU capacity."""
+    gpu = gpu if isinstance(gpu, dict) else gpu_status()
+    total_gb = float(gpu.get("total_gb") or 0)
+    if total_gb >= 24:
+        return {
+            "tier": "relaxed",
+            "idle_seconds": 1_800,
+            "preferred_idle_seconds": 3_600,
+            "pressure_free_gb": 4.0,
+            "detail": "Higher VRAM capacity; resident models may remain warm longer.",
+        }
+    if total_gb >= 16:
+        return {
+            "tier": "balanced",
+            "idle_seconds": 900,
+            "preferred_idle_seconds": 1_800,
+            "pressure_free_gb": 3.0,
+            "detail": "Balanced VRAM policy; idle non-preferred models are released after 15 minutes.",
+        }
+    return {
+        "tier": "constrained",
+        "idle_seconds": 300,
+        "preferred_idle_seconds": 900,
+        "pressure_free_gb": 2.0,
+        "detail": "Constrained VRAM policy; idle models are released sooner to protect active work.",
+    }
+
+
+def adaptive_model_keep_alive() -> str:
+    """Return a reversible standby duration; zero is reserved for explicit unloads."""
+    return f"{int(model_residency_policy().get('idle_seconds', 900))}s"
+
+
+def log_renderer_lifecycle(operation: str, **data: object) -> None:
+    payload = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "operation": operation,
+        "gpu_owner": GPU_OWNER,
+        "lifecycle_state": RENDERER_LIFECYCLE_STATE,
+        **data,
+    }
+    try:
+        RENDERER_LIFECYCLE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with RENDERER_LIFECYCLE_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def gpu_owner_status() -> dict[str, object]:
+    with GPU_ARBITRATION_LOCK:
+        elapsed = (
+            max(0, time.monotonic() - GPU_TRANSITION_STARTED_AT)
+            if GPU_TRANSITION_STARTED_AT is not None else None
+        )
+        return {
+            "current_gpu_owner": GPU_OWNER,
+            "transition_state": GPU_TRANSITION_STATE,
+            "detail": GPU_TRANSITION_DETAIL,
+            "operation_id": GPU_TRANSITION_OPERATION,
+            "elapsed_seconds": elapsed,
+        }
+
+
+def ai_gpu_work_in_flight() -> dict[str, object]:
+    with GPU_ARBITRATION_LOCK:
+        admissions = GPU_AI_ADMISSIONS
+    with MODEL_ACTIVITY_LOCK:
+        local_models = {name: count for name, count in MODEL_IN_FLIGHT.items() if count > 0}
+    with SESSION_LOCK:
+        jobs = [
+            {"job_id": job_id, "kind": job.get("kind"), "state": job.get("state")}
+            for job_id, job in JOBS.items()
+            if job.get("state") == "running" and job.get("kind") == "query"
+        ]
+    return {"admissions": admissions, "local_models": local_models, "vault_jobs": jobs, "busy": bool(admissions or local_models or jobs)}
+
+
+def ensure_ai_gpu_access() -> None:
+    global GPU_OWNER
+    with GPU_ARBITRATION_LOCK:
+        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+            raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {GPU_TRANSITION_DETAIL}")
+        GPU_OWNER = "AI"
+
+
+@contextmanager
+def ai_gpu_admission():
+    """Reserve AI ownership across a complete Ariadne request, including retrieval."""
+    global GPU_AI_ADMISSIONS
+    ensure_ai_gpu_access()
+    with GPU_ARBITRATION_LOCK:
+        GPU_AI_ADMISSIONS += 1
+    try:
+        yield
+    finally:
+        with GPU_ARBITRATION_LOCK:
+            GPU_AI_ADMISSIONS = max(0, GPU_AI_ADMISSIONS - 1)
+
+
+@contextmanager
+def model_activity(model: str):
+    """Mark a model in-flight so the memory governor cannot evict it mid-request."""
+    ensure_ai_gpu_access()
+    name = str(model or "").strip()
+    if name:
+        with MODEL_ACTIVITY_LOCK:
+            MODEL_IN_FLIGHT[name] = MODEL_IN_FLIGHT.get(name, 0) + 1
+            MODEL_LAST_USED[name] = time.monotonic()
+    try:
+        yield
+    finally:
+        if name:
+            with MODEL_ACTIVITY_LOCK:
+                remaining = MODEL_IN_FLIGHT.get(name, 1) - 1
+                if remaining > 0:
+                    MODEL_IN_FLIGHT[name] = remaining
+                else:
+                    MODEL_IN_FLIGHT.pop(name, None)
+                MODEL_LAST_USED[name] = time.monotonic()
+
+
 def ollama_catalog() -> dict[str, object]:
     try:
         tags = json_http(f"{OLLAMA_URL}/api/tags")
@@ -468,14 +631,30 @@ def ollama_catalog() -> dict[str, object]:
                 "size": item.get("size"),
                 "modified_at": item.get("modified_at"),
             })
-        loaded_names = [
-            str(item.get("name") or item.get("model"))
-            for item in loaded
-            if isinstance(item, dict) and (item.get("name") or item.get("model"))
-        ]
-        return {"available": True, "models": model_rows, "loaded": loaded_names}
+        loaded_rows = []
+        for item in loaded:
+            if not isinstance(item, dict) or not (item.get("name") or item.get("model")):
+                continue
+            loaded_rows.append({
+                "name": str(item.get("name") or item.get("model")),
+                "size": item.get("size"),
+                "size_vram": item.get("size_vram"),
+                "expires_at": item.get("expires_at"),
+                "context_length": item.get("context_length"),
+            })
+        loaded_names = [str(item["name"]) for item in loaded_rows]
+        return {
+            "available": True,
+            "models": model_rows,
+            "loaded": loaded_names,
+            "loaded_details": loaded_rows,
+            "loaded_vram_bytes": sum(
+                int(item.get("size_vram") or 0) for item in loaded_rows
+                if isinstance(item.get("size_vram"), (int, float))
+            ),
+        }
     except (OSError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
-        return {"available": False, "models": [], "loaded": [], "detail": str(exc)}
+        return {"available": False, "models": [], "loaded": [], "loaded_details": [], "detail": str(exc)}
 
 
 def ollama_status() -> dict[str, object]:
@@ -493,6 +672,91 @@ def ollama_status() -> dict[str, object]:
         "detail": detail,
         "models": len(models),
         "loaded": loaded_names,
+        "loaded_details": catalog.get("loaded_details", []),
+        "loaded_vram_gb": round(float(catalog.get("loaded_vram_bytes") or 0) / 1024**3, 1),
+    }
+
+
+def unload_ollama_model(name: str) -> bool:
+    try:
+        post_json(f"{OLLAMA_URL}/api/generate", {"model": name, "keep_alive": 0}, timeout=8.0)
+        return True
+    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
+        return False
+
+
+def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object] | None = None, pressure: bool = False) -> dict[str, object]:
+    """The single Ollama residency release path used by monitoring and transitions."""
+    catalog = ollama_catalog()
+    if not catalog.get("available"):
+        return {"unloaded": [], "protected": [], "remaining": [], "available": False}
+    policy = policy or model_residency_policy()
+    now = time.monotonic()
+    with MODEL_ACTIVITY_LOCK:
+        protected = set(MODEL_IN_FLIGHT)
+        last_used = dict(MODEL_LAST_USED)
+    preferred = {HOME_CHAT_MODEL, PLANNER_MODEL}
+    unloaded: list[str] = []
+    blocked: list[str] = []
+    for item in catalog.get("loaded_details", []):
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "")
+        if not name:
+            continue
+        if name in protected:
+            blocked.append(name)
+            continue
+        idle_seconds = now - last_used.get(name, now)
+        limit = float(policy["preferred_idle_seconds"] if name in preferred else policy["idle_seconds"])
+        if force or pressure or idle_seconds >= limit:
+            if unload_ollama_model(name):
+                unloaded.append(name)
+    return {"unloaded": unloaded, "protected": blocked, "remaining": [], "available": True}
+
+
+def monitor_ollama_models() -> dict[str, object]:
+    """Release idle resident models without deleting their installed files."""
+    with GPU_ARBITRATION_LOCK:
+        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+            return {"state": "deferred", "unloaded": [], "detail": "GPU arbitration is handling a workload transition."}
+    catalog = ollama_catalog()
+    if not catalog.get("available"):
+        return {"state": "offline", "unloaded": [], "detail": catalog.get("detail", "Ollama is unavailable.")}
+    gpu = gpu_status()
+    policy = model_residency_policy(gpu)
+    free_gb = float(gpu.get("free_gb") or 0)
+    pressure = bool(gpu.get("available") and free_gb < float(policy["pressure_free_gb"]))
+    with MODEL_ACTIVITY_LOCK:
+        now = time.monotonic()
+        for item in catalog.get("loaded_details", []):
+            if isinstance(item, dict) and item.get("name"):
+                MODEL_LAST_USED.setdefault(str(item["name"]), now)
+    release = release_idle_ollama_models(policy=policy, pressure=pressure)
+    unloaded = release["unloaded"]
+    return {
+        "state": "pressure" if pressure else "nominal",
+        "policy": policy,
+        "free_vram_gb": round(free_gb, 1),
+        "unloaded": unloaded,
+        "detail": f"Released {len(unloaded)} idle model(s)." if unloaded else "No idle models required release.",
+    }
+
+
+def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, object]:
+    catalog = ollama_catalog()
+    if not catalog.get("available"):
+        return {"state": "offline", "available": False, "detail": catalog.get("detail", "Ollama is unavailable.")}
+    gpu = gpu if isinstance(gpu, dict) else gpu_status()
+    policy = model_residency_policy(gpu)
+    return {
+        "state": "pressure" if gpu.get("state") == "critical" else "online",
+        "available": True,
+        "policy": policy,
+        "loaded": catalog.get("loaded_details", []),
+        "loaded_vram_gb": round(float(catalog.get("loaded_vram_bytes") or 0) / 1024**3, 1),
+        "gpu_free_gb": gpu.get("free_gb"),
+        "detail": "Installed models remain reloadable; only resident memory is governed.",
     }
 
 
@@ -597,7 +861,9 @@ def start_openwebui_container() -> str | None:
 def preload_ollama_model(model: str | None = None) -> dict[str, object]:
     selected_model = (model or OLLAMA_CHAT_MODEL).strip() or OLLAMA_CHAT_MODEL
     keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE
-    if OLLAMA_PRELOAD_KEEP_ALIVE.strip().lstrip("-").isdigit():
+    if OLLAMA_PRELOAD_KEEP_ALIVE.casefold() == "adaptive":
+        keep_alive = adaptive_model_keep_alive()
+    elif OLLAMA_PRELOAD_KEEP_ALIVE.strip().lstrip("-").isdigit():
         keep_alive = int(OLLAMA_PRELOAD_KEEP_ALIVE)
     payload = {
         "model": selected_model,
@@ -679,36 +945,106 @@ def interactive_ai_status() -> dict[str, object]:
     return {
         "ubuntu": {"state": "online" if (process_running or wsl_running) else "offline", "detail": "Ubuntu 24.04 Linux Environment · WSL 2 · ROCm"},
         "wan2gp": wan2gp,
+        "gpu": gpu_owner_status(),
     }
 
 
-def wan2gp_status() -> dict[str, object]:
-    global WAN2GP_PROCESS
+def wan2gp_status(*, ignore_transition: bool = False) -> dict[str, object]:
+    global WAN2GP_PROCESS, GPU_OWNER, RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR
+    transition = gpu_owner_status()
+    if not ignore_transition and (transition["transition_state"] != "IDLE" or GPU_OWNER == "TRANSITION"):
+        return {
+            "state": "starting" if GPU_OWNER == "TRANSITION" else "error",
+            "lifecycle_state": RENDERER_LIFECYCLE_STATE,
+            "detail": GPU_TRANSITION_DETAIL,
+            "gpu": transition,
+        }
     try:
         renderer = json_http("http://127.0.0.1:8766/api/status")
         if renderer.get("online"):
-            return {"state": "online", "detail": "Local Music Video Renderer · GPU backend ready · Ubuntu 24.04"}
+            gpu_ready = bool(renderer.get("device")) and float(renderer.get("vram_total") or 0) > 0
+            if not gpu_ready:
+                return {"state": "starting", "lifecycle_state": "WAITING_FOR_HEALTH", "detail": "Renderer HTTP service is responding; waiting for usable GPU telemetry.", "renderer": renderer, "gpu": transition}
+            clip = renderer.get("clip") if isinstance(renderer.get("clip"), dict) else {}
+            busy = clip.get("state") in {"queued", "running"}
+            with GPU_ARBITRATION_LOCK:
+                if GPU_OWNER == "NONE":
+                    GPU_OWNER = "RENDERER"
+                RENDERER_LIFECYCLE_STATE = "BUSY" if busy else "READY"
+                RENDERER_LIFECYCLE_ERROR = None
+            return {
+                "state": "online",
+                "lifecycle_state": "BUSY" if busy else "READY",
+                "detail": "Local Music Video Renderer · GPU backend ready · Ubuntu 24.04" if not busy else "Renderer is processing a video job.",
+                "renderer": renderer,
+                "gpu": gpu_owner_status(),
+            }
         renderer_state = str(renderer.get("state") or "").lower()
         if renderer_state == "starting":
-            return {"state": "starting", "detail": "Local Music Video Renderer · GPU backend is starting"}
+            return {"state": "starting", "lifecycle_state": "WAITING_FOR_HEALTH", "detail": "Local Music Video Renderer · GPU backend is starting", "gpu": transition}
         if renderer_state in {"stopped", "idle"}:
-            return {"state": "standby", "detail": "Local Music Video Renderer · GPU backend unloaded after idle"}
+            return {"state": "standby", "lifecycle_state": "STOPPED", "detail": "Local Music Video Renderer · GPU backend is stopped", "gpu": transition}
         renderer_error = renderer.get("error")
         if renderer_error:
-            return {"state": "error", "detail": f"Local Music Video Renderer · {renderer_error}"}
+            return {"state": "error", "lifecycle_state": "ERROR", "detail": f"Local Music Video Renderer · {renderer_error}", "gpu": transition}
+        if isinstance(renderer, dict):
+            return {"state": "error", "lifecycle_state": "ERROR", "detail": "Port 8766 is occupied but is not the Ariadne renderer service.", "gpu": transition}
     except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
         pass
     if WAN2GP_PROCESS is not None:
         returncode = WAN2GP_PROCESS.poll()
         if returncode is None:
-            return {"state": "starting", "detail": "Linux video renderer is starting - ROCm environment loading"}
+            return {"state": "starting", "lifecycle_state": "STARTING_BACKEND", "detail": "Linux video renderer is starting - ROCm environment loading", "gpu": transition}
         if returncode != 0:
-            return {"state": "error", "detail": f"Linux video renderer stopped during startup - exit {returncode} - see runtime/linux-renderer.log"}
+            RENDERER_LIFECYCLE_STATE = "ERROR"
+            RENDERER_LIFECYCLE_ERROR = f"Linux video renderer exited with code {returncode}."
+            return {"state": "error", "lifecycle_state": "ERROR", "detail": f"{RENDERER_LIFECYCLE_ERROR} See runtime/linux-renderer.log", "gpu": transition}
         WAN2GP_PROCESS = None
-    return {"state": "offline", "detail": "Linux video renderer is stopped - port 8766 is not listening"}
+    if RENDERER_LIFECYCLE_STATE == "ERROR" and RENDERER_LIFECYCLE_ERROR:
+        return {"state": "error", "lifecycle_state": "ERROR", "detail": RENDERER_LIFECYCLE_ERROR, "gpu": transition}
+    return {"state": "offline", "lifecycle_state": "STOPPED", "detail": "Linux video renderer is stopped - port 8766 is not listening", "gpu": transition}
 
 
-def start_wan2gp() -> dict[str, object]:
+def release_ollama_for_renderer(operation_id: str) -> dict[str, object]:
+    """Use the shared residency governor to release idle AI models for rendering."""
+    started = time.monotonic()
+    before_gpu = gpu_status()
+    release = release_idle_ollama_models(force=True, policy=model_residency_policy(before_gpu))
+    unloaded = release["unloaded"]
+    blocked = release["protected"]
+    deadline = time.monotonic() + 20.0
+    after_gpu = before_gpu
+    remaining: list[str] = []
+    while time.monotonic() < deadline:
+        after_catalog = ollama_catalog()
+        remaining = [
+            str(item.get("name")) for item in after_catalog.get("loaded_details", [])
+            if isinstance(item, dict) and item.get("name")
+        ]
+        after_gpu = gpu_status()
+        if not remaining:
+            break
+        time.sleep(1)
+    log_renderer_lifecycle(
+        "ollama_release",
+        operation_id=operation_id,
+        vram_before=before_gpu,
+        vram_after=after_gpu,
+        unloaded=unloaded,
+        protected=blocked,
+        remaining=remaining,
+        elapsed_seconds=round(time.monotonic() - started, 2),
+    )
+    if remaining:
+        raise RuntimeError(f"Ollama models remain resident: {', '.join(remaining)}")
+    if blocked:
+        raise RuntimeError(f"Ollama inference is still in flight: {', '.join(blocked)}")
+    if after_gpu.get("available") and float(after_gpu.get("free_gb") or 0) < RENDERER_MIN_FREE_VRAM_GB:
+        raise RuntimeError(f"Only {after_gpu.get('free_gb')} GB VRAM is free after Ollama release; renderer requires at least {RENDERER_MIN_FREE_VRAM_GB:g} GB.")
+    return {"before": before_gpu, "after": after_gpu, "unloaded": unloaded}
+
+
+def _start_wan2gp_backend() -> dict[str, object]:
     global WAN2GP_PROCESS
 
     def start_renderer_backend() -> dict[str, object]:
@@ -720,15 +1056,24 @@ def start_wan2gp() -> dict[str, object]:
             except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
                 time.sleep(0.5)
         if renderer is None:
-            current_status = wan2gp_status()
+            current_status = wan2gp_status(ignore_transition=True)
             if current_status["state"] == "error":
                 return {"ok": False, "message": current_status["detail"], "wan2gp": current_status}
             return {"ok": True, "wan2gp": current_status}
         if renderer.get("online"):
             return {"ok": True, "wan2gp": {"state": "online", "detail": "Local Music Video Renderer · GPU backend ready · Ubuntu 24.04"}}
         try:
-            response = post_json("http://127.0.0.1:8766/api/start", {})
-        except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            response = post_json("http://127.0.0.1:8766/api/start", {}, timeout=20.0)
+        except (TimeoutError, socket.timeout) as exc:
+            # The renderer may continue booting after its synchronous start
+            # endpoint exceeds the HTTP client timeout.  Treat this as a
+            # pending startup and let the browser's readiness poll decide.
+            return {"ok": True, "wan2gp": {"state": "starting", "detail": "Local Music Video Renderer is still starting; readiness will continue to be checked."}}
+        except urllib.error.URLError as exc:
+            if isinstance(exc.reason, (TimeoutError, socket.timeout)):
+                return {"ok": True, "wan2gp": {"state": "starting", "detail": "Local Music Video Renderer is still starting; readiness will continue to be checked."}}
+            return {"ok": False, "message": f"Could not start the Linux GPU backend: {exc}", "wan2gp": {"state": "error", "detail": str(exc)}}
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
             return {"ok": False, "message": f"Could not start the Linux GPU backend: {exc}", "wan2gp": {"state": "error", "detail": str(exc)}}
         status = response.get("status") or {}
         if status.get("online"):
@@ -739,7 +1084,9 @@ def start_wan2gp() -> dict[str, object]:
         return {"ok": False, "message": f"Linux video renderer failed to start: {detail}", "wan2gp": {"state": "error", "detail": str(detail)}}
 
     with PROFILE_LOCK:
-        current = wan2gp_status()
+        current = wan2gp_status(ignore_transition=True)
+        if current["state"] == "error" and "occupied" in str(current.get("detail") or "").casefold():
+            return {"ok": False, "message": current["detail"], "wan2gp": current}
         if current["state"] == "online":
             return {"ok": True, "wan2gp": current}
         if current["state"] == "standby":
@@ -766,7 +1113,109 @@ def start_wan2gp() -> dict[str, object]:
             log_handle.close()
         return start_renderer_backend()
 
-def stop_wan2gp() -> dict[str, object]:
+
+def _renderer_start_worker(operation_id: str) -> None:
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
+    global GPU_TRANSITION_STARTED_AT, RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR
+    started = time.monotonic()
+    try:
+        if RENDERER_STOP_REQUESTED:
+            raise RuntimeError("Renderer startup was cancelled.")
+        with GPU_ARBITRATION_LOCK:
+            GPU_TRANSITION_STATE = "AI_DRAINING"
+            GPU_TRANSITION_DETAIL = "Finishing active AI work before rendering takes GPU ownership."
+            RENDERER_LIFECYCLE_STATE = "STARTING_WSL"
+        deadline = time.monotonic() + 60.0
+        while time.monotonic() < deadline:
+            if RENDERER_STOP_REQUESTED:
+                raise RuntimeError("Renderer startup was cancelled.")
+            in_flight = ai_gpu_work_in_flight()
+            if not in_flight["busy"]:
+                break
+            with GPU_ARBITRATION_LOCK:
+                GPU_TRANSITION_DETAIL = "Finishing AI work before renderer startup."
+            time.sleep(0.5)
+        else:
+            raise RuntimeError("AI work did not finish before the renderer transition deadline.")
+
+        with GPU_ARBITRATION_LOCK:
+            GPU_TRANSITION_STATE = "UNLOADING_OLLAMA"
+            GPU_TRANSITION_DETAIL = "Unloading resident Ollama models safely."
+            RENDERER_LIFECYCLE_STATE = "STARTING_WSL"
+        release_ollama_for_renderer(operation_id)
+
+        with GPU_ARBITRATION_LOCK:
+            GPU_TRANSITION_STATE = "STARTING_WSL"
+            GPU_TRANSITION_DETAIL = "Starting or adopting Ubuntu 24.04 for the renderer."
+            RENDERER_LIFECYCLE_STATE = "STARTING_WSL"
+        result = _start_wan2gp_backend()
+        if not result.get("ok"):
+            raise RuntimeError(str(result.get("message") or "Renderer backend start failed."))
+
+        with GPU_ARBITRATION_LOCK:
+            GPU_TRANSITION_STATE = "WAITING_FOR_HEALTH"
+            GPU_TRANSITION_DETAIL = "Waiting for the renderer GPU backend to become usable."
+            RENDERER_LIFECYCLE_STATE = "WAITING_FOR_HEALTH"
+        health_deadline = time.monotonic() + RENDERER_START_DEADLINE_SECONDS
+        while time.monotonic() < health_deadline:
+            if RENDERER_STOP_REQUESTED:
+                raise RuntimeError("Renderer startup was cancelled.")
+            status = wan2gp_status(ignore_transition=True)
+            if status.get("state") == "online" and status.get("lifecycle_state") in {"READY", "BUSY"}:
+                with GPU_ARBITRATION_LOCK:
+                    GPU_OWNER = "RENDERER"
+                    GPU_TRANSITION_STATE = "IDLE"
+                    GPU_TRANSITION_DETAIL = "Video renderer owns the GPU and is ready."
+                    GPU_TRANSITION_OPERATION = None
+                    GPU_TRANSITION_STARTED_AT = None
+                    RENDERER_LIFECYCLE_STATE = status.get("lifecycle_state", "READY")
+                    RENDERER_LIFECYCLE_ERROR = None
+                log_renderer_lifecycle("start_complete", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), final=status)
+                return
+            if status.get("state") == "error":
+                raise RuntimeError(str(status.get("detail") or "Renderer health check failed."))
+            time.sleep(RENDERER_POLL_INTERVAL_SECONDS)
+        raise TimeoutError(f"Renderer did not become ready within {RENDERER_START_DEADLINE_SECONDS:g} seconds.")
+    except Exception as exc:
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "NONE"
+            GPU_TRANSITION_STATE = "IDLE"
+            GPU_TRANSITION_DETAIL = f"Renderer transition failed: {exc}"
+            GPU_TRANSITION_OPERATION = None
+            GPU_TRANSITION_STARTED_AT = None
+            RENDERER_LIFECYCLE_STATE = "ERROR"
+            RENDERER_LIFECYCLE_ERROR = str(exc)
+        log_renderer_lifecycle("start_failed", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), error=str(exc))
+
+
+def start_wan2gp() -> dict[str, object]:
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
+    global GPU_TRANSITION_STARTED_AT, RENDERER_START_THREAD, RENDERER_OPERATION_ID
+    global RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR, RENDERER_STOP_REQUESTED
+    with GPU_ARBITRATION_LOCK:
+        current = wan2gp_status(ignore_transition=True)
+        if GPU_OWNER == "RENDERER" and current.get("state") == "online":
+            return {"ok": True, "wan2gp": current}
+        if RENDERER_STOP_THREAD is not None and RENDERER_STOP_THREAD.is_alive():
+            return {"ok": True, "wan2gp": wan2gp_status()}
+        if RENDERER_START_THREAD is not None and RENDERER_START_THREAD.is_alive():
+            return {"ok": True, "wan2gp": wan2gp_status()}
+        operation_id = uuid.uuid4().hex
+        GPU_OWNER = "TRANSITION"
+        GPU_TRANSITION_STATE = "AI_DRAINING"
+        GPU_TRANSITION_DETAIL = "Preparing the GPU transition to video rendering."
+        GPU_TRANSITION_OPERATION = operation_id
+        GPU_TRANSITION_STARTED_AT = time.monotonic()
+        RENDERER_OPERATION_ID = operation_id
+        RENDERER_STOP_REQUESTED = False
+        RENDERER_LIFECYCLE_STATE = "STARTING_WSL"
+        RENDERER_LIFECYCLE_ERROR = None
+        log_renderer_lifecycle("start_requested", operation_id=operation_id, prior=current)
+        RENDERER_START_THREAD = threading.Thread(target=_renderer_start_worker, args=(operation_id,), daemon=True, name="ariadne-renderer-start")
+        RENDERER_START_THREAD.start()
+        return {"ok": True, "operation_id": operation_id, "wan2gp": wan2gp_status()}
+
+def _stop_wan2gp_backend() -> dict[str, object]:
     global WAN2GP_PROCESS
     with PROFILE_LOCK:
         try:
@@ -785,6 +1234,71 @@ def stop_wan2gp() -> dict[str, object]:
                 process.wait(timeout=4)
         WAN2GP_PROCESS = None
     return {"ok": True, "wan2gp": wan2gp_status()}
+
+
+def _renderer_stop_worker(operation_id: str) -> None:
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
+    global GPU_TRANSITION_STARTED_AT, RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR
+    started = time.monotonic()
+    vram_before = gpu_status()
+    try:
+        with GPU_ARBITRATION_LOCK:
+            GPU_TRANSITION_STATE = "STOPPING_RENDERER"
+            GPU_TRANSITION_DETAIL = "Stopping active renderer work and releasing its GPU resources."
+            RENDERER_LIFECYCLE_STATE = "STOPPING"
+        _stop_wan2gp_backend()
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            status = wan2gp_status(ignore_transition=True)
+            if status.get("state") in {"offline", "standby"}:
+                vram_after = gpu_status()
+                with GPU_ARBITRATION_LOCK:
+                    GPU_OWNER = "NONE"
+                    GPU_TRANSITION_STATE = "IDLE"
+                    GPU_TRANSITION_DETAIL = "GPU is available to the next approved workload."
+                    GPU_TRANSITION_OPERATION = None
+                    GPU_TRANSITION_STARTED_AT = None
+                    RENDERER_LIFECYCLE_STATE = "STOPPED"
+                    RENDERER_LIFECYCLE_ERROR = None
+                log_renderer_lifecycle("stop_complete", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), final=status, vram_before=vram_before, vram_after=vram_after)
+                return
+            time.sleep(RENDERER_POLL_INTERVAL_SECONDS)
+        raise TimeoutError("Renderer did not confirm shutdown within 30 seconds.")
+    except Exception as exc:
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "NONE"
+            GPU_TRANSITION_STATE = "IDLE"
+            GPU_TRANSITION_DETAIL = f"Renderer shutdown needs attention: {exc}"
+            GPU_TRANSITION_OPERATION = None
+            GPU_TRANSITION_STARTED_AT = None
+            RENDERER_LIFECYCLE_STATE = "ERROR"
+            RENDERER_LIFECYCLE_ERROR = str(exc)
+        log_renderer_lifecycle("stop_failed", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), error=str(exc))
+
+
+def stop_wan2gp(*, wait: bool = False) -> dict[str, object]:
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
+    global GPU_TRANSITION_STARTED_AT, RENDERER_STOP_THREAD, RENDERER_OPERATION_ID, RENDERER_STOP_REQUESTED
+    with GPU_ARBITRATION_LOCK:
+        RENDERER_STOP_REQUESTED = True
+        if RENDERER_STOP_THREAD is not None and RENDERER_STOP_THREAD.is_alive():
+            result = {"ok": True, "wan2gp": wan2gp_status()}
+        else:
+            operation_id = uuid.uuid4().hex
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "STOPPING_RENDERER"
+            GPU_TRANSITION_DETAIL = "Stopping the renderer and releasing GPU resources."
+            GPU_TRANSITION_OPERATION = operation_id
+            GPU_TRANSITION_STARTED_AT = time.monotonic()
+            RENDERER_OPERATION_ID = operation_id
+            log_renderer_lifecycle("stop_requested", operation_id=operation_id)
+            RENDERER_STOP_THREAD = threading.Thread(target=_renderer_stop_worker, args=(operation_id,), daemon=True, name="ariadne-renderer-stop")
+            RENDERER_STOP_THREAD.start()
+            result = {"ok": True, "operation_id": operation_id, "wan2gp": wan2gp_status()}
+    if wait and RENDERER_STOP_THREAD is not None:
+        RENDERER_STOP_THREAD.join(timeout=35)
+        result = {"ok": True, "wan2gp": wan2gp_status()}
+    return result
 
 
 def stop_interactive_session() -> None:
@@ -814,7 +1328,7 @@ def release_workloads(force: bool = False) -> None:
     global ACTIVE_PROFILE
     if not force and renderer_is_busy():
         return
-    stop_wan2gp()
+    stop_wan2gp(wait=True)
     stop_interactive_session()
     run_readonly(["wsl.exe", "--terminate", VIDEO_RENDERER_DISTRO])
     ACTIVE_PROFILE = "General"
@@ -825,9 +1339,17 @@ def start_lifecycle_watchdog() -> None:
         return
 
     def watch() -> None:
+        last_model_monitor = 0.0
         while True:
             time.sleep(5)
-            if time.monotonic() - LAST_BROWSER_HEARTBEAT > BROWSER_HEARTBEAT_TIMEOUT_SECONDS:
+            now = time.monotonic()
+            if now - last_model_monitor >= MODEL_MONITOR_INTERVAL_SECONDS:
+                try:
+                    monitor_ollama_models()
+                except Exception as exc:
+                    print(f"[model-governor] monitor failed: {exc}")
+                last_model_monitor = now
+            if now - LAST_BROWSER_HEARTBEAT > BROWSER_HEARTBEAT_TIMEOUT_SECONDS:
                 shutdown_idle_workloads()
 
     LIFECYCLE_THREAD = threading.Thread(target=watch, name="ariadne-lifecycle", daemon=True)
@@ -909,20 +1431,8 @@ def ariadne_control_status() -> dict[str, object]:
 
 
 def _unload_ollama_models() -> None:
-    try:
-        running = json_http("http://127.0.0.1:11434/api/ps", timeout=3.0)
-        models = running.get("models", []) if isinstance(running, dict) else []
-        for item in models:
-            if not isinstance(item, dict):
-                continue
-            name = item.get("name") or item.get("model")
-            if isinstance(name, str) and name:
-                try:
-                    post_json("http://127.0.0.1:11434/api/generate", {"model": name, "keep_alive": 0}, timeout=8.0)
-                except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError):
-                    continue
-    except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError):
-        return
+    """Compatibility wrapper for the shared residency governor."""
+    release_idle_ollama_models(force=True)
 
 
 def shutdown_idle_workloads() -> None:
@@ -993,9 +1503,12 @@ def _session(session_id: object) -> dict[str, object] | None:
 
 
 def _start_process(command: list[str], cwd: Path) -> subprocess.Popen:
+    child_environment = os.environ.copy()
+    child_environment["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
     return subprocess.Popen(
         command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace",
+        env=child_environment,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
 
@@ -1165,7 +1678,7 @@ def wsl_environment_action(name: str, action: str) -> dict[str, object]:
         return {"ok": False, "message": f"{name} did not reach the running state."}
 
     if name == VIDEO_RENDERER_DISTRO:
-        stop_wan2gp()
+        stop_wan2gp(wait=True)
         stop_interactive_session()
     else:
         process = WSL_SESSION_PROCESSES.pop(name, None)
@@ -1302,6 +1815,129 @@ def configured_ollama_store() -> str:
             pass
     return value or "not set"
 
+
+def configuration_folder_status(path_value: str, *, operational: bool = False) -> dict[str, object]:
+    path = Path(path_value)
+    exists = path.is_dir()
+    readable = exists and os.access(path, os.R_OK)
+    writable = exists and os.access(path, os.W_OK)
+    parent_writable = (not exists) and path.parent.is_dir() and os.access(path.parent, os.W_OK)
+    if not exists:
+        state = "missing"
+    elif not readable or (operational and not writable):
+        state = "attention"
+    else:
+        state = "ready"
+    return {
+        "state": state,
+        "exists": exists,
+        "readable": readable,
+        "writable": writable,
+        "parent_writable": parent_writable,
+        "detail": (
+            "Exists, readable, and writable."
+            if state == "ready"
+            else "Missing; Ariadne can continue until this location is needed."
+            if state == "missing"
+            else "Exists but needs attention: check folder permissions."
+        ),
+    }
+
+
+def _file_timestamp(path: Path) -> str | None:
+    try:
+        return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
+    except OSError:
+        return None
+
+
+def vault_activity_status() -> dict[str, object]:
+    catalogue = VAULT_SYSTEM / "library.json"
+    index = VAULT_SYSTEM / "Data" / "embedding-index.json"
+    index_updated = None
+    try:
+        payload = json.loads(index.read_text(encoding="utf-8"))
+        if isinstance(payload, dict) and payload.get("updated_at"):
+            index_updated = str(payload["updated_at"])
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    return {
+        "catalogue_modified_at": _file_timestamp(catalogue),
+        "embedding_index_modified_at": _file_timestamp(index),
+        "last_known_ingest_rebuild": index_updated or _file_timestamp(index) or _file_timestamp(catalogue),
+    }
+
+
+def world_state_status() -> dict[str, object]:
+    path = PROJECT_ROOT / "00_System" / "world_state.py"
+    version = "unknown"
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("WORLD_STATE_VERSION ="):
+                version = line.split("=", 1)[1].strip().strip("\"'")
+                break
+    except OSError:
+        return {"version": version, "state": "offline", "detail": "World State source is unavailable."}
+    persisted = VAULT_SYSTEM / "Data" / "WorldState" / "world-state-v1.json"
+    return {
+        "version": version,
+        "state": "ready" if path.is_file() else "offline",
+        "detail": "Derived World State is available." if path.is_file() else "World State source is unavailable.",
+        "persisted_at": _file_timestamp(persisted),
+    }
+
+
+def configuration_status_payload() -> dict[str, object]:
+    snapshot = configuration_snapshot()
+    storage: dict[str, object] = {}
+    for key, path_value in snapshot["storage"].items():
+        storage[key] = {
+            "label": {
+                "knowledge_vault": "Knowledge Vault",
+                "documents": "Documents",
+                "images": "Images",
+                "videos": "Videos",
+                "screenshots": "Screenshots",
+                "intake_root": "Raw Documents / Intake Root",
+            }.get(key, key),
+            "path": path_value,
+            "source": snapshot["sources"][key],
+            **configuration_folder_status(path_value, operational=key == "knowledge_vault"),
+        }
+    counts = vault_counts(VAULT_ROOT)
+    vault = dict(storage["knowledge_vault"])
+    vault.update({
+        "active": str(VAULT_ROOT) == str(Path(str(snapshot["storage"]["knowledge_vault"]))),
+        "counts": counts,
+        **vault_activity_status(),
+    })
+    catalog = ollama_catalog()
+    ollama = ollama_status()
+    model_memory = model_memory_snapshot()
+    return {
+        "ok": True,
+        "config": snapshot,
+        "storage": storage,
+        "vault": vault,
+        "runtime": {
+            "active_vault": str(VAULT_ROOT),
+            "vault_source": VAULT_ROOT_SOURCE,
+            "ollama_endpoint": OLLAMA_URL,
+            "ollama": ollama,
+            "semantic_interpreter_model": PLANNER_MODEL,
+            "home_model": HOME_CHAT_MODEL,
+            "resident_models": catalog.get("loaded", []),
+            "resident_model_details": catalog.get("loaded_details", []),
+            "model_memory": model_memory,
+            "embedding_model": os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text"),
+            "world_state": world_state_status(),
+            "catalogue_records": counts["catalogue_records"],
+            "embedding_documents": counts["embedding_documents"],
+            "embedding_chunks": counts["embedding_chunks"],
+            "last_known_ingest_rebuild": vault["last_known_ingest_rebuild"],
+        },
+    }
+
 def home_health_payload() -> dict[str, object]:
     services: list[dict[str, object]] = []
 
@@ -1400,8 +2036,16 @@ def _home_mcp():
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Active Vault MCP module is unavailable: {module_path}")
     module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
+    previous_root = os.environ.get("ARIADNE_VAULT_ROOT")
+    os.environ["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
+    try:
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+    finally:
+        if previous_root is None:
+            os.environ.pop("ARIADNE_VAULT_ROOT", None)
+        else:
+            os.environ["ARIADNE_VAULT_ROOT"] = previous_root
     return module
 
 
@@ -1444,7 +2088,15 @@ def home_planner_context(query: str, history: object, attachments: list[dict[str
         if world_state_spec is None or world_state_spec.loader is None:
             raise ImportError(f"World State module is unavailable: {WORLD_STATE_MODULE_PATH}")
         world_state_module = importlib.util.module_from_spec(world_state_spec)
-        world_state_spec.loader.exec_module(world_state_module)
+        previous_root = os.environ.get("ARIADNE_VAULT_ROOT")
+        os.environ["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
+        try:
+            world_state_spec.loader.exec_module(world_state_module)
+        finally:
+            if previous_root is None:
+                os.environ.pop("ARIADNE_VAULT_ROOT", None)
+            else:
+                os.environ["ARIADNE_VAULT_ROOT"] = previous_root
         world_state = world_state_module.world_state_planner_view(
             world_state_module.world_state_for_request(query, history)
         )
@@ -1608,17 +2260,19 @@ def home_planner_request(query: str, history: object, attachments: list[dict[str
     ]
     legacy_use_vault = home_query_requires_vault(query)
     planner_started = time.perf_counter()
+    planner_keep_alive = adaptive_model_keep_alive() if str(PLANNER_KEEP_ALIVE).casefold() == "adaptive" else PLANNER_KEEP_ALIVE
     planner_context = home_planner_context(query, history, attachments, vault_mode, selected_tool_ids)
     try:
-        result = interpret_and_resolve(
-            query,
-            planner_context,
-            endpoint=OLLAMA_URL,
-            model=PLANNER_MODEL,
-            keep_alive=PLANNER_KEEP_ALIVE,
-            context_tokens=PLANNER_CONTEXT_TOKENS,
-            output_tokens=PLANNER_OUTPUT_TOKENS,
-        )
+        with model_activity(PLANNER_MODEL):
+            result = interpret_and_resolve(
+                query,
+                planner_context,
+                endpoint=OLLAMA_URL,
+                model=PLANNER_MODEL,
+                keep_alive=planner_keep_alive,
+                context_tokens=PLANNER_CONTEXT_TOKENS,
+                output_tokens=PLANNER_OUTPUT_TOKENS,
+            )
         semantic = result.get("semantic") if isinstance(result.get("semantic"), dict) else {}
         policy = result.get("policy") if isinstance(result.get("policy"), dict) else {}
         telemetry = result.get("telemetry") if isinstance(result.get("telemetry"), dict) else {}
@@ -1679,7 +2333,7 @@ def home_planner_request(query: str, history: object, attachments: list[dict[str
             "telemetry": {
                 "planner_model": PLANNER_MODEL,
                 "interpreter_model": PLANNER_MODEL,
-                "keep_alive": PLANNER_KEEP_ALIVE,
+                "keep_alive": planner_keep_alive,
                 "planning_duration_ms": round((time.perf_counter() - planner_started) * 1000),
                 "planner_latency_ms": round((time.perf_counter() - planner_started) * 1000),
                 "interpreter_latency_ms": round((time.perf_counter() - planner_started) * 1000),
@@ -1860,6 +2514,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     selected_tools = {str(item) for item in tool_ids if isinstance(item, str)} if isinstance(tool_ids, list) else set()
     request_started = time.perf_counter()
     request_id = uuid.uuid4().hex
+    emit_state("thinking")
     safe_history = HOME_CHAT_STORE.model_history(chat_id, limit=8)
     attachment_summaries = list_documents(DOCUMENT_WORK_ROOT, chat_id)
     planner_result = home_planner_request(query, safe_history, attachment_summaries, mode, selected_tools, request_id=request_id, session_id=chat_id)
@@ -1904,6 +2559,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         )
     try:
         if use_vault:
+            emit_state("searching_vault")
             result = _home_vault_retrieval(
                 mcp, query, planner_result, history=safe_history,
                 limit=5, request_id=request_id, session_id=chat_id,
@@ -1953,10 +2609,13 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
                     f"Derived World State routing context:\n{_home_world_state_context(world_state)}\n\n"
                     f"Knowledge Vault evidence:\n{vault_context}"
                 )
-            answer = mcp.ollama_chat(
-                [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": user_content}],
-                model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing,
-            )
+            with model_activity(HOME_CHAT_MODEL):
+                emit_state("working")
+                answer = mcp.ollama_chat(
+                    [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": user_content}],
+                    model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing,
+                    keep_alive=adaptive_model_keep_alive(),
+                )
             if use_documents:
                 record_home_event(
                     "vault_retrieval_performed",
@@ -1981,7 +2640,12 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
             messages = [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": (
                 f"Question:\n{query}\n\nTemporary document evidence:\n{document_analysis['context']}"
             )}]
-            answer = mcp.ollama_chat(messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing)
+            with model_activity(HOME_CHAT_MODEL):
+                emit_state("working")
+                answer = mcp.ollama_chat(
+                    messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing,
+                    keep_alive=adaptive_model_keep_alive(),
+                )
             sources = document_analysis["chunks"]
             retrieval = {
                 "match_count": len(sources),
@@ -2000,13 +2664,20 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
                 + planner_instruction
             )
             messages = [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": query}]
-            answer = mcp.ollama_chat(messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing)
+            with model_activity(HOME_CHAT_MODEL):
+                emit_state("working")
+                answer = mcp.ollama_chat(
+                    messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing,
+                    keep_alive=adaptive_model_keep_alive(),
+                )
             sources = []
             retrieval = {"match_count": 0, "sources": []}
         response_identity = result.get("identity_kernel") if use_vault and isinstance(result, dict) else identity_meta
         if not isinstance(response_identity, dict):
             response_identity = identity_meta
         record_home_event("model_response_completed", f"Local {HOME_CHAT_MODEL} response completed.")
+        emit_state("speaking")
+        emit_say(answer)
         calls = timing.get("ollama_calls", []) if isinstance(timing.get("ollama_calls"), list) else []
         if calls:
             native_fields = (
@@ -2054,6 +2725,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         }
     except Exception as exc:
         HOME_CHAT_STORE.interrupt_turn(chat_id, turn_id, str(exc))
+        emit_state("error")
         record_home_event("significant_error", f"Ask Ariadne failed: {exc}", source="Ariadne Home")
         raise
 
@@ -2071,6 +2743,7 @@ def status_payload() -> dict[str, object]:
     global LAST_BROWSER_HEARTBEAT
     LAST_BROWSER_HEARTBEAT = time.monotonic()
     wsl_raw = run_readonly(["wsl.exe", "--list", "--verbose"])
+    gpu = gpu_status()
     return {
         "service": "online",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -2079,7 +2752,9 @@ def status_payload() -> dict[str, object]:
         "profile_detail": "Selected Linux services" if ACTIVE_PROFILE == "Interactive AI" else "Read-only foundation",
         "interactive_ai": interactive_ai_status(),
         "memory": memory_status(),
-        "gpu": gpu_status(),
+        "gpu": gpu,
+        "gpu_owner": gpu_owner_status(),
+        "model_memory": model_memory_snapshot(gpu),
         "quick_launch": quick_launch_status(),
         "vault": vault_session_status(),
         "vault_root": str(VAULT_ROOT),
@@ -2145,6 +2820,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             expire_home_chats()
             self.send_json({"ok": True, "chats": HOME_CHAT_STORE.list_recent()})
             return
+        if path == "/api/configuration":
+            self.send_json(configuration_status_payload())
+            return
         if path == "/launch/lmstudio":
             launch_lmstudio()
             self.send_json({"launched": True, "detail": "LM Studio launch requested."})
@@ -2186,6 +2864,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             record_home_event("home_opened", "Ariadne Home opened.")
             self.send_asset("home.html", "text/html; charset=utf-8")
             return
+        if path in {"/configuration", "/setup"}:
+            self.send_asset("configuration.html", "text/html; charset=utf-8")
+            return
         if path in {"/system-details", "/details", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
             return
@@ -2194,6 +2875,15 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/home.js":
             self.send_asset("home.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/configuration.css":
+            self.send_asset("configuration.css", "text/css; charset=utf-8")
+            return
+        if path == "/configuration.js":
+            self.send_asset("configuration.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/page-shell.css":
+            self.send_asset("page-shell.css", "text/css; charset=utf-8")
             return
         if path in {"/", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
@@ -2226,6 +2916,23 @@ class AriadneHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self.read_json()
+            if path == "/api/configuration":
+                storage = body.get("storage")
+                if not isinstance(storage, dict):
+                    self.send_json({"ok": False, "message": "Storage configuration is required."}, 400)
+                    return
+                try:
+                    save_storage(storage)
+                except ValueError as exc:
+                    try:
+                        errors = json.loads(str(exc))
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        errors = {"storage": str(exc)}
+                    self.send_json({"ok": False, "message": "The configuration could not be saved.", "errors": errors}, 400)
+                    return
+                apply_runtime_configuration()
+                self.send_json({"ok": True, "message": "Configuration saved. Safe runtime paths were refreshed.", **configuration_status_payload()})
+                return
             if path == "/api/wsl/start":
                 self.send_json(wsl_environment_action(str(body.get("name") or ""), "start"))
                 return
@@ -2441,7 +3148,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 with SESSION_LOCK:
                     SESSIONS[session_id]["used_ollama"] = True
-                self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids))
+                try:
+                    with ai_gpu_admission():
+                        self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids))
+                except RuntimeError as exc:
+                    self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
                 return
             if path == "/api/vault/run":
                 action = body.get("action")
@@ -2462,6 +3173,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 if not isinstance(limit, int) or isinstance(limit, bool):
                     self.send_json({"ok": False, "message": "Query limit must be an integer."}, 400)
+                    return
+                try:
+                    ensure_ai_gpu_access()
+                except RuntimeError as exc:
+                    self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
                     return
                 self.send_json({"ok": True, "job_id": start_vault_query(session_id, query.strip(), str(mode), max(1, min(limit, 20)))})
                 return

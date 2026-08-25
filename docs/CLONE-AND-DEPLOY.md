@@ -98,29 +98,36 @@ Open this address in a browser:
 The server binds to loopback only. It is not exposed to the local network by
 default.
 
-For the tray companion and browser launch flow, use another PowerShell window:
+For the legacy Python tray and browser launch flow, use another PowerShell window:
 
 ```powershell
 $env:ARIADNE_PYTHON = (Resolve-Path .\.venv\Scripts\python.exe).Path
 .\control-plane\start-ariadne.ps1 -OpenBrowser
 ```
 
-The tray menu can open, restart, or exit Ariadne. Only run one control-plane
-instance on port `8765`.
+After the Rust toolchain is installed, build the resident host:
+
+```powershell
+cargo build --release --manifest-path .\control-plane\host\Cargo.toml
+```
+
+The normal resident path is then the Rust host, which starts and supervises
+the Python core. See [`control-plane/docs/RESIDENT-HOST.md`](../control-plane/docs/RESIDENT-HOST.md)
+for startup installation, IPC, avatar assets, and rollback. Only run one
+control-plane instance on port `8765`.
 
 ## 6. Optional Windows startup
 
-After the manual launch works, install the per-user logon task:
+After the host manual smoke test works, install the per-user Startup shortcut:
 
 ```powershell
 .\control-plane\install-startup.ps1
 ```
 
-The task starts the local tray companion at logon. Remove the task if it is no
-longer wanted:
+The shortcut starts the Rust host at logon. Remove it if it is no longer wanted:
 
 ```powershell
-Unregister-ScheduledTask -TaskName 'Ariadne Local Control Plane' -Confirm:$false
+.\control-plane\remove-startup.ps1
 ```
 
 ## 7. Verify the installation

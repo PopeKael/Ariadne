@@ -159,6 +159,10 @@ node_modules/
 dist/
 build/
 
+# Rust host build output
+/control-plane/host/target/
+/control-plane/host/target-msvc/
+
 # ----------------------------------------------------------
 # Environment Files
 # ----------------------------------------------------------

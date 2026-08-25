@@ -11,6 +11,8 @@ from Git.
 - Network exposure: loopback only; it is not published to the LAN
 - Current capabilities: Ariadne Home, local Qwen chat, cited Vault retrieval, temporary Document Analysis for .md/.txt attachments, episodic activity, drives, WSL registrations, and Docker container metadata
 - Tray companion: open, restart, or exit Ariadne without a console window
+- Resident host: the Rust `ariadne-host.exe` owns the tray, supervised Python
+  core, avatar overlay, and local IPC. See [`docs/RESIDENT-HOST.md`](docs/RESIDENT-HOST.md).
 - Open WebUI launch: starts Docker Desktop when needed, opens the local UI, and
   preloads `gpt-oss:20b` into Ollama memory with a five-minute keep-alive.
 
@@ -32,8 +34,26 @@ Reference architecture and the public/private boundary are documented in
 not an implicit Vault root.
 
 For somebody deploying their own copy, start with
-[`../docs/CLONE-AND-DEPLOY.md`](../docs/CLONE-AND-DEPLOY.md). The tray
-dependencies are listed in [`requirements.txt`](requirements.txt).
+[`../docs/CLONE-AND-DEPLOY.md`](../docs/CLONE-AND-DEPLOY.md). The legacy Python
+tray dependencies are listed in [`requirements.txt`](requirements.txt); the
+tray remains available as the explicit rollback path during host migration.
+
+## Configuration
+
+The Configuration page is available at `/configuration` and stores machine-
+specific storage locations in the local, human-readable
+`%LOCALAPPDATA%\Ariadne\configuration.json` file. Set `ARIADNE_CONFIG_PATH`
+when a different local location is required. The precedence is:
+
+1. explicit environment override,
+2. saved Ariadne configuration,
+3. installation default.
+
+`ARIADNE_VAULT_ROOT` remains the existing explicit Vault override. Ariadne's
+default live Vault is `D:\Downloads\KnowledgeVault`; the repository checkout
+is never treated as a second Vault. The page reports the active Vault,
+catalogue and embedding counts, path permissions, Ollama residency, and World
+State status without changing model routing.
 
 Run it from PowerShell:
 

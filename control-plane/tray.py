@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Legacy Python tray companion retained as the migration rollback path.
+
+The normal resident entry point is now the Rust host. Keep this module until
+the host has passed manual smoke testing and startup migration is accepted.
+"""
+
 import os
 import sys
 import threading

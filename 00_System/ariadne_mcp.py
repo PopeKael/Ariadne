@@ -1131,7 +1131,8 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
 
 def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
                 context_tokens: int | None = None,
-                metrics: dict[str, Any] | None = None) -> str:
+                metrics: dict[str, Any] | None = None,
+                keep_alive: int | str | None = None) -> str:
     """Generate text only through the configured loopback Ollama endpoint."""
     base_url = DEFAULT_OLLAMA_URL
     selected_model = model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
@@ -1145,6 +1146,8 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
     body = {"model": selected_model, "messages": messages, "stream": False,
             "options": {"temperature": 0, "seed": 42, "num_ctx": selected_context_tokens,
                         "num_predict": output_tokens}}
+    if keep_alive is not None:
+        body["keep_alive"] = keep_alive
     if selected_model.casefold().startswith("qwen3"):
         body["think"] = False
     request = urllib.request.Request(
