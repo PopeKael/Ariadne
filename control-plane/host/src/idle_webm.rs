@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -101,10 +103,20 @@ impl IdleWebmPlayback {
     pub fn spawn(
         mut self,
         host_hwnd: isize,
-        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        stop: Arc<AtomicBool>,
+        generation: u64,
+        frame_message_pending: Arc<AtomicBool>,
     ) -> Receiver<IdleWebmMessage> {
         let (sender, receiver) = mpsc::sync_channel(2);
-        thread::spawn(move || self.run(sender, host_hwnd, stop));
+        thread::spawn(move || {
+            self.run(
+                sender,
+                host_hwnd,
+                stop,
+                generation,
+                frame_message_pending,
+            )
+        });
         receiver
     }
 
@@ -112,22 +124,57 @@ impl IdleWebmPlayback {
         &mut self,
         sender: SyncSender<IdleWebmMessage>,
         host_hwnd: isize,
-        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        stop: Arc<AtomicBool>,
+        generation: u64,
+        frame_message_pending: Arc<AtomicBool>,
     ) {
+        crate::log_line(format!(
+            "avatar idle WebM worker started: generation={}, thread={:?}",
+            generation,
+            thread::current().id()
+        ));
         let mut deadline = Instant::now();
         loop {
             if stop.load(std::sync::atomic::Ordering::Acquire) {
+                crate::log_line(format!(
+                    "avatar idle WebM worker stopped: reason=stop-requested, generation={}, thread={:?}",
+                    generation,
+                    thread::current().id()
+                ));
                 return;
             }
             match self.decoder.next_frame() {
                 Ok(frame) => match sender.try_send(IdleWebmMessage::Frame(frame)) {
-                    Ok(()) => post_frame_message(host_hwnd),
-                    Err(TrySendError::Full(_)) => {}
-                    Err(TrySendError::Disconnected(_)) => return,
+                    Ok(()) => notify_frame_message(
+                        host_hwnd,
+                        generation,
+                        &frame_message_pending,
+                    ),
+                    Err(TrySendError::Full(_)) => notify_frame_message(
+                        host_hwnd,
+                        generation,
+                        &frame_message_pending,
+                    ),
+                    Err(TrySendError::Disconnected(_)) => {
+                        crate::log_line(format!(
+                            "avatar idle WebM worker stopped: reason=receiver-disconnected, generation={}, thread={:?}",
+                            generation,
+                            thread::current().id()
+                        ));
+                        return;
+                    }
                 },
                 Err(error) => {
+                    crate::log_line(format!(
+                        "avatar idle WebM worker decode failed: generation={}, error={}",
+                        generation, error
+                    ));
                     let _ = sender.try_send(IdleWebmMessage::Failed(error));
-                    post_frame_message(host_hwnd);
+                    notify_frame_message(
+                        host_hwnd,
+                        generation,
+                        &frame_message_pending,
+                    );
                     return;
                 }
             }
@@ -253,16 +300,29 @@ fn format_oxide_error(error: OxideError) -> String {
     error.to_string()
 }
 
-fn post_frame_message(host_hwnd: isize) {
+fn notify_frame_message(
+    host_hwnd: isize,
+    generation: u64,
+    pending: &Arc<AtomicBool>,
+) {
+    if pending.swap(true, Ordering::AcqRel) {
+        return;
+    }
     unsafe {
-        let _ = windows::Win32::UI::WindowsAndMessaging::PostMessageW(
+        if let Err(error) = windows::Win32::UI::WindowsAndMessaging::PostMessageW(
             Some(windows::Win32::Foundation::HWND(
                 host_hwnd as *mut std::ffi::c_void,
             )),
             crate::IDLE_WEBM_FRAME_MESSAGE,
-            windows::Win32::Foundation::WPARAM(0),
+            windows::Win32::Foundation::WPARAM(generation as usize),
             windows::Win32::Foundation::LPARAM(0),
-        );
+        ) {
+            pending.store(false, Ordering::Release);
+            crate::log_line(format!(
+                "avatar idle WebM frame notification post failed: generation={}, error={}",
+                generation, error
+            ));
+        }
     }
 }
 

@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{mpsc::Receiver, Arc, Mutex, OnceLock};
+use std::sync::{mpsc::Receiver, mpsc::TryRecvError, Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -83,6 +83,7 @@ const TRAY_GUID: GUID = GUID::from_u128(0x9b1f5e23_7b83_4f39_a7c8_5e3e4f2ad6b1);
 const AVATAR_MAX_HEIGHT: u32 = 300;
 const BUBBLE_MAX_HEIGHT: u32 = 50;
 const FINAL_STATE_HOLD_SECONDS: u64 = 15;
+const AVATAR_DRAG_THRESHOLD_FALLBACK: u32 = 5;
 const BUBBLE_HORIZONTAL_PADDING: u32 = 8;
 const BUBBLE_CORNER_RADIUS: u32 = 6;
 // Derived from configuration-avatar.css .avatar-preview-button: #13303B.
@@ -724,9 +725,18 @@ struct AvatarPosition {
     y: i32,
 }
 
+#[derive(Clone, Copy)]
+enum AvatarInteractionMode {
+    PotentialClick,
+    Dragging,
+}
+
 struct AvatarDrag {
+    start_x: i32,
+    start_y: i32,
     anchor_x: i32,
     anchor_y: i32,
+    mode: AvatarInteractionMode,
 }
 
 struct AvatarOverlay {
@@ -748,6 +758,9 @@ struct AvatarOverlay {
     final_hold_active: bool,
     idle_webm_rx: Option<Receiver<idle_webm::IdleWebmMessage>>,
     idle_webm_stop: Option<Arc<AtomicBool>>,
+    idle_webm_pending: Option<Arc<AtomicBool>>,
+    idle_webm_generation: u64,
+    idle_webm_frame_ticks: u64,
     idle_webm_failed: bool,
     enabled: bool,
     logged_missing: HashSet<String>,
@@ -767,6 +780,36 @@ fn layout_height(avatar_height: u32, has_status: bool) -> u32 {
 }
 
 const ALPHA_HIT_THRESHOLD: u8 = 24;
+
+fn avatar_drag_threshold() -> (u32, u32) {
+    unsafe {
+        let x = GetSystemMetrics(windows::Win32::UI::WindowsAndMessaging::SM_CXDRAG);
+        let y = GetSystemMetrics(windows::Win32::UI::WindowsAndMessaging::SM_CYDRAG);
+        (
+            if x > 0 {
+                x as u32
+            } else {
+                AVATAR_DRAG_THRESHOLD_FALLBACK
+            },
+            if y > 0 {
+                y as u32
+            } else {
+                AVATAR_DRAG_THRESHOLD_FALLBACK
+            },
+        )
+    }
+}
+
+fn drag_threshold_crossed(
+    start_x: i32,
+    start_y: i32,
+    current_x: i32,
+    current_y: i32,
+    threshold_x: u32,
+    threshold_y: u32,
+) -> bool {
+    current_x.abs_diff(start_x) >= threshold_x || current_y.abs_diff(start_y) >= threshold_y
+}
 
 fn premultiply_channel(value: u8, alpha: u8) -> u8 {
     ((value as u16 * alpha as u16 + 127) / 255) as u8
@@ -882,6 +925,9 @@ impl AvatarOverlay {
             final_hold_active: false,
             idle_webm_rx: None,
             idle_webm_stop: None,
+            idle_webm_pending: None,
+            idle_webm_generation: 0,
+            idle_webm_frame_ticks: 0,
             idle_webm_failed: false,
             enabled: settings.enabled,
             logged_missing: HashSet::new(),
@@ -945,34 +991,72 @@ impl AvatarOverlay {
         unsafe {
             if GetCursorPos(&mut point).is_ok() {
                 self.drag = Some(AvatarDrag {
+                    start_x: point.x,
+                    start_y: point.y,
                     anchor_x: point.x - self.position.x,
                     anchor_y: point.y - self.position.y,
+                    mode: AvatarInteractionMode::PotentialClick,
                 });
                 let _ = SetCapture(self.hwnd);
-                log_line(format!("avatar drag started: position=({}, {}), cursor=({}, {})", self.position.x, self.position.y, point.x, point.y));
+                log_line(format!(
+                    "avatar interaction started: mode=potential-click, position=({}, {}), cursor=({}, {})",
+                    self.position.x, self.position.y, point.x, point.y
+                ));
             }
         }
     }
 
     fn continue_drag(&mut self) {
-        let Some(drag) = self.drag.as_ref() else {
-            return;
-        };
         let mut point = POINT::default();
         unsafe {
             if GetCursorPos(&mut point).is_ok() {
-                self.apply_position(point.x - drag.anchor_x, point.y - drag.anchor_y, false);
+                let (mode, anchor_x, anchor_y) = {
+                    let Some(drag) = self.drag.as_mut() else {
+                        return;
+                    };
+                    if matches!(drag.mode, AvatarInteractionMode::PotentialClick) {
+                        let (threshold_x, threshold_y) = avatar_drag_threshold();
+                        if drag_threshold_crossed(
+                            drag.start_x,
+                            drag.start_y,
+                            point.x,
+                            point.y,
+                            threshold_x,
+                            threshold_y,
+                        ) {
+                            drag.mode = AvatarInteractionMode::Dragging;
+                            log_line(format!(
+                                "avatar drag started: cursor=({}, {}), threshold=({}, {})",
+                                point.x, point.y, threshold_x, threshold_y
+                            ));
+                        }
+                    }
+                    (drag.mode, drag.anchor_x, drag.anchor_y)
+                };
+                if matches!(mode, AvatarInteractionMode::Dragging) {
+                    self.apply_position(point.x - anchor_x, point.y - anchor_y, false);
+                }
             }
         }
     }
 
     fn end_drag(&mut self) {
-        if self.drag.take().is_some() {
+        if let Some(drag) = self.drag.take() {
             unsafe {
                 let _ = ReleaseCapture();
             }
-            save_position(&self.position);
-            log_line(format!("avatar drag ended: position=({}, {})", self.position.x, self.position.y));
+            match drag.mode {
+                AvatarInteractionMode::Dragging => {
+                    save_position(&self.position);
+                    log_line(format!(
+                        "avatar drag ended: position=({}, {})",
+                        self.position.x, self.position.y
+                    ));
+                }
+                AvatarInteractionMode::PotentialClick => {
+                    open_dashboard("avatar click");
+                }
+            }
         }
     }
 
@@ -1022,7 +1106,11 @@ impl AvatarOverlay {
         if let Some(stop) = self.idle_webm_stop.take() {
             stop.store(true, Ordering::Release);
             self.idle_webm_rx = None;
-            log_line(format!("avatar idle WebM stopped: reason={reason}"));
+            self.idle_webm_pending = None;
+            log_line(format!(
+                "avatar idle WebM stopped: reason={}, generation={}, frame_ticks={}",
+                reason, self.idle_webm_generation, self.idle_webm_frame_ticks
+            ));
         }
     }
 
@@ -1059,28 +1147,77 @@ impl AvatarOverlay {
             }
         };
         let stop = Arc::new(AtomicBool::new(false));
-        self.idle_webm_rx = Some(playback.spawn(self.message_hwnd.0 as isize, stop.clone()));
+        let pending = Arc::new(AtomicBool::new(false));
+        self.idle_webm_generation = self.idle_webm_generation.wrapping_add(1);
+        let generation = self.idle_webm_generation;
+        self.idle_webm_rx = Some(playback.spawn(
+            self.message_hwnd.0 as isize,
+            stop.clone(),
+            generation,
+            pending.clone(),
+        ));
         self.idle_webm_stop = Some(stop);
+        self.idle_webm_pending = Some(pending);
+        self.idle_webm_frame_ticks = 0;
         log_line(format!(
-            "avatar idle WebM playback started: path={}, loop=true, alpha=true",
-            path.display()
+            "avatar idle WebM playback started: path={}, loop=true, alpha=true, generation={}",
+            path.display(), generation
         ));
         true
     }
 
-    fn idle_webm_frame_tick(&mut self) {
+    fn idle_webm_frame_tick(&mut self, generation: u64) {
         if self.state != "idle" {
             return;
         }
-        let Some(receiver) = self.idle_webm_rx.as_ref() else {
+        if generation != self.idle_webm_generation {
+            log_line(format!(
+                "avatar idle WebM stale frame notification ignored: message_generation={}, active_generation={}",
+                generation, self.idle_webm_generation
+            ));
             return;
+        }
+        if let Some(pending) = self.idle_webm_pending.as_ref() {
+            pending.store(false, Ordering::Release);
+        }
+        let (latest, receiver_disconnected) = {
+            let Some(receiver) = self.idle_webm_rx.as_ref() else {
+                return;
+            };
+            let mut latest = None;
+            let mut receiver_disconnected = false;
+            loop {
+                match receiver.try_recv() {
+                    Ok(message) => latest = Some(message),
+                    Err(TryRecvError::Empty) => break,
+                    Err(TryRecvError::Disconnected) => {
+                        receiver_disconnected = true;
+                        break;
+                    }
+                }
+            }
+            (latest, receiver_disconnected)
         };
-        let mut latest = None;
-        while let Ok(message) = receiver.try_recv() {
-            latest = Some(message);
+        if receiver_disconnected {
+            self.stop_idle_webm("decoder-thread-ended");
+            if !self.idle_webm_failed {
+                log_line(format!(
+                    "avatar idle WebM recovery: state=idle, restarting playback, generation={}",
+                    generation
+                ));
+                self.render_current_state();
+            }
+            return;
         }
         match latest {
             Some(idle_webm::IdleWebmMessage::Frame(image)) => {
+                self.idle_webm_frame_ticks = self.idle_webm_frame_ticks.wrapping_add(1);
+                if self.idle_webm_frame_ticks % 30 == 0 {
+                    log_line(format!(
+                        "avatar idle WebM frame progress: generation={}, frame_ticks={}",
+                        generation, self.idle_webm_frame_ticks
+                    ));
+                }
                 // Filmora's WebM metadata marks this alpha stream as
                 // premultiplied; do not multiply the edge colours twice.
                 if let Err(error) = self.render_rgba(image, true) {
@@ -2020,7 +2157,7 @@ fn run() -> Result<(), String> {
             } else if message.hwnd == message_hwnd && message.message == FINAL_IDLE_MESSAGE {
                 avatar.final_hold_expired(message.wParam.0 as u64);
             } else if message.hwnd == message_hwnd && message.message == IDLE_WEBM_FRAME_MESSAGE {
-                avatar.idle_webm_frame_tick();
+                avatar.idle_webm_frame_tick(message.wParam.0 as u64);
             } else if message.hwnd == message_hwnd && message.message == WM_COMMAND {
                 let command_id = message.wParam.0 & 0xffff;
                 tray_log_line(format!("tray menu command selected: id={}", command_id));
@@ -2074,8 +2211,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        classify_tray_event, clamp_premultiplied_rgba, layout_height, premultiply_channel,
-        premultiply_rgba, TrayAction, NIN_KEYSELECT_EVENT, NIN_SELECT_EVENT,
+        classify_tray_event, clamp_premultiplied_rgba, drag_threshold_crossed, layout_height,
+        premultiply_channel, premultiply_rgba, TrayAction, NIN_KEYSELECT_EVENT,
+        NIN_SELECT_EVENT,
         rounded_bubble_pixel_inside, scaled_avatar_dimensions, state_status, AVATAR_MAX_HEIGHT,
         BUBBLE_CORNER_RADIUS, BUBBLE_MAX_HEIGHT,
     };
@@ -2103,6 +2241,13 @@ mod tests {
     #[test]
     fn unrelated_tray_messages_are_ignored() {
         assert_eq!(classify_tray_event(super::WM_MOUSEMOVE), TrayAction::Ignore);
+    }
+
+    #[test]
+    fn avatar_interaction_uses_movement_threshold_for_drag_classification() {
+        assert!(!drag_threshold_crossed(100, 100, 104, 104, 5, 5));
+        assert!(drag_threshold_crossed(100, 100, 105, 100, 5, 5));
+        assert!(drag_threshold_crossed(100, 100, 100, 106, 5, 5));
     }
 
     #[test]
