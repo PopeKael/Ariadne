@@ -14,7 +14,7 @@ use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::ptr::null_mut;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{mpsc::Receiver, Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -45,8 +45,8 @@ use windows::Win32::System::Pipes::{
 };
 use windows::Win32::System::Threading::{GetCurrentProcessId, GetCurrentThreadId};
 use windows::Win32::UI::Shell::{
-    Shell_NotifyIconW, NIF_GUID, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_SETVERSION,
-    NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
+    ShellExecuteW, Shell_NotifyIconW, NIF_GUID, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD,
+    NIM_DELETE, NIM_SETVERSION, NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
 use windows::Win32::System::SystemServices::MK_LBUTTON;
@@ -59,8 +59,9 @@ use windows::Win32::UI::WindowsAndMessaging::{
     UpdateLayeredWindow, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HTCLIENT,
     HTTRANSPARENT, IDC_ARROW, IDI_APPLICATION, MA_NOACTIVATE, MF_SEPARATOR, MF_STRING,
     MSG, SWP_NOACTIVATE, SWP_NOSIZE, SW_HIDE,
-    SW_SHOWNOACTIVATE, TPM_RIGHTBUTTON, ULW_ALPHA, WM_APP, WM_CLOSE, WM_COMMAND, WM_DESTROY,
-    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_NCHITTEST, WM_NULL,
+    SW_SHOWNORMAL, SW_SHOWNOACTIVATE, TPM_RIGHTBUTTON, ULW_ALPHA, WM_APP, WM_CLOSE, WM_COMMAND,
+    WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP,
+    WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_NCHITTEST, WM_NULL, WM_RBUTTONUP,
     WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
@@ -69,6 +70,8 @@ const PIPE_NAME_W: PCWSTR = w!(r"\\.\pipe\ariadne-control");
 const PIPE_MESSAGE: u32 = WM_APP + 11;
 const FINAL_IDLE_MESSAGE: u32 = WM_APP + 12;
 const IDLE_WEBM_FRAME_MESSAGE: u32 = WM_APP + 13;
+const TRAY_OPEN_MESSAGE: u32 = WM_APP + 14;
+const TRAY_MENU_MESSAGE: u32 = WM_APP + 15;
 const ID_OPEN: usize = 1001;
 const ID_RESTART: usize = 1002;
 const ID_SHOW_AVATAR: usize = 1003;
@@ -86,8 +89,13 @@ const BUBBLE_CORNER_RADIUS: u32 = 6;
 // Pixels remain alpha-bearing so the layered overlay keeps its transparency.
 const BUBBLE_BACKGROUND_BGRA: [u8; 4] = [59, 48, 19, 220];
 const MAX_SOURCE_DIMENSION: u32 = 4096;
+const DASHBOARD_URL: &str = "http://127.0.0.1:8765/";
+const DASHBOARD_URL_W: PCWSTR = w!("http://127.0.0.1:8765/");
+const NIN_SELECT_EVENT: u32 = 0x0400;
+const NIN_KEYSELECT_EVENT: u32 = 0x0401;
 
 static LOG_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static TRAY_CALLBACK_MESSAGE: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Debug, Deserialize)]
 struct AvatarManifest {
@@ -189,6 +197,24 @@ fn log_line(message: impl AsRef<str>) {
             }
         }
     }
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(file_path) {
+        let _ = writeln!(file, "[{}] {}", now_text(), message.as_ref());
+    }
+}
+
+fn tray_log_line(message: impl AsRef<str>) {
+    let guard = LOG_LOCK.get_or_init(|| Mutex::new(())).lock();
+    if guard.is_err() {
+        return;
+    }
+    let path = env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("Ariadne");
+    if fs::create_dir_all(&path).is_err() {
+        return;
+    }
+    let file_path = path.join("tray.log");
     if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(file_path) {
         let _ = writeln!(file, "[{}] {}", now_text(), message.as_ref());
     }
@@ -862,10 +888,17 @@ impl AvatarOverlay {
         })
     }
 
-    fn show(&self) {
+    fn show(&mut self) {
         if !self.enabled {
             return;
         }
+        log_line(format!(
+            "avatar show requested: state={}, webm_active={}, webm_failed={}",
+            self.state,
+            self.idle_webm_rx.is_some(),
+            self.idle_webm_failed
+        ));
+        self.render_current_state();
         unsafe {
             let _ = ShowWindow(self.hwnd, SW_SHOWNOACTIVATE);
         }
@@ -1305,11 +1338,9 @@ impl AvatarOverlay {
         // valid premultiplied representation, including fully transparent
         // pixels, before handing it to UpdateLayeredWindow.
         clamp_premultiplied_rgba(&mut image);
-        log_line(if already_premultiplied {
-            "avatar alpha pipeline: WebM alpha merged, source already premultiplied, clamped-after-resize"
-        } else {
-            "avatar alpha pipeline: premultiplied-before-resize, clamped-after-resize"
-        });
+        if !already_premultiplied {
+            log_line("avatar alpha pipeline: premultiplied-before-resize, clamped-after-resize");
+        }
         let bubble_height = if self.status_text.is_some() {
             BUBBLE_MAX_HEIGHT
         } else {
@@ -1318,16 +1349,18 @@ impl AvatarOverlay {
         let total_height = layout_height(height, bubble_height > 0);
         self.rendered_width = width;
         self.rendered_height = total_height;
-        log_line(format!(
-            "avatar layout: source={}x{}, rendered={}x{}, bubble={}px, total={}px, corner_radius={}px",
-            source_width,
-            source_height,
-            width,
-            height,
-            bubble_height,
-            total_height,
-            BUBBLE_CORNER_RADIUS
-        ));
+        if !already_premultiplied {
+            log_line(format!(
+                "avatar layout: source={}x{}, rendered={}x{}, bubble={}px, total={}px, corner_radius={}px",
+                source_width,
+                source_height,
+                width,
+                height,
+                bubble_height,
+                total_height,
+                BUBBLE_CORNER_RADIUS
+            ));
+        }
         let mut bgra = vec![0u8; (width * total_height * 4) as usize];
         self.hit_alpha = vec![0u8; (width * total_height) as usize];
         if bubble_height > 0 {
@@ -1571,6 +1604,61 @@ unsafe extern "system" fn host_window_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
+    let tray_callback_message = TRAY_CALLBACK_MESSAGE.load(Ordering::Acquire);
+    if tray_callback_message != 0 && message == tray_callback_message {
+        let raw_event = lparam.0 as u32;
+        let event = raw_event & 0xffff;
+        let callback_icon = raw_event >> 16;
+        tray_log_line(format!(
+            "tray callback received in host_window_proc: message=0x{:08x}, wparam=0x{:x}, lparam=0x{:08x}, event_low=0x{:04x}, event_high=0x{:04x}",
+            message,
+            wparam.0,
+            raw_event,
+            event,
+            callback_icon
+        ));
+        match classify_tray_event(event) {
+            TrayAction::Open => {
+                tray_log_line(format!(
+                    "tray callback decoded: event={}, action=Open, icon_id={}",
+                    tray_event_name(event), callback_icon
+                ));
+                if let Err(error) = PostMessageW(
+                    Some(hwnd),
+                    TRAY_OPEN_MESSAGE,
+                    WPARAM(event as usize),
+                    LPARAM(raw_event as isize),
+                ) {
+                    tray_log_line(format!(
+                        "tray internal Open command post failed: event={}, error={}",
+                        tray_event_name(event), error
+                    ));
+                }
+            }
+            TrayAction::Menu => {
+                tray_log_line(format!(
+                    "tray callback decoded: event={}, action=ContextMenu, icon_id={}",
+                    tray_event_name(event), callback_icon
+                ));
+                if let Err(error) = PostMessageW(
+                    Some(hwnd),
+                    TRAY_MENU_MESSAGE,
+                    WPARAM(event as usize),
+                    LPARAM(raw_event as isize),
+                ) {
+                    tray_log_line(format!(
+                        "tray internal ContextMenu command post failed: event={}, error={}",
+                        tray_event_name(event), error
+                    ));
+                }
+            }
+            TrayAction::Ignore => tray_log_line(format!(
+                "tray callback decoded: event=0x{:04x}, action=Ignore, icon_id={}",
+                event, callback_icon
+            )),
+        }
+        return LRESULT(0);
+    }
     DefWindowProcW(hwnd, message, wparam, lparam)
 }
 
@@ -1620,12 +1708,12 @@ unsafe fn tray_add(hwnd: HWND, instance: HINSTANCE, callback_message: u32) -> NO
     data.Anonymous.uVersion = NOTIFYICON_VERSION_4;
     let added = Shell_NotifyIconW(NIM_ADD, &data);
     if added.as_bool() {
-        log_line(format!(
+        tray_log_line(format!(
             "tray icon registration succeeded: hwnd={}, hwnd_alive={}, uid={}, guid={:?}, callback={}, flags=0x{:x}",
             hwnd.0 as usize, IsWindow(Some(hwnd)).as_bool(), data.uID, TRAY_GUID, callback_message, data.uFlags.0
         ));
     } else {
-        log_line(format!(
+        tray_log_line(format!(
             "tray icon registration failed: hwnd={}, hwnd_alive={}, uid={}, guid={:?}, callback={}, flags=0x{:x}, error={:?}",
             hwnd.0 as usize,
             IsWindow(Some(hwnd)).as_bool(),
@@ -1638,12 +1726,12 @@ unsafe fn tray_add(hwnd: HWND, instance: HINSTANCE, callback_message: u32) -> NO
     }
     let versioned = Shell_NotifyIconW(NIM_SETVERSION, &data);
     if versioned.as_bool() {
-        log_line(format!(
+        tray_log_line(format!(
             "tray icon version set: version={}, hwnd={}",
             NOTIFYICON_VERSION_4, hwnd.0 as usize
         ));
     } else {
-        log_line(format!(
+        tray_log_line(format!(
             "tray icon version set failed: version={}, hwnd={}, error={:?}",
             NOTIFYICON_VERSION_4,
             hwnd.0 as usize,
@@ -1656,9 +1744,9 @@ unsafe fn tray_add(hwnd: HWND, instance: HINSTANCE, callback_message: u32) -> NO
 unsafe fn tray_remove(data: &NOTIFYICONDATAW) {
     let removed = Shell_NotifyIconW(NIM_DELETE, data);
     if removed.as_bool() {
-        log_line(format!("tray icon removed: uid={}", data.uID));
+        tray_log_line(format!("tray icon removed: uid={}", data.uID));
     } else {
-        log_line(format!(
+        tray_log_line(format!(
             "tray icon removal failed: uid={}, error={:?}",
             data.uID,
             GetLastError()
@@ -1668,7 +1756,7 @@ unsafe fn tray_remove(data: &NOTIFYICONDATAW) {
 
 unsafe fn show_tray_menu(hwnd: HWND) {
     let Ok(menu) = CreatePopupMenu() else {
-        log_line("could not create tray menu");
+        tray_log_line("could not create tray menu");
         return;
     };
     let _ = AppendMenuW(menu, MF_STRING, ID_OPEN, w!("Open Ariadne dashboard"));
@@ -1680,10 +1768,10 @@ unsafe fn show_tray_menu(hwnd: HWND) {
     let _ = AppendMenuW(menu, MF_STRING, ID_EXIT, w!("Exit Ariadne"));
     let mut point = POINT::default();
     if let Err(error) = GetCursorPos(&mut point) {
-        log_line(format!("tray popup cursor lookup failed: {}", error));
+        tray_log_line(format!("tray popup cursor lookup failed: {}", error));
     }
     let foreground = SetForegroundWindow(hwnd);
-    log_line(format!(
+    tray_log_line(format!(
         "tray popup requested: hwnd={}, point=({}, {}), foreground={}, menu={}",
         hwnd.0 as usize,
         point.x,
@@ -1693,19 +1781,72 @@ unsafe fn show_tray_menu(hwnd: HWND) {
     ));
     let popup = TrackPopupMenu(menu, TPM_RIGHTBUTTON, point.x, point.y, Some(0), hwnd, None);
     if !popup.as_bool() {
-        log_line(format!("tray popup display failed: error={:?}", GetLastError()));
+        tray_log_line(format!("tray popup display failed: error={:?}", GetLastError()));
     }
     let _ = PostMessageW(Some(hwnd), WM_NULL, WPARAM(0), LPARAM(0));
     let _ = DestroyMenu(menu);
 }
 
-fn open_dashboard() {
-    let result = Command::new("cmd")
-        .args(["/C", "start", "", "http://127.0.0.1:8765/"])
-        .spawn();
-    match result {
-        Ok(_) => log_line("dashboard-open command executed"),
-        Err(error) => log_line(format!("dashboard-open command failed: {}", error)),
+#[derive(Debug, PartialEq, Eq)]
+enum TrayAction {
+    Open,
+    Menu,
+    Ignore,
+}
+
+fn classify_tray_event(event: u32) -> TrayAction {
+    match event {
+        WM_LBUTTONUP | WM_LBUTTONDBLCLK | NIN_SELECT_EVENT | NIN_KEYSELECT_EVENT => {
+            TrayAction::Open
+        }
+        WM_RBUTTONUP | WM_CONTEXTMENU => TrayAction::Menu,
+        _ => TrayAction::Ignore,
+    }
+}
+
+fn tray_event_name(event: u32) -> &'static str {
+    match event {
+        WM_LBUTTONUP => "WM_LBUTTONUP",
+        WM_LBUTTONDBLCLK => "WM_LBUTTONDBLCLK",
+        NIN_SELECT_EVENT => "NIN_SELECT",
+        NIN_KEYSELECT_EVENT => "NIN_KEYSELECT",
+        WM_RBUTTONUP => "WM_RBUTTONUP",
+        WM_CONTEXTMENU => "WM_CONTEXTMENU",
+        _ => "unrecognized",
+    }
+}
+
+fn open_dashboard(trigger: &str) {
+    if !health_check() {
+        tray_log_line(format!(
+            "dashboard-open skipped: trigger={}, url={}, Ariadne backend is not ready; no backend process was started",
+            trigger, DASHBOARD_URL
+        ));
+        return;
+    }
+
+    unsafe {
+        let result = ShellExecuteW(
+            None,
+            w!("open"),
+            DASHBOARD_URL_W,
+            PCWSTR::null(),
+            PCWSTR::null(),
+            SW_SHOWNORMAL,
+        );
+        let result_code = result.0 as isize;
+        let last_error = GetLastError();
+        if result_code > 32 {
+            tray_log_line(format!(
+                "dashboard-open succeeded: trigger={}, url={}, api=ShellExecuteW, result={}, last_error={:?}",
+                trigger, DASHBOARD_URL, result_code, last_error
+            ));
+        } else {
+            tray_log_line(format!(
+                "dashboard-open failed: trigger={}, url={}, api=ShellExecuteW, result={}, windows_error={:?}",
+                trigger, DASHBOARD_URL, result_code, last_error
+            ));
+        }
     }
 }
 
@@ -1792,8 +1933,12 @@ fn run() -> Result<(), String> {
         if tray_message == 0 {
             return Err(format!("could not register tray callback message: {:?}", GetLastError()));
         }
+        TRAY_CALLBACK_MESSAGE.store(tray_message, Ordering::Release);
         let taskbar_created = RegisterWindowMessageW(w!("TaskbarCreated"));
-        log_line(format!("registered tray callback message: tray={}, taskbar_created={}", tray_message, taskbar_created));
+        tray_log_line(format!(
+            "registered tray callback message: tray={}, taskbar_created={}, internal_open={}, internal_menu={}",
+            tray_message, taskbar_created, TRAY_OPEN_MESSAGE, TRAY_MENU_MESSAGE
+        ));
         let message_hwnd = CreateWindowExW(
             WS_EX_TOOLWINDOW,
             w!("AriadneHostWindow"),
@@ -1837,49 +1982,39 @@ fn run() -> Result<(), String> {
             avatar.hide();
         }
         let mut tray = tray_add(message_hwnd, instance, tray_message);
-        log_line(format!("tray message pump started: hwnd={}, callback={}, taskbar_created={}, hwnd_alive={}", message_hwnd.0 as usize, tray_message, taskbar_created, IsWindow(Some(message_hwnd)).as_bool()));
+        tray_log_line(format!("tray message pump started: hwnd={}, callback={}, taskbar_created={}, hwnd_alive={}", message_hwnd.0 as usize, tray_message, taskbar_created, IsWindow(Some(message_hwnd)).as_bool()));
         let mut message = MSG::default();
         while GetMessageW(&mut message, None, 0, 0).0 > 0 {
-            if message.message == tray_message {
-                let raw_event = message.lParam.0 as u32;
-                let event = raw_event & 0xffff;
-                let callback_icon = raw_event >> 16;
-                log_line(format!(
-                    "tray callback received: hwnd={}, expected_hwnd={}, hwnd_alive={}, wparam={}, lparam=0x{:08x}, event_low=0x{:04x}, event_high=0x{:04x}, expected_uid={}",
-                    message.hwnd.0 as usize,
-                    message_hwnd.0 as usize,
-                    IsWindow(Some(message_hwnd)).as_bool(),
-                    message.wParam.0,
-                    raw_event,
-                    raw_event & 0xffff,
-                    callback_icon,
-                    tray.uID
-                ));
-                if message.hwnd != message_hwnd {
-                    log_line("tray callback rejected: callback HWND does not match host message window");
-                } else if callback_icon != 0 && callback_icon != tray.uID as u32 {
-                    log_line("tray callback rejected: callback icon ID does not match registered icon");
-                } else {
-                    match event {
-                        windows::Win32::UI::WindowsAndMessaging::WM_RBUTTONUP
-                        | windows::Win32::UI::WindowsAndMessaging::WM_CONTEXTMENU => {
-                            log_line("tray right-click/context-menu event received");
-                            show_tray_menu(message_hwnd)
-                        }
-                        windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONUP => {
-                            log_line("tray left-click event received")
-                        }
-                        windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONDBLCLK => {
-                            log_line("tray double-click event received");
-                            open_dashboard();
-                        }
-                        _ => {}
-                    }
-                }
-            } else if message.message == taskbar_created {
-                log_line("Explorer TaskbarCreated received; recreating tray icon");
+            if message.message == taskbar_created {
+                tray_log_line("Explorer TaskbarCreated received; recreating tray icon");
                 tray_remove(&tray);
                 tray = tray_add(message_hwnd, instance, tray_message);
+            } else if message.hwnd == message_hwnd && message.message == TRAY_OPEN_MESSAGE {
+                let raw_event = message.lParam.0 as u32;
+                let event = message.wParam.0 as u32;
+                let callback_icon = raw_event >> 16;
+                tray_log_line(format!(
+                    "tray internal Open command received: event={}, icon_id={}, expected_uid={}",
+                    tray_event_name(event), callback_icon, tray.uID
+                ));
+                if callback_icon != 0 && callback_icon != tray.uID as u32 {
+                    tray_log_line("tray internal Open command rejected: icon ID does not match registered icon");
+                } else {
+                    open_dashboard(tray_event_name(event));
+                }
+            } else if message.hwnd == message_hwnd && message.message == TRAY_MENU_MESSAGE {
+                let raw_event = message.lParam.0 as u32;
+                let event = message.wParam.0 as u32;
+                let callback_icon = raw_event >> 16;
+                tray_log_line(format!(
+                    "tray internal ContextMenu command received: event={}, icon_id={}, expected_uid={}",
+                    tray_event_name(event), callback_icon, tray.uID
+                ));
+                if callback_icon != 0 && callback_icon != tray.uID as u32 {
+                    tray_log_line("tray internal ContextMenu command rejected: icon ID does not match registered icon");
+                } else {
+                    show_tray_menu(message_hwnd);
+                }
             } else if message.hwnd == message_hwnd && message.message == PIPE_MESSAGE {
                 process_events(&queue, &mut avatar, &supervisor, message_hwnd);
             } else if message.hwnd == message_hwnd && message.message == FINAL_IDLE_MESSAGE {
@@ -1888,26 +2023,26 @@ fn run() -> Result<(), String> {
                 avatar.idle_webm_frame_tick();
             } else if message.hwnd == message_hwnd && message.message == WM_COMMAND {
                 let command_id = message.wParam.0 & 0xffff;
-                log_line(format!("tray menu command selected: id={}", command_id));
+                tray_log_line(format!("tray menu command selected: id={}", command_id));
                 match command_id {
                     ID_OPEN => {
-                        log_line("tray menu Open Ariadne dashboard selected");
-                        open_dashboard();
+                        tray_log_line("tray menu Open Ariadne dashboard selected");
+                        open_dashboard("menu Open Ariadne dashboard");
                     }
                     ID_RESTART => {
-                        log_line("tray menu Restart Ariadne core selected");
+                        tray_log_line("tray menu Restart Ariadne core selected");
                         supervisor.restart();
                     }
                     ID_SHOW_AVATAR => {
-                        log_line("tray menu Show avatar selected");
+                        tray_log_line("tray menu Show avatar selected");
                         avatar.show();
                     }
                     ID_HIDE_AVATAR => {
-                        log_line("tray menu Hide avatar selected");
+                        tray_log_line("tray menu Hide avatar selected");
                         avatar.hide();
                     }
                     ID_EXIT => {
-                        log_line("tray menu Exit Ariadne selected");
+                        tray_log_line("tray menu Exit Ariadne selected");
                         PostQuitMessage(0)
                     }
                     _ => {}
@@ -1939,10 +2074,36 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        clamp_premultiplied_rgba, layout_height, premultiply_channel, premultiply_rgba,
+        classify_tray_event, clamp_premultiplied_rgba, layout_height, premultiply_channel,
+        premultiply_rgba, TrayAction, NIN_KEYSELECT_EVENT, NIN_SELECT_EVENT,
         rounded_bubble_pixel_inside, scaled_avatar_dimensions, state_status, AVATAR_MAX_HEIGHT,
         BUBBLE_CORNER_RADIUS, BUBBLE_MAX_HEIGHT,
     };
+
+    #[test]
+    fn tray_left_activation_opens_dashboard() {
+        assert_eq!(classify_tray_event(super::WM_LBUTTONUP), TrayAction::Open);
+        assert_eq!(classify_tray_event(NIN_SELECT_EVENT), TrayAction::Open);
+        assert_eq!(classify_tray_event(NIN_KEYSELECT_EVENT), TrayAction::Open);
+        assert_eq!(
+            classify_tray_event(super::WM_LBUTTONDBLCLK),
+            TrayAction::Open
+        );
+    }
+
+    #[test]
+    fn tray_right_activation_opens_menu() {
+        assert_eq!(classify_tray_event(super::WM_RBUTTONUP), TrayAction::Menu);
+        assert_eq!(
+            classify_tray_event(super::WM_CONTEXTMENU),
+            TrayAction::Menu
+        );
+    }
+
+    #[test]
+    fn unrelated_tray_messages_are_ignored() {
+        assert_eq!(classify_tray_event(super::WM_MOUSEMOVE), TrayAction::Ignore);
+    }
 
     #[test]
     fn tall_portrait_assets_are_scaled_to_avatar_limit() {
