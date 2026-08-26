@@ -40,16 +40,14 @@ if (Test-Path -LiteralPath $embeddingPath) {
 }
 Write-Host "Ariadne Vault root: $vaultRoot" -ForegroundColor Cyan
 Write-Host ("Catalogue: {0:N0} records | Embeddings: {1:N0} documents / {2:N0} chunks" -f $catalogueCount, $embeddingDocuments, $embeddingChunks) -ForegroundColor Cyan
-$hostCandidates = @(
-    (Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'),
-    (Join-Path $controlPlane 'host\target\release\ariadne-host.exe'),
-    (Join-Path $controlPlane 'host\ariadne-host.exe')
-)
-$hostExe = $hostCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+$hostExe = Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'
 $tray = Join-Path $controlPlane 'tray.py'
 $url = 'http://localhost:8765/'
 
-if ($hostExe -and -not $LegacyPythonTray) {
+if (-not $LegacyPythonTray) {
+    if (-not (Test-Path -LiteralPath $hostExe -PathType Leaf)) {
+        throw "Canonical Ariadne Host executable was not found: $hostExe. Build it first with the release target."
+    }
     Write-Host "Starting Ariadne Rust Host: $hostExe" -ForegroundColor Green
     Start-Process -FilePath (Resolve-Path -LiteralPath $hostExe).Path -WorkingDirectory $projectRoot -WindowStyle Hidden
     if ($OpenBrowser) {
@@ -69,10 +67,6 @@ if ($hostExe -and -not $LegacyPythonTray) {
         if (-not $opened) { Start-Process $url }
     }
     return
-}
-
-if (-not $LegacyPythonTray) {
-    Write-Warning "Rust Ariadne Host is not built. Falling back to the legacy Python tray; use -LegacyPythonTray explicitly during rollback."
 }
 
 if (-not (Test-Path -LiteralPath $tray -PathType Leaf)) {

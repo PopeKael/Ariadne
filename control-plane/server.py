@@ -61,6 +61,7 @@ DOCKER_PATH = Path(r"C:\Program Files\Docker\Docker\resources\bin\docker.exe")
 OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
+FINAL_AVATAR_DIALOGUE = "Here's your answer."
 HOME_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_CTX", "16384")))
 PLANNER_MODEL = os.environ.get("ARIADNE_PLANNER_MODEL", "qwen3.5:9b-q4_K_M")
 PLANNER_KEEP_ALIVE: int | str = os.environ.get("ARIADNE_PLANNER_KEEP_ALIVE", "adaptive")
@@ -2852,8 +2853,6 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         if not isinstance(response_identity, dict):
             response_identity = identity_meta
         record_home_event("model_response_completed", f"Local {HOME_CHAT_MODEL} response completed.")
-        emit_state("speaking")
-        emit_say(answer)
         calls = timing.get("ollama_calls", []) if isinstance(timing.get("ollama_calls"), list) else []
         if calls:
             native_fields = (
@@ -2882,6 +2881,8 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
             chat_id, turn_id, answer, model=HOME_CHAT_MODEL, used_vault=use_vault,
             sources=sources, retrieval=retrieval, timing=dict(timing), identity_kernel=response_identity,
         )
+        emit_state("speaking")
+        emit_say(FINAL_AVATAR_DIALOGUE)
         return {
             "ok": True,
             "answer": answer,

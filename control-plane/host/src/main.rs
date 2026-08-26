@@ -1,5 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod idle_webm;
+
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
@@ -13,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{mpsc::Receiver, Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -65,6 +67,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 const PIPE_NAME: &str = r"\\.\pipe\ariadne-control";
 const PIPE_NAME_W: PCWSTR = w!(r"\\.\pipe\ariadne-control");
 const PIPE_MESSAGE: u32 = WM_APP + 11;
+const FINAL_IDLE_MESSAGE: u32 = WM_APP + 12;
+const IDLE_WEBM_FRAME_MESSAGE: u32 = WM_APP + 13;
 const ID_OPEN: usize = 1001;
 const ID_RESTART: usize = 1002;
 const ID_SHOW_AVATAR: usize = 1003;
@@ -75,6 +79,7 @@ const CREATE_NO_WINDOW_FLAGS: u32 = 0x0800_0000;
 const TRAY_GUID: GUID = GUID::from_u128(0x9b1f5e23_7b83_4f39_a7c8_5e3e4f2ad6b1);
 const AVATAR_MAX_HEIGHT: u32 = 300;
 const BUBBLE_MAX_HEIGHT: u32 = 50;
+const FINAL_STATE_HOLD_SECONDS: u64 = 15;
 const BUBBLE_HORIZONTAL_PADDING: u32 = 8;
 const BUBBLE_CORNER_RADIUS: u32 = 6;
 // Derived from configuration-avatar.css .avatar-preview-button: #13303B.
@@ -189,15 +194,39 @@ fn log_line(message: impl AsRef<str>) {
     }
 }
 
-fn find_project_root(exe: &Path) -> PathBuf {
-    let mut current = exe.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
-    for _ in 0..8 {
+fn project_root_from(candidate: &Path) -> Option<PathBuf> {
+    let mut current = if candidate.is_file() {
+        candidate.parent().unwrap_or(candidate).to_path_buf()
+    } else {
+        candidate.to_path_buf()
+    };
+    for _ in 0..12 {
         if current.join("control-plane").join("server.py").is_file() {
-            return current;
+            return Some(current);
         }
         if !current.pop() {
             break;
         }
+    }
+    None
+}
+
+fn find_project_root(exe: &Path) -> PathBuf {
+    if let Some(configured) = env::var_os("ARIADNE_PROJECT_ROOT") {
+        if let Some(root) = project_root_from(&PathBuf::from(configured)) {
+            return root;
+        }
+    }
+    if let Some(root) = project_root_from(exe) {
+        return root;
+    }
+    if let Ok(current_dir) = env::current_dir() {
+        if let Some(root) = project_root_from(&current_dir) {
+            return root;
+        }
+    }
+    if let Some(root) = project_root_from(Path::new(env!("CARGO_MANIFEST_DIR"))) {
+        return root;
     }
     env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
@@ -486,6 +515,28 @@ fn canonical_state(value: &str) -> bool {
     )
 }
 
+fn state_status(state: &str) -> Option<&'static str> {
+    match state {
+        "listening" => Some("Listening..."),
+        "thinking" => Some("Thinking..."),
+        "searching_vault" => Some("Searching the Vault..."),
+        "reading" => Some("Reading..."),
+        "cross_referencing" => Some("Cross-referencing..."),
+        "loading_model" => Some("Loading model..."),
+        "working" => Some("Working..."),
+        "waiting" => Some("Waiting..."),
+        "success" => Some("Done."),
+        "warning" => Some("Warning..."),
+        "confused" => Some("Checking that..."),
+        "recovering" => Some("Recovering..."),
+        "error" => Some("An error occurred."),
+        "offline" => Some("Offline"),
+        // Speaking receives its dialogue through the separate `say` event.
+        "idle" | "speaking" => None,
+        _ => None,
+    }
+}
+
 fn pipe_receiver(ui: UiQueue, stop: Arc<AtomicBool>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         log_line(format!("IPC receiver listening on {}", PIPE_NAME));
@@ -654,6 +705,7 @@ struct AvatarDrag {
 
 struct AvatarOverlay {
     hwnd: HWND,
+    message_hwnd: HWND,
     executable: PathBuf,
     project_root: PathBuf,
     asset_root: PathBuf,
@@ -666,6 +718,11 @@ struct AvatarOverlay {
     drag: Option<AvatarDrag>,
     state: String,
     status_text: Option<String>,
+    final_hold_generation: u64,
+    final_hold_active: bool,
+    idle_webm_rx: Option<Receiver<idle_webm::IdleWebmMessage>>,
+    idle_webm_stop: Option<Arc<AtomicBool>>,
+    idle_webm_failed: bool,
     enabled: bool,
     logged_missing: HashSet<String>,
 }
@@ -760,6 +817,7 @@ fn rounded_bubble_pixel_inside(x: u32, y: u32, width: u32, height: u32) -> bool 
 impl AvatarOverlay {
     unsafe fn new(
         instance: HINSTANCE,
+        message_hwnd: HWND,
         executable: PathBuf,
         project_root: PathBuf,
     ) -> windows::core::Result<Self> {
@@ -781,6 +839,7 @@ impl AvatarOverlay {
         let (position, position_saved) = load_position();
         Ok(Self {
             hwnd,
+            message_hwnd,
             executable,
             project_root,
             asset_root: settings.asset_root.clone(),
@@ -793,6 +852,11 @@ impl AvatarOverlay {
             drag: None,
             state: "idle".into(),
             status_text: None,
+            final_hold_generation: 0,
+            final_hold_active: false,
+            idle_webm_rx: None,
+            idle_webm_stop: None,
+            idle_webm_failed: false,
             enabled: settings.enabled,
             logged_missing: HashSet::new(),
         })
@@ -806,7 +870,9 @@ impl AvatarOverlay {
             let _ = ShowWindow(self.hwnd, SW_SHOWNOACTIVATE);
         }
     }
-    fn hide(&self) {
+    fn hide(&mut self) {
+        self.stop_idle_webm("hide");
+        self.cancel_final_hold("hide");
         unsafe {
             let _ = ShowWindow(self.hwnd, SW_HIDE);
         }
@@ -907,7 +973,154 @@ impl AvatarOverlay {
         }
     }
 
+    fn cancel_final_hold(&mut self, reason: &str) {
+        if !self.final_hold_active {
+            return;
+        }
+        self.final_hold_active = false;
+        self.final_hold_generation = self.final_hold_generation.wrapping_add(1);
+        log_line(format!(
+            "avatar final hold cancelled: reason={}, generation={}",
+            reason, self.final_hold_generation
+        ));
+    }
+
+    fn stop_idle_webm(&mut self, reason: &str) {
+        if let Some(stop) = self.idle_webm_stop.take() {
+            stop.store(true, Ordering::Release);
+            self.idle_webm_rx = None;
+            log_line(format!("avatar idle WebM stopped: reason={reason}"));
+        }
+    }
+
+    fn idle_webm_path(&self) -> PathBuf {
+        let scaled = self.asset_root.join("ariadne_idle_small.webm");
+        if scaled.is_file() {
+            scaled
+        } else {
+            self.asset_root.join("ariadne_idle.webm")
+        }
+    }
+
+    fn start_idle_webm(&mut self) -> bool {
+        if self.idle_webm_rx.is_some() {
+            return true;
+        }
+        let path = self.idle_webm_path();
+        if !path.is_file() {
+            self.log_missing_once(
+                "idle-webm-missing".into(),
+                format!("idle WebM is unavailable; using PNG fallback: {}", path.display()),
+            );
+            return false;
+        }
+        let playback = match idle_webm::IdleWebmPlayback::open(&path) {
+            Ok(playback) => playback,
+            Err(error) => {
+                self.log_missing_once(
+                    "idle-webm-invalid".into(),
+                    format!("idle WebM failed validation; using PNG fallback: {error}"),
+                );
+                self.idle_webm_failed = true;
+                return false;
+            }
+        };
+        let stop = Arc::new(AtomicBool::new(false));
+        self.idle_webm_rx = Some(playback.spawn(self.message_hwnd.0 as isize, stop.clone()));
+        self.idle_webm_stop = Some(stop);
+        log_line(format!(
+            "avatar idle WebM playback started: path={}, loop=true, alpha=true",
+            path.display()
+        ));
+        true
+    }
+
+    fn idle_webm_frame_tick(&mut self) {
+        if self.state != "idle" {
+            return;
+        }
+        let Some(receiver) = self.idle_webm_rx.as_ref() else {
+            return;
+        };
+        let mut latest = None;
+        while let Ok(message) = receiver.try_recv() {
+            latest = Some(message);
+        }
+        match latest {
+            Some(idle_webm::IdleWebmMessage::Frame(image)) => {
+                // Filmora's WebM metadata marks this alpha stream as
+                // premultiplied; do not multiply the edge colours twice.
+                if let Err(error) = self.render_rgba(image, true) {
+                    self.log_missing_once(
+                        "idle-webm-render".into(),
+                        format!("idle WebM frame render failed; using PNG fallback: {error}"),
+                    );
+                    self.idle_webm_failed = true;
+                    self.stop_idle_webm("frame-render-failed");
+                    let _ = self.render_state_asset("idle");
+                }
+            }
+            Some(idle_webm::IdleWebmMessage::Failed(error)) => {
+                self.log_missing_once(
+                    "idle-webm-decode".into(),
+                    format!("idle WebM playback failed; using PNG fallback: {error}"),
+                );
+                self.idle_webm_failed = true;
+                self.stop_idle_webm("decode-failed");
+                let _ = self.render_state_asset("idle");
+            }
+            None => {}
+        }
+    }
+
+    fn begin_final_hold(&mut self, message_hwnd: HWND) {
+        self.cancel_final_hold("replaced");
+        self.final_hold_generation = self.final_hold_generation.wrapping_add(1);
+        let generation = self.final_hold_generation;
+        self.final_hold_active = true;
+        log_line(format!(
+            "avatar final hold started: state=speaking, seconds={}, generation={}",
+            FINAL_STATE_HOLD_SECONDS, generation
+        ));
+        let message_hwnd_value = message_hwnd.0 as isize;
+        thread::spawn(move || {
+            thread::sleep(Duration::from_secs(FINAL_STATE_HOLD_SECONDS));
+            unsafe {
+                if PostMessageW(
+                    Some(HWND(message_hwnd_value as *mut c_void)),
+                    FINAL_IDLE_MESSAGE,
+                    WPARAM(generation as usize),
+                    LPARAM(0),
+                )
+                .is_err()
+                {
+                    log_line(format!(
+                        "avatar final hold completion post failed: generation={}",
+                        generation
+                    ));
+                }
+            }
+        });
+    }
+
+    fn final_hold_expired(&mut self, generation: u64) {
+        if !self.final_hold_active || generation != self.final_hold_generation {
+            log_line(format!(
+                "avatar final hold completion ignored: generation={}, active_generation={}, active={}",
+                generation, self.final_hold_generation, self.final_hold_active
+            ));
+            return;
+        }
+        self.final_hold_active = false;
+        log_line(format!(
+            "avatar final hold expired: seconds={}, generation={}; returning to idle",
+            FINAL_STATE_HOLD_SECONDS, generation
+        ));
+        self.set_state("idle");
+    }
+
     fn set_status(&mut self, text: Option<String>) {
+        self.cancel_final_hold("say-event");
         self.status_text = text.and_then(|value| {
             let normalized = value
                 .chars()
@@ -925,10 +1138,41 @@ impl AvatarOverlay {
                 .collect::<String>();
             (!normalized.is_empty()).then_some(normalized)
         });
+        log_line(format!(
+            "avatar bubble requested: source=say, state={}, chars={}",
+            self.state,
+            self.status_text.as_ref().map(|value| value.chars().count()).unwrap_or(0)
+        ));
         if self.enabled {
-            let state = self.state.clone();
-            self.set_state(&state);
+            self.render_current_state();
+        } else {
+            log_line(format!(
+                "avatar bubble hidden: source=say, state={}, reason=avatar-disabled",
+                self.state
+            ));
         }
+    }
+
+    fn render_current_state(&mut self) {
+        let state = self.state.clone();
+        if state == "idle" && !self.idle_webm_failed && self.start_idle_webm() {
+            return;
+        }
+        if self.render_state_asset(&state) {
+            return;
+        }
+        if state != "idle" && self.render_state_asset("idle") {
+            self.log_missing_once(
+                format!("fallback:{state}"),
+                format!("avatar state {} fell back to idle", state),
+            );
+            return;
+        }
+        self.hide();
+        log_line(format!(
+            "avatar bubble hidden: state={}, reason=no-renderable-asset",
+            state
+        ));
     }
 
     fn reload_from_configuration(&mut self) {
@@ -937,6 +1181,8 @@ impl AvatarOverlay {
         self.asset_root = settings.asset_root;
         self.manifest = configured_manifest(load_manifest(&self.asset_root), &settings.state_assets);
         self.logged_missing.clear();
+        self.idle_webm_failed = false;
+        self.stop_idle_webm("configuration-reload");
         if !self.enabled {
             self.hide();
             log_line("avatar overlay disabled by configuration");
@@ -1008,28 +1254,36 @@ impl AvatarOverlay {
             log_line(format!("ignored unknown avatar state: {}", state));
             return;
         }
+        self.cancel_final_hold("state-event");
+        if state != "idle" {
+            self.stop_idle_webm("state-change");
+        }
         self.state = state.to_string();
+        self.status_text = state_status(state).map(str::to_string);
+        log_line(format!(
+            "avatar bubble requested: source=state, state={}, chars={}",
+            state,
+            self.status_text.as_ref().map(|value| value.chars().count()).unwrap_or(0)
+        ));
         if !self.enabled {
             self.hide();
+            log_line(format!(
+                "avatar bubble hidden: state={}, reason=avatar-disabled",
+                state
+            ));
             return;
         }
-        if self.render_state_asset(state) {
-            return;
-        }
-        if state != "idle" && self.render_state_asset("idle") {
-            self.log_missing_once(
-                format!("fallback:{state}"),
-                format!("avatar state {} fell back to idle", state),
-            );
-            return;
-        }
-        self.hide();
+        self.render_current_state();
     }
 
     fn render_png(&mut self, path: &Path) -> Result<(), String> {
-        let mut image = image::open(path)
+        let image = image::open(path)
             .map_err(|error| error.to_string())?
             .to_rgba8();
+        self.render_rgba(image, false)
+    }
+
+    fn render_rgba(&mut self, mut image: image::RgbaImage, already_premultiplied: bool) -> Result<(), String> {
         let (source_width, source_height) = image.dimensions();
         if source_width == 0
             || source_height == 0
@@ -1041,7 +1295,9 @@ impl AvatarOverlay {
         // UpdateLayeredWindow with AC_SRC_ALPHA consumes premultiplied BGRA.
         // Premultiply before resizing so transparent RGB cannot bleed into
         // crisp edges or isolated transparent regions during filtering.
-        premultiply_rgba(&mut image);
+        if !already_premultiplied {
+            premultiply_rgba(&mut image);
+        }
         let (width, height) = scaled_avatar_dimensions(source_width, source_height);
         let mut image =
             image::imageops::resize(&image, width, height, image::imageops::FilterType::Lanczos3);
@@ -1049,7 +1305,11 @@ impl AvatarOverlay {
         // valid premultiplied representation, including fully transparent
         // pixels, before handing it to UpdateLayeredWindow.
         clamp_premultiplied_rgba(&mut image);
-        log_line("avatar alpha pipeline: premultiplied-before-resize, clamped-after-resize");
+        log_line(if already_premultiplied {
+            "avatar alpha pipeline: WebM alpha merged, source already premultiplied, clamped-after-resize"
+        } else {
+            "avatar alpha pipeline: premultiplied-before-resize, clamped-after-resize"
+        });
         let bubble_height = if self.status_text.is_some() {
             BUBBLE_MAX_HEIGHT
         } else {
@@ -1204,6 +1464,19 @@ impl AvatarOverlay {
                 return Err("UpdateLayeredWindow failed".into());
             }
             let _ = ShowWindow(self.hwnd, SW_SHOWNOACTIVATE);
+            if let Some(status) = self.status_text.as_deref() {
+                log_line(format!(
+                    "avatar bubble visible: state={}, chars={}, bubble_height={}px",
+                    self.state,
+                    status.chars().count(),
+                    bubble_height
+                ));
+            } else {
+                log_line(format!(
+                    "avatar bubble hidden: state={}, reason=no-status",
+                    self.state
+                ));
+            }
         }
         Ok(())
     }
@@ -1436,18 +1709,32 @@ fn open_dashboard() {
     }
 }
 
-fn process_events(queue: &UiQueue, avatar: &mut AvatarOverlay, supervisor: &CoreSupervisor) {
+fn process_events(
+    queue: &UiQueue,
+    avatar: &mut AvatarOverlay,
+    supervisor: &CoreSupervisor,
+    message_hwnd: HWND,
+) {
     for event in queue.drain() {
         match event {
             UiEvent::Pipe(message) => match message.kind.as_str() {
                 "state" => {
                     if let Some(state) = message.state.as_deref() {
+                        log_line(format!("avatar state event received: {}", state));
                         avatar.set_state(state);
                     }
                 }
                 "say" => {
                     if let Some(text) = message.text {
+                        log_line(format!(
+                            "avatar say event received: state={}, chars={}",
+                            avatar.state,
+                            text.chars().count()
+                        ));
                         avatar.set_status(Some(text.clone()));
+                        if avatar.state == "speaking" && avatar.status_text.is_some() {
+                            avatar.begin_final_hold(message_hwnd);
+                        }
                         log_line(format!(
                             "IPC say event received ({} chars)",
                             text.chars().count()
@@ -1457,7 +1744,10 @@ fn process_events(queue: &UiQueue, avatar: &mut AvatarOverlay, supervisor: &Core
                 "show" => avatar.show(),
                 "hide" => avatar.hide(),
                 "reload_avatar" => avatar.reload_from_configuration(),
-                "clear_status" => avatar.set_status(None),
+                "clear_status" => {
+                    log_line(format!("avatar bubble clear requested: state={}", avatar.state));
+                    avatar.set_status(None)
+                }
                 "move" => {
                     if let (Some(x), Some(y)) = (message.x, message.y) {
                         avatar.set_position(x, y);
@@ -1491,6 +1781,11 @@ fn run() -> Result<(), String> {
         log_line("host start");
         let exe = env::current_exe().map_err(|error| error.to_string())?;
         let project_root = find_project_root(&exe);
+        log_line(format!(
+            "host executable: {}; project root: {}",
+            exe.display(),
+            project_root.display()
+        ));
         let instance = HINSTANCE(GetModuleHandleW(None).map_err(|error| error.to_string())?.0);
         register_windows(instance).map_err(|error| error.to_string())?;
         let tray_message = RegisterWindowMessageW(w!("Ariadne.TrayCallback"));
@@ -1532,8 +1827,8 @@ fn run() -> Result<(), String> {
         let stop_pipe = Arc::new(AtomicBool::new(false));
         let pipe_thread = pipe_receiver(queue.clone(), stop_pipe.clone());
         let supervisor = CoreSupervisor::start(project_root.clone(), queue.clone());
-        let mut avatar =
-            AvatarOverlay::new(instance, exe, project_root).map_err(|error| error.to_string())?;
+        let mut avatar = AvatarOverlay::new(instance, message_hwnd, exe, project_root)
+            .map_err(|error| error.to_string())?;
         avatar.install_window_userdata();
         avatar.set_state("idle");
         if avatar.enabled {
@@ -1586,7 +1881,11 @@ fn run() -> Result<(), String> {
                 tray_remove(&tray);
                 tray = tray_add(message_hwnd, instance, tray_message);
             } else if message.hwnd == message_hwnd && message.message == PIPE_MESSAGE {
-                process_events(&queue, &mut avatar, &supervisor);
+                process_events(&queue, &mut avatar, &supervisor, message_hwnd);
+            } else if message.hwnd == message_hwnd && message.message == FINAL_IDLE_MESSAGE {
+                avatar.final_hold_expired(message.wParam.0 as u64);
+            } else if message.hwnd == message_hwnd && message.message == IDLE_WEBM_FRAME_MESSAGE {
+                avatar.idle_webm_frame_tick();
             } else if message.hwnd == message_hwnd && message.message == WM_COMMAND {
                 let command_id = message.wParam.0 & 0xffff;
                 log_line(format!("tray menu command selected: id={}", command_id));
@@ -1617,7 +1916,7 @@ fn run() -> Result<(), String> {
             let _ = TranslateMessage(&message);
             DispatchMessageW(&message);
         }
-        process_events(&queue, &mut avatar, &supervisor);
+        process_events(&queue, &mut avatar, &supervisor, message_hwnd);
         stop_pipe.store(true, Ordering::Release);
         wake_pipe_receiver();
         let _ = pipe_thread.join();
@@ -1641,7 +1940,7 @@ fn main() {
 mod tests {
     use super::{
         clamp_premultiplied_rgba, layout_height, premultiply_channel, premultiply_rgba,
-        rounded_bubble_pixel_inside, scaled_avatar_dimensions, AVATAR_MAX_HEIGHT,
+        rounded_bubble_pixel_inside, scaled_avatar_dimensions, state_status, AVATAR_MAX_HEIGHT,
         BUBBLE_CORNER_RADIUS, BUBBLE_MAX_HEIGHT,
     };
 
@@ -1663,6 +1962,23 @@ mod tests {
         assert_eq!(layout_height(AVATAR_MAX_HEIGHT, true), 350);
         assert_eq!(layout_height(AVATAR_MAX_HEIGHT, false), 300);
         assert_eq!(BUBBLE_MAX_HEIGHT, 50);
+    }
+
+    #[test]
+    fn state_events_supply_native_bubble_statuses() {
+        assert_eq!(state_status("thinking"), Some("Thinking..."));
+        assert_eq!(state_status("searching_vault"), Some("Searching the Vault..."));
+        assert_eq!(state_status("cross_referencing"), Some("Cross-referencing..."));
+        assert_eq!(state_status("loading_model"), Some("Loading model..."));
+        assert_eq!(state_status("working"), Some("Working..."));
+        assert_eq!(state_status("recovering"), Some("Recovering..."));
+        assert_eq!(state_status("error"), Some("An error occurred."));
+    }
+
+    #[test]
+    fn idle_and_speaking_wait_for_no_automatic_bubble() {
+        assert_eq!(state_status("idle"), None);
+        assert_eq!(state_status("speaking"), None);
     }
 
     #[test]

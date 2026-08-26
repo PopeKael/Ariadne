@@ -7,6 +7,9 @@ license = "MIT"
 
 [dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
+oxideav-core = { git = "https://github.com/OxideAV/oxideav-core.git", rev = "defa866dffdd224424d75ac7a38be868723395a5" }
+oxideav-mkv = { git = "https://github.com/OxideAV/oxideav-mkv.git", rev = "ef6f39c881488f6b9f8a0eee6b208113897e1ef2" }
+oxideav-vp9 = { git = "https://github.com/OxideAV/oxideav-vp9.git", rev = "6903eafe1a0217d3126249eff414dda38d5869ee" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 windows = { version = "0.61", features = [
@@ -24,3 +27,8 @@ windows = { version = "0.61", features = [
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging"
 ] }
+
+[patch.crates-io]
+oxideav-core = { git = "https://github.com/OxideAV/oxideav-core.git", rev = "defa866dffdd224424d75ac7a38be868723395a5" }
+thiserror = { git = "https://github.com/dtolnay/thiserror.git", rev = "ef9383b37d7c96b01e10df35d3e9e313c7b98b5a" }
+thiserror-impl = { git = "https://github.com/dtolnay/thiserror.git", rev = "ef9383b37d7c96b01e10df35d3e9e313c7b98b5a" }

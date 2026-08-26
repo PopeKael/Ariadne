@@ -12,12 +12,7 @@ $startMenuShortcutPath = Join-Path $startMenu 'Ariadne.lnk'
 $startupShortcutPath = Join-Path $startup 'Ariadne Host.lnk'
 $iconPath = Join-Path $controlPlane 'host\assets\branding\ariadne.ico'
 $legacyTaskName = 'Ariadne Local Control Plane'
-$hostCandidates = @(
-    (Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'),
-    (Join-Path $controlPlane 'host\target\release\ariadne-host.exe'),
-    (Join-Path $controlPlane 'host\ariadne-host.exe')
-)
-$hostExe = $hostCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+$hostExe = Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'
 
 if (-not $hostExe) {
     throw "Ariadne Host executable was not found. Build it first with: cargo build --release --manifest-path `"$controlPlane\host\Cargo.toml`""
