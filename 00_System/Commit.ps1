@@ -76,7 +76,7 @@ function Test-OutgoingPrivacy {
     $blocked = New-Object System.Collections.Generic.List[string]
 
     foreach ($path in $paths) {
-        $ignoredOutput = & git -c core.pager=cat -C $RepoPath check-ignore --no-index -- $path 2>$null
+        $ignoredOutput = & git -c core.pager=cat -C $RepoPath check-ignore -- $path 2>$null
         $ignoredText = if ($null -eq $ignoredOutput) { '' } else { ([string]$ignoredOutput).Trim() }
 
         if (-not [string]::IsNullOrWhiteSpace($ignoredText)) {
@@ -84,7 +84,12 @@ function Test-OutgoingPrivacy {
             continue
         }
 
-        if ($path -match '(?i)(^|/)(\.env($|\.)|secrets?($|/)|credentials?($|/)|HomeSessions($|/)|WorldState($|/)|\.host-build-msvc($|/)|\.tmp-ui-[^/]*($|/)|node_modules($|/)|__pycache__($|/)|\.venv($|/))') {
+        $normalized = $path.Replace('\', '/')
+        if ($normalized -match '(?i)(^|/)(\.env\.example|README\.md)$') {
+            continue
+        }
+
+        if ($normalized -match '(?i)(^|/)(\.env($|\.)|secrets?($|/)|credentials?($|/)|HomeSessions($|/)|WorldState($|/)|\.host-build-msvc($|/)|\.tmp-ui-[^/]*($|/)|node_modules($|/)|__pycache__($|/)|\.venv($|/))') {
             $blocked.Add("$path (sensitive/generated pattern)")
         }
     }
