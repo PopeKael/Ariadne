@@ -95,12 +95,23 @@ class HomeChatStoreTests(unittest.TestCase):
         self.current += timedelta(minutes=1)
         second = self.store.create()
         recent = self.store.list_recent()
-        self.assertEqual([item["chat_id"] for item in recent[:2]], [second["chat_id"], first["chat_id"]])
-        self.assertEqual(recent[0]["message_count"], 0)
+        self.assertEqual([item["chat_id"] for item in recent], [first["chat_id"]])
         self.store.close_and_archive(first["chat_id"])
         resumed = self.store.resume(first["chat_id"])
         self.assertEqual(resumed["status"], "active")
         self.assertEqual(self.store.get(first["chat_id"])["status"], "active")
+
+    def test_recent_list_preserves_empty_archived_or_inbox_records(self):
+        active = self.store.create()
+        inbox = self.store.create()
+        self.store.save_to_inbox(inbox["chat_id"])
+        archived = self.store.create()
+        self.store.close_and_archive(archived["chat_id"])
+
+        visible = {item["chat_id"] for item in self.store.list_recent()}
+        self.assertNotIn(active["chat_id"], visible)
+        self.assertIn(inbox["chat_id"], visible)
+        self.assertIn(archived["chat_id"], visible)
 
     def test_save_to_inbox_is_idempotent_and_export_preserves_transcript_order(self):
         chat = self.store.create()

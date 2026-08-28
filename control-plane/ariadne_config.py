@@ -8,6 +8,7 @@ the existing environment variables remain the highest-precedence override.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -227,9 +228,19 @@ def _atomic_write_configuration(payload: dict[str, Any], target: Path) -> dict[s
     return payload
 
 
+def configuration_file_revision(path: Path | None = None) -> str | None:
+    """Return a content hash for the durable configuration file, if present."""
+    target = path or configuration_path()
+    try:
+        return hashlib.sha256(target.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
 def save_configuration(
     storage: dict[str, object] | None = None,
     avatar: dict[str, object] | None = None,
+    plugins: dict[str, object] | None = None,
     path: Path | None = None,
 ) -> dict[str, Any]:
     target = path or configuration_path()
@@ -248,6 +259,12 @@ def save_configuration(
     current_avatar, _ = effective_avatar(target)
     selected_storage = storage if storage is not None else current_storage
     selected_avatar = dict(avatar) if avatar is not None else dict(current_avatar)
+    current_plugins = current.get("plugins", {})
+    if not isinstance(current_plugins, dict):
+        current_plugins = {}
+    selected_plugins = dict(current_plugins)
+    if plugins is not None:
+        selected_plugins.update(plugins)
     selected_avatar.setdefault("state_assets", current_avatar.get("state_assets", {}))
     storage_errors = validate_storage(selected_storage)
     avatar_errors = validate_avatar(selected_avatar)
@@ -263,13 +280,18 @@ def save_configuration(
             "asset_directory": str(_path_for(selected_avatar["asset_directory"])),
             "state_assets": _normalized_state_assets(selected_avatar.get("state_assets")),
         },
+        "plugins": selected_plugins,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
-    return _atomic_write_configuration(payload, target)
+    _atomic_write_configuration(payload, target)
+    persisted = _read_saved(target)
+    if persisted != payload:
+        raise OSError(f"Ariadne configuration was written but could not be verified at {target}.")
+    return persisted
 
 
-def save_storage(storage: dict[str, object], path: Path | None = None) -> dict[str, Any]:
-    return save_configuration(storage=storage, path=path)
+def save_storage(storage: dict[str, object], path: Path | None = None, *, plugins: dict[str, object] | None = None) -> dict[str, Any]:
+    return save_configuration(storage=storage, plugins=plugins, path=path)
 
 
 def save_avatar(avatar: dict[str, object], path: Path | None = None) -> dict[str, Any]:
@@ -370,10 +392,15 @@ def avatar_pack_status(directory: str | Path, state_assets: object = None) -> di
 
 
 def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
-    values, sources = effective_storage(path)
-    avatar, avatar_sources = effective_avatar(path)
+    target = (path or configuration_path()).expanduser().resolve()
+    values, sources = effective_storage(target)
+    avatar, avatar_sources = effective_avatar(target)
+    saved_plugins = _read_saved(target).get("plugins", {})
+    if not isinstance(saved_plugins, dict):
+        saved_plugins = {}
     return {
-        "path": str(path or configuration_path()),
+        "path": str(target),
+        "revision": configuration_file_revision(target),
         "version": CONFIG_VERSION,
         "precedence": [
             "explicit environment override",
@@ -384,4 +411,5 @@ def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
         "sources": sources,
         "avatar": avatar,
         "avatar_sources": avatar_sources,
+        "plugins": saved_plugins,
     }

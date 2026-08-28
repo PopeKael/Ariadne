@@ -154,13 +154,22 @@ function renderActivity(items) {
   const empty = document.querySelector("#activity-empty");
   if (!items || !items.length) { empty.hidden = false; return; }
   empty.hidden = true;
+  const labels = {
+    planner_fallback: "Planning fallback",
+    vault_retrieval_performed: "Vault retrieval completed",
+    document_analysis_performed: "Document analysis completed",
+    chat_saved_to_inbox: "Saved to Inbox",
+    chat_exported: "Chat exported",
+    significant_error: "Ariadne needs attention",
+  };
   for (const item of items) {
     const row = el("div", "activity-item");
     row.append(el("span", "signal-icon"), el("div", "activity-copy"));
+    const timestamp = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+    const source = item.source && item.source !== "Ariadne Home" ? " · " + item.source : "";
     row.lastChild.append(
-      el("strong", "", item.kind.replaceAll("_", " ")),
-      el("span", "", item.summary),
-      el("small", "", new Date(item.timestamp).toLocaleString() + " · " + item.source)
+      el("strong", "", labels[item.kind] || item.kind.replaceAll("_", " ")),
+      el("span", "", (item.summary || "") + (timestamp ? " · " + timestamp : "") + source)
     );
     root.append(row);
   }

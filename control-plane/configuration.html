@@ -12,13 +12,13 @@
   <div class="configuration-shell">
     <header class="configuration-header">
       <a class="configuration-brand" href="/" aria-label="Back to Ariadne Home"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Home · local intelligence</small></span></a>
-      <div><span class="eyebrow">SETUP / CONFIGURATION</span><h1>Ariadne Configuration</h1><p>Make Ariadne's physical world visible and explicit.</p></div>
-      <nav class="configuration-nav" aria-label="Ariadne navigation"><a class="nav-link" href="/">Home</a><a class="nav-link active" href="/configuration" aria-current="page">Configuration</a><a class="nav-link" href="/system-details">System Details</a></nav>
+      <div><span class="eyebrow">SETUP / CONFIGURATION</span><h1 id="configuration-page-title">Ariadne Configuration</h1><p id="configuration-page-description">Make Ariadne's physical world visible and explicit.</p></div>
+      <nav class="configuration-nav" aria-label="Ariadne navigation"><a class="nav-link" href="/">Home</a><a class="nav-link active" href="/configuration" aria-current="page">Setup</a><a class="nav-link" href="/plugins">Plugins</a><a class="nav-link" href="/system-details">System Details</a></nav>
     </header>
     <main class="configuration-main">
       <div id="configuration-status" class="configuration-status" role="status" aria-live="polite">Reading current configuration…</div>
       <form id="configuration-form" novalidate>
-        <section class="configuration-grid">
+        <section id="core-configuration" class="configuration-grid">
           <article class="configuration-card storage-card">
             <div class="card-heading"><div><span class="eyebrow">STORAGE LOCATIONS</span><h2>Where Ariadne reads and writes</h2><p>The Knowledge Vault is authoritative. Other locations are optional intake/media folders.</p></div><span class="card-mark">⌂</span></div>
             <div class="storage-fields">
@@ -32,7 +32,7 @@
             <p class="configuration-note">Missing optional folders are shown here but do not prevent Ariadne from starting. Saving requires the Knowledge Vault folder and its <code>00_System</code> directory.</p>
           </article>
           <article class="configuration-card runtime-card">
-            <div class="card-heading"><div><span class="eyebrow">AI RUNTIME</span><h2>What is active now</h2><p>Informational values are read-only and reflect the running service.</p></div><span class="card-mark">◉</span></div>
+            <div class="card-heading"><div><span class="eyebrow">AI RUNTIME</span><h2>What is active now</h2><p>Informational values are read-only and reflect the running service. <span id="runtime-load-status" class="quiet">Live status loading…</span></p></div><span class="card-mark">◉</span></div>
             <dl class="runtime-list">
               <div><dt>Active Knowledge Vault</dt><dd id="active-vault">—</dd></div><div><dt>Ollama endpoint</dt><dd id="ollama-endpoint">—</dd></div><div><dt>Ollama health</dt><dd id="ollama-health">—</dd></div><div><dt>Semantic Interpreter</dt><dd id="semantic-model">—</dd></div><div><dt>Home model</dt><dd id="home-model">—</dd></div><div><dt>Resident model(s)</dt><dd id="resident-models">—</dd></div><div><dt>Embedding model</dt><dd id="embedding-model">—</dd></div><div><dt>World State</dt><dd id="world-state">—</dd></div>
             </dl>
@@ -42,15 +42,23 @@
             </section>
           </article>
         </section>
-        <section class="configuration-card knowledge-card">
+        <section id="core-knowledge" class="configuration-card knowledge-card">
           <div class="card-heading"><div><span class="eyebrow">KNOWLEDGE SYSTEM STATUS</span><h2>Live Vault evidence</h2><p id="vault-source-note">Checking the active source…</p></div><span class="active-vault-badge" id="vault-active-badge">Checking</span></div>
           <div class="metric-grid"><div><span>Catalogue records</span><strong id="catalogue-count">—</strong></div><div><span>Embedding documents</span><strong id="embedding-documents">—</strong></div><div><span>Embedding chunks</span><strong id="embedding-chunks">—</strong></div><div><span>Last ingest / rebuild</span><strong id="last-ingest">—</strong></div></div>
         </section>
+        <div id="plugin-configuration-sections" aria-live="polite"></div>
         <div class="configuration-actions"><a id="back-link" class="secondary-button" href="/">Cancel / Back</a><button class="primary-button" type="submit">Save configuration</button></div>
       </form>
     </main>
+    <dialog id="configuration-dialog" class="ariadne-dialog" aria-labelledby="configuration-dialog-title">
+      <div class="dialog-kicker">ARIADNE CONFIGURATION</div>
+      <h2 id="configuration-dialog-title">Configuration</h2>
+      <p id="configuration-dialog-message"></p>
+      <div class="dialog-actions"><button id="configuration-dialog-cancel" class="secondary-button" type="button">Cancel</button><button id="configuration-dialog-confirm" class="primary-button" type="button">OK</button></div>
+    </dialog>
     <footer class="configuration-footer">Private · Local · Under your control <span>•</span> No configuration leaves this computer.</footer>
   </div>
+  <script src="/configuration-state.js"></script>
   <script src="/configuration.js"></script>
 </body>
 </html>

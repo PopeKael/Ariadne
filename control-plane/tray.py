@@ -99,7 +99,7 @@ def main() -> None:
         icon.run()
     finally:
         if httpd is not None:
-            server.release_workloads(force=True)
+            server.shutdown_all_workloads(stop_server=False)
             httpd.shutdown()
             httpd.server_close()
         release_tray_instance(tray_instance)

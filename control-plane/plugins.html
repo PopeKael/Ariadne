@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariadne Plugins and Capabilities</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/plugin.css">
+  <link rel="stylesheet" href="/page-shell.css">
+</head>
+<body class="ariadne-page">
+  <div class="plugin-shell">
+    <header class="plugin-header">
+      <a class="plugin-brand" href="/" aria-label="Back to Ariadne Home"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Home · local intelligence</small></span></a>
+      <div><span class="eyebrow">CAPABILITY INVENTORY</span><h1>Plugins / Capabilities</h1><p>Optional capabilities installed in this Ariadne environment.</p></div>
+      <nav class="plugin-nav" aria-label="Ariadne navigation"><a class="nav-link" href="/">Home</a><a class="nav-link" href="/configuration">Setup</a><a class="nav-link active" href="/plugins" aria-current="page">Plugins</a><a class="nav-link" href="/system-details">System Details</a></nav>
+    </header>
+    <main class="plugin-main">
+      <div class="plugin-status-row"><p id="plugin-status" class="plugin-status" role="status" aria-live="polite">Reading the plugin registry…</p><span class="badge" id="plugin-count">—</span></div>
+      <section class="registry-note"><strong>Registry-driven</strong><span>Plugin cards come from validated manifests. UI availability and background operation are independent of capability availability.</span></section>
+      <section class="activity-panel" aria-labelledby="activity-heading"><div class="activity-heading"><div><span class="eyebrow">HOST ACTIVITY</span><h2 id="activity-heading">Recent plugin activity</h2></div><span class="quiet">Core-owned presentation status</span></div><div id="activity-list" class="activity-list"><span class="quiet">No plugin activity reported yet.</span></div></section>
+      <section id="plugin-list" class="plugin-list" aria-live="polite"><div class="plugin-empty">Discovering installed plugins…</div></section>
+    </main>
+    <footer class="plugin-footer">Private · Local · Under your control <span>•</span> Manifest Contract v0.1</footer>
+  </div>
+  <script src="/plugin.js"></script>
+</body>
+</html>

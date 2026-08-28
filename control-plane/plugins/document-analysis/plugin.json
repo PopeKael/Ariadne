@@ -1,0 +1,43 @@
+{
+  "manifest_version": "0.1",
+  "plugin_id": "ariadne.document-analysis",
+  "name": "Document Analysis",
+  "version": "0.1.0",
+  "description": "Ask questions about temporary Markdown or text attachments in the current Home chat.",
+  "author": "Ariadne Core",
+  "plugin_type": "capability",
+  "capabilities": [
+    "document.analyze",
+    "document.retrieve"
+  ],
+  "entry_point": "ariadne_tools:TOOL_REGISTRY",
+  "ui": {
+    "available": false,
+    "route": null,
+    "label": null
+  },
+  "settings": {
+    "available": false,
+    "route": null
+  },
+  "permissions": [
+    "temporary_attachments.read"
+  ],
+  "dependencies": [],
+  "hardware_requirements": {},
+  "resource_requirements": {
+    "execution": "on_demand",
+    "storage": "chat-scoped temporary workspace"
+  },
+  "startup": "on_demand",
+  "enabled": true,
+  "health": {
+    "state": "healthy",
+    "detail": "Provided by Ariadne's existing temporary document-analysis tool."
+  },
+  "activity": {
+    "supported": true,
+    "transport": "ariadne-core",
+    "progress": true
+  }
+}

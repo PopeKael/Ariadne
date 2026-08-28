@@ -55,6 +55,11 @@ is never treated as a second Vault. The page reports the active Vault,
 catalogue and embedding counts, path permissions, Ollama residency, and World
 State status without changing model routing.
 
+Cleanup manual Preview and Apply, and any future scheduled Cleanup action, must
+read the saved `plugins.cleanup` object from this same durable configuration
+file. Browser edits are not execution state; they affect Cleanup only after a
+verified configuration save.
+
 Run it from PowerShell:
 
 ```powershell
@@ -62,6 +67,16 @@ py -3 .\control-plane\server.py
 ```
 
 Then open `http://localhost:8765` in a browser.
+
+## Plugin Framework v0.1
+
+The Plugins / Capabilities page is available at `/plugins`. It is backed by
+validated manifests under `plugins/` and `%LOCALAPPDATA%\Ariadne\plugins`, not
+by a hand-maintained UI list. The contract, discovery rules, isolation
+boundary, and Core-owned asynchronous activity event interface are documented
+in [`docs/PLUGIN-FRAMEWORK-V0.1.md`](docs/PLUGIN-FRAMEWORK-V0.1.md).
+Core/Host/Plugin ownership and the conversation interaction seam are documented
+in [`docs/CORE-BOUNDARIES-V0.1.md`](docs/CORE-BOUNDARIES-V0.1.md).
 
 ## Ariadne Tools v1
 

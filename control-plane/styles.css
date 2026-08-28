@@ -27,9 +27,7 @@
 .launch-row:first-child{border-top:0}
 .launch-row:hover .launch-copy strong{color:var(--cyan)}
 .launch-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;flex:none}
-.synology-icon{background:rgba(104,216,219,.15);color:var(--cyan)}
 .ollama-icon{background:rgba(116,136,255,.18);color:#aab8ff}
-.portainer-icon{background:rgba(240,198,110,.15);color:var(--yellow)}
 .launch-copy{min-width:0;flex:1}
 .launch-copy strong,.launch-copy small{display:block}
 .launch-copy small{color:var(--muted);font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -52,11 +50,11 @@
 .launch-status.degraded{color:var(--yellow);background:rgba(240,198,110,.13)}
 .launch-status.critical{color:#ff9ba9;background:rgba(228,79,103,.12)}
 .launch-status.unknown{color:var(--muted);background:#18243c}
+.state-pill.healthy{color:var(--green);background:rgba(54,142,95,.15)}.state-pill.unavailable{color:#ff9ba9;background:rgba(228,79,103,.12)}.state-pill.disabled{color:var(--yellow);background:rgba(240,198,110,.13)}
+.plugin-summary{padding:0 20px 14px}.plugin-summary-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(52,73,112,.5);color:var(--text);text-decoration:none}.plugin-summary-row:hover .state-name{color:var(--cyan)}.plugin-summary-icon{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(104,216,219,.15);color:var(--cyan);flex:none}.plugin-summary-more{display:block;padding:10px 0 2px;color:var(--cyan);font-size:11px;text-decoration:none}.plugin-summary-more:hover{text-decoration:underline}
 .vault-icon{background:rgba(190,133,255,.15);color:#d8b5ff}
 .ariadne-control-icon{background:rgba(104,216,219,.15);color:var(--cyan)}
-.github-icon{background:#1b2b56;color:#eef4ff;font-size:14px}
 .lmstudio-icon{background:rgba(104,216,219,.15);color:var(--cyan)}
-.openai-icon{background:rgba(104,216,219,.13);color:var(--cyan)}
 .launch-status.local{color:var(--cyan);background:rgba(104,216,219,.1)}
 .vault-panel{margin-top:16px;overflow:hidden}.vault-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:0 20px 20px}.vault-card{display:flex;flex-direction:column;justify-content:space-between;min-height:145px;padding:15px;border:1px solid rgba(52,73,112,.7);border-radius:11px;background:rgba(5,13,28,.42)}.vault-card h3{margin:0 0 6px;font-size:14px}.vault-card p{margin:0;color:var(--muted);font-size:12px}.vault-card button,.vault-query-actions button{margin-top:16px;border:1px solid #3e7390;border-radius:7px;padding:8px 10px;background:#12364a;color:var(--text);font:inherit;font-size:12px;font-weight:650;cursor:pointer}.vault-card button:hover,.vault-query-actions button:hover{background:#1a4b61}.vault-card button:disabled,.vault-query-actions button:disabled{opacity:.55;cursor:wait}.warning-card{border-color:rgba(240,198,110,.45)}.vault-query{border-top:1px solid rgba(52,73,112,.5);padding:18px 20px 20px}.vault-query-head{display:flex;justify-content:space-between;align-items:center}.vault-query h3{margin:0;font-size:15px}.vault-query-head p{margin:4px 0 0;color:var(--muted);font-size:12px}.vault-query form{margin-top:14px}.vault-query textarea{width:100%;min-height:70px;resize:vertical;border:1px solid #263b63;border-radius:8px;padding:10px;background:rgba(2,9,22,.6);color:var(--text);font:inherit}.vault-query-actions{display:flex;gap:8px;flex-wrap:wrap}.vault-query-actions button{margin-top:9px}.vault-status{white-space:pre-wrap;color:var(--muted);font-size:12px;margin:13px 0 0}.vault-status.error{color:#ff9ba9}.vault-results{margin-top:10px}.vault-result{padding:13px 0;border-top:1px solid rgba(52,73,112,.45)}.vault-result strong,.vault-result span,.vault-result small{display:block}.vault-result span,.vault-result small{color:var(--muted);font-size:11px}.vault-result p{margin:8px 0;color:#cbd7ea;white-space:pre-wrap}.vault-result ul{margin:6px 0 0;padding-left:20px}.vault-result li{margin:4px 0}.vault-panel .badge.online{color:var(--green);background:rgba(54,142,95,.15)}.vault-panel .badge.offline{color:#ff9ba9;background:rgba(228,79,103,.12)}.vault-panel .badge.starting{color:var(--yellow);background:rgba(240,198,110,.13)}
 @media(max-width:1200px){.vault-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:800px){.vault-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.vault-grid{grid-template-columns:1fr}.vault-query-actions{display:grid;grid-template-columns:1fr}.vault-query-actions button{margin-top:8px}}

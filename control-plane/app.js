@@ -212,23 +212,32 @@ function renderGauge(prefix, metric, fallbackName = "") {
   percent.textContent = `${metric.used_percent}%`;
   bar.style.width = `${Math.min(100, Math.max(0, metric.used_percent))}%`;
 }
-function renderQuickLaunch(services) {
+function renderHostCapabilities(services) {
   for (const [name, service] of Object.entries(services || {})) {
     const root = document.getElementById(name + "-status");
     if (!root) continue;
     root.classList.remove("online", "starting", "offline", "degraded", "critical", "unknown");
     const state = service?.state || (service?.available ? "online" : "offline");
     root.classList.add(state);
-    const label = name === "openai"
-      ? ({online: "Operational", degraded: "Incident", critical: "Outage", unknown: "Unknown"}[state] || "Unknown")
-      : (state === "online" ? "Online" : state === "starting" ? "Starting" : "Offline");
+    const label = state === "online" ? "Online" : state === "starting" ? "Starting" : state === "unknown" ? "Unknown" : "Offline";
     root.textContent = label;
     root.title = service?.detail || "";
-    if (name === "openai") {
-      const detail = document.querySelector("#openai-status-detail");
-      if (detail) detail.textContent = service?.summary || service?.detail || "Public service status";
-    }
   }
+}
+function renderPluginSummary(registry) {
+  const root = document.querySelector("#plugin-summary");
+  if (!root) return;
+  const plugins = Array.isArray(registry?.plugins) ? registry.plugins : [];
+  if (!plugins.length) {
+    root.innerHTML = `<div class="state-empty">No optional capabilities installed.</div>`;
+    return;
+  }
+  root.innerHTML = plugins.slice(0, 5).map((plugin) => {
+    const state = plugin.status === "healthy" && plugin.enabled !== false ? "Healthy" : plugin.status === "invalid" ? "Unavailable" : "Disabled";
+    const capabilities = (plugin.capabilities || []).slice(0, 2).join(" · ") || "No capability identifiers";
+    return `<a class="plugin-summary-row" href="/plugins"><span class="plugin-summary-icon">◇</span><span class="state-copy"><span class="state-name">${esc(plugin.name || plugin.plugin_id || "Unavailable plugin")}</span><span class="state-meta">${esc(capabilities)} · v${esc(plugin.version || "—")}</span></span><span class="state-pill ${state.toLowerCase()}">${esc(state)}</span></a>`;
+  }).join("");
+  if (plugins.length > 5) root.insertAdjacentHTML("beforeend", `<a class="plugin-summary-more" href="/plugins">+ ${plugins.length - 5} more in Plugins</a>`);
 }
 function render(data) {
   const online = data.service === "online";
@@ -241,7 +250,8 @@ function render(data) {
   renderInteractiveAI(data.interactive_ai || {});
   renderGauge("memory", data.memory);
   renderGauge("gpu", data.gpu, "GPU not detected");
-  renderQuickLaunch(data.quick_launch);
+  renderHostCapabilities(data.host_capabilities);
+  renderPluginSummary(data.plugins);
   const distributions = data.wsl || [];
   document.querySelector("#wsl-pill").textContent = distributions.length ? "Detected" : "Quiet";
   renderWsl(distributions);
@@ -287,7 +297,7 @@ function updateSessionButtons() {
 }
 
 function setVaultControlsDisabled(disabled) {
-  document.querySelectorAll("[data-vault-action], #vault-query-form button").forEach((button) => {
+  document.querySelectorAll("[data-vault-action], [data-plugin-action], #vault-query-form button").forEach((button) => {
     button.disabled = disabled;
   });
 }
@@ -385,10 +395,22 @@ async function runVaultAction(button) {
   status.className = "vault-status";
   status.textContent = `Starting ${button.closest(".vault-card").querySelector("h3").textContent}…`;
   try {
-    const started = await postJson("/api/vault/run", {session_id: vaultSessionId, action: button.dataset.vaultAction});
+    const pluginId = button.dataset.pluginId;
+    const pluginAction = button.dataset.pluginAction;
+    const endpoint = pluginAction ? `/api/plugins/${encodeURIComponent(pluginId)}/run` : "/api/vault/run";
+    const request = pluginAction
+      ? {session_id: vaultSessionId, action: pluginAction, confirm: Boolean(button.dataset.confirm)}
+      : {session_id: vaultSessionId, action: button.dataset.vaultAction};
+    const started = await postJson(endpoint, request);
     const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; });
-    if (finished.state !== "complete") throw new Error(finished.message || "The vault operation failed.");
-    status.textContent = finished.output ? `${finished.message}\n${finished.output}` : finished.message;
+    const detail = finished.output ? `${finished.message}\n${finished.output}` : finished.message;
+    if (finished.state !== "complete") {
+      status.className = "vault-status error";
+      status.textContent = detail || "The vault operation failed.";
+      return;
+    }
+    status.className = "vault-status success";
+    status.textContent = detail;
   } catch (error) {
     status.className = "vault-status error";
     status.textContent = error.message;

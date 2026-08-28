@@ -13,7 +13,7 @@
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark">◈</div>
-        <div><strong>Ariadne</strong><span>Local AI Control Plane</span></div><a class="home-back" href="/" aria-label="Back to Ariadne Home">← Back</a><a class="home-back" href="/configuration" aria-label="Open Ariadne Configuration">⚙ Setup</a>
+        <div><strong>Ariadne</strong><span>Local AI Control Plane</span></div><a class="home-back" href="/" aria-label="Back to Ariadne Home">← Back</a><a class="home-back" href="/configuration" aria-label="Open Ariadne Configuration">⚙ Setup</a><a class="home-back" href="/plugins" aria-label="Open Ariadne Plugins">◇ Plugins</a>
       </div>
       <div class="top-greeting">
         <span class="eyebrow">DESKTOP AI RIG</span>
@@ -75,53 +75,36 @@
     </div>
 
     <aside class="side-column">
-      <section class="panel quick-launch">
-        <div class="section-head quick-launch-head">
-          <div><h2>Quick Launch</h2><p>Open the services Ariadne works with.</p></div>
-          <span class="badge">LINKS</span>
+      <section class="panel host-capabilities-panel">
+        <div class="section-head">
+          <div><h2>Host capabilities</h2><p>Runtime services provided by this machine.</p></div>
+          <span class="badge">HOST</span>
         </div>
         <div class="launch-list">
-          <a class="launch-row" href="https://status.openai.com/" target="_blank" rel="noopener">
-            <span class="launch-icon openai-icon">✦</span>
-            <span class="launch-copy"><strong>ChatGPT / OpenAI</strong><small id="openai-status-detail">Public service status</small></span>
-            <span class="launch-status" id="openai-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="http://192.168.1.200:5000/" target="_blank" rel="noopener">
-            <span class="launch-icon synology-icon">▣</span>
-            <span class="launch-copy"><strong>Synology</strong><small>Hera NAS · DSM</small></span>
-            <span class="launch-status" id="synology-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
           <a class="launch-row" id="openwebui-launch" href="/openwebui-loader" target="_blank" rel="noopener">
             <span class="launch-icon ollama-icon">◉</span>
-            <span class="launch-copy"><strong>Open WebUI</strong><small>Ollama · local models</small></span>
+            <span class="launch-copy"><strong>Open WebUI</strong><small>Local model interface</small></span>
             <span class="launch-status" id="openwebui-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="http://127.0.0.1:9000/" target="_blank" rel="noopener">
-            <span class="launch-icon portainer-icon">◆</span>
-            <span class="launch-copy"><strong>Portainer</strong><small>Docker management · HTTP</small></span>
-            <span class="launch-status" id="portainer-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="obsidian://open?vault=KnowledgeVault">
-            <span class="launch-icon vault-icon">⌘</span>
-            <span class="launch-copy"><strong>Knowledge Vault</strong><small>Obsidian · local vault</small></span>
-            <span class="launch-status local" id="knowledge-vault-status">Local</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="https://github.com/PopeKael/Ariadne" target="_blank" rel="noopener">
-            <span class="launch-icon github-icon">●</span>
-            <span class="launch-copy"><strong>GitHub</strong><small>PopeKael · Ariadne repository</small></span>
-            <span class="launch-status local" id="github-status">External</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="#knowledge-vault">
-            <span class="launch-icon ariadne-control-icon">◈</span>
-            <span class="launch-copy"><strong>Ariadne Control</strong><small>Knowledge Vault · integrated</small></span>
-            <span class="launch-status" id="ariadne-control-status">Ready</span><span class="launch-arrow">↗</span>
           </a>
           <a class="launch-row" href="/launch/lmstudio">
             <span class="launch-icon lmstudio-icon">◈</span>
-            <span class="launch-copy"><strong>LM Studio</strong><small>Desktop app · server 1234</small></span>
+            <span class="launch-copy"><strong>LM Studio</strong><small>Local model runtime</small></span>
             <span class="launch-status" id="lmstudio-status">Checking</span><span class="launch-arrow">↗</span>
           </a>
+          <a class="launch-row" href="#knowledge-vault">
+            <span class="launch-icon ariadne-control-icon">◈</span>
+            <span class="launch-copy"><strong>Knowledge Vault controls</strong><small>Ariadne Core · local only</small></span>
+            <span class="launch-status local" id="ariadne-control-status">Ready</span><span class="launch-arrow">↓</span>
+          </a>
         </div>
+      </section>
+
+      <section class="panel installed-capabilities-panel">
+        <div class="section-head">
+          <div><h2>Installed Ariadne capabilities</h2><p>Manifest-backed plugins and integrations.</p></div>
+          <a class="badge" href="/plugins">VIEW ALL</a>
+        </div>
+        <div id="plugin-summary" class="plugin-summary"><div class="state-empty">Reading registry…</div></div>
       </section>
 
       <section class="panel">
@@ -151,7 +134,8 @@
       <article class="vault-card"><div><h3>Embedding Index</h3><p>Check the local semantic-search index without changing vault notes.</p></div><button data-vault-action="embedding_status">Check status</button></article>
       <article class="vault-card"><div><h3>Evaluate Retrieval</h3><p>Run the versioned chunk-retrieval benchmark.</p></div><button data-vault-action="retrieval_evaluation">Run evaluation</button></article>
       <article class="vault-card"><div><h3>Regression Tests</h3><p>Validate the rebuild-v1 Python test suite.</p></div><button data-vault-action="regression_tests">Run tests</button></article>
-      <article class="vault-card"><div><h3>Downloads Preview</h3><p>Show proposed filing moves. No files move in preview mode.</p></div><button data-vault-action="downloads_preview">Preview moves</button></article>
+      <article class="vault-card"><div><h3>Cleanup Plugin · Preview</h3><p>Show proposed Downloads filing moves. Preview mode makes no filesystem changes.</p></div><button data-plugin-id="cleanup" data-plugin-action="preview">Preview moves</button></article>
+      <article class="vault-card warning-card"><div><h3>Cleanup Plugin · Organise</h3><p>Move files using the configured Cleanup rules. Collisions are skipped; existing files are never overwritten.</p></div><button data-plugin-id="cleanup" data-plugin-action="apply" data-confirm="Move the configured Downloads files now? Existing files will not be overwritten.">Organise Downloads</button></article>
       <article class="vault-card"><div><h3>Failure Audit</h3><p>Generate a read-only report from retained ingestion evidence.</p></div><button data-vault-action="audit_failures">Run audit</button></article>
       <article class="vault-card warning-card"><div><h3>Rebuild Embeddings</h3><p>Regenerate derived search data. Source Markdown is not altered.</p></div><button data-vault-action="embedding_rebuild" data-confirm="Rebuild the local embedding index now?">Rebuild index</button></article>
     </div>

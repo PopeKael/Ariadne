@@ -392,6 +392,21 @@ class ChatStore:
                 if not isinstance(chat_id, str) or not _CHAT_ID.fullmatch(chat_id) or path.stem != chat_id:
                     continue
                 messages = record.get("messages") if isinstance(record.get("messages"), list) else []
+                meaningful_messages = any(
+                    isinstance(item, dict)
+                    and item.get("role") in {"user", "assistant"}
+                    and isinstance(item.get("content"), str)
+                    and item["content"].strip()
+                    for item in messages
+                )
+                preserved_copy = bool(record.get("archive_path") or record.get("inbox_path"))
+                archived = str(record.get("status") or "active") == "closed"
+                # Session startup creates an empty durable record so attachments
+                # and turns have a stable chat_id. Keep it durable, but do not
+                # present it as a conversation until it has meaningful content
+                # or an explicit archive/Inbox lifecycle.
+                if not meaningful_messages and not preserved_copy and not archived:
+                    continue
                 rows.append({
                     "chat_id": chat_id,
                     "title": str(record.get("title") or "Ariadne Home chat"),

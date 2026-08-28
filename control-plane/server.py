@@ -26,10 +26,12 @@ import tempfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 
 from home_chat_store import ChatStore
+from core_interactions import CoreInteractionStream
+from core_activity_presentation import CoreActivityPresenter
 from ariadne_tools import TOOL_REGISTRY, attach_document, clear_documents, list_documents, remove_document, retrieve_documents
 from ariadne_config import (
     CANONICAL_AVATAR_STATES,
@@ -49,6 +51,10 @@ from librarian_harness import (
     interpret_and_resolve,
     request_needs_personal_context,
 )
+from plugin_activity import PluginActivityStream
+from plugin_execution import PluginExecutionError, build_plugin_command
+from plugin_registry import PLUGIN_REGISTRY
+from plugins.cleanup.cleanup import PLUGIN_CAPABILITY, effective_configuration, normalize_configuration
 from vault_config import VAULT_ROOT, VAULT_ROOT_SOURCE, vault_counts
 
 ROOT = Path(__file__).resolve().parent
@@ -71,13 +77,23 @@ PLANNER_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_PLANNER_NUM_CTX"
 PLANNER_OUTPUT_TOKENS = max(64, int(os.environ.get("ARIADNE_PLANNER_NUM_PREDICT", "256")))
 MODEL_MONITOR_INTERVAL_SECONDS = 30.0
 HOME_EVENT_LOCK = threading.Lock()
+HOME_VISIBLE_EVENT_KINDS = frozenset({
+    "planner_fallback",
+    "vault_retrieval_performed",
+    "document_analysis_performed",
+    "chat_saved_to_inbox",
+    "chat_exported",
+    "significant_error",
+})
 LIBRARIAN_EVENTS_PATH = Path(os.environ.get("ARIADNE_LIBRARIAN_EVENTS_PATH", str(ROOT / "runtime" / "librarian-events.jsonl")))
 LIBRARIAN_EVENT_STREAM = LibrarianEventStream(LIBRARIAN_EVENTS_PATH)
+CORE_INTERACTIONS_PATH = Path(os.environ.get("ARIADNE_CORE_INTERACTIONS_PATH", str(ROOT / "runtime" / "core-interactions.jsonl")))
+CORE_INTERACTION_STREAM = CoreInteractionStream(CORE_INTERACTIONS_PATH)
+PLUGIN_ACTIVITY_PATH = Path(os.environ.get("ARIADNE_PLUGIN_ACTIVITY_PATH", str(ROOT / "runtime" / "plugin-activity.jsonl")))
+PLUGIN_ACTIVITY_STREAM = PluginActivityStream(PLUGIN_ACTIVITY_PATH)
 OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "adaptive")
 OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://127.0.0.1:3000/")
 OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
-OPENAI_STATUS_URL = "https://status.openai.com/api/v2/summary.json"
-OPENAI_STATUS_CACHE_TTL_SECONDS = 45
 HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
 HOME_CHAT_STORE = ChatStore(VAULT_ROOT)
 DOCUMENT_WORK_ROOT = ROOT / 'runtime' / 'document_contexts'
@@ -95,9 +111,6 @@ SESSION_TTL_SECONDS = 20
 JOB_TIMEOUT_SECONDS = 300
 SESSION_LOCK = threading.RLock()
 READER_LOCK = threading.Lock()
-OPENAI_STATUS_LOCK = threading.Lock()
-OPENAI_STATUS_CACHE: dict[str, object] | None = None
-OPENAI_STATUS_CACHE_AT = 0.0
 SESSIONS: dict[str, dict[str, object]] = {}
 JOBS: dict[str, dict[str, object]] = {}
 PROFILE_LOCK = threading.RLock()
@@ -107,6 +120,9 @@ WAN2GP_PROCESS: subprocess.Popen | None = None
 BROWSER_HEARTBEAT_TIMEOUT_SECONDS = 20
 LAST_BROWSER_HEARTBEAT = time.monotonic()
 LIFECYCLE_THREAD: threading.Thread | None = None
+HTTP_SERVER: ThreadingHTTPServer | None = None
+SHUTDOWN_LOCK = threading.Lock()
+SHUTDOWN_REQUESTED = False
 MODEL_ACTIVITY_LOCK = threading.RLock()
 MODEL_IN_FLIGHT: dict[str, int] = {}
 MODEL_LAST_USED: dict[str, float] = {}
@@ -135,6 +151,7 @@ VAULT_ACTIONS = {
     "retrieval_evaluation": ("Evaluate-Retrieval.ps1", []),
     "regression_tests": ("Run-Rebuild-Tests.ps1", []),
     "downloads_preview": ("Organize-Downloads.ps1", ["-WhatIf"]),
+    "downloads_apply": ("Organize-Downloads.ps1", []),
     "audit_failures": ("Audit-Failed-Ingestion.ps1", []),
     "embedding_rebuild": ("Build-Embeddings.ps1", ["-Rebuild"]),
 }
@@ -153,6 +170,15 @@ def apply_runtime_configuration() -> dict[str, object]:
     # time.  Force the next Home request to load them against this same root.
     sys.modules.pop("ariadne_mcp_active_vault", None)
     return snapshot
+
+
+def cleanup_organiser_path() -> Path:
+    """Use the repository's configurable organiser implementation.
+
+    The Vault contains an older compatibility copy which predates -ConfigPath;
+    Cleanup plugin actions must use the current adapter-backed script instead.
+    """
+    return PROJECT_ROOT / "00_System" / "Organize-Downloads.ps1"
 
 
 
@@ -785,71 +811,6 @@ def openwebui_status() -> dict[str, object]:
     }
 
 
-def openai_status() -> dict[str, object]:
-    """Read the public OpenAI status feed without blocking the dashboard repeatedly."""
-    global OPENAI_STATUS_CACHE, OPENAI_STATUS_CACHE_AT
-    now = time.monotonic()
-    with OPENAI_STATUS_LOCK:
-        if OPENAI_STATUS_CACHE and now - OPENAI_STATUS_CACHE_AT < OPENAI_STATUS_CACHE_TTL_SECONDS:
-            return dict(OPENAI_STATUS_CACHE)
-
-        try:
-            payload = json_http(OPENAI_STATUS_URL, timeout=3.0)
-            page_status = payload.get("status", {}) if isinstance(payload, dict) else {}
-            incidents = payload.get("incidents", []) if isinstance(payload, dict) else []
-            active_incidents = [
-                incident for incident in incidents
-                if isinstance(incident, dict)
-                and str(incident.get("status") or "").lower() not in {"resolved", "completed"}
-            ]
-
-            if active_incidents:
-                incident = active_incidents[0]
-                impact = str(incident.get("impact") or "").lower()
-                state = "critical" if impact in {"critical", "major"} else "degraded"
-                name = str(incident.get("name") or "OpenAI service incident")
-                incident_state = str(incident.get("status") or "ongoing").replace("_", " ").title()
-                result = {
-                    "available": True,
-                    "state": state,
-                    "summary": f"{name} · {incident_state}",
-                    "detail": f"{name} · {incident_state}. OpenAI status page has the latest update.",
-                    "url": "https://status.openai.com/",
-                }
-            else:
-                indicator = str(page_status.get("indicator") or "none").lower()
-                state = "online" if indicator in {"none", "operational"} else "critical" if indicator == "critical" else "degraded"
-                description = str(page_status.get("description") or "OpenAI status available")
-                result = {
-                    "available": True,
-                    "state": state,
-                    "summary": description,
-                    "detail": description,
-                    "url": "https://status.openai.com/",
-                }
-            OPENAI_STATUS_CACHE = result
-            OPENAI_STATUS_CACHE_AT = now
-            return dict(result)
-        except (OSError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
-            if OPENAI_STATUS_CACHE:
-                result = dict(OPENAI_STATUS_CACHE)
-                result["summary"] = f"{result.get('summary', 'Last known status')} · feed delayed"
-                result["detail"] = f"{result.get('detail', 'Last known status')} The latest check failed: {exc}"
-                OPENAI_STATUS_CACHE = result
-                OPENAI_STATUS_CACHE_AT = now
-                return result
-            result = {
-                "available": False,
-                "state": "unknown",
-                "summary": "Status feed unavailable",
-                "detail": f"Could not read the OpenAI public status feed: {exc}",
-                "url": "https://status.openai.com/",
-            }
-            OPENAI_STATUS_CACHE = result
-            OPENAI_STATUS_CACHE_AT = now
-            return result
-
-
 def launch_docker_desktop() -> str:
     if not DOCKER_DESKTOP_PATH.exists():
         return "Docker Desktop launcher was not found."
@@ -926,16 +887,6 @@ def launch_openwebui(model: str | None = None) -> dict[str, object]:
         "ollama": {"state": "online" if preload["ok"] else "offline", "detail": preload["detail"], "loaded": loaded_names},
         "detail": " ".join(details) if details else "Open WebUI is ready and the model preload was requested.",
     }
-
-
-def container_status(name: str, detail: str) -> dict[str, object]:
-    raw = run_readonly([str(DOCKER_PATH), "inspect", "--format", "{{.State.Status}}", name])
-    state = raw.strip().lower()
-    if state == "running":
-        return {"available": True, "state": "online", "detail": detail}
-    if state in {"created", "restarting", "paused"}:
-        return {"available": True, "state": "starting", "detail": f"{detail} · {state}"}
-    return {"available": False, "state": "offline", "detail": f"{detail} · {state or 'not found'}"}
 
 
 def lmstudio_running() -> bool:
@@ -1405,21 +1356,6 @@ def launch_lmstudio() -> None:
     )
 
 
-def quick_launch_status() -> dict[str, object]:
-    return {
-        "synology": {
-            "available": probe_http("http://192.168.1.200:5000/"),
-            "state": "online" if probe_http("http://192.168.1.200:5000/") else "offline",
-            "detail": "Hera NAS · DSM",
-        },
-        "ollama": ollama_status(),
-        "openwebui": openwebui_status(),
-        "openai": openai_status(),
-        "portainer": container_status("portainer", "Docker management · HTTP 9000"),
-        "lmstudio": lmstudio_status(),
-        "ariadne-control": ariadne_control_status(),
-    }
-
 def post_json(url: str, payload: dict[str, object], timeout: float = 10.0) -> dict[str, object]:
     request = urllib.request.Request(
         url,
@@ -1479,6 +1415,63 @@ def _terminate_process(process: object) -> None:
             pass
 
 
+def shutdown_all_workloads(*, stop_server: bool = True) -> None:
+    """Gracefully stop all Ariadne-owned work before the resident host exits.
+
+    Session-close cleanup is intentionally scoped to one browser session. The
+    tray Exit action needs a broader boundary: every tracked plugin/query job,
+    managed WSL helper, renderer, and interactive workload must be stopped.
+    The Rust host retains its Job Object termination fallback if this cleanup
+    cannot complete.
+    """
+    global ACTIVE_PROFILE, IDLE_SHUTDOWN_DONE, SHUTDOWN_REQUESTED
+    with SHUTDOWN_LOCK:
+        if SHUTDOWN_REQUESTED:
+            return
+        SHUTDOWN_REQUESTED = True
+
+    with SESSION_LOCK:
+        sessions = list(SESSIONS.values())
+        job_ids = {
+            job_id
+            for session in sessions
+            for job_id in session.get("jobs", set())
+        }
+        jobs = [JOBS.get(job_id) for job_id in job_ids]
+        SESSIONS.clear()
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
+        _terminate_process(job.get("process"))
+        presenter = job.get("activity_presenter")
+        with SESSION_LOCK:
+            job["state"] = "cancelled"
+            job["message"] = "Cancelled when Ariadne shut down."
+        if isinstance(presenter, CoreActivityPresenter):
+            presenter.cancelled("Ariadne shut down; active work was cancelled.")
+
+    # Environment actions can create a long-lived WSL sleep process without a
+    # browser job. Keep those handles in the existing map and stop only the
+    # environments Ariadne itself started.
+    with PROFILE_LOCK:
+        managed_wsl = list(WSL_SESSION_PROCESSES.items())
+        WSL_SESSION_PROCESSES.clear()
+    for name, process in managed_wsl:
+        _terminate_process(process)
+        run_readonly(["wsl.exe", "--terminate", name], timeout=30.0)
+
+    _unload_ollama_models()
+    release_workloads(force=True)
+    ACTIVE_PROFILE = "General"
+    IDLE_SHUTDOWN_DONE = True
+
+    if stop_server:
+        httpd = HTTP_SERVER
+        if httpd is not None:
+            # HTTPServer.shutdown() must run outside serve_forever's thread.
+            httpd.shutdown()
+
+
 def _close_session(session_id: str) -> bool:
     with SESSION_LOCK:
         session = SESSIONS.pop(session_id, None)
@@ -1491,9 +1484,12 @@ def _close_session(session_id: str) -> bool:
         if not job:
             continue
         _terminate_process(job.get("process"))
+        presenter = job.get("activity_presenter")
         with SESSION_LOCK:
             job["state"] = "cancelled"
             job["message"] = "Cancelled when the Ariadne page closed."
+        if isinstance(presenter, CoreActivityPresenter):
+            presenter.cancelled("Cleanup activity cancelled when the Ariadne page closed.")
     if last_session:
         shutdown_idle_workloads()
     return True
@@ -1529,6 +1525,70 @@ def _start_process(command: list[str], cwd: Path) -> subprocess.Popen:
     )
 
 
+def _organiser_summary(output: str) -> dict[str, int]:
+    """Extract the organiser's stable numeric summary without owning its rules."""
+    labels = {
+        "Planned": "planned",
+        "Moved": "moved",
+        "Skipped collisions": "skipped_collisions",
+        "Failed": "failed",
+        "Unmatched left alone": "unmatched_left_alone",
+    }
+    summary: dict[str, int] = {}
+    for line in output.splitlines():
+        match = re.match(r"^\s*([^:]+):\s*(\d+)\s*$", line)
+        if match and match.group(1) in labels:
+            summary[labels[match.group(1)]] = int(match.group(2))
+    return summary
+
+
+def _read_structured_organiser_result(result_path: object) -> dict[str, object] | None:
+    """Read the organiser's machine-readable report without parsing console text."""
+    if not isinstance(result_path, Path) or not result_path.is_file():
+        return None
+    try:
+        payload = json.loads(result_path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+        return None
+    return payload
+
+
+def _structured_organiser_result_from_output(output: str) -> dict[str, object] | None:
+    """Use only the organiser's explicit result marker as a file-read fallback."""
+    marker = "ARIADNE_RESULT_JSON:"
+    for line in output.splitlines():
+        if not line.startswith(marker):
+            continue
+        try:
+            payload = json.loads(line[len(marker):])
+        except (ValueError, json.JSONDecodeError):
+            return None
+        if isinstance(payload, dict) and isinstance(payload.get("results"), list):
+            return payload
+    return None
+
+
+def _structured_organiser_summary(payload: dict[str, object], fallback: dict[str, object]) -> dict[str, int]:
+    """Derive report counts from the same per-file records shown by the UI."""
+    records = [item for item in payload.get("results", []) if isinstance(item, dict)]
+    payload_summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    summary = dict(fallback)
+    summary.update({
+        "planned": len(records),
+        "moved": sum(1 for item in records if item.get("status") == "moved"),
+        "skipped_collisions": sum(1 for item in records if item.get("status") == "duplicate"),
+        "failed": sum(1 for item in records if item.get("status") == "failed"),
+    })
+    if "unmatched_left_alone" in payload_summary:
+        try:
+            summary["unmatched_left_alone"] = int(payload_summary["unmatched_left_alone"])
+        except (TypeError, ValueError):
+            pass
+    return {key: int(value) for key, value in summary.items() if isinstance(value, (int, float))}
+
+
 def _watch_action(job_id: str, process: subprocess.Popen) -> None:
     output: list[str] = []
     if process.stdout:
@@ -1536,13 +1596,47 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
             output.append(line.rstrip())
             output[:] = output[-80:]
     return_code = process.wait()
+    structured_result = None
+    presenter = None
+    config_path = None
+    result_path = None
+    raw_output = "\n".join(output)
+    if process.returncode is not None:
+        with SESSION_LOCK:
+            watched_job = JOBS.get(job_id)
+            if watched_job:
+                result_path = watched_job.get("result_runtime_path")
+        structured_result = _read_structured_organiser_result(result_path) or _structured_organiser_result_from_output(raw_output)
     with SESSION_LOCK:
         job = JOBS.get(job_id)
         if not job or job.get("state") == "cancelled":
             return
         job["state"] = "complete" if return_code == 0 else "error"
         job["message"] = "Operation complete." if return_code == 0 else f"Operation exited with code {return_code}."
-        job["output"] = "\n".join(output)[-8000:]
+        technical_output = "\n".join(line for line in output if not line.startswith("ARIADNE_RESULT_JSON:"))
+        job["output"] = technical_output[-8000:]
+        job["summary"] = {**dict(job.get("summary") or {}), **_organiser_summary(job["output"])}
+        if structured_result is not None:
+            job["results"] = structured_result["results"]
+            job["summary"] = _structured_organiser_summary(structured_result, dict(job.get("summary") or {}))
+        presenter = job.get("activity_presenter")
+        config_path = job.get("config_runtime_path")
+        result_path = job.get("result_runtime_path")
+    if isinstance(presenter, CoreActivityPresenter):
+        if return_code == 0:
+            presenter.completed("Cleanup operation completed.")
+        else:
+            presenter.failed(f"Cleanup operation failed with exit code {return_code}.")
+    if isinstance(config_path, Path):
+        try:
+            config_path.unlink()
+        except OSError:
+            pass
+    if isinstance(result_path, Path):
+        try:
+            result_path.unlink()
+        except OSError:
+            pass
 
 
 def _timeout_job(job_id: str) -> None:
@@ -1558,6 +1652,11 @@ def _timeout_job(job_id: str) -> None:
         if job and job.get("state") == "running":
             job["state"] = "error"
             job["message"] = "Worker timed out and was terminated after five minutes."
+            presenter = job.get("activity_presenter")
+        else:
+            presenter = None
+    if isinstance(presenter, CoreActivityPresenter):
+        presenter.failed("Cleanup worker timed out and was terminated.")
 
 def start_vault_action(session_id: str, action: str) -> str:
     script_name, arguments = VAULT_ACTIONS[action]
@@ -1580,6 +1679,104 @@ def start_vault_action(session_id: str, action: str) -> str:
     threading.Thread(target=_watch_action, args=(job_id, process), daemon=True).start()
     threading.Thread(target=_timeout_job, args=(job_id,), daemon=True).start()
     return job_id
+
+
+def _plugin_record(plugin_id: str):
+    requested = str(plugin_id).strip().casefold()
+    for record in PLUGIN_REGISTRY.discover():
+        if record.manifest and record.manifest.get("plugin_id") == requested:
+            return record
+    return None
+
+
+def _active_plugin_job(session_id: str, plugin_id: str) -> str | None:
+    with SESSION_LOCK:
+        session = SESSIONS.get(session_id)
+        if not session:
+            return None
+        for job_id in session.get("jobs", set()):
+            job = JOBS.get(job_id)
+            if job and job.get("plugin_id") == plugin_id and job.get("state") in {"starting", "running"}:
+                return job_id
+    return None
+
+
+def run_plugin_action(session_id: str, plugin_id: str, action: str, *, trigger: str = "manual", confirmed: bool = False) -> str:
+    """Run one manifest action through Core's shared asynchronous job boundary."""
+    if trigger not in {"manual", "scheduled"}:
+        raise PluginExecutionError(f"Unsupported plugin action trigger: {trigger}")
+    record = _plugin_record(plugin_id)
+    if record is None or record.status != "healthy" or not record.manifest:
+        raise PluginExecutionError(f"Plugin is unavailable: {plugin_id}")
+    if not record.manifest.get("enabled", False):
+        raise PluginExecutionError(f"Plugin is disabled: {plugin_id}")
+    canonical_plugin_id = record.manifest["plugin_id"]
+    active_job = _active_plugin_job(session_id, canonical_plugin_id)
+    if active_job:
+        raise PluginExecutionError(f"Plugin action already running (job {active_job}).")
+    snapshot = configuration_snapshot()
+    raw_plugin_config = snapshot.get("plugins", {}).get(canonical_plugin_id, {})
+    if canonical_plugin_id == "cleanup":
+        config, config_error = effective_configuration(snapshot.get("plugins", {}), snapshot["storage"])
+        if config_error:
+            raise ValueError(f"Cleanup configuration is invalid: {config_error}")
+        if not config.get("enabled", False):
+            raise PluginExecutionError("Cleanup plugin is disabled in Ariadne configuration.")
+    else:
+        config = dict(raw_plugin_config) if isinstance(raw_plugin_config, dict) else {}
+    if action == "apply" and config.get("confirmation_required", True) and not confirmed:
+        raise PermissionError("Cleanup Apply requires explicit confirmation.")
+    job_id = uuid.uuid4().hex
+    # Plugin launch specifications are transient runtime data. Keep them in
+    # the OS temp area rather than coupling Cleanup to the Vault/repository
+    # runtime directory's permissions.
+    config_path = Path(tempfile.gettempdir()) / "Ariadne" / canonical_plugin_id / f"{job_id}.json"
+    result_path = Path(tempfile.gettempdir()) / "Ariadne" / canonical_plugin_id / f"{job_id}.results.json"
+    shell = shutil.which("pwsh.exe") or shutil.which("powershell.exe")
+    if not shell:
+        raise RuntimeError("PowerShell is not available.")
+    command = build_plugin_command(record, action, config, {
+        "powershell_path": shell,
+        "organiser_path": cleanup_organiser_path(),
+        "config_path": config_path,
+        "result_path": result_path,
+        "storage": snapshot["storage"],
+    })
+    enabled_sources = config.get("sources", []) if isinstance(config, dict) else []
+    process_cwd = next((Path(str(item["path"])) for item in enabled_sources if isinstance(item, dict) and item.get("enabled")), VAULT_ROOT)
+    try:
+        process = _start_process(command, process_cwd)
+    except Exception:
+        try:
+            config_path.unlink()
+        except OSError:
+            pass
+        raise
+    stage = "reading" if action == "preview" else "preparing"
+    status = "Previewing Cleanup organisation…" if action == "preview" else "Organising Downloads…"
+    reporter = PLUGIN_ACTIVITY_STREAM.reporter(activity_id=job_id, plugin_id=record.manifest["plugin_id"], capability_id=PLUGIN_CAPABILITY)
+    presenter = CoreActivityPresenter(reporter, completion_state="success")
+    job = {
+        "session_id": session_id, "kind": "plugin_action", "process": process, "started": time.monotonic(),
+        "state": "running", "message": status, "action": action, "trigger": trigger, "plugin_id": canonical_plugin_id,
+        "capability_id": PLUGIN_CAPABILITY if canonical_plugin_id == "cleanup" else None,
+        "summary": {"sources_checked": len([item for item in enabled_sources if isinstance(item, dict) and item.get("enabled")]),
+        }, "activity_presenter": presenter, "config_runtime_path": config_path,
+        "result_runtime_path": result_path,
+    }
+    with SESSION_LOCK:
+        JOBS[job_id] = job
+        SESSIONS[session_id].setdefault("jobs", set()).add(job_id)
+    presenter.started(status, stage=stage)
+    presenter.running(status, stage=stage)
+    threading.Thread(target=_watch_action, args=(job_id, process), daemon=True).start()
+    threading.Thread(target=_timeout_job, args=(job_id,), daemon=True).start()
+    return job_id
+
+
+def start_plugin_action(session_id: str, plugin_id: str, action: str, *, confirmed: bool = False) -> str:
+    """Compatibility wrapper for existing callers; new callers use run_plugin_action."""
+    return run_plugin_action(session_id, plugin_id, action, trigger="manual", confirmed=confirmed)
 
 
 def start_vault_query(session_id: str, query: str, mode: str, limit: int) -> str:
@@ -1609,7 +1806,7 @@ def job_payload(job_id: str) -> dict[str, object] | None:
         if isinstance(process, subprocess.Popen) and process.poll() is not None and job.get("state") == "running":
             job["state"] = "error"
             job["message"] = "Worker exited before reporting a result."
-        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path"}}
+        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "config_runtime_path", "result_runtime_path"}}
         status_path = job.get("status_path")
         if isinstance(status_path, Path) and status_path.is_file():
             try:
@@ -1772,7 +1969,7 @@ def expire_home_chats() -> list[dict[str, object]]:
     return expired
 
 
-def read_home_events(limit: int = 12) -> list[dict[str, str]]:
+def read_home_events(limit: int = 12, *, visible_only: bool = True) -> list[dict[str, str]]:
     try:
         lines = HOME_EVENTS_PATH.read_text(encoding="utf-8").splitlines()
     except OSError:
@@ -1785,6 +1982,8 @@ def read_home_events(limit: int = 12) -> list[dict[str, str]]:
         if len(parts) != 4:
             continue
         timestamp, kind, summary, source = parts
+        if visible_only and kind not in HOME_VISIBLE_EVENT_KINDS:
+            continue
         events.append({
             "timestamp": timestamp,
             "kind": kind,
@@ -1961,6 +2160,31 @@ def open_avatar_folder() -> dict[str, object]:
     return {"ok": True, "folder": str(folder), "detail": "Avatar pack folder opened."}
 
 
+def cleanup_folder_picker() -> dict[str, object]:
+    """Open the native Windows folder picker for Cleanup settings."""
+    if os.name != "nt":
+        return {"ok": False, "detail": "Native Cleanup folder selection is available on Windows."}
+    shell = shutil.which("powershell.exe") or shutil.which("pwsh.exe")
+    if not shell:
+        return {"ok": False, "detail": "PowerShell is not available for the native folder picker."}
+    picker = (
+        "Add-Type -AssemblyName System.Windows.Forms; "
+        "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog; "
+        "$dialog.Description = 'Select an Ariadne Cleanup folder'; "
+        "$dialog.ShowNewFolderButton = $true; "
+        "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { "
+        "Write-Output $dialog.SelectedPath }"
+    )
+    try:
+        result = subprocess.run([shell, "-NoProfile", "-NonInteractive", "-STA", "-Command", picker], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"ok": False, "detail": f"The native folder picker failed: {exc}"}
+    if result.returncode != 0:
+        return {"ok": False, "detail": (result.stdout or result.stderr or "The native folder picker failed.").strip()}
+    folder = result.stdout.strip().splitlines()[-1].strip() if result.stdout.strip() else ""
+    return {"ok": bool(folder), "folder": folder or None, "cancelled": not bool(folder), "detail": "Folder selected." if folder else "Folder selection cancelled."}
+
+
 def avatar_preview(state: object, status: object = None) -> dict[str, object]:
     if not isinstance(state, str) or state not in CANONICAL_AVATAR_STATES:
         return {"ok": False, "detail": "Choose one of the canonical Avatar States."}
@@ -2063,8 +2287,7 @@ def world_state_status() -> dict[str, object]:
     }
 
 
-def configuration_status_payload() -> dict[str, object]:
-    snapshot = configuration_snapshot()
+def _configuration_storage_payload(snapshot: dict[str, object]) -> dict[str, object]:
     storage: dict[str, object] = {}
     for key, path_value in snapshot["storage"].items():
         storage[key] = {
@@ -2080,6 +2303,65 @@ def configuration_status_payload() -> dict[str, object]:
             "source": snapshot["sources"][key],
             **configuration_folder_status(path_value, operational=key == "knowledge_vault"),
         }
+
+    return storage
+
+
+def _configuration_avatar_payload(snapshot: dict[str, object]) -> dict[str, object]:
+    avatar = dict(snapshot.get("avatar", {}))
+    return {
+        "enabled": bool(avatar.get("enabled", True)),
+        "asset_directory": str(avatar.get("asset_directory", default_avatar_directory().resolve())),
+        "state_assets": dict(avatar.get("state_assets", {})) if isinstance(avatar.get("state_assets"), dict) else {},
+        "sources": dict(snapshot.get("avatar_sources", {})),
+    }
+
+
+def _configuration_plugins_payload(snapshot: dict[str, object]) -> dict[str, dict[str, object]]:
+    """Return settings keyed by ID for discovered plugins that advertise settings."""
+    plugins: dict[str, dict[str, object]] = {}
+    for record in PLUGIN_REGISTRY.discover():
+        if not record.manifest:
+            continue
+        plugin = record.as_dict()
+        settings = plugin.get("settings") if isinstance(plugin.get("settings"), dict) else {}
+        if not settings.get("available") or not settings.get("route"):
+            continue
+        plugin_id = str(plugin.get("plugin_id") or "")
+        plugin["config"] = {}
+        plugin["valid"] = True
+        plugin["configuration_error"] = None
+        if plugin_id == "cleanup":
+            cleanup_config, cleanup_error = effective_configuration(snapshot.get("plugins", {}), snapshot["storage"])
+            plugin["config"] = cleanup_config
+            plugin["valid"] = cleanup_error is None
+            plugin["configuration_error"] = cleanup_error
+        if plugin_id:
+            plugins[plugin_id] = plugin
+    return plugins
+
+
+def configuration_payload(snapshot: dict[str, object] | None = None) -> dict[str, object]:
+    """Cheap persisted configuration payload used before live health checks."""
+    snapshot = snapshot or configuration_snapshot()
+    return {
+        "ok": True,
+        "config": snapshot,
+        "avatar": _configuration_avatar_payload(snapshot),
+        "storage": _configuration_storage_payload(snapshot),
+        "plugins": _configuration_plugins_payload(snapshot),
+        # Keep the established response keys without making setup wait for
+        # live Vault/Ollama diagnostics.  The health endpoint supplies these
+        # objects once the page is usable.
+        "vault": None,
+        "runtime": None,
+    }
+
+
+def configuration_health_payload(snapshot: dict[str, object] | None = None) -> dict[str, object]:
+    """Operational diagnostics kept separate from persisted settings loading."""
+    snapshot = snapshot or configuration_snapshot()
+    storage = _configuration_storage_payload(snapshot)
     counts = vault_counts(VAULT_ROOT)
     vault = dict(storage["knowledge_vault"])
     vault.update({
@@ -2092,9 +2374,6 @@ def configuration_status_payload() -> dict[str, object]:
     model_memory = model_memory_snapshot()
     return {
         "ok": True,
-        "config": snapshot,
-        "avatar": avatar_configuration_payload(),
-        "storage": storage,
         "vault": vault,
         "runtime": {
             "active_vault": str(VAULT_ROOT),
@@ -2115,6 +2394,15 @@ def configuration_status_payload() -> dict[str, object]:
         },
     }
 
+
+def configuration_status_payload() -> dict[str, object]:
+    """Backward-compatible combined payload for callers that need all status."""
+    snapshot = configuration_snapshot()
+    return {
+        **configuration_payload(snapshot),
+        **configuration_health_payload(snapshot),
+    }
+
 def home_health_payload() -> dict[str, object]:
     services: list[dict[str, object]] = []
 
@@ -2122,7 +2410,13 @@ def home_health_payload() -> dict[str, object]:
         services.append({"name": name, "state": state, "detail": detail})
 
     counts = vault_counts()
+    identity_kernel = home_identity_kernel_status()
     add("Ariadne backend", "healthy", "Home API is responding on loopback.")
+    add(
+        "Identity kernel",
+        "healthy" if identity_kernel["status"] == "healthy" else "attention",
+        str(identity_kernel["detail"]),
+    )
     vault_ready = vault_control_available()
     add(
         "Knowledge Vault",
@@ -2156,6 +2450,7 @@ def home_health_payload() -> dict[str, object]:
         "planner_model": PLANNER_MODEL,
         "planner_keep_alive": PLANNER_KEEP_ALIVE,
         "planner_context_tokens": PLANNER_CONTEXT_TOKENS,
+        "identity_kernel": identity_kernel,
         "ollama_store": configured_ollama_store(),
         "ollama": ollama,
         "index": index,
@@ -2234,8 +2529,61 @@ def home_identity_kernel_metadata() -> dict[str, object]:
         return {"id": "ariadne", "version": "unknown", "source": None, "scope": "user"}
 
 
+def home_identity_kernel_status() -> dict[str, object]:
+    """Expose the same identity metadata used to build Home prompts."""
+    metadata = home_identity_kernel_metadata()
+    version = str(metadata.get("version") or "unknown")
+    source = metadata.get("source")
+    if version.casefold() == "fallback":
+        state = "fallback"
+        status = "warning"
+        detail = "Built-in fallback identity guidance is active; the reviewed kernel was not loaded."
+    elif version.casefold() == "unknown" or not source:
+        state = "unavailable"
+        status = "warning"
+        detail = "Identity kernel state could not be verified."
+    else:
+        state = "loaded"
+        status = "healthy"
+        detail = f"Loaded Ariadne identity kernel {version} from {source}."
+    return {
+        "state": state,
+        "status": status,
+        "version": version,
+        "source": source,
+        "scope": metadata.get("scope", "user"),
+        "detail": detail,
+    }
+
+
 def home_tools_payload() -> dict[str, object]:
     return {'ok': True, 'tools': TOOL_REGISTRY.discover()}
+
+
+def plugin_payload() -> dict[str, object]:
+    """Refresh and expose the manifest registry plus Core-owned activity state."""
+    payload = PLUGIN_REGISTRY.payload()
+    payload["activity"] = {
+        "recent": PLUGIN_ACTIVITY_STREAM.recent(),
+        "dropped_events": PLUGIN_ACTIVITY_STREAM.dropped_events,
+        "path": str(PLUGIN_ACTIVITY_PATH),
+    }
+    return payload
+
+
+def plugin_detail_payload(plugin_id: str) -> dict[str, object] | None:
+    record = _plugin_record(plugin_id)
+    if record is None:
+        return None
+    payload = record.as_dict()
+    if payload.get("plugin_id") == "cleanup":
+        snapshot = configuration_snapshot()
+        config, error = effective_configuration(snapshot.get("plugins", {}), snapshot["storage"])
+        payload["configuration"] = {"config": config, "valid": error is None, "error": error}
+    payload["activity"] = {
+        "recent": [event for event in PLUGIN_ACTIVITY_STREAM.recent() if event.get("plugin_id") == payload.get("plugin_id")],
+    }
+    return {"ok": True, "plugin": payload}
 
 
 def home_documents_payload(chat_id: str) -> dict[str, object]:
@@ -2719,14 +3067,30 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     use_documents = bool(attachment_summaries) and (
         not selected_tools or "document-analysis" in selected_tools
     ) and planner_wants_documents
+    document_provider = next(iter(PLUGIN_REGISTRY.providers_for("document.analyze")), None) if use_documents else None
+    document_plugin_id = document_provider.manifest["plugin_id"] if document_provider and document_provider.manifest else None
+    document_activity = CoreActivityPresenter(PLUGIN_ACTIVITY_STREAM.reporter(
+        activity_id=request_id,
+        plugin_id=str(document_plugin_id),
+        capability_id="document.analyze",
+    )) if use_documents and document_plugin_id else None
+    if document_activity:
+        document_activity.started("Document analysis is starting.", stage="preparing")
+        document_activity.stage("reading", "Reading temporary document content.")
     document_analysis = (
         retrieve_documents(DOCUMENT_WORK_ROOT, chat_id, query, HOME_CONTEXT_TOKENS)
         if use_documents else {"documents": attachment_summaries, "chunks": [], "context": "", "context_chars": 0,
                                "retrieved_chunks": 0, "handling": "not_selected"}
     )
+    if document_activity:
+        document_activity.progress(100, f"Read {document_analysis['retrieved_chunks']} attachment chunk(s).", stage="reading")
     mcp = _home_mcp()
     identity, identity_meta = mcp.identity_system_prefix()
     turn_id, _ = HOME_CHAT_STORE.begin_turn(chat_id, query, HOME_CHAT_MODEL, identity_meta)
+    CORE_INTERACTION_STREAM.emit(
+        "turn_started", conversation_id=chat_id, turn_id=turn_id,
+        data={"surface": "home", "model": HOME_CHAT_MODEL},
+    )
     record_home_event("question_submitted", f"{query[:300]} · chat_id={chat_id}")
     planner_instruction = ""
     if bool(planner_plan.get("needs_current_information")) and "external-research" not in planner_plan.get("tools", []):
@@ -2787,7 +3151,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
                     f"Knowledge Vault evidence:\n{vault_context}"
                 )
             with model_activity(HOME_CHAT_MODEL):
-                emit_state("working")
+                emit_state("thinking" if use_documents else "working")
                 answer = mcp.ollama_chat(
                     [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": user_content}],
                     model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing,
@@ -2818,7 +3182,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
                 f"Question:\n{query}\n\nTemporary document evidence:\n{document_analysis['context']}"
             )}]
             with model_activity(HOME_CHAT_MODEL):
-                emit_state("working")
+                emit_state("thinking")
                 answer = mcp.ollama_chat(
                     messages, model=HOME_CHAT_MODEL, context_tokens=HOME_CONTEXT_TOKENS, metrics=timing,
                     keep_alive=adaptive_model_keep_alive(),
@@ -2881,8 +3245,17 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
             chat_id, turn_id, answer, model=HOME_CHAT_MODEL, used_vault=use_vault,
             sources=sources, retrieval=retrieval, timing=dict(timing), identity_kernel=response_identity,
         )
-        emit_state("speaking")
-        emit_say(FINAL_AVATAR_DIALOGUE)
+        CORE_INTERACTION_STREAM.emit(
+            "response_completed", conversation_id=chat_id, turn_id=turn_id, response_id=turn_id,
+            data={"answer_chars": len(answer), "used_vault": use_vault, "used_documents": use_documents},
+        )
+        if document_activity:
+            document_activity.completed("Document analysis completed.")
+        # The named-pipe host briefly recreates its listener between events.
+        # Treat the final state and dialogue as one retryable lifecycle handoff;
+        # a lost say event would otherwise leave the host without its idle hold.
+        _send_avatar_event_with_retry(lambda: emit_state("speaking"))
+        _send_avatar_event_with_retry(lambda: emit_say(FINAL_AVATAR_DIALOGUE))
         return {
             "ok": True,
             "answer": answer,
@@ -2902,6 +3275,12 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         }
     except Exception as exc:
         HOME_CHAT_STORE.interrupt_turn(chat_id, turn_id, str(exc))
+        CORE_INTERACTION_STREAM.emit(
+            "response_interrupted", conversation_id=chat_id, turn_id=turn_id, response_id=turn_id,
+            data={"error": str(exc)[:420]},
+        )
+        if document_activity:
+            document_activity.failed(f"Document analysis failed: {str(exc)[:420]}")
         emit_state("error")
         record_home_event("significant_error", f"Ask Ariadne failed: {exc}", source="Ariadne Home")
         raise
@@ -2912,6 +3291,7 @@ def home_activity_payload() -> dict[str, object]:
     return {
         "today": home_today_payload(health),
         "activity": read_home_events(),
+        "interactions": CORE_INTERACTION_STREAM.read_recent(),
         "health": health,
     }
 
@@ -2920,7 +3300,9 @@ def status_payload() -> dict[str, object]:
     global LAST_BROWSER_HEARTBEAT
     LAST_BROWSER_HEARTBEAT = time.monotonic()
     wsl_raw = run_readonly(["wsl.exe", "--list", "--verbose"])
+    wsl = parse_wsl(wsl_raw)
     gpu = gpu_status()
+    docker = docker_status()
     return {
         "service": "online",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -2932,14 +3314,19 @@ def status_payload() -> dict[str, object]:
         "gpu": gpu,
         "gpu_owner": gpu_owner_status(),
         "model_memory": model_memory_snapshot(gpu),
-        "quick_launch": quick_launch_status(),
+        "host_capabilities": {
+            "ollama": ollama_status(),
+            "openwebui": openwebui_status(),
+            "lmstudio": lmstudio_status(),
+        },
+        "plugins": PLUGIN_REGISTRY.payload(),
         "vault": vault_session_status(),
         "vault_root": str(VAULT_ROOT),
         "vault_root_source": VAULT_ROOT_SOURCE,
         "vault_counts": vault_counts(),
         "drives": [drive_status(letter) for letter in ("C", "D", "E", "F", "G")],
-        "wsl": parse_wsl(wsl_raw),
-        "docker": docker_status(),
+        "wsl": wsl,
+        "docker": docker,
         "controls_enabled": True,
         "note": "Knowledge Vault controls run inside an active Ariadne session; workers are bounded and cleaned up when the session ends.",
     }
@@ -2987,18 +3374,44 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/home/tools":
             self.send_json(home_tools_payload())
             return
+        if path == "/api/plugins":
+            self.send_json(plugin_payload())
+            return
+        plugin_match = re.fullmatch(r"/api/plugins/([^/]+)", path)
+        if plugin_match:
+            detail = plugin_detail_payload(unquote(plugin_match.group(1)))
+            if detail is None:
+                self.send_json({"ok": False, "message": "Plugin not found."}, 404)
+            else:
+                self.send_json(detail)
+            return
         if path == "/api/home/health":
             self.send_json(home_health_payload())
             return
         if path == "/api/home/activity":
             self.send_json(home_activity_payload())
             return
+        if path == "/api/core/interactions":
+            query = parse_qs(parsed.query)
+            try:
+                limit = max(1, min(int(query.get("limit", ["50"])[0]), 100))
+            except (TypeError, ValueError):
+                limit = 50
+            conversation_id = query.get("conversation_id", [None])[0]
+            self.send_json({
+                "ok": True,
+                "events": CORE_INTERACTION_STREAM.read_recent(limit, conversation_id=conversation_id),
+            })
+            return
         if path == "/api/home/chats":
             expire_home_chats()
             self.send_json({"ok": True, "chats": HOME_CHAT_STORE.list_recent()})
             return
         if path == "/api/configuration":
-            self.send_json(configuration_status_payload())
+            self.send_json(configuration_payload())
+            return
+        if path == "/api/configuration/health":
+            self.send_json(configuration_health_payload())
             return
         if path == "/api/configuration/avatar":
             self.send_json({"ok": True, "avatar": avatar_configuration_payload()})
@@ -3055,6 +3468,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path in {"/configuration", "/setup"}:
             self.send_asset("configuration.html", "text/html; charset=utf-8")
             return
+        if path == "/plugins":
+            self.send_asset("plugins.html", "text/html; charset=utf-8")
+            return
         if path == "/configuration/avatar":
             self.send_asset("configuration-avatar.html", "text/html; charset=utf-8")
             return
@@ -3073,11 +3489,20 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/configuration.js":
             self.send_asset("configuration.js", "text/javascript; charset=utf-8")
             return
+        if path == "/configuration-state.js":
+            self.send_asset("configuration-state.js", "text/javascript; charset=utf-8")
+            return
         if path == "/configuration-avatar.css":
             self.send_asset("configuration-avatar.css", "text/css; charset=utf-8")
             return
         if path == "/configuration-avatar.js":
             self.send_asset("configuration-avatar.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/plugin.css":
+            self.send_asset("plugin.css", "text/css; charset=utf-8")
+            return
+        if path == "/plugin.js":
+            self.send_asset("plugin.js", "text/javascript; charset=utf-8")
             return
         if path == "/page-shell.css":
             self.send_asset("page-shell.css", "text/css; charset=utf-8")
@@ -3113,13 +3538,33 @@ class AriadneHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self.read_json()
+            if path == "/api/system/shutdown":
+                self.send_json({"ok": True, "message": "Ariadne shutdown requested."})
+                threading.Thread(
+                    target=shutdown_all_workloads,
+                    name="ariadne-shutdown",
+                    daemon=True,
+                ).start()
+                return
             if path == "/api/configuration":
                 storage = body.get("storage")
                 if not isinstance(storage, dict):
                     self.send_json({"ok": False, "message": "Storage configuration is required."}, 400)
                     return
+                plugins = None
+                if "plugins" in body:
+                    raw_plugins = body.get("plugins")
+                    if not isinstance(raw_plugins, dict):
+                        self.send_json({"ok": False, "message": "Plugin configuration must be an object."}, 400)
+                        return
+                    raw_cleanup = raw_plugins.get("cleanup")
+                    try:
+                        plugins = {"cleanup": normalize_configuration(raw_cleanup, storage)}
+                    except ValueError as exc:
+                        self.send_json({"ok": False, "message": "The Cleanup configuration could not be saved.", "errors": {"plugins.cleanup": str(exc)}}, 400)
+                        return
                 try:
-                    save_storage(storage)
+                    saved = save_storage(storage, plugins=plugins)
                 except ValueError as exc:
                     try:
                         errors = json.loads(str(exc))
@@ -3127,8 +3572,22 @@ class AriadneHandler(BaseHTTPRequestHandler):
                         errors = {"storage": str(exc)}
                     self.send_json({"ok": False, "message": "The configuration could not be saved.", "errors": errors}, 400)
                     return
+                except OSError as exc:
+                    self.send_json({"ok": False, "message": "The configuration could not be persisted.", "errors": {"configuration": str(exc)}}, 500)
+                    return
                 apply_runtime_configuration()
-                self.send_json({"ok": True, "message": "Configuration saved. Safe runtime paths were refreshed.", **configuration_status_payload()})
+                persisted_snapshot = configuration_snapshot()
+                self.send_json({
+                    "ok": True,
+                    "message": "Configuration saved. Safe runtime paths were refreshed.",
+                    "persistence": {
+                        "verified": True,
+                        "path": persisted_snapshot["path"],
+                        "revision": persisted_snapshot.get("revision"),
+                        "updated_at": saved.get("updated_at") if isinstance(saved, dict) else None,
+                    },
+                    **configuration_payload(persisted_snapshot),
+                })
                 return
             if path == "/api/configuration/avatar":
                 avatar = body.get("avatar")
@@ -3154,6 +3613,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     "avatar": avatar_configuration_payload(),
                     "configuration": configuration_status_payload(),
                 })
+                return
+            if path == "/api/configuration/folder-picker":
+                self.send_json(cleanup_folder_picker(), 200)
                 return
             if path == "/api/configuration/avatar/validate":
                 avatar = body.get("avatar") if isinstance(body.get("avatar"), dict) else {}
@@ -3221,6 +3683,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     }
                 lifecycle = "chat_resumed" if resumed else "chat_started"
                 record_home_event(lifecycle, f"{chat.get('title') or 'Ariadne Home chat'} ({chat['chat_id']})")
+                CORE_INTERACTION_STREAM.emit(
+                    "conversation_attached", conversation_id=chat["chat_id"],
+                    data={"resumed": resumed, "surface": "home"},
+                )
                 self.send_json({
                     "ok": True,
                     "session_id": session_id,
@@ -3252,6 +3718,30 @@ class AriadneHandler(BaseHTTPRequestHandler):
             session_id = str(session_id)
             with SESSION_LOCK:
                 active_chat_id = str(SESSIONS[session_id].get("chat_id") or "")
+            plugin_match = re.fullmatch(r"/api/plugins/([^/]+)/run", path)
+            if plugin_match:
+                plugin_id = unquote(plugin_match.group(1))
+                action = body.get("action")
+                if not isinstance(action, str) or not action.strip():
+                    self.send_json({"ok": False, "message": "A plugin action is required."}, 400)
+                    return
+                trigger = body.get("trigger", "manual")
+                if not isinstance(trigger, str):
+                    self.send_json({"ok": False, "message": "Plugin action trigger is invalid."}, 400)
+                    return
+                try:
+                    job_id = run_plugin_action(session_id, plugin_id, action.strip().casefold(), trigger=trigger.strip().casefold(), confirmed=body.get("confirm") is True)
+                except PermissionError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                    return
+                except (PluginExecutionError, ValueError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                    return
+                except (FileNotFoundError, RuntimeError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 503)
+                    return
+                self.send_json({"ok": True, "job_id": job_id, "plugin_id": plugin_id, "action": action.strip().casefold(), "trigger": trigger.strip().casefold()})
+                return
             if path == "/api/home/chat/select":
                 requested_chat_id = body.get("chat_id")
                 if not isinstance(requested_chat_id, str):
@@ -3428,8 +3918,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    global HTTP_SERVER
     expire_home_chats()
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
+    HTTP_SERVER = httpd
     start_lifecycle_watchdog()
     print(f"Ariadne listening at http://{HOST}:{PORT}")
     try:
@@ -3437,8 +3929,9 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        release_workloads(force=True)
+        shutdown_all_workloads(stop_server=False)
         httpd.server_close()
+        HTTP_SERVER = None
 
 
 if __name__ == "__main__":

@@ -72,6 +72,7 @@ const FINAL_IDLE_MESSAGE: u32 = WM_APP + 12;
 const IDLE_WEBM_FRAME_MESSAGE: u32 = WM_APP + 13;
 const TRAY_OPEN_MESSAGE: u32 = WM_APP + 14;
 const TRAY_MENU_MESSAGE: u32 = WM_APP + 15;
+const PRESENTATION_ADVANCE_MESSAGE: u32 = WM_APP + 16;
 const ID_OPEN: usize = 1001;
 const ID_RESTART: usize = 1002;
 const ID_SHOW_AVATAR: usize = 1003;
@@ -83,6 +84,7 @@ const TRAY_GUID: GUID = GUID::from_u128(0x9b1f5e23_7b83_4f39_a7c8_5e3e4f2ad6b1);
 const AVATAR_MAX_HEIGHT: u32 = 300;
 const BUBBLE_MAX_HEIGHT: u32 = 50;
 const FINAL_STATE_HOLD_SECONDS: u64 = 15;
+const MAX_PENDING_PRESENTATION_STATES: usize = 3;
 const AVATAR_DRAG_THRESHOLD_FALLBACK: u32 = 5;
 const BUBBLE_HORIZONTAL_PADDING: u32 = 8;
 const BUBBLE_CORNER_RADIUS: u32 = 6;
@@ -298,6 +300,31 @@ fn health_check() -> bool {
         && body.contains("Server: AriadneLocal/")
 }
 
+fn request_core_shutdown() -> bool {
+    let address = ("127.0.0.1", 8765)
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut addrs| addrs.next());
+    let Some(address) = address else { return false };
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(250)) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(750)));
+    let _ = stream.set_write_timeout(Some(Duration::from_millis(750)));
+    if stream
+        .write_all(
+            b"POST /api/system/shutdown HTTP/1.0\r\nHost: localhost\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        )
+        .is_err()
+    {
+        return false;
+    }
+    let mut response = String::new();
+    let _ = stream.read_to_string(&mut response);
+    (response.starts_with("HTTP/1.0 200") || response.starts_with("HTTP/1.1 200"))
+        && response.contains("AriadneLocal/")
+}
+
 fn spawn_core(
     project_root: &Path,
     ui: UiQueue,
@@ -474,6 +501,24 @@ impl CoreSupervisor {
 }
 
 fn terminate_core(process: &ProcessState) {
+    if request_core_shutdown() {
+        log_line("Python core graceful shutdown requested");
+        for _ in 0..700 {
+            let exited = process
+                .child
+                .lock()
+                .ok()
+                .and_then(|mut child| child.try_wait().ok())
+                .flatten()
+                .is_some();
+            if exited {
+                log_line("Python core exited after graceful shutdown request");
+                return;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+        log_line("Python core graceful shutdown timed out; terminating lifecycle job");
+    }
     unsafe {
         match TerminateJobObject(process.job, 1) {
             Ok(()) => log_line("Python core lifecycle job termination requested"),
@@ -561,6 +606,37 @@ fn state_status(state: &str) -> Option<&'static str> {
         // Speaking receives its dialogue through the separate `say` event.
         "idle" | "speaking" => None,
         _ => None,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PresentationTiming {
+    Priority,
+    MinimumDwell(u64),
+    BoundedCue(u64),
+}
+
+fn presentation_timing(state: &str) -> PresentationTiming {
+    match state {
+        // Reading is a short semantic cue. It returns to the broader request
+        // state when no newer event has arrived, instead of holding for the
+        // entire model operation.
+        "reading" => PresentationTiming::BoundedCue(800),
+        "cross_referencing" => PresentationTiming::MinimumDwell(1_000),
+        "thinking" | "working" | "searching_vault" | "loading_model" | "waiting" => {
+            PresentationTiming::MinimumDwell(850)
+        }
+        "listening" => PresentationTiming::MinimumDwell(650),
+        _ => PresentationTiming::Priority,
+    }
+}
+
+#[cfg(test)]
+fn presentation_dwell_millis(state: &str) -> Option<u64> {
+    match presentation_timing(state) {
+        PresentationTiming::Priority => None,
+        PresentationTiming::MinimumDwell(milliseconds)
+        | PresentationTiming::BoundedCue(milliseconds) => Some(milliseconds),
     }
 }
 
@@ -754,6 +830,11 @@ struct AvatarOverlay {
     drag: Option<AvatarDrag>,
     state: String,
     status_text: Option<String>,
+    status_is_dialogue: bool,
+    pending_presentation_states: VecDeque<String>,
+    presentation_generation: u64,
+    presentation_hold_active: bool,
+    presentation_return_state: Option<String>,
     final_hold_generation: u64,
     final_hold_active: bool,
     idle_webm_rx: Option<Receiver<idle_webm::IdleWebmMessage>>,
@@ -921,6 +1002,11 @@ impl AvatarOverlay {
             drag: None,
             state: "idle".into(),
             status_text: None,
+            status_is_dialogue: false,
+            pending_presentation_states: VecDeque::new(),
+            presentation_generation: 0,
+            presentation_hold_active: false,
+            presentation_return_state: None,
             final_hold_generation: 0,
             final_hold_active: false,
             idle_webm_rx: None,
@@ -951,6 +1037,7 @@ impl AvatarOverlay {
     }
     fn hide(&mut self) {
         self.stop_idle_webm("hide");
+        self.cancel_presentation("hide");
         self.cancel_final_hold("hide");
         unsafe {
             let _ = ShowWindow(self.hwnd, SW_HIDE);
@@ -1102,6 +1189,158 @@ impl AvatarOverlay {
         ));
     }
 
+    fn cancel_presentation(&mut self, reason: &str) {
+        if !self.presentation_hold_active && self.pending_presentation_states.is_empty() {
+            return;
+        }
+        self.presentation_hold_active = false;
+        self.presentation_generation = self.presentation_generation.wrapping_add(1);
+        self.pending_presentation_states.clear();
+        self.presentation_return_state = None;
+        log_line(format!(
+            "avatar presentation pacing cancelled: reason={}, generation={}",
+            reason, self.presentation_generation
+        ));
+    }
+
+    fn queue_presentation_state(&mut self, state: &str) {
+        if self
+            .pending_presentation_states
+            .iter()
+            .any(|pending| pending == state)
+        {
+            return;
+        }
+        if self.pending_presentation_states.len() >= MAX_PENDING_PRESENTATION_STATES {
+            let dropped = self.pending_presentation_states.pop_front();
+            log_line(format!(
+                "avatar presentation state coalesced: dropped_stale={:?}, incoming={}",
+                dropped, state
+            ));
+        }
+        self.pending_presentation_states
+            .push_back(state.to_string());
+        log_line(format!(
+            "avatar presentation state queued: state={}, pending={}",
+            state,
+            self.pending_presentation_states.len()
+        ));
+    }
+
+    fn start_presentation_dwell(
+        &mut self,
+        state: &str,
+        message_hwnd: HWND,
+        return_state: Option<String>,
+    ) {
+        let timing = presentation_timing(state);
+        let milliseconds = match timing {
+            PresentationTiming::Priority => {
+                self.presentation_hold_active = false;
+                self.presentation_return_state = None;
+                return;
+            }
+            PresentationTiming::MinimumDwell(milliseconds)
+            | PresentationTiming::BoundedCue(milliseconds) => milliseconds,
+        };
+        self.presentation_return_state = return_state;
+        self.presentation_generation = self.presentation_generation.wrapping_add(1);
+        let generation = self.presentation_generation;
+        self.presentation_hold_active = true;
+        log_line(format!(
+            "avatar presentation pacing started: state={}, mode={:?}, dwell_ms={}, generation={}",
+            state, timing, milliseconds, generation
+        ));
+        let message_hwnd_value = message_hwnd.0 as isize;
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(milliseconds));
+            unsafe {
+                if PostMessageW(
+                    Some(HWND(message_hwnd_value as *mut c_void)),
+                    PRESENTATION_ADVANCE_MESSAGE,
+                    WPARAM(generation as usize),
+                    LPARAM(0),
+                )
+                .is_err()
+                {
+                    log_line(format!(
+                        "avatar presentation advance post failed: generation={}",
+                        generation
+                    ));
+                }
+            }
+        });
+    }
+
+    fn request_state(&mut self, state: &str, message_hwnd: HWND) {
+        if !canonical_state(state) {
+            log_line(format!("ignored unknown avatar state: {}", state));
+            return;
+        }
+
+        // Terminal states, speaking, and idle are presentation-priority events.
+        // They clear stale transient work instead of waiting behind it.
+        if presentation_timing(state) == PresentationTiming::Priority {
+            self.cancel_presentation("priority-state");
+            self.apply_state(state);
+            return;
+        }
+        if self.state == state {
+            return;
+        }
+        if self.presentation_hold_active {
+            self.queue_presentation_state(state);
+            return;
+        }
+        let return_state = match presentation_timing(state) {
+            PresentationTiming::BoundedCue(_) => Some(self.state.clone()),
+            _ => None,
+        };
+        self.apply_state(state);
+        self.start_presentation_dwell(state, message_hwnd, return_state);
+    }
+
+    fn presentation_advance(&mut self, generation: u64, message_hwnd: HWND) {
+        if !self.presentation_hold_active || generation != self.presentation_generation {
+            log_line(format!(
+                "avatar presentation advance ignored: message_generation={}, active_generation={}, active={}",
+                generation, self.presentation_generation, self.presentation_hold_active
+            ));
+            return;
+        }
+        self.presentation_hold_active = false;
+        let Some(next_state) = self.pending_presentation_states.pop_front() else {
+            let return_state = self.presentation_return_state.take();
+            if let Some(return_state) = return_state {
+                if return_state != self.state && canonical_state(&return_state) {
+                    log_line(format!(
+                        "avatar bounded cue ended: state={}, returning_to={}",
+                        self.state, return_state
+                    ));
+                    self.apply_state(&return_state);
+                    self.start_presentation_dwell(&return_state, message_hwnd, None);
+                    return;
+                }
+            }
+            log_line(format!(
+                "avatar presentation pacing ended: generation={}",
+                generation
+            ));
+            return;
+        };
+        log_line(format!(
+            "avatar presentation state advanced: state={}, remaining={}",
+            next_state,
+            self.pending_presentation_states.len()
+        ));
+        let return_state = match presentation_timing(&next_state) {
+            PresentationTiming::BoundedCue(_) => Some(self.state.clone()),
+            _ => None,
+        };
+        self.apply_state(&next_state);
+        self.start_presentation_dwell(&next_state, message_hwnd, return_state);
+    }
+
     fn stop_idle_webm(&mut self, reason: &str) {
         if let Some(stop) = self.idle_webm_stop.take() {
             stop.store(true, Ordering::Release);
@@ -1244,6 +1483,10 @@ impl AvatarOverlay {
     }
 
     fn begin_final_hold(&mut self, message_hwnd: HWND) {
+        if self.final_hold_active {
+            log_line("avatar final hold already active; duplicate speaking/say event ignored");
+            return;
+        }
         self.cancel_final_hold("replaced");
         self.final_hold_generation = self.final_hold_generation.wrapping_add(1);
         let generation = self.final_hold_generation;
@@ -1290,7 +1533,12 @@ impl AvatarOverlay {
     }
 
     fn set_status(&mut self, text: Option<String>) {
-        self.cancel_final_hold("say-event");
+        // A dialogue event may arrive after the speaking state. It supplies
+        // the bubble text but must not cancel the response's idle timer.
+        // Clearing status remains an explicit cancellation path.
+        if text.is_none() || self.state != "speaking" {
+            self.cancel_final_hold("say-event");
+        }
         self.status_text = text.and_then(|value| {
             let normalized = value
                 .chars()
@@ -1308,6 +1556,7 @@ impl AvatarOverlay {
                 .collect::<String>();
             (!normalized.is_empty()).then_some(normalized)
         });
+        self.status_is_dialogue = self.status_text.is_some();
         log_line(format!(
             "avatar bubble requested: source=say, state={}, chars={}",
             self.state,
@@ -1420,16 +1669,31 @@ impl AvatarOverlay {
     }
 
     fn set_state(&mut self, state: &str) {
+        self.cancel_presentation("direct-state");
+        self.apply_state(state);
+    }
+
+    fn apply_state(&mut self, state: &str) {
         if !canonical_state(state) {
             log_line(format!("ignored unknown avatar state: {}", state));
             return;
         }
-        self.cancel_final_hold("state-event");
+        let repeated_speaking = state == "speaking" && self.state == "speaking";
+        if !repeated_speaking {
+            self.cancel_final_hold("state-event");
+        }
         if state != "idle" {
             self.stop_idle_webm("state-change");
         }
+        let dialogue = if state == "speaking" && self.status_is_dialogue {
+            self.status_text.clone()
+        } else {
+            None
+        };
+        let has_dialogue = dialogue.is_some();
         self.state = state.to_string();
-        self.status_text = state_status(state).map(str::to_string);
+        self.status_text = dialogue.or_else(|| state_status(state).map(str::to_string));
+        self.status_is_dialogue = state == "speaking" && has_dialogue;
         log_line(format!(
             "avatar bubble requested: source=state, state={}, chars={}",
             state,
@@ -1999,7 +2263,10 @@ fn process_events(
                 "state" => {
                     if let Some(state) = message.state.as_deref() {
                         log_line(format!("avatar state event received: {}", state));
-                        avatar.set_state(state);
+                        avatar.request_state(state, message_hwnd);
+                        if state == "speaking" {
+                            avatar.begin_final_hold(message_hwnd);
+                        }
                     }
                 }
                 "say" => {
@@ -2156,6 +2423,10 @@ fn run() -> Result<(), String> {
                 process_events(&queue, &mut avatar, &supervisor, message_hwnd);
             } else if message.hwnd == message_hwnd && message.message == FINAL_IDLE_MESSAGE {
                 avatar.final_hold_expired(message.wParam.0 as u64);
+            } else if message.hwnd == message_hwnd
+                && message.message == PRESENTATION_ADVANCE_MESSAGE
+            {
+                avatar.presentation_advance(message.wParam.0 as u64, message_hwnd);
             } else if message.hwnd == message_hwnd && message.message == IDLE_WEBM_FRAME_MESSAGE {
                 avatar.idle_webm_frame_tick(message.wParam.0 as u64);
             } else if message.hwnd == message_hwnd && message.message == WM_COMMAND {
@@ -2214,7 +2485,8 @@ mod tests {
         classify_tray_event, clamp_premultiplied_rgba, drag_threshold_crossed, layout_height,
         premultiply_channel, premultiply_rgba, TrayAction, NIN_KEYSELECT_EVENT,
         NIN_SELECT_EVENT,
-        rounded_bubble_pixel_inside, scaled_avatar_dimensions, state_status, AVATAR_MAX_HEIGHT,
+        presentation_dwell_millis, presentation_timing, rounded_bubble_pixel_inside,
+        scaled_avatar_dimensions, state_status, PresentationTiming, AVATAR_MAX_HEIGHT,
         BUBBLE_CORNER_RADIUS, BUBBLE_MAX_HEIGHT,
     };
 
@@ -2285,6 +2557,35 @@ mod tests {
     fn idle_and_speaking_wait_for_no_automatic_bubble() {
         assert_eq!(state_status("idle"), None);
         assert_eq!(state_status("speaking"), None);
+    }
+
+    #[test]
+    fn semantic_work_states_have_human_readable_presentation_dwells() {
+        assert_eq!(presentation_dwell_millis("reading"), Some(800));
+        assert_eq!(presentation_dwell_millis("cross_referencing"), Some(1_000));
+        assert_eq!(presentation_dwell_millis("working"), Some(850));
+        assert_eq!(presentation_dwell_millis("thinking"), Some(850));
+    }
+
+    #[test]
+    fn reading_is_a_bounded_cue_while_other_work_states_are_minimum_dwells() {
+        assert_eq!(
+            presentation_timing("reading"),
+            PresentationTiming::BoundedCue(800)
+        );
+        assert_eq!(
+            presentation_timing("thinking"),
+            PresentationTiming::MinimumDwell(850)
+        );
+        assert_eq!(presentation_timing("speaking"), PresentationTiming::Priority);
+    }
+
+    #[test]
+    fn priority_states_bypass_presentation_dwell() {
+        assert_eq!(presentation_dwell_millis("speaking"), None);
+        assert_eq!(presentation_dwell_millis("warning"), None);
+        assert_eq!(presentation_dwell_millis("error"), None);
+        assert_eq!(presentation_dwell_millis("idle"), None);
     }
 
     #[test]
