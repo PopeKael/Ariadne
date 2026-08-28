@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariadne Home</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/home.css">
+  <link rel="stylesheet" href="/page-shell.css">
+</head>
+<body class="ariadne-page">
+  <div class="home-shell">
+    <header class="home-header">
+      <a class="brand" href="/" aria-label="Ariadne Home"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Home · local intelligence</small></span></a>
+      <div class="header-copy"><span class="eyebrow">ARIADNE HOME</span><h1>Good to see you, Warren.</h1><p>Your local assistant, vault, and daily starting point.</p></div>
+      <div class="header-actions"><div id="header-health" class="header-health" aria-label="Local service health" aria-live="polite"><span class="header-health-loading">Checking...</span></div><div class="header-meta"><span id="health-updated" class="quiet header-updated">Checking...</span><span class="local-badge"><i></i> LOCAL ONLY</span><a class="text-button" href="/configuration" aria-label="Open Ariadne Configuration">⚙ Setup</a><a class="text-button" href="/plugins" aria-label="Open Ariadne Plugins">◇ Plugins</a><a class="text-button" href="/system-details">System Details</a></div></div>
+    </header>
+    <main>
+      <section class="home-grid">
+        <aside class="recent-column">
+          <section class="panel recent-panel" aria-labelledby="recent-heading">
+            <div class="panel-heading compact recent-heading">
+              <div><span class="eyebrow">CHAT MEMORY</span><h2 id="recent-heading">Recent Chats</h2><p>Local conversations, kept for seven days.</p></div>
+              <button id="new-chat" class="new-chat-button" type="button">+ New Chat</button>
+            </div>
+            <div class="chat-actions" aria-label="Current chat actions">
+              <button id="save-chat" class="chat-action" type="button">Save to Inbox</button>
+              <button id="export-chat" class="chat-action" type="button">Export Markdown</button>
+              <button id="purge-chat" class="chat-action destructive" type="button">Purge Chat</button>
+            </div>
+            <div id="recent-chat-list" class="recent-chat-list" aria-live="polite"><div class="loading-row">Reading recent chats…</div></div>
+          </section>
+        </aside>
+        <section class="panel ask-panel" aria-labelledby="ask-heading">
+          <div class="panel-heading"><div><span class="eyebrow">CONCIERGE</span><h2 id="ask-heading">Ask Ariadne</h2><p>Have a conversation, or ask about your local Knowledge Vault.</p></div><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div></div>
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+          <form id="ask-form" class="ask-form">
+            <label class="sr-only" for="ask-input">Ask Ariadne a question</label>
+            <textarea id="ask-input" rows="3" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea><div class="tool-row"><label class="attach-button" for="document-input">+ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
+            <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet" role="status">Ready.</span><button id="ask-submit" class="primary-button" type="submit">Ask Ariadne <span>↗</span></button></div><p class="empty-helper">Normal questions stay local. Ariadne can use your Vault when relevant.</p>
+          </form>
+        </section>
+        <aside class="side-column">
+          <section class="panel today-panel" aria-labelledby="today-heading"><div class="panel-heading compact"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Today</h2></div><span class="panel-mark">◌</span></div><div id="today-list" class="signal-list"><div class="loading-row">Reading local signals…</div></div></section>
+          <section class="panel continue-panel" aria-labelledby="continue-heading"><div class="panel-heading compact"><div><span class="eyebrow">EPISODIC CAPTURE</span><h2 id="continue-heading">Continue</h2><p>Meaningful work, saves, warnings and failures.</p></div><span class="panel-mark">↻</span></div><div id="activity-list" class="activity-list"><div class="loading-row">Reading activity…</div></div><p id="activity-empty" class="quiet empty-state" hidden>No meaningful activity recorded yet.</p></section>
+        </aside>
+      </section>
+      <section class="home-footer-note"><span class="shield">✓</span><span><strong>Private by design.</strong> Ariadne Home stays on this computer. Use the Windows tray menu to restart or stop Ariadne.</span><a href="/system-details">Open the detailed console →</a></section>
+    </main>
+  </div>
+  <script src="/home.js"></script>
+</body>
+</html>

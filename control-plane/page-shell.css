@@ -1,0 +1,11 @@
+/* Shared Ariadne application shell. The backdrop is deliberately loaded once
+   by this common stylesheet, not redefined by individual pages. */
+html.ariadne-page, body.ariadne-page {
+  background-color:#030712;
+  background-image:linear-gradient(rgba(3,10,24,.78),rgba(3,8,18,.9)),url("/ariadne-network-backdrop.png");
+  background-size:cover;
+  background-position:center top;
+  background-attachment:fixed;
+  background-repeat:no-repeat;
+}
+.ariadne-page .home-back { margin-left:8px; }

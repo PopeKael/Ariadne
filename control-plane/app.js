@@ -1,8 +1,8 @@
 const purpose = {
   C: "Windows and applications",
-  D: "Durable data and models",
+  D: "Durable data and repositories",
   E: "Video editing",
-  F: "Linux workspace plus games",
+  F: "AI models and Linux workspace",
   G: "Linux scratch drive plus small games",
 };
 
@@ -212,16 +212,32 @@ function renderGauge(prefix, metric, fallbackName = "") {
   percent.textContent = `${metric.used_percent}%`;
   bar.style.width = `${Math.min(100, Math.max(0, metric.used_percent))}%`;
 }
-function renderQuickLaunch(services) {
+function renderHostCapabilities(services) {
   for (const [name, service] of Object.entries(services || {})) {
     const root = document.getElementById(name + "-status");
     if (!root) continue;
-    root.classList.remove("online", "starting", "offline");
+    root.classList.remove("online", "starting", "offline", "degraded", "critical", "unknown");
     const state = service?.state || (service?.available ? "online" : "offline");
     root.classList.add(state);
-    root.textContent = state === "online" ? "Online" : state === "starting" ? "Starting" : "Offline";
+    const label = state === "online" ? "Online" : state === "starting" ? "Starting" : state === "unknown" ? "Unknown" : "Offline";
+    root.textContent = label;
     root.title = service?.detail || "";
   }
+}
+function renderPluginSummary(registry) {
+  const root = document.querySelector("#plugin-summary");
+  if (!root) return;
+  const plugins = Array.isArray(registry?.plugins) ? registry.plugins : [];
+  if (!plugins.length) {
+    root.innerHTML = `<div class="state-empty">No optional capabilities installed.</div>`;
+    return;
+  }
+  root.innerHTML = plugins.slice(0, 5).map((plugin) => {
+    const state = plugin.status === "healthy" && plugin.enabled !== false ? "Healthy" : plugin.status === "invalid" ? "Unavailable" : "Disabled";
+    const capabilities = (plugin.capabilities || []).slice(0, 2).join(" · ") || "No capability identifiers";
+    return `<a class="plugin-summary-row" href="/plugins"><span class="plugin-summary-icon">◇</span><span class="state-copy"><span class="state-name">${esc(plugin.name || plugin.plugin_id || "Unavailable plugin")}</span><span class="state-meta">${esc(capabilities)} · v${esc(plugin.version || "—")}</span></span><span class="state-pill ${state.toLowerCase()}">${esc(state)}</span></a>`;
+  }).join("");
+  if (plugins.length > 5) root.insertAdjacentHTML("beforeend", `<a class="plugin-summary-more" href="/plugins">+ ${plugins.length - 5} more in Plugins</a>`);
 }
 function render(data) {
   const online = data.service === "online";
@@ -234,7 +250,8 @@ function render(data) {
   renderInteractiveAI(data.interactive_ai || {});
   renderGauge("memory", data.memory);
   renderGauge("gpu", data.gpu, "GPU not detected");
-  renderQuickLaunch(data.quick_launch);
+  renderHostCapabilities(data.host_capabilities);
+  renderPluginSummary(data.plugins);
   const distributions = data.wsl || [];
   document.querySelector("#wsl-pill").textContent = distributions.length ? "Detected" : "Quiet";
   renderWsl(distributions);
@@ -280,7 +297,7 @@ function updateSessionButtons() {
 }
 
 function setVaultControlsDisabled(disabled) {
-  document.querySelectorAll("[data-vault-action], #vault-query-form button").forEach((button) => {
+  document.querySelectorAll("[data-vault-action], [data-plugin-action], #vault-query-form button").forEach((button) => {
     button.disabled = disabled;
   });
 }
@@ -378,10 +395,22 @@ async function runVaultAction(button) {
   status.className = "vault-status";
   status.textContent = `Starting ${button.closest(".vault-card").querySelector("h3").textContent}…`;
   try {
-    const started = await postJson("/api/vault/run", {session_id: vaultSessionId, action: button.dataset.vaultAction});
+    const pluginId = button.dataset.pluginId;
+    const pluginAction = button.dataset.pluginAction;
+    const endpoint = pluginAction ? `/api/plugins/${encodeURIComponent(pluginId)}/run` : "/api/vault/run";
+    const request = pluginAction
+      ? {session_id: vaultSessionId, action: pluginAction, confirm: Boolean(button.dataset.confirm)}
+      : {session_id: vaultSessionId, action: button.dataset.vaultAction};
+    const started = await postJson(endpoint, request);
     const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; });
-    if (finished.state !== "complete") throw new Error(finished.message || "The vault operation failed.");
-    status.textContent = finished.output ? `${finished.message}\n${finished.output}` : finished.message;
+    const detail = finished.output ? `${finished.message}\n${finished.output}` : finished.message;
+    if (finished.state !== "complete") {
+      status.className = "vault-status error";
+      status.textContent = detail || "The vault operation failed.";
+      return;
+    }
+    status.className = "vault-status success";
+    status.textContent = detail;
   } catch (error) {
     status.className = "vault-status error";
     status.textContent = error.message;
@@ -419,8 +448,9 @@ function renderInteractiveAI(runtime) {
     const root = document.querySelector(selector);
     if (!root) return;
     const state = value?.state || "offline";
-    root.textContent = state === "online" ? "Online" : state === "starting" ? "Starting" : state === "standby" ? "Standby" : state === "error" ? "Error" : "Offline";
-    root.classList.toggle("online", state === "online");
+    const lifecycle = value?.lifecycle_state;
+    root.textContent = lifecycle === "READY" ? "Ready" : lifecycle === "BUSY" ? "Busy" : lifecycle === "STOPPING" ? "Stopping" : lifecycle === "ERROR" || state === "error" ? "Error" : state === "online" ? "Online" : state === "starting" ? "Starting" : state === "standby" ? "Standby" : "Offline";
+    root.classList.toggle("online", state === "online" && lifecycle !== "BUSY");
     root.classList.toggle("starting", state === "starting");
     root.classList.toggle("error", state === "error");
   };
@@ -428,12 +458,20 @@ function renderInteractiveAI(runtime) {
   setState("#wan2gp-profile-state", runtime.wan2gp);
   const detail = document.querySelector("#wan2gp-profile-detail");
   if (detail && runtime.wan2gp?.detail) detail.textContent = runtime.wan2gp.detail;
+  const ownership = document.querySelector("#gpu-ownership");
+  if (ownership) {
+    const gpu = runtime.gpu || {};
+    ownership.textContent = `GPU ownership: ${gpu.current_gpu_owner || "NONE"}${gpu.transition_state && gpu.transition_state !== "IDLE" ? ` · ${gpu.transition_state}` : ""}`;
+  }
+  const progress = document.querySelector("#wan2gp-progress");
+  if (progress) progress.textContent = runtime.gpu?.transition_state !== "IDLE" ? runtime.gpu?.detail || "Transitioning GPU workload…" : runtime.wan2gp?.detail || "";
   const processor = document.querySelector("#wan2gp-launch-button");
   const openProcessor = document.querySelector("#wan2gp-open-button");
   if (processor) {
     const state = runtime.wan2gp?.state || "offline";
-    processor.textContent = state === "online" ? "Stop video processor" : state === "starting" ? "Starting..." : "Start video processor";
-    processor.disabled = state === "starting";
+    const stopping = runtime.wan2gp?.lifecycle_state === "STOPPING" || runtime.gpu?.transition_state === "STOPPING_RENDERER";
+    processor.textContent = stopping ? "Stopping..." : state === "online" ? "Stop video processor" : state === "starting" ? "Starting..." : "Start video processor";
+    processor.disabled = state === "starting" || stopping;
     processor.dataset.action = state === "online" ? "stop" : "start";
   }
   if (openProcessor) {
@@ -446,7 +484,7 @@ function renderInteractiveAI(runtime) {
 }
 
 async function waitForWan2GP() {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  for (let attempt = 0; attempt < 195; attempt += 1) {
     const response = await fetch("/api/status", {cache: "no-store"});
     const status = await response.json();
     const runtime = status.interactive_ai || {};
@@ -455,7 +493,7 @@ async function waitForWan2GP() {
     if (runtime.wan2gp?.state === "error") throw new Error(runtime.wan2gp.detail || "Linux video renderer stopped during startup.");
     await new Promise((resolve) => window.setTimeout(resolve, 1000));
   }
-  throw new Error("Linux video renderer did not become ready within two minutes. Check the Ariadne runtime log.");
+  throw new Error("Linux video renderer did not become ready before the Ariadne startup deadline. Check the lifecycle status and runtime log.");
 }
 
 async function launchWan2GP(action) {
@@ -489,8 +527,10 @@ async function launchWan2GP(action) {
     await refresh();
   } catch (error) {
     if (rendererWindow && !rendererWindow.closed) rendererWindow.close();
-    if (button) { button.disabled = false; button.textContent = "Start video processor"; }
-    window.alert(error.message);
+    if (button) { button.disabled = false; button.textContent = "Retry video processor"; }
+    const progress = document.querySelector("#wan2gp-progress");
+    if (progress) progress.textContent = error.message || "The renderer transition needs attention.";
+    await refresh();
   }
 }
 async function activateProfile(profile) {
@@ -500,7 +540,8 @@ async function activateProfile(profile) {
     renderInteractiveAI(result.interactive_ai || {});
     await refresh();
   } catch (error) {
-    window.alert(error.message);
+    const progress = document.querySelector("#wan2gp-progress");
+    if (progress) progress.textContent = error.message || "The Ariadne profile transition needs attention.";
   }
 }
 
@@ -563,7 +604,7 @@ function setupViewModes() {
   const back = document.createElement("button");
   back.type = "button";
   back.className = "view-back";
-  back.textContent = "<- Overview";
+  back.textContent = "← Overview";
   back.addEventListener("click", () => setViewMode("overview"));
 
   if (badge) actions.append(badge);
@@ -586,6 +627,18 @@ function setupVaultControls() {
   document.querySelector("#vault-librarian-button")?.addEventListener("click", () => runVaultQuery("answer"));
 }
 function setupLaunchActions() {
+  const openWebUI = document.querySelector("#openwebui-launch");
+  openWebUI?.addEventListener("click", (event) => {
+    event.preventDefault();
+    const status = document.querySelector("#openwebui-status");
+    if (status) {
+      status.classList.remove("offline", "online");
+      status.classList.add("starting");
+      status.textContent = "Preparing";
+    }
+    window.open("/openwebui-loader", "_blank");
+  });
+
   const launch = document.querySelector('a[href="/launch/lmstudio"]');
   if (!launch) return;
   launch.addEventListener("click", async (event) => {

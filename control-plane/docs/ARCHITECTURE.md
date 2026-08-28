@@ -37,7 +37,8 @@ The Synology hosts the always-on web presentation and, later, carefully limited 
 ### Storage
 
 - C: Windows, applications, and system-managed files.
-- D: durable repositories, models, Knowledge Vault, and backed-up data.
+- D: durable repositories, Knowledge Vault, and backed-up data.
+- F: AI models under `F:\AI`, Ubuntu WSL, and active Linux tooling.
 - E: video editing only.
 - F: Ubuntu WSL, active Linux tools, builds, databases, and scratch space.
 

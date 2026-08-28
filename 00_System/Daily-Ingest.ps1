@@ -2,7 +2,8 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$Vault = Split-Path -Parent $PSScriptRoot
+$Vault = if ($env:ARIADNE_VAULT_ROOT) { (Resolve-Path -LiteralPath $env:ARIADNE_VAULT_ROOT).Path } else { Split-Path -Parent $PSScriptRoot }
+$env:ARIADNE_VAULT_ROOT = $Vault
 Push-Location $Vault
 try {
     & py -3 (Join-Path $PSScriptRoot 'daily_rebuild_ingest.py') --vault $Vault

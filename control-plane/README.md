@@ -9,12 +9,56 @@ from Git.
 - Host: Windows
 - Runtime: Python standard library, plus Pillow and pystray for the tray companion
 - Network exposure: loopback only; it is not published to the LAN
-- Current capabilities: drives, WSL registrations, Docker container metadata
+- Current capabilities: Ariadne Home, local Qwen chat, cited Vault retrieval, temporary Document Analysis for .md/.txt attachments, episodic activity, drives, WSL registrations, and Docker container metadata
 - Tray companion: open, restart, or exit Ariadne without a console window
+- Resident host: the Rust `ariadne-host.exe` owns the tray, supervised Python
+  core, avatar overlay, and local IPC. See [`docs/RESIDENT-HOST.md`](docs/RESIDENT-HOST.md).
+- Open WebUI launch: starts Docker Desktop when needed, opens the local UI, and
+  preloads `gpt-oss:20b` into Ollama memory with a five-minute keep-alive.
+
+The active Ollama model store is `F:\AI\Models\Ollama`. The previous C: store is kept
+as `C:\Users\Warren\.ollama\models.rollback-20260817` until the new location
+has had normal use. The dashboard launch behaviour can be adjusted with
+`ARIADNE_OPEN_WEBUI_URL`, `ARIADNE_OPEN_WEBUI_CONTAINER`,
+`ARIADNE_CHAT_MODEL`, and `ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE`.
+
+Ariadne treats the browser page as the workload boundary. Closing the last
+active page session, or losing its heartbeat, cancels its local jobs, unloads
+all Ollama models, and stops managed WSL/rendering workloads. Keep the Ariadne
+page open when a deliberate background task must continue.
 
 Reference architecture and the public/private boundary are documented in
 `docs/`. The Vault root can be overridden temporarily with
-`ARIADNE_VAULT_ROOT`; by default it is the repository root.
+`ARIADNE_VAULT_ROOT`; by default it is the configured live store
+`D:\Downloads\KnowledgeVault`. The Ariadne repository is application code,
+not an implicit Vault root.
+
+For somebody deploying their own copy, start with
+[`../docs/CLONE-AND-DEPLOY.md`](../docs/CLONE-AND-DEPLOY.md). The legacy Python
+tray dependencies are listed in [`requirements.txt`](requirements.txt); the
+tray remains available as the explicit rollback path during host migration.
+
+## Configuration
+
+The Configuration page is available at `/configuration` and stores machine-
+specific storage locations in the local, human-readable
+`%LOCALAPPDATA%\Ariadne\configuration.json` file. Set `ARIADNE_CONFIG_PATH`
+when a different local location is required. The precedence is:
+
+1. explicit environment override,
+2. saved Ariadne configuration,
+3. installation default.
+
+`ARIADNE_VAULT_ROOT` remains the existing explicit Vault override. Ariadne's
+default live Vault is `D:\Downloads\KnowledgeVault`; the repository checkout
+is never treated as a second Vault. The page reports the active Vault,
+catalogue and embedding counts, path permissions, Ollama residency, and World
+State status without changing model routing.
+
+Cleanup manual Preview and Apply, and any future scheduled Cleanup action, must
+read the saved `plugins.cleanup` object from this same durable configuration
+file. Browser edits are not execution state; they affect Cleanup only after a
+verified configuration save.
 
 Run it from PowerShell:
 
@@ -23,3 +67,60 @@ py -3 .\control-plane\server.py
 ```
 
 Then open `http://localhost:8765` in a browser.
+
+## Plugin Framework v0.1
+
+The Plugins / Capabilities page is available at `/plugins`. It is backed by
+validated manifests under `plugins/` and `%LOCALAPPDATA%\Ariadne\plugins`, not
+by a hand-maintained UI list. The contract, discovery rules, isolation
+boundary, and Core-owned asynchronous activity event interface are documented
+in [`docs/PLUGIN-FRAMEWORK-V0.1.md`](docs/PLUGIN-FRAMEWORK-V0.1.md).
+Core/Host/Plugin ownership and the conversation interaction seam are documented
+in [`docs/CORE-BOUNDARIES-V0.1.md`](docs/CORE-BOUNDARIES-V0.1.md).
+
+## Ariadne Tools v1
+
+The Home composer exposes a registry-driven Tools palette. The first tool is
+Document Analysis, which accepts .md and .txt attachments as temporary working
+context. Markdown front matter is preserved as metadata, and larger documents
+are split with the same heading-aware chunking used by Vault retrieval.
+Temporary attachment workspaces live under the ignored
+control-plane/runtime/document_contexts/ path, keyed by chat id; they are
+removed when the chat is archived or purged and are never automatically
+promoted to the Knowledge Vault.
+
+The Home response diagnostics report the attachment handling mode, retrieved
+temporary chunks, and context contribution. Web research, PDF, DOCX, image,
+spreadsheet, OCR, browser automation, code execution, source comparison, and
+audio tools remain deferred.
+
+## Ariadne Planner v1
+
+Home now sends each request through a small semantic planner before the existing
+controller branches run. The planner returns a strict JSON-Schema decision with
+`intent`, `primary_source`, registered `tools`, `use_vault`,
+`needs_current_information`, `use_heavy_model`, bounded `tasks`, and
+`confidence`. The controller validates the decision, applies explicit
+`vault_mode` and user-selected tools as hard constraints, and then executes
+Document Analysis, Vault retrieval, or normal conversation. The planner never
+answers the user and never executes a tool directly.
+
+The planner receives only compact runtime context: the authoritative local date,
+time, timezone, recent conversation messages, attachment metadata, active Vault
+mode, registered tools, and configured model roles. Attachment content remains
+with Document Analysis; full Vault content is never sent to the planner.
+
+Configuration defaults are:
+
+- `ARIADNE_PLANNER_MODEL=qwen3:0.6b`
+- `ARIADNE_PLANNER_KEEP_ALIVE=-1` (request persistent Ollama residency)
+- `ARIADNE_PLANNER_NUM_CTX=4096`
+- `ARIADNE_PLANNER_NUM_PREDICT=256`
+
+Planner telemetry is stored with the Home turn and includes model, planning and
+load duration, approximate prompt/output token counts, whether a load occurred,
+and `/api/ps` residency evidence. If Ollama is unavailable, the model returns
+malformed JSON, or a plan selects an unavailable tool, Home logs the failure and
+uses the existing deterministic Vault/document fallback. External research is
+not currently registered; a planner request for current reporting is therefore
+reported as unsupported rather than being presented as completed research.

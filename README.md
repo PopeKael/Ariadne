@@ -9,6 +9,8 @@ local control-plane interface that presents and operates those capabilities.
 - [`00_System/`](00_System/README.md) — Ariadne's operational framework, scripts, configuration, and system documentation.
 - [`control-plane/`](control-plane/README.md) — the local browser interface and Windows tray companion.
 - [`docs/`](docs/README.md) — project design, standards, and roadmaps.
+- [`docs/CLONE-AND-DEPLOY.md`](docs/CLONE-AND-DEPLOY.md) — the plain-language
+  starting guide for somebody building their own local Ariadne.
 - Knowledge folders — the user-owned Markdown knowledge store, with private content excluded by [`.gitignore`](.gitignore).
 
 ## Four architectural parcels
@@ -20,7 +22,8 @@ local control-plane interface that presents and operates those capabilities.
 
 See [`docs/FOUR-PARCELS.md`](docs/FOUR-PARCELS.md) for ownership boundaries
 and [`docs/CHECKPOINT-2026-08-15.md`](docs/CHECKPOINT-2026-08-15.md) for the
-current system state.
+current system state. The concise [handover](docs/HANDOVER-2026-08-15.md)
+records the consolidation decisions and earlier rabbit holes.
 
 ## Local generated data
 

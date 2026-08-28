@@ -15,9 +15,9 @@ Git remote:
 
 `https://github.com/PopeKael/Ariadne.git`
 
-Implementation baseline before this checkpoint:
+Latest local implementation before publication:
 
-`13184d2 fix: launch Ariadne from canonical repository`
+`572cbfd style: present Ariadne dashboard as localhost`
 
 The working tree was clean when this checkpoint was created.
 
@@ -46,10 +46,17 @@ The full parcel definition is in [FOUR-PARCELS.md](FOUR-PARCELS.md).
   `D:\Downloads\Ariadne\control-plane\start-ariadne.ps1`.
 - The active tray process runs from
   `D:\Downloads\Ariadne\control-plane\tray.py`.
-- Dashboard: `http://127.0.0.1:8765/` returned HTTP 200.
+- Dashboard: `http://localhost:8765/` returned HTTP 200.
 - `/api/status` reported integrated Knowledge Vault controls available.
 - Python syntax, JavaScript syntax, and 21 Knowledge Vault regression tests
   passed.
+
+## Publication checkpoint
+
+The integrated local history is ready for GitHub review on branch
+`agent/publish-integrated-ariadne`. The repository remains the canonical
+project boundary for the four parcels; ignored Vault content and local
+runtime state are not part of the public commit.
 
 ## Rollback state
 

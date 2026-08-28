@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import time
 import urllib.error
@@ -16,6 +17,11 @@ from vault_rebuild import build_manifest, manifest_bytes, write_manifest
 PILOT_SIZE = 12
 MAX_TRANSPORT_ATTEMPTS = 2
 MIN_SUMMARY_CHARS = 40
+ENRICHMENT_CONTEXT_TOKENS = max(8_192, int(os.environ.get("ARIADNE_ENRICHMENT_NUM_CTX", "16384")))
+ENRICHMENT_OUTPUT_TOKENS = max(256, int(os.environ.get("ARIADNE_ENRICHMENT_NUM_PREDICT", "1024")))
+ENRICHMENT_THINK = os.environ.get("ARIADNE_ENRICHMENT_THINK", "low").strip().lower()
+if ENRICHMENT_THINK not in {"low", "medium", "high"}:
+    ENRICHMENT_THINK = "low"
 POST_SNAPSHOT_NAMES = {
     "Checking out a friends AI created game2026-07-20T13_44_10+07_002026-07-19T23_35_35-07_00[[Garage Alchemy with Pope Kael]].md",
     "Controversial road rule axed for millions of Aussie drivers from today_ 'Unnecessary'.md",
@@ -95,18 +101,24 @@ def schema(domains: list[str]) -> dict[str, Any]:
 
 def model_request(record: dict[str, Any], text: str, domains: list[str]) -> dict[str, Any]:
     excerpt = text[:8000]
+    output_schema = schema(domains)
     prompt = (
-        "Analyse one KnowledgeVault source. Return only the schema-constrained JSON object. "
+        "Analyse one KnowledgeVault source. Return only one JSON object matching the schema below. "
         "This is advisory enrichment: do not create records or assume aliases. Use only supplied domains.\n\n"
         f"SOURCE ID: {record['stable_source_id']}\nTITLE: {record['title']}\nTYPE: {record['source_type']}\n"
-        f"ALLOWED DOMAINS: {json.dumps(domains, ensure_ascii=False)}\n\nSOURCE EXCERPT:\n{excerpt}"
+        f"ALLOWED DOMAINS: {json.dumps(domains, ensure_ascii=False)}\n"
+        f"JSON SCHEMA: {json.dumps(output_schema, ensure_ascii=False, separators=(',', ':'))}\n\n"
+        f"SOURCE EXCERPT:\n{excerpt}"
     )
     # GPT-OSS on the installed Ollama build returns an empty final field through
     # /api/generate. /api/chat with a JSON Schema is the verified adapter path.
-    # Do not set think: GPT-OSS defaults to its supported reasoning level while
-    # still returning the schema-constrained final answer in message.content.
+    # GPT-OSS always reasons, so reserve a larger context and bound its
+    # reasoning level/output. Without this, the default 4096-token window can
+    # be consumed entirely by thinking before structured content is emitted.
     return {"model": "gpt-oss:20b", "messages": [{"role": "user", "content": prompt}], "stream": False,
-            "format": schema(domains), "options": {"temperature": 0, "seed": 42}}
+            "think": ENRICHMENT_THINK, "format": output_schema,
+            "options": {"temperature": 0, "seed": 42, "num_ctx": ENRICHMENT_CONTEXT_TOKENS,
+                         "num_predict": ENRICHMENT_OUTPUT_TOKENS}}
 
 
 def invoke_ollama(body: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None, str | None]:

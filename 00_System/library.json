@@ -1,5 +1,52 @@
 [
   {
+    "content_sha256": "3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+    "document_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+    "entities": [
+      "C:\\Users\\Warren\\Documents\\Codex",
+      "D:\\Documents\\Codex",
+      "D:\\Downloads\\Codex-Archive\\2026-08-13"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
+    "links": [],
+    "map_entry": "C-drive Codex folder audit",
+    "page_title": "C-drive Codex folder audit",
+    "people": [],
+    "primary_topic": "Infrastructure",
+    "processed_path": "Processed/CODEX-C-DRIVE-FOLDER-AUDIT-2026-08-13.md",
+    "proposed_domains": [
+      "Infrastructure",
+      "Knowledge Management"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+      "enrichment_completed_at": "2026-08-21T12:17:55.311161Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb.md",
+    "secondary_domains": [
+      "Knowledge Management"
+    ],
+    "source_language": "en",
+    "source_name": "CODEX-C-DRIVE-FOLDER-AUDIT-2026-08-13.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
+    "subtopics": [],
+    "summary": "The audit found that most dated folders have been archived to D‑drive, leaving four C‑drive folders. The local music‑video renderer folder contains unique generated outputs and keyframes not present in the D‑drive copy or archive. Empty workspace folders are candidates for removal after confirming inactivity. The openai‑docs‑cache is a shared support cache and should be retained unless a separate cleanup is decided.",
+    "tags": [
+      "C:\\Users\\Warren\\Documents\\Codex",
+      "D:\\Documents\\Codex",
+      "D:\\Downloads\\Codex-Archive\\2026-08-13"
+    ],
+    "wiki_path": "Wiki/index.md#infrastructure",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "315a16b8b1e7e6e470e6644d7d9a8b87dc3fe0ab82bdc9fb1fbf9874c1bc1c14",
     "document_id": "sha256:315a16b8b1e7e6e470e6644d7d9a8b87dc3fe0ab82bdc9fb1fbf9874c1bc1c14",
     "entities": [
@@ -152,6 +199,70 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "5aa2ba5a236fc5a0022f8e28fffdc544d52b49b8b4a256f4bf1a6f95fe97332b",
+    "document_id": "sha256:5aa2ba5a236fc5a0022f8e28fffdc544d52b49b8b4a256f4bf1a6f95fe97332b",
+    "entities": [
+      "WanGP",
+      "AMD RX 7800 XT",
+      "gfx1101/gfx110X",
+      "NumPy 1.26.4",
+      "Torch 2.7.0a0+git3f903c3",
+      "MIOpen",
+      "LTX‑2.3 Distilled 1.0 GGUF Q4_K_M Light"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://github.com/deepbeepmeep/Wan2GP/issues/2080"
+    ],
+    "map_entry": "WanGP AMD Windows Troubleshooting Handover",
+    "page_title": "WanGP AMD Windows Troubleshooting Handover",
+    "people": [
+      "PopeKael / Warren",
+      "Assistant Megan"
+    ],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/WanGP_AMD_Windows_Handover_2026-08-11.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "5aa2ba5a236fc5a0022f8e28fffdc544d52b49b8b4a256f4bf1a6f95fe97332b",
+      "enrichment_completed_at": "2026-08-12T02:22:02.920651Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "sha256:5aa2ba5a236fc5a0022f8e28fffdc544d52b49b8b4a256f4bf1a6f95fe97332b"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_5aa2ba5a236fc5a0022f8e28fffdc544d52b49b8b4a256f4bf1a6f95fe97332b.md",
+    "secondary_domains": [
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "WanGP_AMD_Windows_Handover_2026-08-11.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:5aa2ba5a236fc5a0022f8e28fffdc544d52b49b8b4a256f4bf1a6f95fe97332b",
+    "subtopics": [
+      "NumPy auto‑restore to 2.x causing RuntimeError",
+      "MIOpen unsupported operation (miopenStatusNotImplemented)",
+      "AMD Windows backend limitations for video VAE decoding"
+    ],
+    "summary": "The source documents a troubleshooting effort for running WanGP on a Windows workstation equipped with an AMD RX 7800 XT (gfx1101/gfx110X). The user pinned NumPy to 1.26.4 to avoid runtime errors, but the LTX‑2.3 model fails during video VAE decoding due to an unsupported MIOpen operation. No known‑good configuration has yet been identified for this hardware/OS combination.",
+    "tags": [
+      "WanGP",
+      "AMD RX 7800 XT",
+      "gfx1101/gfx110X",
+      "NumPy 1.26.4",
+      "Torch 2.7.0a0+git3f903c3",
+      "MIOpen",
+      "LTX‑2.3 Distilled 1.0 GGUF Q4_K_M Light"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "5dba4d23c049ba6f0e1a09ee8cd6d4aaed5e11dae3d65b47e92fd87db48fb3b8",
     "document_id": "sha256:5dba4d23c049ba6f0e1a09ee8cd6d4aaed5e11dae3d65b47e92fd87db48fb3b8",
     "entities": [
@@ -208,6 +319,63 @@
       "ChatGPT browser interface – comparison baseline"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+    "document_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+    "entities": [
+      "Codex workspace",
+      "AI model storage",
+      "Ariadne homepage"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
+    "links": [
+      "http://127.0.0.1:8765/"
+    ],
+    "map_entry": "Codex handover — AI storage and Ariadne homepage",
+    "page_title": "Codex handover — AI storage and Ariadne homepage",
+    "people": [
+      "Warren"
+    ],
+    "primary_topic": "Projects",
+    "processed_path": "Processed/CODEX-HANDOVER-2026-08-13-AI-STORAGE-ARIADNE.md",
+    "proposed_domains": [
+      "Projects",
+      "AI & LLMs",
+      "Infrastructure"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+      "enrichment_completed_at": "2026-08-21T12:18:11.958543Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b.md",
+    "secondary_domains": [
+      "AI & LLMs",
+      "Infrastructure"
+    ],
+    "source_language": "en",
+    "source_name": "CODEX-HANDOVER-2026-08-13-AI-STORAGE-ARIADNE.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+    "subtopics": [
+      "junction",
+      "forward-only arrangement",
+      "read-only service"
+    ],
+    "summary": "Continuing Codex workspace organization and Ariadne homepage development, moving AI models to D drive, establishing junctions, and verifying storage.",
+    "tags": [
+      "Codex workspace",
+      "AI model storage",
+      "Ariadne homepage"
+    ],
+    "wiki_path": "Wiki/index.md#projects",
     "workflow_status": "accepted"
   },
   {
@@ -1405,6 +1573,124 @@
       "SMARTAXE"
     ],
     "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a3b142b862231b512b1f553f444edcedf0b3614c833911f14fee547307998af2",
+    "document_id": "url:https://arstechnica.com/space/2026/03/orbital-data-centers-part-1-theres-no-way-this-is-economically-viable-right?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://arstechnica.com/space/2026/03/orbital-data-centers-part-1-theres-no-way-this-is-economically-viable-right?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://arstechnica.com/space/2026/03/orbital-data-centers-part-1-theres-no-way-this-is-economically-viable-right/?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+      "https://www.starcloud.com/starcloud-1"
+    ],
+    "map_entry": "Orbital data centers, part 1: There’s no way this is economically viable, right?",
+    "page_title": "Orbital data centers, part 1: There’s no way this is economically viable, right?",
+    "people": [
+      "Eric Berger"
+    ],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Orbital data centers, part 1_ There’s no way this is economically viable, right_2026-08-06T21_47_16+07_002026-03-24T11_00_59+00_00[[Eric Berger]].md",
+    "proposed_domains": [
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a3b142b862231b512b1f553f444edcedf0b3614c833911f14fee547307998af2",
+      "enrichment_completed_at": "2026-08-10T05:26:53.625964Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://arstechnica.com/space/2026/03/orbital-data-centers-part-1-theres-no-way-this-is-economically-viable-right?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//arstechnica.com/space/2026/03/orbital-data-centers-part-1-theres-no-way-this-is-economically-viable-right?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Orbital data centers, part 1_ There’s no way this is economically viable, right_2026-08-06T21_47_16+07_002026-03-24T11_00_59+00_00[[Eric Berger]].md",
+    "source_type": "web",
+    "source_url": "https://arstechnica.com/space/2026/03/orbital-data-centers-part-1-theres-no-way-this-is-economically-viable-right?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+    "stable_source_id": "url:https://arstechnica.com/space/2026/03/orbital-data-centers-part-1-theres-no-way-this-is-economically-viable-right?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+    "subtopics": [
+      "orbital data center",
+      "SpaceX Starship",
+      "Starlink V2 satellite",
+      "NVIDIA H100 GPU",
+      "AI data centers in space",
+      "launch cost per kilogram",
+      "solar power in orbit",
+      "data center economics"
+    ],
+    "summary": "Orbital data centers, part 1: There’s no way this is economically viable, right?",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "fde3c4ac93d8e526198687753ba75caffdf916760e00e4e55e350c01dd43a623",
+    "document_id": "url:https://arstechnica.com/tech-policy/2026/07/man-invested-45m-in-a-nicolas-cage-movie-it-got-stolen-off-netflixs-desk?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+    "entities": [
+      "Netflix",
+      "Op‑Fortitude Ltd.",
+      "Simon Afram",
+      "Nicolas Cage",
+      "Fortitude (film)",
+      "Sean Berney"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://arstechnica.com/tech-policy/2026/07/man-invested-45m-in-a-nicolas-cage-movie-it-got-stolen-off-netflixs-desk?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://arstechnica.com/tech-policy/2026/07/man-invested-45m-in-a-nicolas-cage-movie-it-got-stolen-off-netflixs-desk/?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+      "https://cdn.arstechnica.net/wp-content/uploads/2026/07/Op-Fortitude-v-Netflix-Complaint-7-29-26.pdf"
+    ],
+    "map_entry": "Man invested $45M in a Nicolas Cage movie. It got stolen off Netflix’s desk.",
+    "page_title": "Man invested $45M in a Nicolas Cage movie. It got stolen off Netflix’s desk.",
+    "people": [
+      "Ashley Belanger",
+      "Simon West",
+      "Sir Ben Kingsley"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Man invested $45M in a Nicolas Cage movie. It got stolen off Netflix’s desk.2026-08-09T08_11_05+07_002026-07-31T16_17_55+00_00[[Ashley Belanger]].md",
+    "proposed_domains": [
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "fde3c4ac93d8e526198687753ba75caffdf916760e00e4e55e350c01dd43a623",
+      "enrichment_completed_at": "2026-08-10T05:27:04.850095Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://arstechnica.com/tech-policy/2026/07/man-invested-45m-in-a-nicolas-cage-movie-it-got-stolen-off-netflixs-desk?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//arstechnica.com/tech-policy/2026/07/man-invested-45m-in-a-nicolas-cage-movie-it-got-stolen-off-netflixs-desk?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Man invested $45M in a Nicolas Cage movie. It got stolen off Netflix’s desk.2026-08-09T08_11_05+07_002026-07-31T16_17_55+00_00[[Ashley Belanger]].md",
+    "source_type": "web",
+    "source_url": "https://arstechnica.com/tech-policy/2026/07/man-invested-45m-in-a-nicolas-cage-movie-it-got-stolen-off-netflixs-desk?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+    "stable_source_id": "url:https://arstechnica.com/tech-policy/2026/07/man-invested-45m-in-a-nicolas-cage-movie-it-got-stolen-off-netflixs-desk?utm_source=facebook&utm_medium=social&utm_campaign=dhfacebook&utm_content=null",
+    "subtopics": [
+      "unsecured data storage",
+      "screening drive theft",
+      "digital rights management",
+      "piracy monitoring"
+    ],
+    "summary": "Filmmaker Simon Afram sues Netflix after an unencrypted drive containing the unreleased Nicolas Cage film *Fortitude* was stolen from Netflix’s offices, alleging inadequate security and breach of contract.",
+    "tags": [
+      "Netflix",
+      "Op‑Fortitude Ltd.",
+      "Simon Afram",
+      "Nicolas Cage",
+      "Fortitude (film)",
+      "Sean Berney"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
     "workflow_status": "accepted"
   },
   {
@@ -14196,40 +14482,70 @@
   {
     "content_sha256": "54ff667c602c8d7315114bb3518b0e19603f1d01ecc22c3511f151672e708d9d",
     "document_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
-    "entities": [],
+    "entities": [
+      "Synology NAS",
+      "Ollama",
+      "DSM Task Scheduler",
+      "Bash script",
+      "temporary state file",
+      "ChatGPT"
+    ],
     "external_identity": {
       "kind": "url",
       "value": "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
     },
-    "indexed_at": "2026-08-06T10:03:52.224875+00:00",
-    "links": [],
+    "indexed_at": "2026-08-21T16:24:16.885807+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
+      "https://www.businessinsider.com/sam-altman-openai-the-singularity-agi-prediction-anthropic-nvidia-2026-7?utm_source=chatgpt.com"
+    ],
     "map_entry": "Email Alert Optimization",
     "page_title": "Email Alert Optimization",
-    "people": [],
-    "primary_topic": "Infrastructure",
-    "processed_path": "Processed/Email Alert Optimization2026-08-03T11_03_01+07_00.md",
+    "people": [
+      "Sam Altman"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Email Alert Optimization2026-08-03T17_08_16+07_00.md",
     "proposed_domains": [
-      "Infrastructure"
+      "AI & LLMs",
+      "Archive",
+      "Business"
     ],
     "related_notes": [],
     "retrieval_metadata": {
       "content_sha256": "54ff667c602c8d7315114bb3518b0e19603f1d01ecc22c3511f151672e708d9d",
-      "enrichment_completed_at": "2026-08-06T09:56:36.232038Z",
-      "model_confidence": 0.95,
+      "enrichment_completed_at": "2026-08-21T16:24:16.112207Z",
+      "model_confidence": 0.92,
       "stable_source_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
     },
     "retrieval_status": "active",
     "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee.md",
-    "secondary_domains": [],
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
     "source_language": "en",
-    "source_name": "Email Alert Optimization2026-08-03T11_03_01+07_00.md",
+    "source_name": "Email Alert Optimization2026-08-03T17_08_16+07_00.md",
     "source_type": "chatgpt",
     "source_url": "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
     "stable_source_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
-    "subtopics": [],
-    "summary": "ChatGPT conversation about optimizing an email alert script for Synology DSM Task Scheduler, including a bash script to use /tmp for state persistence and reduce repeated alerts.",
-    "tags": [],
-    "wiki_path": "Wiki/index.md#infrastructure",
+    "subtopics": [
+      "AI reliability",
+      "singularity",
+      "token usage",
+      "state persistence",
+      "email alert optimization"
+    ],
+    "summary": "The source is a ChatGPT conversation titled \"Email Alert Optimization\" that discusses a script to monitor an Ollama service on a Synology NAS. The conversation includes a proposed Bash script that uses a temporary state file in /tmp to avoid repeated email alerts when the service is down. The discussion also touches on token usage and the broader context of AI reliability versus hype.",
+    "tags": [
+      "Synology NAS",
+      "Ollama",
+      "DSM Task Scheduler",
+      "Bash script",
+      "temporary state file",
+      "ChatGPT"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
   {
@@ -14511,6 +14827,70 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "dd997e87eee2e93b81d070341c92d8f1b9ed48ea885a63e4634250622e4079cf",
+    "document_id": "url:https://chatgpt.com/c/6a7334ce-1534-83ec-9bdd-14a26df4fd4d",
+    "entities": [
+      "Local LLMs",
+      "llama.cpp server",
+      "Sand simulation HTML file",
+      "Prefill speed",
+      "Decode speed",
+      "Token per second"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7334ce-1534-83ec-9bdd-14a26df4fd4d"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a7334ce-1534-83ec-9bdd-14a26df4fd4d"
+    ],
+    "map_entry": "Local Models for Workshop",
+    "page_title": "Local Models for Workshop",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Local Models for Workshop2026-08-10T11_50_03+07_00.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "dd997e87eee2e93b81d070341c92d8f1b9ed48ea885a63e4634250622e4079cf",
+      "enrichment_completed_at": "2026-08-10T05:27:31.471216Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7334ce-1534-83ec-9bdd-14a26df4fd4d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7334ce-1534-83ec-9bdd-14a26df4fd4d.md",
+    "secondary_domains": [
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "Local Models for Workshop2026-08-10T11_50_03+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7334ce-1534-83ec-9bdd-14a26df4fd4d",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7334ce-1534-83ec-9bdd-14a26df4fd4d",
+    "subtopics": [
+      "Benchmarking local models",
+      "Performance metrics (prefill, decode)",
+      "Quality tests (sand simulator)",
+      "Garage Bench framework",
+      "Model configuration and quantisation"
+    ],
+    "summary": "The conversation discusses how to benchmark local language models by generating a single‑file HTML falling‑sand simulation, measuring prefill and decode token rates with llama.cpp, and comparing results across models. It outlines Luke’s benchmarking pipeline, the distinction between performance and quality tests (sand simulator, memory, agency, MCP), and proposes a minimal Garage Bench framework for transparent evaluation.",
+    "tags": [
+      "Local LLMs",
+      "llama.cpp server",
+      "Sand simulation HTML file",
+      "Prefill speed",
+      "Decode speed",
+      "Token per second"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "5054306bc7ad7c6ae2bb2aed99709bebb84fad09606c54173568150407fb471f",
     "document_id": "url:https://chatgpt.com/c/6a733880-ba5c-83ec-80a8-29be5f66503e",
     "entities": [
@@ -14578,6 +14958,49 @@
       "FlashAttention"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "5c4df15906100cb906fcd0f05b94b91d82df2995620988c3f3b1800d49ed3aab",
+    "document_id": "url:https://chatgpt.com/c/6a734b85-51a4-83ec-8160-ead496d95cf0",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a734b85-51a4-83ec-8160-ead496d95cf0"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "MiniMax H3 Overview",
+    "page_title": "MiniMax H3 Overview",
+    "people": [],
+    "primary_topic": "General Reference",
+    "processed_path": "Processed/MiniMax H3 Overview2026-08-10T11_50_22+07_00.md",
+    "proposed_domains": [
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "5c4df15906100cb906fcd0f05b94b91d82df2995620988c3f3b1800d49ed3aab",
+      "enrichment_completed_at": "2026-08-10T05:27:37.717924Z",
+      "model_confidence": 0.99,
+      "stable_source_id": "url:https://chatgpt.com/c/6a734b85-51a4-83ec-8160-ead496d95cf0"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a734b85-51a4-83ec-8160-ead496d95cf0.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "MiniMax H3 Overview2026-08-10T11_50_22+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a734b85-51a4-83ec-8160-ead496d95cf0",
+    "stable_source_id": "url:https://chatgpt.com/c/6a734b85-51a4-83ec-8160-ead496d95cf0",
+    "subtopics": [
+      "Pandas",
+      "DataFrame",
+      "row-wise sum"
+    ],
+    "summary": "The user wants a new column `sum_col` that is the row‑wise sum of columns `col_0` through `col_9`. The answer should give a concise, correct Pandas snippet and explain how it works (including handling non‑numeric data if needed). It can also show an example DataFrame to illustrate. No extra fluff—just clear code and explanation.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#general-reference",
     "workflow_status": "accepted"
   },
   {
@@ -14889,6 +15312,1685 @@
     "summary": "ChatGPT conversation explaining how YouTube’s recommendation engine matches user signals (viewing history, engagement, negative feedback) to suggest content, illustrated with a specific example of an independently animated sci‑fi war story.",
     "tags": [],
     "wiki_path": "Wiki/index.md#general-reference",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "14134ebfd5f5b5243db664944a473191bdb61a8bde3c4af6cba2ed4cb3b9515a",
+    "document_id": "url:https://chatgpt.com/c/6a747e16-13e0-83ec-b195-aaed93a4f4e4",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a747e16-13e0-83ec-b195-aaed93a4f4e4"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Article Analysis and Review",
+    "page_title": "Article Analysis and Review",
+    "people": [],
+    "primary_topic": "Travel & Expat Experience",
+    "processed_path": "Processed/Article Analysis and Review2026-08-10T11_50_41+07_00.md",
+    "proposed_domains": [
+      "Travel & Expat Experience",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "14134ebfd5f5b5243db664944a473191bdb61a8bde3c4af6cba2ed4cb3b9515a",
+      "enrichment_completed_at": "2026-08-10T05:27:48.721171Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a747e16-13e0-83ec-b195-aaed93a4f4e4"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a747e16-13e0-83ec-b195-aaed93a4f4e4.md",
+    "secondary_domains": [
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Article Analysis and Review2026-08-10T11_50_41+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a747e16-13e0-83ec-b195-aaed93a4f4e4",
+    "stable_source_id": "url:https://chatgpt.com/c/6a747e16-13e0-83ec-b195-aaed93a4f4e4",
+    "subtopics": [],
+    "summary": "ChatGPT conversation analyzing a Bangkok Post article about Thailand retirement visa options, highlighting that the piece is largely promotional and lacks new policy information.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "51102b4d3b43d25d94b8e3ccd2e366739a9d1f3409c3803d27a671ea81a3c8bf",
+    "document_id": "url:https://chatgpt.com/c/6a7496fc-0df4-83ec-bc67-69af3e52393d",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7496fc-0df4-83ec-bc67-69af3e52393d"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "UPS and GPU Load Impact",
+    "page_title": "UPS and GPU Load Impact",
+    "people": [],
+    "primary_topic": "Business",
+    "processed_path": "Processed/UPS and GPU Load Impact2026-08-06T23_05_45+07_00.md",
+    "proposed_domains": [
+      "Business",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "51102b4d3b43d25d94b8e3ccd2e366739a9d1f3409c3803d27a671ea81a3c8bf",
+      "enrichment_completed_at": "2026-08-10T05:27:59.518011Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7496fc-0df4-83ec-bc67-69af3e52393d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7496fc-0df4-83ec-bc67-69af3e52393d.md",
+    "secondary_domains": [
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "UPS and GPU Load Impact2026-08-06T23_05_45+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7496fc-0df4-83ec-bc67-69af3e52393d",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7496fc-0df4-83ec-bc67-69af3e52393d",
+    "subtopics": [],
+    "summary": "ChatGPT conversation about UPS noise when running an 8‑million parameter model and the limitations of a Substack publishing connector.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#business",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "c2c66c72633d81814976a0d5e8c03667b4ba678012d583d82ae134cf922c2c25",
+    "document_id": "url:https://chatgpt.com/c/6a749e9e-6114-83ec-b923-54c1eed7f34b",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a749e9e-6114-83ec-b923-54c1eed7f34b"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://arxiv.org/abs/2604.27"
+    ],
+    "map_entry": "Orbital Data Viability Analysis",
+    "page_title": "Orbital Data Viability Analysis",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Orbital Data Viability Analysis2026-08-10T11_51_30+07_00.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "Business",
+      "Infrastructure"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "c2c66c72633d81814976a0d5e8c03667b4ba678012d583d82ae134cf922c2c25",
+      "enrichment_completed_at": "2026-08-10T05:28:11.851905Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a749e9e-6114-83ec-b923-54c1eed7f34b"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a749e9e-6114-83ec-b923-54c1eed7f34b.md",
+    "secondary_domains": [
+      "Business",
+      "Infrastructure"
+    ],
+    "source_language": "en",
+    "source_name": "Orbital Data Viability Analysis2026-08-10T11_51_30+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a749e9e-6114-83ec-b923-54c1eed7f34b",
+    "stable_source_id": "url:https://chatgpt.com/c/6a749e9e-6114-83ec-b923-54c1eed7f34b",
+    "subtopics": [
+      "orbital data centre",
+      "Starship launch cost",
+      "satellite manufacturing cost",
+      "custom silicon",
+      "radiator surface area",
+      "solar panel efficiency in space",
+      "CO₂ emissions from launches"
+    ],
+    "summary": "A ChatGPT conversation that evaluates the economic feasibility of a million‑satellite orbital data centre, analysing launch costs, replacement rates, and technical challenges such as thermal management and bandwidth. It concludes that while current costs are prohibitive, a vertically integrated company could bring the price within reach under a set of optimistic assumptions.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "aa22ae7c7188ba8c82950812aa37f78d0fd4c1d42ae671291230a8890e2d47d0",
+    "document_id": "url:https://chatgpt.com/c/6a74b050-5fc8-83ec-a65d-fb1680705a1a",
+    "entities": [
+      "Thai Senate Committee on Transport",
+      "Road Traffic Act B.E. 2522 (1979)",
+      "motorcycle rider groups",
+      "two‑wheeled vehicle groups"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a74b050-5fc8-83ec-a65d-fb1680705a1a"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a74b050-5fc8-83ec-a65d-fb1680705a1a"
+    ],
+    "map_entry": "Document Acknowledgement Summary",
+    "page_title": "Document Acknowledgement Summary",
+    "people": [],
+    "primary_topic": "Infrastructure",
+    "processed_path": "Processed/Document Acknowledgement Summary2026-08-06T23_05_26+07_00.md",
+    "proposed_domains": [
+      "Infrastructure",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "aa22ae7c7188ba8c82950812aa37f78d0fd4c1d42ae671291230a8890e2d47d0",
+      "enrichment_completed_at": "2026-08-10T05:28:23.018223Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a74b050-5fc8-83ec-a65d-fb1680705a1a"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a74b050-5fc8-83ec-a65d-fb1680705a1a.md",
+    "secondary_domains": [
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "Document Acknowledgement Summary2026-08-06T23_05_26+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a74b050-5fc8-83ec-a65d-fb1680705a1a",
+    "stable_source_id": "url:https://chatgpt.com/c/6a74b050-5fc8-83ec-a65d-fb1680705a1a",
+    "subtopics": [
+      "road‑traffic law review",
+      "transport policy acknowledgement"
+    ],
+    "summary": "An official acknowledgement letter dated 31 July 2026 from the Thai Senate Committee on Transport to representatives of motorcycle and two‑wheeled vehicle groups. The committee confirms receipt of a complaint requesting review or amendment of the Road Traffic Act B.E. 2522 (1979), notes that the issue falls within its remit, and indicates it may invite further information if formally studied later. No policy change or law amendment is announced.",
+    "tags": [
+      "Thai Senate Committee on Transport",
+      "Road Traffic Act B.E. 2522 (1979)",
+      "motorcycle rider groups",
+      "two‑wheeled vehicle groups"
+    ],
+    "wiki_path": "Wiki/index.md#infrastructure",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "29ed5f405602933cf8c76820681078b21fd2b68360940c80a2c92a7a0be6aca0",
+    "document_id": "url:https://chatgpt.com/c/6a7528ab-28e0-83ec-9029-01bc5b785002",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7528ab-28e0-83ec-9029-01bc5b785002"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Update Cycle Management",
+    "page_title": "Update Cycle Management",
+    "people": [],
+    "primary_topic": "Infrastructure",
+    "processed_path": "Processed/Update Cycle Management2026-08-10T11_51_57+07_00.md",
+    "proposed_domains": [
+      "Infrastructure",
+      "Knowledge Management",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "29ed5f405602933cf8c76820681078b21fd2b68360940c80a2c92a7a0be6aca0",
+      "enrichment_completed_at": "2026-08-10T05:28:35.818879Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7528ab-28e0-83ec-9029-01bc5b785002"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7528ab-28e0-83ec-9029-01bc5b785002.md",
+    "secondary_domains": [
+      "Knowledge Management",
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "Update Cycle Management2026-08-10T11_51_57+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7528ab-28e0-83ec-9029-01bc5b785002",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7528ab-28e0-83ec-9029-01bc5b785002",
+    "subtopics": [
+      "Update Cycle Management",
+      "Synology DSM",
+      "Container Manager",
+      "Docker Compose",
+      "Work (ChatGPT)",
+      "Codex (ChatGPT)"
+    ],
+    "summary": "ChatGPT conversation about managing update cycles on a Synology NAS, covering Docker updates, container manager status, project naming conventions, and the distinction between Work and Codex modes.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#infrastructure",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "6e4cf9a9f2842001c758dfc322dc086c22ae2c1c62c8abbdf6ab3d34b89e8d8f",
+    "document_id": "url:https://chatgpt.com/c/6a75385c-d930-83ec-a088-5092be6ba7ea",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a75385c-d930-83ec-a088-5092be6ba7ea"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Google AGI Leapfrog",
+    "page_title": "Google AGI Leapfrog",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Google AGI Leapfrog2026-08-10T11_52_15+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Business",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "6e4cf9a9f2842001c758dfc322dc086c22ae2c1c62c8abbdf6ab3d34b89e8d8f",
+      "enrichment_completed_at": "2026-08-10T05:28:46.390193Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a75385c-d930-83ec-a088-5092be6ba7ea"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a75385c-d930-83ec-a088-5092be6ba7ea.md",
+    "secondary_domains": [
+      "Business",
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "Google AGI Leapfrog2026-08-10T11_52_15+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a75385c-d930-83ec-a088-5092be6ba7ea",
+    "stable_source_id": "url:https://chatgpt.com/c/6a75385c-d930-83ec-a088-5092be6ba7ea",
+    "subtopics": [],
+    "summary": "ChatGPT conversation discussing Google’s perceived decline and potential AGI developments.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "4b83f5e699ddcfe1836b156f9c126c6deff7e8ae5acbae4168e46fa7827eb905",
+    "document_id": "url:https://chatgpt.com/c/6a755b49-c040-83ec-adc4-17ce69a989a2",
+    "entities": [
+      "Human hearing range",
+      "Ultrasonic communication",
+      "Digital channels"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a755b49-c040-83ec-adc4-17ce69a989a2"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Human hearing range",
+    "page_title": "Human hearing range",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Human hearing range2026-08-10T11_52_35+07_00.md",
+    "proposed_domains": [
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "4b83f5e699ddcfe1836b156f9c126c6deff7e8ae5acbae4168e46fa7827eb905",
+      "enrichment_completed_at": "2026-08-10T05:28:55.850044Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/c/6a755b49-c040-83ec-adc4-17ce69a989a2"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a755b49-c040-83ec-adc4-17ce69a989a2.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Human hearing range2026-08-10T11_52_35+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a755b49-c040-83ec-adc4-17ce69a989a2",
+    "stable_source_id": "url:https://chatgpt.com/c/6a755b49-c040-83ec-adc4-17ce69a989a2",
+    "subtopics": [
+      "human hearing limits (≈20 kHz)",
+      "ultrasonic bands (>20 kHz)",
+      "audio bandwidth constraints",
+      "environmental attenuation of high‑frequency sound",
+      "security concerns with acoustic eavesdropping"
+    ],
+    "summary": "ChatGPT conversation discussing human hearing range and ultrasonic communication between devices.",
+    "tags": [
+      "Human hearing range",
+      "Ultrasonic communication",
+      "Digital channels"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "e923faf698cf22857e6d2ac6ee8da9232414e0c24474d26ed0352cc091233819",
+    "document_id": "url:https://chatgpt.com/c/6a7566ef-ff88-83ec-8b40-15c3b0457f1d",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7566ef-ff88-83ec-8b40-15c3b0457f1d"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Explaining assistant role",
+    "page_title": "Explaining assistant role",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Explaining assistant role2026-08-10T11_53_02+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Personal"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "e923faf698cf22857e6d2ac6ee8da9232414e0c24474d26ed0352cc091233819",
+      "enrichment_completed_at": "2026-08-10T05:29:05.833570Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7566ef-ff88-83ec-8b40-15c3b0457f1d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7566ef-ff88-83ec-8b40-15c3b0457f1d.md",
+    "secondary_domains": [
+      "Personal"
+    ],
+    "source_language": "en",
+    "source_name": "Explaining assistant role2026-08-10T11_53_02+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7566ef-ff88-83ec-8b40-15c3b0457f1d",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7566ef-ff88-83ec-8b40-15c3b0457f1d",
+    "subtopics": [],
+    "summary": "ChatGPT conversation about the role of an assistant, featuring a brief dialogue between a user and ChatGPT.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "df0ac0c310b777d5e4fefff7f8b1a8363704b77ea9a4f870745d752d9a826997",
+    "document_id": "url:https://chatgpt.com/c/6a7573c3-cc10-83ec-b7b6-0a96a105ee56",
+    "entities": [
+      "Nonthaburi School Shooting",
+      "Ralph Kramden",
+      "Ed Norton"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7573c3-cc10-83ec-b7b6-0a96a105ee56"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.reuters.com/world/asia-pacific/shooting-takes-place-school-thailand-officials-say-2026-08-07/?utm_source=chatgpt.com",
+      "https://en.wikipedia.org/wiki/The_Honeymooners?utm_source=chatgpt.com"
+    ],
+    "map_entry": "Nonthaburi School Shooting Update",
+    "page_title": "Nonthaburi School Shooting Update",
+    "people": [
+      "Jackie Gleason",
+      "Art Carney"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Nonthaburi School Shooting Update2026-08-10T11_53_16+07_00.md",
+    "proposed_domains": [
+      "News & Current Affairs",
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "df0ac0c310b777d5e4fefff7f8b1a8363704b77ea9a4f870745d752d9a826997",
+      "enrichment_completed_at": "2026-08-10T05:29:19.524186Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7573c3-cc10-83ec-b7b6-0a96a105ee56"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7573c3-cc10-83ec-b7b6-0a96a105ee56.md",
+    "secondary_domains": [
+      "General Reference"
+    ],
+    "source_language": "en",
+    "source_name": "Nonthaburi School Shooting Update2026-08-10T11_53_16+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7573c3-cc10-83ec-b7b6-0a96a105ee56",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7573c3-cc10-83ec-b7b6-0a96a105ee56",
+    "subtopics": [
+      "school shooting",
+      "firearm access",
+      "youth mental health",
+      "TV comedy duo"
+    ],
+    "summary": "ChatGPT conversation about a developing school shooting in Nonthaburi, Thailand (reported on 2026‑08‑07) and a side question regarding the sidekick from *The Honeymooners*.",
+    "tags": [
+      "Nonthaburi School Shooting",
+      "Ralph Kramden",
+      "Ed Norton"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "98bd6a7c247f96e114a611bd9475af365350b84f091b2cc0f7644ee0d8135fb4",
+    "document_id": "url:https://chatgpt.com/c/6a75a429-6228-83ec-915e-a1b2fc1f8ad2",
+    "entities": [
+      "Sydney Airport",
+      "Airservices Australia",
+      "Productivity Commission",
+      "Australian Transport Safety Bureau (ATSB)",
+      "Qantas",
+      "Virgin",
+      "Jetstar"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a75a429-6228-83ec-915e-a1b2fc1f8ad2"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.news.com.au/travel/travel-updates/sydney-airport-plunged-into-chaos-by-lack-of-air-traffic-controllers/news-story/6eeac3f5c6927090b1ab4626b87df38c",
+      "https://assets.pc.gov.au/2026-03/sub099-regional-airfares.pdf?VersionId=bV94KbX4rxO542N4.P8NEGjffV.CJDGG",
+      "https://www.atsb.gov.au/repcon-reports/ra2026-00071"
+    ],
+    "map_entry": "Sydney Airport Chaos",
+    "page_title": "Sydney Airport Chaos",
+    "people": [
+      "Stephen Beckett, CEO of Airlines for Australia"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Sydney Airport Chaos2026-08-10T11_53_33+07_00.md",
+    "proposed_domains": [
+      "News & Current Affairs",
+      "Infrastructure"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "98bd6a7c247f96e114a611bd9475af365350b84f091b2cc0f7644ee0d8135fb4",
+      "enrichment_completed_at": "2026-08-10T05:29:33.487871Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a75a429-6228-83ec-915e-a1b2fc1f8ad2"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a75a429-6228-83ec-915e-a1b2fc1f8ad2.md",
+    "secondary_domains": [
+      "Infrastructure"
+    ],
+    "source_language": "en",
+    "source_name": "Sydney Airport Chaos2026-08-10T11_53_33+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a75a429-6228-83ec-915e-a1b2fc1f8ad2",
+    "stable_source_id": "url:https://chatgpt.com/c/6a75a429-6228-83ec-915e-a1b2fc1f8ad2",
+    "subtopics": [
+      "air traffic controller staffing shortage",
+      "operational restrictions",
+      "traffic flow management",
+      "system resilience",
+      "regulatory oversight"
+    ],
+    "summary": "A ChatGPT conversation detailing the chaos at Sydney Airport on 7 August 2026 caused by a shortage of air‑traffic controllers, resulting in over 110 flight delays and multiple cancellations. The discussion highlights that the issue stems from long‑standing staffing problems documented by Airservices Australia, the Productivity Commission, and the Australian Transport Safety Bureau (ATSB). It underscores how operational restrictions were temporarily imposed to maintain safety, but the underlying resilience of the system failed due to insufficient controller availability.",
+    "tags": [
+      "Sydney Airport",
+      "Airservices Australia",
+      "Productivity Commission",
+      "Australian Transport Safety Bureau (ATSB)",
+      "Qantas",
+      "Virgin",
+      "Jetstar"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "e2db2f36d83f0e87240582d63612264a4f46d2ae509732daaa3db93810b0cf0b",
+    "document_id": "url:https://chatgpt.com/c/6a75b238-4c20-83ec-81e4-fd3e1a1a5ceb",
+    "entities": [
+      "Tesla",
+      "Waymo",
+      "Mobileye",
+      "Nvidia"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a75b238-4c20-83ec-81e4-fd3e1a1a5ceb"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.notateslaapp.com/news/3077/why-tesla-walked-away-from-radar-and-lidar-to-go-all-in-on-vision?utm_source=chatgpt.com",
+      "https://waymo.com/blog/2026/02/ro-on-6th-gen-waymo-driver/?utm_source=chatgpt.com",
+      "https://www.reuters.com/business/autos-transportation/why-chinas-auto-tech-giants-threaten-teslas-self-driving-future-2025-06-10/?utm_source=chatgpt.com",
+      "https://arxiv.org/abs/2607.22172?utm_source=chatgpt.com",
+      "https://waymo.com/blog/shorts/safetydata-june26/?utm_source=chatgpt.com",
+      "https://ir.mobileye.com/news-releases/news-release-details/mobileye-end-internal-lidar-development?utm_source=chatgpt.com",
+      "https://www.mobileye.com/press-kit/mobileye-at-ces-2026/?utm_source=chatgpt.com",
+      "https://www.theverge.com/podcast/964614/nvidia-auto-xinzhou-wu-ev-ai-hyperion-auto"
+    ],
+    "map_entry": "LiDAR and FSD Trends",
+    "page_title": "LiDAR and FSD Trends",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/LiDAR and FSD Trends2026-08-10T11_54_00+07_00.md",
+    "proposed_domains": [
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "e2db2f36d83f0e87240582d63612264a4f46d2ae509732daaa3db93810b0cf0b",
+      "enrichment_completed_at": "2026-08-10T05:30:02.438526Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a75b238-4c20-83ec-81e4-fd3e1a1a5ceb"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a75b238-4c20-83ec-81e4-fd3e1a1a5ceb.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "LiDAR and FSD Trends2026-08-10T11_54_00+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a75b238-4c20-83ec-81e4-fd3e1a1a5ceb",
+    "stable_source_id": "url:https://chatgpt.com/c/6a75b238-4c20-83ec-81e4-fd3e1a1a5ceb",
+    "subtopics": [
+      "LiDAR",
+      "FSD (Full Self‑Driving)",
+      "camera‑only perception",
+      "radar",
+      "sensor fusion",
+      "autonomous driving levels",
+      "redundancy",
+      "cost of LiDAR"
+    ],
+    "summary": "The conversation examines how the automotive industry’s perception of LiDAR has evolved by 2026. Tesla’s camera‑only strategy contrasts with Waymo’s multi‑sensor stack that still relies on LiDAR for redundancy and accurate ranging. Falling LiDAR costs have made it more viable for companies like Waymo, while Mobileye halted its own LiDAR development in favor of advanced vision and imaging radar, and Nvidia’s Hyperion architecture splits the market into camera‑radar‑only mass‑market L2++ vehicles and L4 systems that combine cameras, radars, and multiple LiDARs. The overall trend is a move away from treating LiDAR as an essential component for all autonomous levels, with it being pushed upward to higher‑autonomy, redundancy layers rather than being eliminated entirely.",
+    "tags": [
+      "Tesla",
+      "Waymo",
+      "Mobileye",
+      "Nvidia"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a65224ed8c270536846270499aba707280d2d85a6f9d1438772aadc25620e796",
+    "document_id": "url:https://chatgpt.com/c/6a7686ba-3a7c-83ec-aa2c-c670d76bab2f",
+    "entities": [
+      "Thailand",
+      "Korat",
+      "Nong Bua Lamphu",
+      "Siam Paragon",
+      "Or Tor Kor Market",
+      "Songkhla school attack",
+      "Debsirin Nonthaburi",
+      "Anutin (Prime Minister)"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7686ba-3a7c-83ec-aa2c-c670d76bab2f"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a7686ba-3a7c-83ec-aa2c-c670d76bab2f"
+    ],
+    "map_entry": "Thailand Shooting Concerns",
+    "page_title": "Thailand Shooting Concerns",
+    "people": [
+      "14‑year‑old shooter in Debsirin Nonthaburi"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Thailand Shooting Concerns2026-08-10T11_55_34+07_00.md",
+    "proposed_domains": [
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a65224ed8c270536846270499aba707280d2d85a6f9d1438772aadc25620e796",
+      "enrichment_completed_at": "2026-08-10T05:30:15.405164Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7686ba-3a7c-83ec-aa2c-c670d76bab2f"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7686ba-3a7c-83ec-aa2c-c670d76bab2f.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Thailand Shooting Concerns2026-08-10T11_55_34+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7686ba-3a7c-83ec-aa2c-c670d76bab2f",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7686ba-3a7c-83ec-aa2c-c670d76bab2f",
+    "subtopics": [
+      "mass shooting",
+      "firearm licensing",
+      "enforcement",
+      "public safety",
+      "gun control law"
+    ],
+    "summary": "ChatGPT conversation discussing six major shootings in Thailand since February 2020, the high civilian firearm prevalence, recent incidents involving minors, and the debate over whether additional laws or better enforcement are needed.",
+    "tags": [
+      "Thailand",
+      "Korat",
+      "Nong Bua Lamphu",
+      "Siam Paragon",
+      "Or Tor Kor Market",
+      "Songkhla school attack",
+      "Debsirin Nonthaburi",
+      "Anutin (Prime Minister)"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "0ad0390724f73fbd467fda7301ce3996516ac92457a5e9ccc21315835956e6ca",
+    "document_id": "url:https://chatgpt.com/c/6a768a65-ec60-83ec-8c03-4981ab175374",
+    "entities": [
+      "Aging Comparison Photos",
+      "Thailand"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a768a65-ec60-83ec-8c03-4981ab175374"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Aging Comparison Photos",
+    "page_title": "Aging Comparison Photos",
+    "people": [],
+    "primary_topic": "Personal",
+    "processed_path": "Processed/Aging Comparison Photos2026-08-10T11_54_31+07_00.md",
+    "proposed_domains": [
+      "Personal"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "0ad0390724f73fbd467fda7301ce3996516ac92457a5e9ccc21315835956e6ca",
+      "enrichment_completed_at": "2026-08-10T05:30:23.668302Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a768a65-ec60-83ec-8c03-4981ab175374"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a768a65-ec60-83ec-8c03-4981ab175374.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Aging Comparison Photos2026-08-10T11_54_31+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a768a65-ec60-83ec-8c03-4981ab175374",
+    "stable_source_id": "url:https://chatgpt.com/c/6a768a65-ec60-83ec-8c03-4981ab175374",
+    "subtopics": [],
+    "summary": "ChatGPT conversation about comparing two photos taken ten years apart to assess aging.",
+    "tags": [
+      "Aging Comparison Photos",
+      "Thailand"
+    ],
+    "wiki_path": "Wiki/index.md#personal",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "026405d9950e80c658e64a0e76ea8689866c6d0f28ffbcc53bfa8214deb22f2e",
+    "document_id": "url:https://chatgpt.com/c/6a768c92-0288-83ec-91fb-27f6ec9c7023",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a768c92-0288-83ec-91fb-27f6ec9c7023"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Valheim Group Progression",
+    "page_title": "Valheim Group Progression",
+    "people": [],
+    "primary_topic": "Gaming",
+    "processed_path": "Processed/Valheim Group Progression2026-08-10T11_55_54+07_00.md",
+    "proposed_domains": [
+      "Gaming"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "026405d9950e80c658e64a0e76ea8689866c6d0f28ffbcc53bfa8214deb22f2e",
+      "enrichment_completed_at": "2026-08-10T05:30:32.858475Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a768c92-0288-83ec-91fb-27f6ec9c7023"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a768c92-0288-83ec-91fb-27f6ec9c7023.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Valheim Group Progression2026-08-10T11_55_54+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a768c92-0288-83ec-91fb-27f6ec9c7023",
+    "stable_source_id": "url:https://chatgpt.com/c/6a768c92-0288-83ec-91fb-27f6ec9c7023",
+    "subtopics": [],
+    "summary": "ChatGPT conversation with 4 messages about organizing Valheim troops and group progression.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#gaming",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "9f8f15bd8cc18fd2be093fccab69c5fe792f6eeddb880032549c6fadac57ec89",
+    "document_id": "url:https://chatgpt.com/c/6a769463-55dc-83ec-9bbf-61314146a3b9",
+    "entities": [
+      "Pope Kael",
+      "Bangkok",
+      "Pattaya",
+      "mama‑san"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a769463-55dc-83ec-9bbf-61314146a3b9"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a769463-55dc-83ec-9bbf-61314146a3b9"
+    ],
+    "map_entry": "Song Idea for Game",
+    "page_title": "Song Idea for Game",
+    "people": [
+      "ChatGPT",
+      "User"
+    ],
+    "primary_topic": "Content Creation",
+    "processed_path": "Processed/Song Idea for Game2026-08-10T11_54_49+07_00.md",
+    "proposed_domains": [
+      "Content Creation",
+      "Gaming"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "9f8f15bd8cc18fd2be093fccab69c5fe792f6eeddb880032549c6fadac57ec89",
+      "enrichment_completed_at": "2026-08-10T05:30:46.343195Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a769463-55dc-83ec-9bbf-61314146a3b9"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a769463-55dc-83ec-9bbf-61314146a3b9.md",
+    "secondary_domains": [
+      "Gaming"
+    ],
+    "source_language": "en",
+    "source_name": "Song Idea for Game2026-08-10T11_54_49+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a769463-55dc-83ec-9bbf-61314146a3b9",
+    "stable_source_id": "url:https://chatgpt.com/c/6a769463-55dc-83ec-9bbf-61314146a3b9",
+    "subtopics": [
+      "nightlife",
+      "strip club",
+      "tourist culture",
+      "modern rock music",
+      "club beat",
+      "electronic touches",
+      "Suno (music generation platform)"
+    ],
+    "summary": "A ChatGPT conversation outlining the creation of a song titled \"Pope Kael Spins the Night\" for a browser‑based game set in Thailand’s nightlife. The discussion covers character background (DJ Pope Kael), lyrical themes centered on Thai tourist culture and mamasan influence, musical style (modern rock with club beat and electronic touches), and production workflow using Suno.",
+    "tags": [
+      "Pope Kael",
+      "Bangkok",
+      "Pattaya",
+      "mama‑san"
+    ],
+    "wiki_path": "Wiki/index.md#content-creation",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "ed0b905f2649cca32fb98775f3f66adbc17ae66c3c68a3df70c3c03eb5f64127",
+    "document_id": "url:https://chatgpt.com/c/6a769e6c-0044-83ec-a9b2-993ff7304c02",
+    "entities": [
+      "Bangkok Burger",
+      "Google Maps"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a769e6c-0044-83ec-a9b2-993ff7304c02"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Google-safe Review Tips",
+    "page_title": "Google-safe Review Tips",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Google-safe Review Tips2026-08-10T11_55_07+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "ed0b905f2649cca32fb98775f3f66adbc17ae66c3c68a3df70c3c03eb5f64127",
+      "enrichment_completed_at": "2026-08-10T05:30:58.655475Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a769e6c-0044-83ec-a9b2-993ff7304c02"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a769e6c-0044-83ec-a9b2-993ff7304c02.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Google-safe Review Tips2026-08-10T11_55_07+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a769e6c-0044-83ec-a9b2-993ff7304c02",
+    "stable_source_id": "url:https://chatgpt.com/c/6a769e6c-0044-83ec-a9b2-993ff7304c02",
+    "subtopics": [
+      "Google‑safe reviews",
+      "restaurant marketing"
+    ],
+    "summary": "A brief, Google‑safe review guide for Bangkok Burger, highlighting its relaxed atmosphere and hidden upstairs spot.",
+    "tags": [
+      "Bangkok Burger",
+      "Google Maps"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "609e62a534b800927feeb05cc28c4dc8d6da27bd787d00ebf50fefbba0df1569",
+    "document_id": "url:https://chatgpt.com/c/6a76aa8b-f8ac-83ec-b1fb-14bd43b92ff1",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a76aa8b-f8ac-83ec-b1fb-14bd43b92ff1"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a76aa8b-f8ac-83ec-b1fb-14bd43b92ff1"
+    ],
+    "map_entry": "The Reciprocal Society",
+    "page_title": "The Reciprocal Society",
+    "people": [],
+    "primary_topic": "Philosophy",
+    "processed_path": "Processed/The Reciprocal Society2026-08-08T12_04_34+07_00.md",
+    "proposed_domains": [
+      "Philosophy",
+      "History & Society",
+      "AI & LLMs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "609e62a534b800927feeb05cc28c4dc8d6da27bd787d00ebf50fefbba0df1569",
+      "enrichment_completed_at": "2026-08-10T05:31:11.660102Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a76aa8b-f8ac-83ec-b1fb-14bd43b92ff1"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a76aa8b-f8ac-83ec-b1fb-14bd43b92ff1.md",
+    "secondary_domains": [
+      "History & Society",
+      "AI & LLMs"
+    ],
+    "source_language": "en",
+    "source_name": "The Reciprocal Society2026-08-08T12_04_34+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a76aa8b-f8ac-83ec-b1fb-14bd43b92ff1",
+    "stable_source_id": "url:https://chatgpt.com/c/6a76aa8b-f8ac-83ec-b1fb-14bd43b92ff1",
+    "subtopics": [
+      "reciprocity",
+      "social cohesion",
+      "public infrastructure",
+      "individual contribution",
+      "belonging",
+      "participation"
+    ],
+    "summary": "A ChatGPT conversation exploring the concept of reciprocity in society, questioning traditional notions of socialism and capitalism, and proposing a framework based on belonging, participation, and reciprocity.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#philosophy",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a13c85907d77d1378a9adc5d9a237d931a680b4ee0b89880b428fb01a90e8ad3",
+    "document_id": "url:https://chatgpt.com/c/6a76d12a-a1a0-83ec-9b96-64182bc9992c",
+    "entities": [
+      "Ray Kurzweil",
+      "OpenAI",
+      "Astra",
+      "Mitchell Kapor",
+      "Deep Blue",
+      "Garry Kasparov",
+      "Lilian Weng"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a76d12a-a1a0-83ec-9b96-64182bc9992c"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a76d12a-a1a0-83ec-9b96-64182bc9992c"
+    ],
+    "map_entry": "Astra Capability Watch",
+    "page_title": "Astra Capability Watch",
+    "people": [
+      "Ray Kurzweil",
+      "Mitchell Kapor",
+      "Lilian Weng"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Astra Capability Watch2026-08-10T11_56_10+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "News & Current Affairs",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a13c85907d77d1378a9adc5d9a237d931a680b4ee0b89880b428fb01a90e8ad3",
+      "enrichment_completed_at": "2026-08-10T05:31:23.352963Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a76d12a-a1a0-83ec-9b96-64182bc9992c"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a76d12a-a1a0-83ec-9b96-64182bc9992c.md",
+    "secondary_domains": [
+      "News & Current Affairs",
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "Astra Capability Watch2026-08-10T11_56_10+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a76d12a-a1a0-83ec-9b96-64182bc9992c",
+    "stable_source_id": "url:https://chatgpt.com/c/6a76d12a-a1a0-83ec-9b96-64182bc9992c",
+    "subtopics": [
+      "Law of Accelerating Returns",
+      "Turing test",
+      "human‑level intelligence",
+      "Singularity",
+      "recursive self‑improvement",
+      "intelligence explosion"
+    ],
+    "summary": "The source is a ChatGPT conversation titled \"Astra Capability Watch\" that discusses Ray Kurzweil’s long‑term predictions (notably the 2029 Turing test and 2045 Singularity dates) and their current relevance in light of OpenAI’s internal model Astra. It highlights Astra’s closed‑door testing, its demonstrated abilities in mathematics and cybersecurity, and the industry shift toward AI systems that assist in their own development—an early form of recursive self‑improvement. The dialogue contrasts Kurzweil’s historical forecasts with today’s rapid progress, suggesting that the key milestone may now be an AI’s capacity to materially improve its successor rather than merely passing a conversational Turing test.",
+    "tags": [
+      "Ray Kurzweil",
+      "OpenAI",
+      "Astra",
+      "Mitchell Kapor",
+      "Deep Blue",
+      "Garry Kasparov",
+      "Lilian Weng"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "138947a87d555ca2efa227f290788829391724ff8918095e6166655a09041e8e",
+    "document_id": "url:https://chatgpt.com/c/6a7716d7-4ec4-83ec-abc2-1ef578646941",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7716d7-4ec4-83ec-abc2-1ef578646941"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Dishwashing Assembly Line",
+    "page_title": "Dishwashing Assembly Line",
+    "people": [],
+    "primary_topic": "Business",
+    "processed_path": "Processed/Dishwashing Assembly Line2026-08-10T11_56_25+07_00.md",
+    "proposed_domains": [
+      "Business",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "138947a87d555ca2efa227f290788829391724ff8918095e6166655a09041e8e",
+      "enrichment_completed_at": "2026-08-10T05:31:31.499148Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7716d7-4ec4-83ec-abc2-1ef578646941"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7716d7-4ec4-83ec-abc2-1ef578646941.md",
+    "secondary_domains": [
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "Dishwashing Assembly Line2026-08-10T11_56_25+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7716d7-4ec4-83ec-abc2-1ef578646941",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7716d7-4ec4-83ec-abc2-1ef578646941",
+    "subtopics": [],
+    "summary": "ChatGPT conversation outlining an infographic of a dishwashing assembly line, detailing stages from dirty dishes to stacked clean plates.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#business",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "ee4ff40b6daf49f8e2d39e233c6ba2d5c32ae1eff84af04cbf8ff2b4572a231f",
+    "document_id": "url:https://chatgpt.com/c/6a774588-501c-83ec-a2a9-5c2b311f436d",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a774588-501c-83ec-a2a9-5c2b311f436d"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Nirvana Concert Photo Simulation",
+    "page_title": "Nirvana Concert Photo Simulation",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Nirvana Concert Photo Simulation2026-08-10T11_56_43+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "ee4ff40b6daf49f8e2d39e233c6ba2d5c32ae1eff84af04cbf8ff2b4572a231f",
+      "enrichment_completed_at": "2026-08-10T05:31:42.403681Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a774588-501c-83ec-a2a9-5c2b311f436d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a774588-501c-83ec-a2a9-5c2b311f436d.md",
+    "secondary_domains": [
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "Nirvana Concert Photo Simulation2026-08-10T11_56_43+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a774588-501c-83ec-a2a9-5c2b311f436d",
+    "stable_source_id": "url:https://chatgpt.com/c/6a774588-501c-83ec-a2a9-5c2b311f436d",
+    "subtopics": [
+      "Nirvana",
+      "rock concert",
+      "photo simulation",
+      "hair styles"
+    ],
+    "summary": "ChatGPT conversation discussing a simulated Nirvana concert photo and ideas for recreating older photos with different hairstyles.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "07b34d76529e4152d866ea5de972dfb6ec17c62420eb345a8a5dfd9735c605b7",
+    "document_id": "url:https://chatgpt.com/c/6a774dd6-bc00-83ec-bd99-8edf71153904",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a774dd6-bc00-83ec-bd99-8edf71153904"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "JFK CIA Network Story",
+    "page_title": "JFK CIA Network Story",
+    "people": [
+      "Andrija Puharich",
+      "Uri Geller",
+      "Russell Targ",
+      "Harold Puthoff",
+      "George de Mohrenschildt",
+      "J. Walton Moore",
+      "Lee Harvey Oswald",
+      "Marina Oswald (Paine?)"
+    ],
+    "primary_topic": "History & Society",
+    "processed_path": "Processed/JFK CIA Network Story2026-08-10T11_57_21+07_00.md",
+    "proposed_domains": [
+      "History & Society",
+      "General Reference",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "07b34d76529e4152d866ea5de972dfb6ec17c62420eb345a8a5dfd9735c605b7",
+      "enrichment_completed_at": "2026-08-10T05:31:55.432472Z",
+      "model_confidence": 0.8,
+      "stable_source_id": "url:https://chatgpt.com/c/6a774dd6-bc00-83ec-bd99-8edf71153904"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a774dd6-bc00-83ec-bd99-8edf71153904.md",
+    "secondary_domains": [
+      "General Reference",
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "JFK CIA Network Story2026-08-10T11_57_21+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a774dd6-bc00-83ec-bd99-8edf71153904",
+    "stable_source_id": "url:https://chatgpt.com/c/6a774dd6-bc00-83ec-bd99-8edf71153904",
+    "subtopics": [
+      "ESP/telepathy research",
+      "remote viewing",
+      "Stargate program",
+      "Minox camera",
+      "Warren Commission",
+      "Allen Dulles",
+      "Mary Bancroft",
+      "Ruth Paine Young"
+    ],
+    "summary": "ChatGPT conversation summarizing a documentary about the JFK assassination that explores alleged CIA involvement through figures such as Andrija Puharich, George de Mohrenschildt, and Allen Dulles. The discussion highlights connections between Oswald’s social circle and intelligence agencies, anomalies involving the Paine household, and potential conflicts of interest in the Warren Commission.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#history-society",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "4faf73b99f7408d45d406712a394b521246fa94f41514ebe515eef851a2d4ef2",
+    "document_id": "url:https://chatgpt.com/c/6a77ceed-ded0-83ec-ad95-6f815ba904ec",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a77ceed-ded0-83ec-ad95-6f815ba904ec"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Discord Post Suggestion",
+    "page_title": "Discord Post Suggestion",
+    "people": [],
+    "primary_topic": "Personal",
+    "processed_path": "Processed/Discord Post Suggestion2026-08-10T11_57_38+07_00.md",
+    "proposed_domains": [
+      "Personal",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "4faf73b99f7408d45d406712a394b521246fa94f41514ebe515eef851a2d4ef2",
+      "enrichment_completed_at": "2026-08-10T05:32:06.767378Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a77ceed-ded0-83ec-ad95-6f815ba904ec"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a77ceed-ded0-83ec-ad95-6f815ba904ec.md",
+    "secondary_domains": [
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "Discord Post Suggestion2026-08-10T11_57_38+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a77ceed-ded0-83ec-ad95-6f815ba904ec",
+    "stable_source_id": "url:https://chatgpt.com/c/6a77ceed-ded0-83ec-ad95-6f815ba904ec",
+    "subtopics": [],
+    "summary": "ChatGPT conversation with 15 messages about a Discord post suggestion, tagged as clippings.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#personal",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "b561f8e2f5c2bcbee126237d4fba759df07f6fb6b316f0ea25e1e3db06a053ed",
+    "document_id": "url:https://chatgpt.com/c/6a77f302-d4b0-83ec-95fc-43405c1751bd",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a77f302-d4b0-83ec-95fc-43405c1751bd"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Bangkok Post Teacher Controversy",
+    "page_title": "Bangkok Post Teacher Controversy",
+    "people": [],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Bangkok Post Teacher Controversy2026-08-10T11_57_54+07_00.md",
+    "proposed_domains": [
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "b561f8e2f5c2bcbee126237d4fba759df07f6fb6b316f0ea25e1e3db06a053ed",
+      "enrichment_completed_at": "2026-08-10T05:32:16.985300Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a77f302-d4b0-83ec-95fc-43405c1751bd"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a77f302-d4b0-83ec-95fc-43405c1751bd.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Bangkok Post Teacher Controversy2026-08-10T11_57_54+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a77f302-d4b0-83ec-95fc-43405c1751bd",
+    "stable_source_id": "url:https://chatgpt.com/c/6a77f302-d4b0-83ec-95fc-43405c1751bd",
+    "subtopics": [],
+    "summary": "ChatGPT conversation summarizing a Bangkok Post story about a former teacher’s alleged firearm threat and related employment dispute.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "09d9299abf8022cb19cd39bd08e7c0001e641af968187879c5f2a9796c48400c",
+    "document_id": "url:https://chatgpt.com/c/6a77f91a-caec-83ec-b268-e9453b4e9219",
+    "entities": [
+      "Komi Cafe",
+      "Vietnamese socialist‑realist propaganda",
+      "coffee"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a77f91a-caec-83ec-b268-e9453b4e9219"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a77f91a-caec-83ec-b268-e9453b4e9219"
+    ],
+    "map_entry": "Komi Cafe Artwork Analysis",
+    "page_title": "Komi Cafe Artwork Analysis",
+    "people": [],
+    "primary_topic": "Content Creation",
+    "processed_path": "Processed/Komi Cafe Artwork Analysis2026-08-10T11_58_28+07_00.md",
+    "proposed_domains": [
+      "Content Creation",
+      "General Reference",
+      "History & Society"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "09d9299abf8022cb19cd39bd08e7c0001e641af968187879c5f2a9796c48400c",
+      "enrichment_completed_at": "2026-08-10T05:32:29.704532Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a77f91a-caec-83ec-b268-e9453b4e9219"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a77f91a-caec-83ec-b268-e9453b4e9219.md",
+    "secondary_domains": [
+      "General Reference",
+      "History & Society"
+    ],
+    "source_language": "en",
+    "source_name": "Komi Cafe Artwork Analysis2026-08-10T11_58_28+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a77f91a-caec-83ec-b268-e9453b4e9219",
+    "stable_source_id": "url:https://chatgpt.com/c/6a77f91a-caec-83ec-b268-e9453b4e9219",
+    "subtopics": [
+      "artwork analysis",
+      "branding",
+      "propaganda"
+    ],
+    "summary": "ChatGPT conversation with four messages analyzing Komi Cafe artwork featuring Vietnamese socialist‑realist propaganda elements and coffee branding.",
+    "tags": [
+      "Komi Cafe",
+      "Vietnamese socialist‑realist propaganda",
+      "coffee"
+    ],
+    "wiki_path": "Wiki/index.md#content-creation",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "d279024126d81567df92090653f12b24883fb5d14c0752c8e65795985124ab96",
+    "document_id": "url:https://chatgpt.com/c/6a77fdb1-5d0c-83ec-9565-1f53eb90217f",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a77fdb1-5d0c-83ec-9565-1f53eb90217f"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a77fdb1-5d0c-83ec-9565-1f53eb90217f"
+    ],
+    "map_entry": "IMAX vs Widescreen Debate",
+    "page_title": "IMAX vs Widescreen Debate",
+    "people": [],
+    "primary_topic": "General Reference",
+    "processed_path": "Processed/IMAX vs Widescreen Debate2026-08-10T11_58_56+07_00.md",
+    "proposed_domains": [
+      "General Reference",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "d279024126d81567df92090653f12b24883fb5d14c0752c8e65795985124ab96",
+      "enrichment_completed_at": "2026-08-10T05:32:42.265865Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a77fdb1-5d0c-83ec-9565-1f53eb90217f"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a77fdb1-5d0c-83ec-9565-1f53eb90217f.md",
+    "secondary_domains": [
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "IMAX vs Widescreen Debate2026-08-10T11_58_56+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a77fdb1-5d0c-83ec-9565-1f53eb90217f",
+    "stable_source_id": "url:https://chatgpt.com/c/6a77fdb1-5d0c-83ec-9565-1f53eb90217f",
+    "subtopics": [
+      "IMAX",
+      "widescreen",
+      "aspect ratio",
+      "35mm cinema",
+      "digital IMAX",
+      "full IMAX 70mm",
+      "Netflix",
+      "AI avatars"
+    ],
+    "summary": "A ChatGPT conversation discussing the technical differences between IMAX and widescreen formats, the marketing narrative around IMAX, and how these concepts relate to AI themes in films such as *I, Robot* and *Surrogates*. The dialogue also touches on broader questions about automation, decision‑making, and societal acceptance of technology.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#general-reference",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "8f0deac81d004e2946f79420814f2ebd5b34115d3a2ea71ba37a22d214f9a1f3",
+    "document_id": "url:https://chatgpt.com/c/6a784896-3660-83ec-a7e7-68794445de08",
+    "entities": [
+      "ChatGPT",
+      "AI",
+      "Suno",
+      "map",
+      "territory"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a784896-3660-83ec-a7e7-68794445de08"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a784896-3660-83ec-a7e7-68794445de08"
+    ],
+    "map_entry": "AI Accuracy and History",
+    "page_title": "AI Accuracy and History",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/AI Accuracy and History2026-08-10T11_59_39+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Philosophy",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "8f0deac81d004e2946f79420814f2ebd5b34115d3a2ea71ba37a22d214f9a1f3",
+      "enrichment_completed_at": "2026-08-10T05:32:56.829485Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a784896-3660-83ec-a7e7-68794445de08"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a784896-3660-83ec-a7e7-68794445de08.md",
+    "secondary_domains": [
+      "Philosophy",
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "AI Accuracy and History2026-08-10T11_59_39+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a784896-3660-83ec-a7e7-68794445de08",
+    "stable_source_id": "url:https://chatgpt.com/c/6a784896-3660-83ec-a7e7-68794445de08",
+    "subtopics": [
+      "AI accuracy",
+      "fact verification",
+      "philosophical metaphor",
+      "song lyric composition",
+      "AI authority critique"
+    ],
+    "summary": "ChatGPT conversation with seven messages discussing the accuracy of AI-generated content, concerns about fact verification, and a philosophical exploration of AI authority expressed through song lyric composition. The dialogue references the metaphor \"the map is not the territory,\" critiques AI as an unreliable guide, and outlines a potential musical structure for a reflective ballad titled \"The Map Can Talk.\"",
+    "tags": [
+      "ChatGPT",
+      "AI",
+      "Suno",
+      "map",
+      "territory"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "69c55a8814d75b5f40420d6616e085515d761500d97d5f6adfd591283117ea7a",
+    "document_id": "url:https://chatgpt.com/c/6a792563-0710-83ec-90f7-2c1f7376da3e",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a792563-0710-83ec-90f7-2c1f7376da3e"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a792563-0710-83ec-90f7-2c1f7376da3e"
+    ],
+    "map_entry": "Chaos Theory in Society",
+    "page_title": "Chaos Theory in Society",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Chaos Theory in Society2026-08-10T11_59_11+07_00.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "Philosophy"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "69c55a8814d75b5f40420d6616e085515d761500d97d5f6adfd591283117ea7a",
+      "enrichment_completed_at": "2026-08-10T05:33:06.202120Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a792563-0710-83ec-90f7-2c1f7376da3e"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a792563-0710-83ec-90f7-2c1f7376da3e.md",
+    "secondary_domains": [
+      "Philosophy"
+    ],
+    "source_language": "en",
+    "source_name": "Chaos Theory in Society2026-08-10T11_59_11+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a792563-0710-83ec-90f7-2c1f7376da3e",
+    "stable_source_id": "url:https://chatgpt.com/c/6a792563-0710-83ec-90f7-2c1f7376da3e",
+    "subtopics": [
+      "chaos theory",
+      "butterfly effect",
+      "nonlinear dynamics",
+      "complex systems",
+      "resilience engineering",
+      "redundancy"
+    ],
+    "summary": "ChatGPT conversation discussing how chaos theory applies to societal systems, emphasizing the limits of control, the importance of resilience and redundancy, and drawing parallels between historical events and theoretical concepts such as the butterfly effect.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a16ed6e10fafc52d827adde3b5d7a1e91100caa76733d3ee1bf89fde27f1f87a",
+    "document_id": "url:https://chatgpt.com/c/6a79328e-c974-83ec-b278-5391f82111c9",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a79328e-c974-83ec-b278-5391f82111c9"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Discord Server Traits Setup",
+    "page_title": "Discord Server Traits Setup",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Discord Server Traits Setup2026-08-10T11_59_50+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a16ed6e10fafc52d827adde3b5d7a1e91100caa76733d3ee1bf89fde27f1f87a",
+      "enrichment_completed_at": "2026-08-10T05:33:18.845367Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a79328e-c974-83ec-b278-5391f82111c9"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a79328e-c974-83ec-b278-5391f82111c9.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Discord Server Traits Setup2026-08-10T11_59_50+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a79328e-c974-83ec-b278-5391f82111c9",
+    "stable_source_id": "url:https://chatgpt.com/c/6a79328e-c974-83ec-b278-5391f82111c9",
+    "subtopics": [
+      "Discord Server Profile",
+      "Server Traits",
+      "Emoji Search Terms",
+      "Community Identity"
+    ],
+    "summary": "ChatGPT conversation about setting up Discord server traits, including suggested emojis and trait descriptions for a philosophical community.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "b1b0e5c5b90a8437911d9c959d5c088a0dafc07989e9a6c99abb09499cac3dbc",
+    "document_id": "url:https://chatgpt.com/c/6a793b93-ed28-83ec-b41e-8b48c8d78c6a",
+    "entities": [
+      "Thailand",
+      "Bangkok",
+      "Pattaya",
+      "Sukhumvit",
+      "Nana",
+      "Soi Cowboy"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a793b93-ed28-83ec-b41e-8b48c8d78c6a"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a793b93-ed28-83ec-b41e-8b48c8d78c6a"
+    ],
+    "map_entry": "Thailand's Nightlife Economy",
+    "page_title": "Thailand's Nightlife Economy",
+    "people": [],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Thailand's Nightlife Economy2026-08-10T12_00_01+07_00.md",
+    "proposed_domains": [
+      "News & Current Affairs",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "b1b0e5c5b90a8437911d9c959d5c088a0dafc07989e9a6c99abb09499cac3dbc",
+      "enrichment_completed_at": "2026-08-10T05:33:31.568290Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a793b93-ed28-83ec-b41e-8b48c8d78c6a"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a793b93-ed28-83ec-b41e-8b48c8d78c6a.md",
+    "secondary_domains": [
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Thailand's Nightlife Economy2026-08-10T12_00_01+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a793b93-ed28-83ec-b41e-8b48c8d78c6a",
+    "stable_source_id": "url:https://chatgpt.com/c/6a793b93-ed28-83ec-b41e-8b48c8d78c6a",
+    "subtopics": [
+      "sex tourism",
+      "decriminalisation",
+      "red‑light zones",
+      "worker protection",
+      "policing",
+      "corruption",
+      "legal reform",
+      "tourism branding"
+    ],
+    "summary": "The conversation discusses Thailand’s nightlife economy, highlighting the contradiction between its image as a premium family‑friendly destination and the large, largely illegal sex‑tourism industry. It references recent events (a murder involving the nighttime economy), estimates of over 200,000 sex workers nationwide, and Pattaya’s nighttime economy valued at 100–200 billion baht annually. The discussion contrasts two policy proposals: decriminalisation with labour rights versus designated red‑light zones to control the industry.",
+    "tags": [
+      "Thailand",
+      "Bangkok",
+      "Pattaya",
+      "Sukhumvit",
+      "Nana",
+      "Soi Cowboy"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "233531ee4e8fb62e1e4324ab1abf05832b2540c33d0c7ad651c0aaf916c0f134",
+    "document_id": "url:https://chatgpt.com/c/6a79474f-f1b8-83ec-be1c-6e95dc4046f5",
+    "entities": [
+      "Gurudev",
+      "Artificial Intelligence",
+      "Absolute Intelligence"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a79474f-f1b8-83ec-be1c-6e95dc4046f5"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a79474f-f1b8-83ec-be1c-6e95dc4046f5"
+    ],
+    "map_entry": "Summary of Gurudev's Philosophy",
+    "page_title": "Summary of Gurudev's Philosophy",
+    "people": [
+      "Gurudev"
+    ],
+    "primary_topic": "Philosophy",
+    "processed_path": "Processed/Summary of Gurudev's Philosophy2026-08-10T12_00_17+07_00.md",
+    "proposed_domains": [
+      "Philosophy"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "233531ee4e8fb62e1e4324ab1abf05832b2540c33d0c7ad651c0aaf916c0f134",
+      "enrichment_completed_at": "2026-08-10T05:33:46.297135Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/c/6a79474f-f1b8-83ec-be1c-6e95dc4046f5"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a79474f-f1b8-83ec-be1c-6e95dc4046f5.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Summary of Gurudev's Philosophy2026-08-10T12_00_17+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a79474f-f1b8-83ec-be1c-6e95dc4046f5",
+    "stable_source_id": "url:https://chatgpt.com/c/6a79474f-f1b8-83ec-be1c-6e95dc4046f5",
+    "subtopics": [
+      "life blueprint",
+      "mind calmness",
+      "emotional regulation",
+      "breathwork",
+      "meditation",
+      "yoga",
+      "AI vs. human intuition",
+      "Absolute Intelligence"
+    ],
+    "summary": "Gurudev’s philosophy centers on recognizing an innate life blueprint through calmness, avoiding past/future fixation, and practicing breathwork, meditation, and yoga to regulate emotions. He critiques education for neglecting emotional regulation, highlights the cyclical nature of war due to defense focus over peace training, and distinguishes AI from human intuition—coining “Absolute Intelligence.” His altruistic stance encourages sharing useful insights as a reward in itself.",
+    "tags": [
+      "Gurudev",
+      "Artificial Intelligence",
+      "Absolute Intelligence"
+    ],
+    "wiki_path": "Wiki/index.md#philosophy",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "2aaf1eef20e15e143c266fa0213264b14e32731302780fe61cd3f802d09e10a6",
+    "document_id": "url:https://chatgpt.com/c/6a7951e6-f3e8-83ec-9c4f-5161c1172a75",
+    "entities": [
+      "Earth",
+      "Moon",
+      "Mars",
+      "Mercury",
+      "Venus",
+      "Jupiter",
+      "Saturn",
+      "Uranus"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a7951e6-f3e8-83ec-9c4f-5161c1172a75"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a7951e6-f3e8-83ec-9c4f-5161c1172a75"
+    ],
+    "map_entry": "Wolf Amendment Explanation",
+    "page_title": "Wolf Amendment Explanation",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Wolf Amendment Explanation2026-08-10T12_01_18+07_00.md",
+    "proposed_domains": [
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "2aaf1eef20e15e143c266fa0213264b14e32731302780fe61cd3f802d09e10a6",
+      "enrichment_completed_at": "2026-08-10T05:33:57.257178Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a7951e6-f3e8-83ec-9c4f-5161c1172a75"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a7951e6-f3e8-83ec-9c4f-5161c1172a75.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Wolf Amendment Explanation2026-08-10T12_01_18+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a7951e6-f3e8-83ec-9c4f-5161c1172a75",
+    "stable_source_id": "url:https://chatgpt.com/c/6a7951e6-f3e8-83ec-9c4f-5161c1172a75",
+    "subtopics": [
+      "polar temperature asymmetry",
+      "axial tilt",
+      "orbital eccentricity",
+      "permanently shadowed regions",
+      "water ice detection",
+      "atmospheric heat transport",
+      "solar‑system motion through the galaxy"
+    ],
+    "summary": "Wolf Amendment Explanation – a six‑message ChatGPT conversation discussing planetary polar temperature differences, with emphasis on Earth, Moon, Mars, Mercury, Venus, and the gas giants.",
+    "tags": [
+      "Earth",
+      "Moon",
+      "Mars",
+      "Mercury",
+      "Venus",
+      "Jupiter",
+      "Saturn",
+      "Uranus"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
     "workflow_status": "accepted"
   },
   {
@@ -38683,6 +40785,150 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "78c0f458fdd2bb12b3b30d12ea0ccebb558f0685cd3cb07715f9e998f2650240",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d",
+    "entities": [
+      "AMD RX 7800 XT",
+      "32 GB system RAM",
+      "ComfyUI Desktop",
+      "ROCm",
+      "WanGP",
+      "Amuse",
+      "Leonardo"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://rocm.docs.amd.com/projects/install-on-windows/en/latest/reference/system-requirements.html?utm_source=chatgpt.com",
+      "https://comfyui.org/en/official-amd-rocm-support-arrives?utm_source=chatgpt.com",
+      "https://github.com/deepbeepmeep/Wan2GP?utm_source=chatgpt.com"
+    ],
+    "map_entry": "My Local System",
+    "page_title": "My Local System",
+    "people": [],
+    "primary_topic": "Projects",
+    "processed_path": "Processed/My Local System2026-08-11T09_22_15+07_00.md",
+    "proposed_domains": [
+      "Projects",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "78c0f458fdd2bb12b3b30d12ea0ccebb558f0685cd3cb07715f9e998f2650240",
+      "enrichment_completed_at": "2026-08-12T02:22:27.627111Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d.md",
+    "secondary_domains": [
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "My Local System2026-08-11T09_22_15+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d",
+    "subtopics": [
+      "text‑to‑video generation",
+      "image‑to‑video pipeline",
+      "GPU acceleration",
+      "video rendering workflow",
+      "upscaling"
+    ],
+    "summary": "The source documents a personal workflow for creating short music‑video clips on an AMD RX 7800 XT system. It discusses the limitations of existing cloud‑based text‑to‑video services, evaluates local options such as WanGP, Amuse, and Leonardo, and recommends using ComfyUI Desktop with official ROCm support as the primary production pipeline. The author outlines a practical workflow: storyboard → keyframe images → image‑to‑video clips via ComfyUI → post‑processing in Filmora, aiming for 5‑second drafts that render within 1–5 minutes on the described hardware.",
+    "tags": [
+      "AMD RX 7800 XT",
+      "32 GB system RAM",
+      "ComfyUI Desktop",
+      "ROCm",
+      "WanGP",
+      "Amuse",
+      "Leonardo"
+    ],
+    "wiki_path": "Wiki/index.md#projects",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "151c7c2295709b913bf100eed486adc0f7d148868fa8e555b2451f648307c007",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
+    "entities": [
+      "Ariadne",
+      "Jeff Su",
+      "Memory.md",
+      "Router.md",
+      "Identity.md",
+      "State files",
+      "AUTO",
+      "REVIEW"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65"
+    },
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65"
+    ],
+    "map_entry": "My Local System",
+    "page_title": "My Local System",
+    "people": [
+      "Megan",
+      "Wazza"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local System2026-08-13T18_52_21+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Knowledge Management",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "151c7c2295709b913bf100eed486adc0f7d148868fa8e555b2451f648307c007",
+      "enrichment_completed_at": "2026-08-21T12:18:53.310190Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65.md",
+    "secondary_domains": [
+      "Knowledge Management",
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "My Local System2026-08-13T18_52_21+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7-my-local-system/c/6a7dadf7-d610-83ec-80d6-65c0fb022d65",
+    "subtopics": [
+      "User‑owned memory",
+      "Semantic routing",
+      "Session closure",
+      "Automatic updates",
+      "Approval‑required changes",
+      "State vs knowledge",
+      "Graph for understanding",
+      "Active‑state layer"
+    ],
+    "summary": "The excerpt outlines how to incorporate Jeff Su’s memory model into Ariadne, emphasizing user‑owned plain‑text memory, a lightweight routing file, formal session closure, distinct write classes (AUTO, REVIEW, PROTECTED), and a clear separation between long‑term knowledge and short‑term active state. It also discusses semantic routing, a tiny active‑state layer, and a stable identity layer above routing.",
+    "tags": [
+      "Ariadne",
+      "Jeff Su",
+      "Memory.md",
+      "Router.md",
+      "Identity.md",
+      "State files",
+      "AUTO",
+      "REVIEW"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "bf96ed948125348e0f39a1a4c9d897d35f0dc97d97b32e154b4a311d69490e91",
     "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a5eca52-34a0-83ec-bb26-cfded38ff402",
     "entities": [
@@ -38848,6 +41094,72 @@
       "Wazza",
       "Pope Kael",
       "Chanya"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "40d0a4ec6fac118bd14d1953927c95b66ebca3a601ac842eb82641f2dcd96f54",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d",
+    "entities": [
+      "AMD RX 7800 XT",
+      "Leonardo",
+      "WangGP",
+      "Comfy Desktop",
+      "Amuse",
+      "Suno"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d"
+    ],
+    "map_entry": "My Local System - Plan video musical",
+    "page_title": "My Local System - Plan video musical",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local System - Plan video musical2026-08-11T16_21_55+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "40d0a4ec6fac118bd14d1953927c95b66ebca3a601ac842eb82641f2dcd96f54",
+      "enrichment_completed_at": "2026-08-12T02:22:40.952215Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "My Local System - Plan video musical2026-08-11T16_21_55+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a7a8479-97f8-83ec-8cd3-e0c1eb4ff76d",
+    "subtopics": [
+      "video rendering",
+      "token limits",
+      "step count optimization",
+      "music‑video creation",
+      "audio‑understanding models"
+    ],
+    "summary": "The source is a ChatGPT conversation titled \"My Local System - Plan video musical\" dated 2026‑08‑11. It discusses the author’s efforts to build a local video rendering pipeline on an AMD RX 7800 XT system, including challenges with token limits in Leonardo and other tools, experimentation with step counts and resolution for music‑video creation, and future plans to integrate audio‑understanding models. The excerpt contains timestamps, code snippets, and links to generated images.",
+    "tags": [
+      "AMD RX 7800 XT",
+      "Leonardo",
+      "WangGP",
+      "Comfy Desktop",
+      "Amuse",
+      "Suno"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
@@ -44721,6 +47033,152 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "3d3b04b4f1a36c35d8ab76d83d7d6e4d4373faae060dccdbcc22b4414abc68f8",
+    "document_id": "url:https://meta.ai/prompt/7fdab5cf-8f44-429b-9b85-296a8ee56d55",
+    "entities": [
+      "Meta AI"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://meta.ai/prompt/7fdab5cf-8f44-429b-9b85-296a8ee56d55"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://meta.ai/prompt/7fdab5cf-8f44-429b-9b85-296a8ee56d55"
+    ],
+    "map_entry": "Meta AI",
+    "page_title": "Meta AI",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Meta AI2026-08-11T12_54_30+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "3d3b04b4f1a36c35d8ab76d83d7d6e4d4373faae060dccdbcc22b4414abc68f8",
+      "enrichment_completed_at": "2026-08-12T02:22:53.170272Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://meta.ai/prompt/7fdab5cf-8f44-429b-9b85-296a8ee56d55"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//meta.ai/prompt/7fdab5cf-8f44-429b-9b85-296a8ee56d55.md",
+    "secondary_domains": [
+      "General Reference"
+    ],
+    "source_language": "en",
+    "source_name": "Meta AI2026-08-11T12_54_30+07_00.md",
+    "source_type": "web",
+    "source_url": "https://meta.ai/prompt/7fdab5cf-8f44-429b-9b85-296a8ee56d55",
+    "stable_source_id": "url:https://meta.ai/prompt/7fdab5cf-8f44-429b-9b85-296a8ee56d55",
+    "subtopics": [
+      "AI assistant",
+      "image generation",
+      "question answering"
+    ],
+    "summary": "Meta AI is an assistant that helps users get tasks done, create AI‑generated images for free, and answer questions.",
+    "tags": [
+      "Meta AI"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "e8ffedd3a9e737c67d0ae97e0e7117086f9ae128fdf61a9fe16403c915cfe506",
+    "document_id": "url:https://meta.ai/prompt/95178d57-fbc7-42d3-bcce-ad5e0938c1a4",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://meta.ai/prompt/95178d57-fbc7-42d3-bcce-ad5e0938c1a4"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://meta.ai/prompt/95178d57-fbc7-42d3-bcce-ad5e0938c1a4"
+    ],
+    "map_entry": "Meta AI",
+    "page_title": "Meta AI",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Meta AI2026-08-11T12_53_31+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "e8ffedd3a9e737c67d0ae97e0e7117086f9ae128fdf61a9fe16403c915cfe506",
+      "enrichment_completed_at": "2026-08-12T02:23:04.827242Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://meta.ai/prompt/95178d57-fbc7-42d3-bcce-ad5e0938c1a4"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//meta.ai/prompt/95178d57-fbc7-42d3-bcce-ad5e0938c1a4.md",
+    "secondary_domains": [
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "Meta AI2026-08-11T12_53_31+07_00.md",
+    "source_type": "web",
+    "source_url": "https://meta.ai/prompt/95178d57-fbc7-42d3-bcce-ad5e0938c1a4",
+    "stable_source_id": "url:https://meta.ai/prompt/95178d57-fbc7-42d3-bcce-ad5e0938c1a4",
+    "subtopics": [],
+    "summary": "Meta AI prompt page providing access to the Meta AI assistant for image generation and Q&A.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "34e5b3830683e70801e123cfa02bced8ae675144bb772e25c7a05a94c2e741dc",
+    "document_id": "url:https://meta.ai/prompt/dbc1f341-d713-4057-ba71-a511e41f7e42",
+    "entities": [
+      "Meta AI"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://meta.ai/prompt/dbc1f341-d713-4057-ba71-a511e41f7e42"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://meta.ai/prompt/dbc1f341-d713-4057-ba71-a511e41f7e42"
+    ],
+    "map_entry": "Meta AI",
+    "page_title": "Meta AI",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Meta AI2026-08-11T12_53_02+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "34e5b3830683e70801e123cfa02bced8ae675144bb772e25c7a05a94c2e741dc",
+      "enrichment_completed_at": "2026-08-12T02:23:31.734997Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://meta.ai/prompt/dbc1f341-d713-4057-ba71-a511e41f7e42"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//meta.ai/prompt/dbc1f341-d713-4057-ba71-a511e41f7e42.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Meta AI2026-08-11T12_53_02+07_00.md",
+    "source_type": "web",
+    "source_url": "https://meta.ai/prompt/dbc1f341-d713-4057-ba71-a511e41f7e42",
+    "stable_source_id": "url:https://meta.ai/prompt/dbc1f341-d713-4057-ba71-a511e41f7e42",
+    "subtopics": [],
+    "summary": "Meta AI is a web-based platform that offers an assistant for generating images and answering questions. The source contains a list of prompt links, many of which are animation or image‑generation requests.",
+    "tags": [
+      "Meta AI"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "55d4f522e6b358409f3a4bc93197411e68e072c796cea5bd7b80613ccc3385cb",
     "document_id": "url:https://simpleflying.com/same-tsa-scanner-lets-laptops-stay-bag-quietly-ruining-other-gear?link_source=ta_first_comment&taid=6a4d6d843f1caf00016ee309&utm_campaign=trueanthem&utm_medium=social&utm_source=facebook",
     "entities": [
@@ -45056,6 +47514,61 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "f04499a4ff401290c4f256e18408c658644aedbc051b257f2346408cb5d0d6ea",
+    "document_id": "url:https://www.bangkokpost.com/business/general/3299192/putting-the-spotlight-on-an-open-secret",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.bangkokpost.com/business/general/3299192/putting-the-spotlight-on-an-open-secret"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.bangkokpost.com/business/general/3299192/putting-the-spotlight-on-an-open-secret"
+    ],
+    "map_entry": "Putting the spotlight on an open secret",
+    "page_title": "Putting the spotlight on an open secret",
+    "people": [
+      "Surang Janyam",
+      "Thanet Supornsahasrungsi"
+    ],
+    "primary_topic": "Business",
+    "processed_path": "Processed/Putting the spotlight on an open secret2026-08-10T09_45_48+07_002026-08-10T05_33_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "proposed_domains": [
+      "Business",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "f04499a4ff401290c4f256e18408c658644aedbc051b257f2346408cb5d0d6ea",
+      "enrichment_completed_at": "2026-08-10T05:34:12.257156Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://www.bangkokpost.com/business/general/3299192/putting-the-spotlight-on-an-open-secret"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.bangkokpost.com/business/general/3299192/putting-the-spotlight-on-an-open-secret.md",
+    "secondary_domains": [
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "Putting the spotlight on an open secret2026-08-10T09_45_48+07_002026-08-10T05_33_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "source_type": "web",
+    "source_url": "https://www.bangkokpost.com/business/general/3299192/putting-the-spotlight-on-an-open-secret",
+    "stable_source_id": "url:https://www.bangkokpost.com/business/general/3299192/putting-the-spotlight-on-an-open-secret",
+    "subtopics": [
+      "sex tourism",
+      "decriminalisation of sex work",
+      "Prevention and Suppression of Prostitution Act of 1996",
+      "Social Development and Human Security Ministry",
+      "Pattaya Walking Street",
+      "Soi Cowboy",
+      "Royal Thai Police"
+    ],
+    "summary": "From Soi Cowboy in the bustling Sukhumvit corridor of Bangkok to Pattaya's Walking Street, the sex trade remains an open secret that authorities are often reluctant to acknowledge, despite its visible presence.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#business",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "c39de527e1c41a8faedb2f0d2a956359f5bd25efb8822b2343296bbf605fb64e",
     "document_id": "url:https://www.bangkokpost.com/learning/advanced/3286279/5000-dishonest-officials-to-lose-jobs-over-exam-scandal",
     "entities": [
@@ -45122,6 +47635,113 @@
       "Kasetsart University",
       "Wichian Buri Municipality",
       "Department of Local Administration (DLA)"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a70c9171c83dffc0d2f711f3e0093695eddb519ac4f19b4203c84d09de3c4ee7",
+    "document_id": "url:https://www.bangkokpost.com/life/travel/3297502/applying-for-a-retirement-visa-in-thailand",
+    "entities": [
+      "Thailand",
+      "Bangkok Post Public Company Limited"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.bangkokpost.com/life/travel/3297502/applying-for-a-retirement-visa-in-thailand"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [],
+    "map_entry": "Applying for a retirement visa in Thailand",
+    "page_title": "Applying for a retirement visa in Thailand",
+    "people": [],
+    "primary_topic": "Travel & Expat Experience",
+    "processed_path": "Processed/Applying for a retirement visa in Thailand2026-08-06T19_28_50+07_002026-08-06T13_40_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "proposed_domains": [
+      "Travel & Expat Experience"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a70c9171c83dffc0d2f711f3e0093695eddb519ac4f19b4203c84d09de3c4ee7",
+      "enrichment_completed_at": "2026-08-10T05:34:19.982689Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://www.bangkokpost.com/life/travel/3297502/applying-for-a-retirement-visa-in-thailand"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.bangkokpost.com/life/travel/3297502/applying-for-a-retirement-visa-in-thailand.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Applying for a retirement visa in Thailand2026-08-06T19_28_50+07_002026-08-06T13_40_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "source_type": "web",
+    "source_url": "https://www.bangkokpost.com/life/travel/3297502/applying-for-a-retirement-visa-in-thailand",
+    "stable_source_id": "url:https://www.bangkokpost.com/life/travel/3297502/applying-for-a-retirement-visa-in-thailand",
+    "subtopics": [
+      "retirement visa",
+      "Non-Immigrant O-A Visa",
+      "Non-Immigrant OX Visa",
+      "Thailand Privilege Visa",
+      "Destination Thailand Visa (DTV)",
+      "financial requirements",
+      "annual renewal"
+    ],
+    "summary": "The Bangkok Post article explains the eligibility, financial requirements, application steps, renewal process, and restrictions for Thailand’s retirement visa (Non‑Immigrant O-A). It also covers alternative long‑term visas such as the OX, Privilege, and Destination Thailand Visas.",
+    "tags": [
+      "Thailand",
+      "Bangkok Post Public Company Limited"
+    ],
+    "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "3c014d16458d61e1b7f43a501026328b5b2ff664cbe290cbcd13daa9b22d468e",
+    "document_id": "url:https://www.bangkokpost.com/thailand/general/3298865/school-goes-online-after-former-foreign-teachers-threat",
+    "entities": [
+      "Thitiwit Meechooworapong",
+      "Pieter Johannes Dreyer",
+      "Hatyaiwittayalai School",
+      "Hat Yai police"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.bangkokpost.com/thailand/general/3298865/school-goes-online-after-former-foreign-teachers-threat"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.bangkokpost.com/thailand/general/3298865/school-goes-online-after-former-foreign-teachers-threat"
+    ],
+    "map_entry": "School goes on-line after former foreign teacher’s threat",
+    "page_title": "School goes on-line after former foreign teacher’s threat",
+    "people": [
+      "Thitiwit Meechooworapong",
+      "Pieter Johannes Dreyer"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/School goes on-line after former foreign teacher’s threat2026-08-09T10_24_18+07_002026-08-09T08_29_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "proposed_domains": [
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "3c014d16458d61e1b7f43a501026328b5b2ff664cbe290cbcd13daa9b22d468e",
+      "enrichment_completed_at": "2026-08-10T05:34:38.275289Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://www.bangkokpost.com/thailand/general/3298865/school-goes-online-after-former-foreign-teachers-threat"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.bangkokpost.com/thailand/general/3298865/school-goes-online-after-former-foreign-teachers-threat.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "School goes on-line after former foreign teacher’s threat2026-08-09T10_24_18+07_002026-08-09T08_29_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "source_type": "web",
+    "source_url": "https://www.bangkokpost.com/thailand/general/3298865/school-goes-online-after-former-foreign-teachers-threat",
+    "stable_source_id": "url:https://www.bangkokpost.com/thailand/general/3298865/school-goes-online-after-former-foreign-teachers-threat",
+    "subtopics": [],
+    "summary": "Hatyaiwittayalai School in Songkhla province closed its gates on Monday and Tuesday after a former English teacher, Pieter Johannes Dreyer, threatened to use a firearm. The school director, Thitiwit Meechooworapong, announced online teaching for the safety of students and staff. The threat followed Dreyer’s termination on July 24; he posted a photo with a gun and threatening messages in a LINE group before leaving Thailand on July 19. Hat Yai police were notified.",
+    "tags": [
+      "Thitiwit Meechooworapong",
+      "Pieter Johannes Dreyer",
+      "Hatyaiwittayalai School",
+      "Hat Yai police"
     ],
     "wiki_path": "Wiki/index.md#news-current-affairs",
     "workflow_status": "accepted"
@@ -46387,6 +49007,69 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "4e3acf780fd5350486240a440cb8aafcb37eb877d1473a6e025d44d4616105e7",
+    "document_id": "url:https://www.nationthailand.com/news/general/40069516",
+    "entities": [
+      "Korat shooting (Feb 2020)",
+      "Nong Bua Lamphu childcare centre attack (Oct 2022)",
+      "Siam Paragon shopping‑centre shooting (Oct 2023)",
+      "Or Tor Kor Market shooting (Jul 2025)",
+      "Songkhla school shooting (Feb 2026)",
+      "Debsirin Nonthaburi School shooting (Aug 2026)"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.nationthailand.com/news/general/40069516"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.nationthailand.com/news/general/40069516"
+    ],
+    "map_entry": "Six major shootings that shook Thailand since 2020",
+    "page_title": "Six major shootings that shook Thailand since 2020",
+    "people": [
+      "The Nation Editorial Team"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Six major shootings that shook Thailand since 20202026-08-08T08_30_13+07_002026-08-07T15_01_00+07_00[[The Nation Editorial Team]].md",
+    "proposed_domains": [
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "4e3acf780fd5350486240a440cb8aafcb37eb877d1473a6e025d44d4616105e7",
+      "enrichment_completed_at": "2026-08-10T05:34:51.201911Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://www.nationthailand.com/news/general/40069516"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.nationthailand.com/news/general/40069516.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Six major shootings that shook Thailand since 20202026-08-08T08_30_13+07_002026-08-07T15_01_00+07_00[[The Nation Editorial Team]].md",
+    "source_type": "web",
+    "source_url": "https://www.nationthailand.com/news/general/40069516",
+    "stable_source_id": "url:https://www.nationthailand.com/news/general/40069516",
+    "subtopics": [
+      "school shootings",
+      "shopping‑centre attacks",
+      "market shootings",
+      "childcare centre attack",
+      "deadliest incidents in Thailand"
+    ],
+    "summary": "Six major shootings in Thailand since 2020",
+    "tags": [
+      "Korat shooting (Feb 2020)",
+      "Nong Bua Lamphu childcare centre attack (Oct 2022)",
+      "Siam Paragon shopping‑centre shooting (Oct 2023)",
+      "Or Tor Kor Market shooting (Jul 2025)",
+      "Songkhla school shooting (Feb 2026)",
+      "Debsirin Nonthaburi School shooting (Aug 2026)"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "4e2dc2ae781e4773d3173e5a0964634181c4e3fcbbbef48ce47e29d89a2daba3",
     "document_id": "url:https://www.news.com.au/finance/business/treasury-threatens-to-break-up-big-four-firms-kpmg-ey-deloitte-and-pwc-as-scandals-plague-the-consultancy-sector/news-story/fce21e98a4897c70c95e14486a79a601?utm_source=News.com.au&utm_medium=Facebook&utm_campaign=EditorialSB&utm_content=SocialBakers",
     "entities": [
@@ -46878,6 +49561,60 @@
       "OpenRouter"
     ],
     "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "bc8432021d10ca3363d5f5c936dfeb7156515949cfb1528e15f21e041d3936d5",
+    "document_id": "url:https://www.perplexity.ai/discover/you/ai-power-swings-are-breaking-d-obbku2w4RTmuHWDiRzbWjw",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.perplexity.ai/discover/you/ai-power-swings-are-breaking-d-obbku2w4RTmuHWDiRzbWjw"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://fortune.com/2026/08/06/ais-volatile-power-demand-is-damaging-its-own-data-centers/",
+      "https://news.futunn.com/en/post/77229483/new-power-supply-challenges-for-ai-data-centers-grid-instability?futusource=news_newspage_recommend",
+      "https://www.bloomberg.com/news/articles/2026-08-06/data-centers-are-being-damaged-by-ai-s-volatile-power-demand",
+      "https://www.japantimes.co.jp/business/2026/08/06/tech/ai-power-demand-data-centers/"
+    ],
+    "map_entry": "Perplexity",
+    "page_title": "Perplexity",
+    "people": [
+      "Shannon Miller",
+      "Andrew Cunningham",
+      "Drew Baglino",
+      "Jason Hoffman"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Perplexity2026-08-06T21_13_30+07_00.md",
+    "proposed_domains": [
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "bc8432021d10ca3363d5f5c936dfeb7156515949cfb1528e15f21e041d3936d5",
+      "enrichment_completed_at": "2026-08-10T05:35:01.852441Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://www.perplexity.ai/discover/you/ai-power-swings-are-breaking-d-obbku2w4RTmuHWDiRzbWjw"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.perplexity.ai/discover/you/ai-power-swings-are-breaking-d-obbku2w4RTmuHWDiRzbWjw.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Perplexity2026-08-06T21_13_30+07_00.md",
+    "source_type": "web",
+    "source_url": "https://www.perplexity.ai/discover/you/ai-power-swings-are-breaking-d-obbku2w4RTmuHWDiRzbWjw",
+    "stable_source_id": "url:https://www.perplexity.ai/discover/you/ai-power-swings-are-breaking-d-obbku2w4RTmuHWDiRzbWjw",
+    "subtopics": [
+      "AI power swings",
+      "data center infrastructure damage",
+      "grid stability concerns",
+      "financial impact of downtime"
+    ],
+    "summary": "The article discusses how the rapid, millisecond-scale power swings generated by AI workloads are damaging critical infrastructure in data centers—batteries, generators, and cooling systems—leading to premature equipment failure and significant financial losses.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
     "workflow_status": "accepted"
   },
   {
@@ -49652,6 +52389,80 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "0936cfedfaf306c6224219ebc102240cb7f9d17a8f897ab32acdc0f41d2e83c4",
+    "document_id": "youtube:-YXMPTzuDY0",
+    "entities": [
+      "Israel",
+      "Palestine",
+      "United Nations",
+      "International Court of Justice (ICJ)",
+      "International Criminal Court (ICC)",
+      "Reuters",
+      "Associated Press",
+      "Encyclopaedia Britannica"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "-YXMPTzuDY0"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=-YXMPTzuDY0",
+      "https://youtu.be/HelQy8HnNA4"
+    ],
+    "map_entry": "The History Behind Today's Israel-Palestine Conflict",
+    "page_title": "The History Behind Today's Israel-Palestine Conflict",
+    "people": [
+      "Arafat",
+      "Egyptian President",
+      "Israeli Prime Minister",
+      "American President"
+    ],
+    "primary_topic": "History & Society",
+    "processed_path": "Processed/The History Behind Today's Israel-Palestine Conflict2026-08-09T16_28_50+07_002026-07-10T21_14_37-07_00[[Plainly World]].md",
+    "proposed_domains": [
+      "History & Society"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "0936cfedfaf306c6224219ebc102240cb7f9d17a8f897ab32acdc0f41d2e83c4",
+      "enrichment_completed_at": "2026-08-10T05:35:15.159860Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:-YXMPTzuDY0"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_-YXMPTzuDY0.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "The History Behind Today's Israel-Palestine Conflict2026-08-09T16_28_50+07_002026-07-10T21_14_37-07_00[[Plainly World]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=-YXMPTzuDY0",
+    "stable_source_id": "youtube:-YXMPTzuDY0",
+    "subtopics": [
+      "Nakba",
+      "Six‑Day War",
+      "Oslo Accords",
+      "First Intifada",
+      "Second Intifada",
+      "Hamas",
+      "Abraham Accords",
+      "October 7 attacks"
+    ],
+    "summary": "Documentary covering key events from the 1948 Arab‑Israeli War to the 2023–2026 Gaza conflict, including wars, peace accords, and the rise of Hamas.",
+    "tags": [
+      "Israel",
+      "Palestine",
+      "United Nations",
+      "International Court of Justice (ICJ)",
+      "International Criminal Court (ICC)",
+      "Reuters",
+      "Associated Press",
+      "Encyclopaedia Britannica"
+    ],
+    "wiki_path": "Wiki/index.md#history-society",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "78ee2c1e0ecbc97898f2c3358313ba7218bf360dd67f851941422015ca474edd",
     "document_id": "youtube:0-QDPnEIkvw",
     "entities": [
@@ -49717,6 +52528,47 @@
       "Zapier MCP"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "85077342768093843043d256fdde4bb7020bbef608f645d29466bc6d9fae6e86",
+    "document_id": "youtube:0XcEsuFs5Y8",
+    "entities": [],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "0XcEsuFs5Y8"
+    },
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
+    "links": [],
+    "map_entry": "Dunning Kruger Effect Wrong, Scientists Claim",
+    "page_title": "Dunning Kruger Effect Wrong, Scientists Claim",
+    "people": [
+      "Sabine Hossenfelder"
+    ],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Dunning Kruger Effect Wrong, Scientists Claim2026-08-12T19_30_47+07_002026-08-11T09_00_12-07_00[[Sabine Hossenfelder]].md",
+    "proposed_domains": [
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "85077342768093843043d256fdde4bb7020bbef608f645d29466bc6d9fae6e86",
+      "enrichment_completed_at": "2026-08-21T12:18:22.872516Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "youtube:0XcEsuFs5Y8"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_0XcEsuFs5Y8.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Dunning Kruger Effect Wrong, Scientists Claim2026-08-12T19_30_47+07_002026-08-11T09_00_12-07_00[[Sabine Hossenfelder]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=0XcEsuFs5Y8",
+    "stable_source_id": "youtube:0XcEsuFs5Y8",
+    "subtopics": [],
+    "summary": "The video discusses a new paper that challenges the traditional interpretation of the Dunning‑Kruger effect, arguing that confidence is actually a good predictor of performance. It critiques previous analyses and presents an alternative regression approach that suggests people tend to overestimate their abilities, especially at higher performance levels. The speaker also touches on the broader implications of the effect for public perception and the importance of teaching relevant skills to improve both performance and self‑awareness.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#science-technology",
     "workflow_status": "accepted"
   },
   {
@@ -50512,6 +53364,73 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "955defd8798a347d198d5c07df01638a3322a5c5665708f308dee29feda08aaf",
+    "document_id": "youtube:82OND63k8XA",
+    "entities": [
+      "Garage Alchemy with Pope Kael",
+      "Comfy UI",
+      "Project Ariadne"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "82OND63k8XA"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=82OND63k8XA",
+      "https://github.com/Pop",
+      "https://discord.gg/PFENZwaqZy"
+    ],
+    "map_entry": "A video clip generator",
+    "page_title": "A video clip generator",
+    "people": [
+      "Pope Kael"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/A video clip generator2026-08-11T17_23_23+07_002026-08-11T02_19_37-07_00[[Garage Alchemy with Pope Kael]].md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Projects",
+      "Content Creation"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "955defd8798a347d198d5c07df01638a3322a5c5665708f308dee29feda08aaf",
+      "enrichment_completed_at": "2026-08-12T02:23:58.910062Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:82OND63k8XA"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_82OND63k8XA.md",
+    "secondary_domains": [
+      "Projects",
+      "Content Creation"
+    ],
+    "source_language": "en",
+    "source_name": "A video clip generator2026-08-11T17_23_23+07_002026-08-11T02_19_37-07_00[[Garage Alchemy with Pope Kael]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=82OND63k8XA",
+    "stable_source_id": "youtube:82OND63k8XA",
+    "subtopics": [
+      "video clip generator",
+      "local music video renderer",
+      "AMD RX 7800 XT GPU",
+      "Comfy UI pipeline",
+      "key‑frame prompts",
+      "720p resolution",
+      "24 fps output",
+      "GitHub repository"
+    ],
+    "summary": "The video details the creation of a local music‑video renderer using an AMD RX 7800 XT GPU and Comfy UI. The creator explains how to set up key‑frame prompts, resolution, duration, and preview options, achieving 720p output at 24 fps while keeping system headroom. The project is shared on GitHub as part of the \"Project Ariadne\" initiative.",
+    "tags": [
+      "Garage Alchemy with Pope Kael",
+      "Comfy UI",
+      "Project Ariadne"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "22a67504b6ec484761c1cdb3af47b1b964c9712ee70211f71ffafde4fae787ab",
     "document_id": "youtube:88K9CFvJFQs",
     "entities": [],
@@ -50702,6 +53621,57 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "9011a26e811d348f871a393941ffd44157196c77c73f9eced9ee1a852f178da4",
+    "document_id": "youtube:9PSWTDhHGt4",
+    "entities": [
+      "Honest Ads"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "9PSWTDhHGt4"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=9PSWTDhHGt4&t=146s"
+    ],
+    "map_entry": "If The Lottery Was Honest - Honest Ads",
+    "page_title": "If The Lottery Was Honest - Honest Ads",
+    "people": [],
+    "primary_topic": "Business",
+    "processed_path": "Processed/If The Lottery Was Honest - Honest Ads2026-08-09T08_02_49+07_002016-12-16T03_30_00-08_00[[Honest Ads]].md",
+    "proposed_domains": [
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "9011a26e811d348f871a393941ffd44157196c77c73f9eced9ee1a852f178da4",
+      "enrichment_completed_at": "2026-08-10T05:35:27.127696Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "youtube:9PSWTDhHGt4"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_9PSWTDhHGt4.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "If The Lottery Was Honest - Honest Ads2026-08-09T08_02_49+07_002016-12-16T03_30_00-08_00[[Honest Ads]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=9PSWTDhHGt4&t=146s",
+    "stable_source_id": "youtube:9PSWTDhHGt4",
+    "subtopics": [
+      "lottery advertising",
+      "consumer exploitation",
+      "probability theory",
+      "gambling addiction",
+      "economic inequality"
+    ],
+    "summary": "A critical YouTube advertisement titled \"If The Lottery Was Honest\" that exposes how lottery marketing exploits consumers, especially low‑income households, by presenting the lottery as a lucrative investment while highlighting the statistical improbability of winning and the social costs of gambling.",
+    "tags": [
+      "Honest Ads"
+    ],
+    "wiki_path": "Wiki/index.md#business",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "f9b572459da2460814861480357b7d9a50481a53722cbabea04570f93c40c876",
     "document_id": "youtube:A4zMyjkL0Dc",
     "entities": [
@@ -50823,6 +53793,74 @@
       "Nakhon Pathom"
     ],
     "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "82d970ae1a0cc6be32a22aff84eaebc597cd8cc3398509732b7ef56882feb342",
+    "document_id": "youtube:Au3Sk48hYvA",
+    "entities": [
+      "CIA",
+      "Lee Harvey Oswald",
+      "JFK",
+      "Maine mansion",
+      "The Why Files"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "Au3Sk48hYvA"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=Au3Sk48hYvA",
+      "https://thewhyfiles.com/podcast",
+      "https://pdsdebt.com/files"
+    ],
+    "map_entry": "CIA's Psychic Program That Led to JFK's Assassination",
+    "page_title": "CIA's Psychic Program That Led to JFK's Assassination",
+    "people": [
+      "AJ Gentile",
+      "Hecklefish J. Moriarty",
+      "Jennifer Gentile",
+      "Gino Gentile",
+      "Patreon Members",
+      "Joe Stone",
+      "Drew Sullivan",
+      "Brandon Snyder"
+    ],
+    "primary_topic": "History & Society",
+    "processed_path": "Processed/CIA's Psychic Program That Led to JFK's Assassination2026-08-08T22_39_41+07_002026-08-08T08_00_29-07_00[[The Why Files]].md",
+    "proposed_domains": [
+      "History & Society"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "82d970ae1a0cc6be32a22aff84eaebc597cd8cc3398509732b7ef56882feb342",
+      "enrichment_completed_at": "2026-08-10T05:35:39.427259Z",
+      "model_confidence": 0.8,
+      "stable_source_id": "youtube:Au3Sk48hYvA"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_Au3Sk48hYvA.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "CIA's Psychic Program That Led to JFK's Assassination2026-08-08T22_39_41+07_002026-08-08T08_00_29-07_00[[The Why Files]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=Au3Sk48hYvA",
+    "stable_source_id": "youtube:Au3Sk48hYvA",
+    "subtopics": [
+      "psychic program",
+      "CIA operations",
+      "JFK assassination conspiracy"
+    ],
+    "summary": "The YouTube video \"CIA's Psychic Program That Led to JFK's Assassination\" by The Why Files discusses a purported CIA psychic program linked to Lee Harvey Oswald and the JFK assassination, referencing a 1952 séance involving wealthy families in Maine.",
+    "tags": [
+      "CIA",
+      "Lee Harvey Oswald",
+      "JFK",
+      "Maine mansion",
+      "The Why Files"
+    ],
+    "wiki_path": "Wiki/index.md#history-society",
     "workflow_status": "accepted"
   },
   {
@@ -51562,6 +54600,84 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "0f34d1e9e756c74393fb730857f44f7622eef62611e0bb90092825aab26d12fd",
+    "document_id": "youtube:HelQy8HnNA4",
+    "entities": [
+      "Israel",
+      "Palestine",
+      "Canaanites",
+      "Israelite kingdoms",
+      "Assyrian Empire",
+      "Babylonian Empire",
+      "Roman Empire",
+      "Islamic Caliphates (Umayyad, Abbasid, Ottoman)​"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "HelQy8HnNA4"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=HelQy8HnNA4",
+      "https://docs.google.com/spreadsheets/d/1VItS8_KG7S_V8UouzYT5Muf0noWD7DV6iY-CiWd3UjI/edit?usp=sharing"
+    ],
+    "map_entry": "The 5,000-Year History Behind the Israel-Palestine Conflict",
+    "page_title": "The 5,000-Year History Behind the Israel-Palestine Conflict",
+    "people": [
+      "Benny Morris",
+      "Avi Shlaim",
+      "Rashid Khalidi",
+      "Israel Finkelstein",
+      "Neil Silberman",
+      "Justin McCarthy",
+      "Agranat‑Tamir et al."
+    ],
+    "primary_topic": "History & Society",
+    "processed_path": "Processed/The 5,000-Year History Behind the Israel-Palestine Conflict2026-08-09T16_29_13+07_002026-07-03T18_15_02-07_00[[Plainly World]].md",
+    "proposed_domains": [
+      "History & Society",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "0f34d1e9e756c74393fb730857f44f7622eef62611e0bb90092825aab26d12fd",
+      "enrichment_completed_at": "2026-08-10T05:36:02.413460Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:HelQy8HnNA4"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_HelQy8HnNA4.md",
+    "secondary_domains": [
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "The 5,000-Year History Behind the Israel-Palestine Conflict2026-08-09T16_29_13+07_002026-07-03T18_15_02-07_00[[Plainly World]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=HelQy8HnNA4",
+    "stable_source_id": "youtube:HelQy8HnNA4",
+    "subtopics": [
+      "ancient DNA evidence linking modern Jews and Arabs to Bronze Age Canaanites",
+      "monotheism as a cultural innovation of the Israelites",
+      "deportation of Israelite populations by Assyria",
+      "Balfour Declaration (1917)",
+      "UN Resolutions 181 (1947) and 1948 (1948)",
+      "Nakba"
+    ],
+    "summary": "This YouTube video provides a comprehensive overview of the Israel‑Palestine conflict by tracing its roots back to 9,000 BC. It covers the rise and fall of the Canaanite city‑states, the emergence of the Israelites, successive conquests by Assyria, Babylon, Rome, and later Islamic empires, the Crusades, Ottoman rule, the birth of Zionism, the Balfour Declaration, British Mandate administration, and culminates with the 1948 war—known as Israel’s War of Independence or the Palestinian Nakba. The video emphasizes that both Israelis and Palestinians are descendants of ancient peoples in the region and presents multiple perspectives without taking sides.",
+    "tags": [
+      "Israel",
+      "Palestine",
+      "Canaanites",
+      "Israelite kingdoms",
+      "Assyrian Empire",
+      "Babylonian Empire",
+      "Roman Empire",
+      "Islamic Caliphates (Umayyad, Abbasid, Ottoman)​"
+    ],
+    "wiki_path": "Wiki/index.md#history-society",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "44f441039f82910dc9b49134252f476cae7231c9bd7c86f1135a50ecfe15e8d6",
     "document_id": "youtube:IpQ1RRQpqaQ",
     "entities": [
@@ -51690,6 +54806,68 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "cf46216646492388b2736c2f651f0978fc1dc64d462a0582eb544a705cc0c5bb",
+    "document_id": "youtube:Jtn2Wxai-ug",
+    "entities": [
+      "Brian Klaas",
+      "Fluke: Chance, Chaos, and Why Everything We Do Matters",
+      "Big Think"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "Jtn2Wxai-ug"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=Jtn2Wxai-ug",
+      "https://bigthink.com/series/full-interview/extreme-flukes/"
+    ],
+    "map_entry": "We control nothing, but we influence everything | Brian Klaas: Full Interview",
+    "page_title": "We control nothing, but we influence everything | Brian Klaas: Full Interview",
+    "people": [
+      "Dr. Brian Klaas"
+    ],
+    "primary_topic": "Philosophy",
+    "processed_path": "Processed/We control nothing, but we influence everything _ Brian Klaas_ Full Interview2026-08-10T08_11_32+07_002025-04-25T06_00_37-07_00[[Big Think]].md",
+    "proposed_domains": [
+      "Philosophy",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "cf46216646492388b2736c2f651f0978fc1dc64d462a0582eb544a705cc0c5bb",
+      "enrichment_completed_at": "2026-08-10T05:36:13.812380Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:Jtn2Wxai-ug"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_Jtn2Wxai-ug.md",
+    "secondary_domains": [
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "We control nothing, but we influence everything _ Brian Klaas_ Full Interview2026-08-10T08_11_32+07_002025-04-25T06_00_37-07_00[[Big Think]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=Jtn2Wxai-ug",
+    "stable_source_id": "youtube:Jtn2Wxai-ug",
+    "subtopics": [
+      "chaos theory",
+      "contingency",
+      "free will",
+      "flukes",
+      "influence",
+      "randomness"
+    ],
+    "summary": "The interview with Dr. Brian Klaas explores how seemingly random events—\"flukes\"—shape individual lives and societal outcomes through the lens of chaos theory, contingency, and free will. Klaas discusses his book *Fluke: Chance, Chaos, and Why Everything We Do Matters*, illustrating how small changes can lead to profound ripple effects, using personal anecdotes such as a 1905 Wisconsin tragedy that indirectly enabled his own existence. The conversation also touches on the limits of human control, the nature of influence, and why people often seek deterministic explanations for complex events.",
+    "tags": [
+      "Brian Klaas",
+      "Fluke: Chance, Chaos, and Why Everything We Do Matters",
+      "Big Think"
+    ],
+    "wiki_path": "Wiki/index.md#philosophy",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "dc4c593b9a2b1519b88f78b4d91bc43f48cd51ae481b94e1b818662d4aa4947b",
     "document_id": "youtube:K6h1mx7J_b0",
     "entities": [
@@ -51815,6 +54993,76 @@
       "Jeovons paradox"
     ],
     "wiki_path": "Wiki/index.md#philosophy",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "f2358d4442f8004e15cb98525a1a957cd3b00fc3c804ba0c5b306facdb510044",
+    "document_id": "youtube:LVepOOCtjnQ",
+    "entities": [
+      "Google",
+      "DeepMind",
+      "Jeff Dean",
+      "Demis Hassabis",
+      "ChatGPT"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "LVepOOCtjnQ"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=LVepOOCtjnQ",
+      "https://forwardfuture.com",
+      "https://x.com/matthewberman",
+      "https://x.com/forwardfuture",
+      "https://www.instagram.com/matthewberman_ai",
+      "https://discord.gg/u7wTTGWhuJ",
+      "https://open.spotify.com/show/6dBxDwxtHl1hpqHhfoXmy8"
+    ],
+    "map_entry": "The Surprising Downfall of Google",
+    "page_title": "The Surprising Downfall of Google",
+    "people": [
+      "Matthew Berman"
+    ],
+    "primary_topic": "Business",
+    "processed_path": "Processed/The Surprising Downfall of Google2026-08-07T08_59_11+07_002026-08-06T18_33_42-07_00[[Matthew Berman]].md",
+    "proposed_domains": [
+      "Business",
+      "AI & LLMs",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "f2358d4442f8004e15cb98525a1a957cd3b00fc3c804ba0c5b306facdb510044",
+      "enrichment_completed_at": "2026-08-10T05:36:24.810976Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:LVepOOCtjnQ"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_LVepOOCtjnQ.md",
+    "secondary_domains": [
+      "AI & LLMs",
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "The Surprising Downfall of Google2026-08-07T08_59_11+07_002026-08-06T18_33_42-07_00[[Matthew Berman]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=LVepOOCtjnQ",
+    "stable_source_id": "youtube:LVepOOCtjnQ",
+    "subtopics": [
+      "innovator's dilemma",
+      "AI productization",
+      "search business disruption"
+    ],
+    "summary": "The video discusses Google's recent decline in AI leadership, citing internal leadership changes and strategic hesitations around productizing advanced models. It highlights the innovator's dilemma and its impact on Google's core search business.",
+    "tags": [
+      "Google",
+      "DeepMind",
+      "Jeff Dean",
+      "Demis Hassabis",
+      "ChatGPT"
+    ],
+    "wiki_path": "Wiki/index.md#business",
     "workflow_status": "accepted"
   },
   {
@@ -51963,6 +55211,67 @@
       "Kimi K3"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "1e2352f826cb9805683b8dd3fcec6625a50f674858ef63faca745f6f794c86b2",
+    "document_id": "youtube:O1l-NSryrVM",
+    "entities": [],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "O1l-NSryrVM"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=O1l-NSryrVM",
+      "http://www.integrity-legal.com/tax-vat-reg.html",
+      "http://www.integrity-legal.com/bangkok-lawyer.html",
+      "https://www.services.co.th/services/#Tax_Services",
+      "https://legal.co.th/resources/corporate-and-tax-advisory/thailand-tax-law/should-thailand-listen-diplomat-and-imf-tax-policy/",
+      "https://legal.co.th/resources/corporate-and-tax-advisory/thailand-tax-law/does-anyone-staying-more-180-days-thailand-need-tax-id-number/"
+    ],
+    "map_entry": "Thai Tax Liability vs Filing Requirements?",
+    "page_title": "Thai Tax Liability vs Filing Requirements?",
+    "people": [
+      "Benjamin Hart",
+      "Integrity Legal Thailand"
+    ],
+    "primary_topic": "Business",
+    "processed_path": "Processed/Thai Tax Liability vs Filing Requirements_2026-08-07T09_09_02+07_002026-08-06T17_45_21-07_00[[Integrity Legal Thailand]].md",
+    "proposed_domains": [
+      "Business",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "1e2352f826cb9805683b8dd3fcec6625a50f674858ef63faca745f6f794c86b2",
+      "enrichment_completed_at": "2026-08-10T05:36:37.129942Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:O1l-NSryrVM"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_O1l-NSryrVM.md",
+    "secondary_domains": [
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "Thai Tax Liability vs Filing Requirements_2026-08-07T09_09_02+07_002026-08-06T17_45_21-07_00[[Integrity Legal Thailand]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=O1l-NSryrVM",
+    "stable_source_id": "youtube:O1l-NSryrVM",
+    "subtopics": [
+      "Thai tax liability",
+      "tax filing requirement",
+      "assessability",
+      "tax residency",
+      "180-day rule",
+      "foreign sourced assessable income",
+      "baseline threshold (120,000 THB)",
+      "PPT90 form"
+    ],
+    "summary": "A YouTube video by Integrity Legal Thailand discussing Thai tax liability versus filing requirements, including distinctions between assessability and liability, residency rules, thresholds, and the impact of recent regulatory changes.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#business",
     "workflow_status": "accepted"
   },
   {
@@ -52351,6 +55660,199 @@
       "Project Ariadne"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "554227eb13d42dbdad86ab6b5d20b9598d70cfb995bb914902ce69683a834190",
+    "document_id": "youtube:RvQ6zg9gScc",
+    "entities": [
+      "Chang'e 7",
+      "Shackleton crater",
+      "Moon Base One",
+      "New Glenn",
+      "Long March 5",
+      "NASA",
+      "China National Space Administration"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "RvQ6zg9gScc"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=RvQ6zg9gScc"
+    ],
+    "map_entry": "What Is Actually Happening With China's Artemis Mission",
+    "page_title": "What Is Actually Happening With China's Artemis Mission",
+    "people": [
+      "Sean Callaghan",
+      "Edward Simpson",
+      "Brady C.",
+      "Jay Okonkwo",
+      "Roger B"
+    ],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/What Is Actually Happening With China's Artemis Mission2026-08-10T11_20_54+07_002026-08-08T12_00_36-07_00[[The Space Race]].md",
+    "proposed_domains": [
+      "Science & Technology",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "554227eb13d42dbdad86ab6b5d20b9598d70cfb995bb914902ce69683a834190",
+      "enrichment_completed_at": "2026-08-10T05:36:51.786330Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:RvQ6zg9gScc"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_RvQ6zg9gScc.md",
+    "secondary_domains": [
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "What Is Actually Happening With China's Artemis Mission2026-08-10T11_20_54+07_002026-08-08T12_00_36-07_00[[The Space Race]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=RvQ6zg9gScc",
+    "stable_source_id": "youtube:RvQ6zg9gScc",
+    "subtopics": [
+      "lunar south pole",
+      "permanent shadow",
+      "water ice resources",
+      "international lunar research station",
+      "moon base",
+      "cold trap",
+      "space launch vehicles"
+    ],
+    "summary": "China’s Chang'e 7 lunar lander, part of the nation’s Phase 4 Artemis‑style program, is set to launch in August 2026. The mission will target the Shackleton crater on the Moon’s South Pole—a permanently shadowed region rich in water ice—while NASA plans its own Moon Base One at a nearby ridge. The video discusses China’s record of successful lunar landings, the strategic importance of the South Pole for future resource extraction, and the challenges faced by both programs, including launch vehicle setbacks.",
+    "tags": [
+      "Chang'e 7",
+      "Shackleton crater",
+      "Moon Base One",
+      "New Glenn",
+      "Long March 5",
+      "NASA",
+      "China National Space Administration"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "8733afc8c2dcad5baacd9c5f23164a75ba3d49b1d220e4a86c97f603b3f2cecc",
+    "document_id": "youtube:S1mEc9JvWoA",
+    "entities": [],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "S1mEc9JvWoA"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=S1mEc9JvWoA"
+    ],
+    "map_entry": "The Backpacking World We Lost - Can Gen Z Travel Like Gen X Did?",
+    "page_title": "The Backpacking World We Lost - Can Gen Z Travel Like Gen X Did?",
+    "people": [
+      "JB Wanders"
+    ],
+    "primary_topic": "Travel & Expat Experience",
+    "processed_path": "Processed/The Backpacking World We Lost - Can Gen Z Travel Like Gen X Did_2026-08-09T08_50_30+07_002026-08-08T02_00_04-07_00[[JB Wanders]].md",
+    "proposed_domains": [
+      "Travel & Expat Experience",
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "8733afc8c2dcad5baacd9c5f23164a75ba3d49b1d220e4a86c97f603b3f2cecc",
+      "enrichment_completed_at": "2026-08-10T05:37:00.510211Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:S1mEc9JvWoA"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_S1mEc9JvWoA.md",
+    "secondary_domains": [
+      "General Reference"
+    ],
+    "source_language": "en",
+    "source_name": "The Backpacking World We Lost - Can Gen Z Travel Like Gen X Did_2026-08-09T08_50_30+07_002026-08-08T02_00_04-07_00[[JB Wanders]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=S1mEc9JvWoA",
+    "stable_source_id": "youtube:S1mEc9JvWoA",
+    "subtopics": [],
+    "summary": "The video reflects on backpacking in the 1990s, contrasting it with modern travel and questioning whether Gen Z can still experience that era’s freedom and adventure.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#travel-expat-experience",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "f775bfcbb788329a243a7fbab63fdd9e24374b69433c7986f24ab3839b3ebd9f",
+    "document_id": "youtube:SJUuKObN1Bw",
+    "entities": [
+      "InfraNodus",
+      "Claude",
+      "MCP server",
+      "knowledge graph",
+      "second brain",
+      "Obsidian",
+      "Cursor AI"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "SJUuKObN1Bw"
+    },
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=SJUuKObN1Bw",
+      "https://infranodus.com/skills/infranodus",
+      "https://infranodus.com/about/knowledge-base"
+    ],
+    "map_entry": "This Claude Skill Graphs Your Knowledge Base Blind Spots",
+    "page_title": "This Claude Skill Graphs Your Knowledge Base Blind Spots",
+    "people": [
+      "Nodus Labs"
+    ],
+    "primary_topic": "Knowledge Management",
+    "processed_path": "Processed/This Claude Skill Graphs Your Knowledge Base Blind Spots2026-08-12T22_29_22+07_002026-08-10T08_45_07-07_00[[Nodus Labs]].md",
+    "proposed_domains": [
+      "Knowledge Management",
+      "AI & LLMs",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "f775bfcbb788329a243a7fbab63fdd9e24374b69433c7986f24ab3839b3ebd9f",
+      "enrichment_completed_at": "2026-08-21T12:19:08.699703Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:SJUuKObN1Bw"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_SJUuKObN1Bw.md",
+    "secondary_domains": [
+      "AI & LLMs",
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "This Claude Skill Graphs Your Knowledge Base Blind Spots2026-08-12T22_29_22+07_002026-08-10T08_45_07-07_00[[Nodus Labs]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=SJUuKObN1Bw",
+    "stable_source_id": "youtube:SJUuKObN1Bw",
+    "subtopics": [
+      "knowledge graph",
+      "semantic layer",
+      "gap analysis",
+      "LLM reasoning",
+      "knowledge base",
+      "idea generation"
+    ],
+    "summary": "This YouTube video demonstrates how to use InfraNodus knowledge graphs integrated with Claude skills to identify blind spots in a knowledge base and generate new ideas that bridge those gaps. The tutorial covers adding the InfraNodus skill and MCP server, mapping a folder to a knowledge graph, visualizing the graph, and querying it to uncover gaps and generate insights.",
+    "tags": [
+      "InfraNodus",
+      "Claude",
+      "MCP server",
+      "knowledge graph",
+      "second brain",
+      "Obsidian",
+      "Cursor AI"
+    ],
+    "wiki_path": "Wiki/index.md#knowledge-management",
     "workflow_status": "accepted"
   },
   {
@@ -53173,6 +56675,80 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "206d0b420437a3ecd9a7bc4abe9184f8a2199e7826f6d64ad029921793561502",
+    "document_id": "youtube:ZBJkxUcgYa8",
+    "entities": [
+      "Gurudev",
+      "Art of Living Foundation",
+      "SKY Breath Meditation (Sudarshan Kriya)",
+      "Yale University",
+      "Harvard University",
+      "Stanford University",
+      "University of Cambridge",
+      "Palo Alto Veterans Affairs system"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "ZBJkxUcgYa8"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.artofliving.org",
+      "https://aolf.me/journeywithin",
+      "https://gurudev.artofliving.org/"
+    ],
+    "map_entry": "Gurudev on the Future of Humanity",
+    "page_title": "Gurudev on the Future of Humanity",
+    "people": [
+      "Mo Gawdat"
+    ],
+    "primary_topic": "Philosophy",
+    "processed_path": "Processed/Gurudev on the Future of Humanity2026-08-10T10_36_16+07_002026-08-09T10_00_11-07_00[[Mo Gawdat]].md",
+    "proposed_domains": [
+      "Philosophy",
+      "Health & Medicine",
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "206d0b420437a3ecd9a7bc4abe9184f8a2199e7826f6d64ad029921793561502",
+      "enrichment_completed_at": "2026-08-10T05:37:12.283221Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:ZBJkxUcgYa8"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_ZBJkxUcgYa8.md",
+    "secondary_domains": [
+      "Health & Medicine",
+      "General Reference"
+    ],
+    "source_language": "en",
+    "source_name": "Gurudev on the Future of Humanity2026-08-10T10_36_16+07_002026-08-09T10_00_11-07_00[[Mo Gawdat]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=ZBJkxUcgYa8",
+    "stable_source_id": "youtube:ZBJkxUcgYa8",
+    "subtopics": [
+      "breathwork",
+      "stress reduction",
+      "peace mediation",
+      "humanitarian service",
+      "spiritual leadership"
+    ],
+    "summary": "Gurudev is a globally recognised humanitarian and spiritual leader who founded the Art of Living Foundation. He pioneered SKY Breath Meditation, which has been studied by institutions such as Yale, Harvard, Stanford, Cambridge, and the Palo Alto Veterans Affairs system for its benefits in reducing stress, anxiety, depression, PTSD, and burnout. Gurudev has served as a peace envoy mediating conflicts in Colombia, Iraq, Sri Lanka, Côte d’Ivoire, and India, contributing to reconciliation after Colombia’s 52‑year civil war. He has received high civilian honours from four countries (Colombia, Mongolia, Paraguay, Suriname) and the Padma Vibhushan of India, along with 28 honorary doctorates worldwide for his work in peace, education, and humanitarian service.",
+    "tags": [
+      "Gurudev",
+      "Art of Living Foundation",
+      "SKY Breath Meditation (Sudarshan Kriya)",
+      "Yale University",
+      "Harvard University",
+      "Stanford University",
+      "University of Cambridge",
+      "Palo Alto Veterans Affairs system"
+    ],
+    "wiki_path": "Wiki/index.md#philosophy",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "0588fe000b7a01aaa094168dcf416933f462275e0c1e73e58c48d026ebbb7388",
     "document_id": "youtube:ZbM5PdHVIfE",
     "entities": [
@@ -53310,6 +56886,80 @@
       "Ollama",
       "Gemma 3 12B",
       "GPT‑5.5"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "2e25f98cb16cad049be8aa862b960f41090435d7539b561dc7b5b8498d3835c4",
+    "document_id": "youtube:_Z8W21qUCjo",
+    "entities": [
+      "NVIDIA",
+      "DGX Spark",
+      "AMD Strix Halo",
+      "Mac Mini M4 Pro",
+      "Mac Studio M3 Ultra",
+      "Claude",
+      "ChatGPT",
+      "Grok (Gemini?)"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "_Z8W21qUCjo"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=_Z8W21qUCjo",
+      "https://aimaster.me/yt/dgxsparkNVIDIA"
+    ],
+    "map_entry": "NVIDIA Just Killed AI Subscriptions Forever (NVIDIA DGX Spark)",
+    "page_title": "NVIDIA Just Killed AI Subscriptions Forever (NVIDIA DGX Spark)",
+    "people": [
+      "Jensen Huang",
+      "Elon Musk",
+      "Sam Altman"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/NVIDIA Just Killed AI Subscriptions Forever (NVIDIA DGX Spark)2026-08-11T20_40_27+07_002026-08-09T08_47_19-07_00[[AI Master]].md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Business",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "2e25f98cb16cad049be8aa862b960f41090435d7539b561dc7b5b8498d3835c4",
+      "enrichment_completed_at": "2026-08-12T02:24:10.596315Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:_Z8W21qUCjo"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube__Z8W21qUCjo.md",
+    "secondary_domains": [
+      "Business",
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "NVIDIA Just Killed AI Subscriptions Forever (NVIDIA DGX Spark)2026-08-11T20_40_27+07_002026-08-09T08_47_19-07_00[[AI Master]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=_Z8W21qUCjo",
+    "stable_source_id": "youtube:_Z8W21qUCjo",
+    "subtopics": [
+      "AI hardware pricing",
+      "memory bandwidth impact on decode speed",
+      "subscription vs. local AI deployment",
+      "AI Master platform features"
+    ],
+    "summary": "NVIDIA’s DGX Spark launch and pricing strategy, benchmark comparisons with AMD and Apple hardware, and the creator’s AI Master platform for unified multi‑model chat and content generation.",
+    "tags": [
+      "NVIDIA",
+      "DGX Spark",
+      "AMD Strix Halo",
+      "Mac Mini M4 Pro",
+      "Mac Studio M3 Ultra",
+      "Claude",
+      "ChatGPT",
+      "Grok (Gemini?)"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
@@ -53802,6 +57452,85 @@
     "summary": "China’s rapid nuclear expansion and revival of thorium technology.",
     "tags": [],
     "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "0307195e1faf6d0e63edadcefef5367bd486db6ef3692799680b0e86c1834ccb",
+    "document_id": "youtube:cEEw1AbeysI",
+    "entities": [
+      "AI Memory",
+      "Granola AI",
+      "ChatGPT",
+      "Claude",
+      "Gemini",
+      "Cowork Academy",
+      "Workspace Academy",
+      "Notion Command Center"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "cEEw1AbeysI"
+    },
+    "indexed_at": "2026-08-21T12:21:15.512619+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=cEEw1AbeysI&t=11s",
+      "https://go.granola.ai/jeff-su",
+      "https://coworkacademy.ai/?utm_source=youtube&utm_medium=video&utm_campaign=v208",
+      "https://coworkacademy.ai/toolkit?utm_source=youtube&utm_medium=video&utm_campaign=v208",
+      "https://academy.jeffsu.org/workspace-academy?utm_source=youtube&utm_medium=video&utm_campaign=v208",
+      "https://www.pressplay.cc/link/s/DE1C4C50",
+      "https://www.jeffsu.org/newsletter/?utm_source=youtube&utm_medium=video&utm_campaign=description",
+      "https://instagram.com/j.sushie"
+    ],
+    "map_entry": "How to Give AI Perfect Memory (a complete guide)",
+    "page_title": "How to Give AI Perfect Memory (a complete guide)",
+    "people": [
+      "Jeff Su"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/How to Give AI Perfect Memory (a complete guide)2026-08-13T18_43_30+07_002026-08-12T06_15_33-07_00[[Jeff Su]].md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Knowledge Management"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "0307195e1faf6d0e63edadcefef5367bd486db6ef3692799680b0e86c1834ccb",
+      "enrichment_completed_at": "2026-08-21T12:18:39.211548Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:cEEw1AbeysI"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_cEEw1AbeysI.md",
+    "secondary_domains": [
+      "Knowledge Management"
+    ],
+    "source_language": "en",
+    "source_name": "How to Give AI Perfect Memory (a complete guide)2026-08-13T18_43_30+07_002026-08-12T06_15_33-07_00[[Jeff Su]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=cEEw1AbeysI&t=11s",
+    "stable_source_id": "youtube:cEEw1AbeysI",
+    "subtopics": [
+      "global memory",
+      "project memory",
+      "custom memory system",
+      "AI memory management",
+      "AI notepad",
+      "transcription",
+      "AI-enhanced notes"
+    ],
+    "summary": "The video explains the three levels of AI memory—global, project, and custom—highlighting how current AI systems handle memory and offering tools like Granola AI to bridge gaps in note-taking and memory retention.",
+    "tags": [
+      "AI Memory",
+      "Granola AI",
+      "ChatGPT",
+      "Claude",
+      "Gemini",
+      "Cowork Academy",
+      "Workspace Academy",
+      "Notion Command Center"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
   {
@@ -54323,6 +58052,69 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "a2a583c9596e1943202e25c3986befc38ff77ead93933e879ff90a838bbd5323",
+    "document_id": "youtube:f4mI3d-nTrI",
+    "entities": [
+      "MCP",
+      "Model Context Protocol",
+      "Better Stack",
+      "Cloudflare Workers",
+      "Google Cloud Run"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "f4mI3d-nTrI"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/",
+      "https://betterstack.com/"
+    ],
+    "map_entry": "MCP Was Wrong From The Start (They Just Fixed It)",
+    "page_title": "MCP Was Wrong From The Start (They Just Fixed It)",
+    "people": [
+      "Better Stack"
+    ],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/MCP Was Wrong From The Start (They Just Fixed It)2026-08-11T08_41_42+07_002026-08-08T09_15_29-07_00[[Better Stack]].md",
+    "proposed_domains": [
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a2a583c9596e1943202e25c3986befc38ff77ead93933e879ff90a838bbd5323",
+      "enrichment_completed_at": "2026-08-12T02:24:22.489781Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:f4mI3d-nTrI"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_f4mI3d-nTrI.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "MCP Was Wrong From The Start (They Just Fixed It)2026-08-11T08_41_42+07_002026-08-08T09_15_29-07_00[[Better Stack]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=f4mI3d-nTrI",
+    "stable_source_id": "youtube:f4mI3d-nTrI",
+    "subtopics": [
+      "stateless protocol",
+      "round robin load balancing",
+      "scale to zero",
+      "HTTP headers",
+      "cache hints",
+      "multi round-trip requests"
+    ],
+    "summary": "MCP's 2026-07-28 spec makes the entire protocol stateless, deleting the initialize handshake and the Mcp-Session-Id header that pinned clients to one server. That fixes round robin load balancing, removes the Redis instance holding your sessions, and lets a server scale to zero on Workers or Cloud Run. It also brings new Mcp-Method and Mcp-Name HTTP headers, ttlMs and cacheScope caching hints, elicitation rebuilt as Multi Round-Trip Requests, and Tasks graduating from experimental into an official extension.",
+    "tags": [
+      "MCP",
+      "Model Context Protocol",
+      "Better Stack",
+      "Cloudflare Workers",
+      "Google Cloud Run"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "8941cea421d0a17c02040282dd8f02e623f0106bddf842eb473aa3d520624394",
     "document_id": "youtube:fBXY_AyA0bo",
     "entities": [
@@ -54649,6 +58441,147 @@
       "AI News & Strategy Daily"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "fb9448cdc6d173b8089a5deff83545733f46d9d9dc7b70246d363652beac5edf",
+    "document_id": "youtube:hZqJvWDI0Rs",
+    "entities": [
+      "Meta",
+      "Anthropic",
+      "Zapier"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "hZqJvWDI0Rs"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=hZqJvWDI0Rs",
+      "https://bit.ly/4ceg6ku",
+      "https://forwardfuture.com",
+      "https://x.com/matthewberman",
+      "https://x.com/forwardfuture",
+      "https://www.instagram.com/matthewberman_ai",
+      "https://discord.gg/u7wTTGWhuJ",
+      "https://open.spotify.com/show/6dBxDwxtHl1hpqHhfoXmy8"
+    ],
+    "map_entry": "Mark Zuckerberg just called out Dario (and Anthropic)",
+    "page_title": "Mark Zuckerberg just called out Dario (and Anthropic)",
+    "people": [
+      "Mark Zuckerberg",
+      "Dario (Anthropic)",
+      "Matthew Berman"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Mark Zuckerberg just called out Dario (and Anthropic)2026-08-12T08_55_12+07_002026-08-11T10_49_03-07_00[[Matthew Berman]].md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Business",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "fb9448cdc6d173b8089a5deff83545733f46d9d9dc7b70246d363652beac5edf",
+      "enrichment_completed_at": "2026-08-12T02:24:38.189264Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:hZqJvWDI0Rs"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_hZqJvWDI0Rs.md",
+    "secondary_domains": [
+      "Business",
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "Mark Zuckerberg just called out Dario (and Anthropic)2026-08-12T08_55_12+07_002026-08-11T10_49_03-07_00[[Matthew Berman]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=hZqJvWDI0Rs",
+    "stable_source_id": "youtube:hZqJvWDI0Rs",
+    "subtopics": [
+      "super‑intelligence",
+      "centralization vs. decentralization of AI",
+      "AI safety",
+      "automation vs. invention",
+      "open source",
+      "AI empowerment"
+    ],
+    "summary": "Mark Zuckerberg’s essay on the future of AI is critiqued, focusing on the centralization debate and advocating for widespread access to super‑intelligence. The video also promotes Zapier as a tool for integrating AI agents with everyday applications.",
+    "tags": [
+      "Meta",
+      "Anthropic",
+      "Zapier"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a8c302dff9a70404bb7815107ad238439b68c3f5273b29f5c589d06a10b8820f",
+    "document_id": "youtube:iPveX4yQ68w",
+    "entities": [
+      "Graph Engineering",
+      "OpenAI",
+      "Astra",
+      "ByteDance",
+      "Alibaba",
+      "Anthropic"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "iPveX4yQ68w"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=iPveX4yQ68w"
+    ],
+    "map_entry": "What the Heck is Graph Engineering?",
+    "page_title": "What the Heck is Graph Engineering?",
+    "people": [
+      "Sam Alman",
+      "Dean Ball",
+      "Micah Carroll"
+    ],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/What the Heck is Graph Engineering_2026-08-11T12_19_14+07_002026-08-10T14_06_16-07_00[[The AI Daily Brief_ Artificial Intelligence News]].md",
+    "proposed_domains": [
+      "Science & Technology",
+      "AI & LLMs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a8c302dff9a70404bb7815107ad238439b68c3f5273b29f5c589d06a10b8820f",
+      "enrichment_completed_at": "2026-08-12T02:24:51.829811Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:iPveX4yQ68w"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_iPveX4yQ68w.md",
+    "secondary_domains": [
+      "AI & LLMs"
+    ],
+    "source_language": "en",
+    "source_name": "What the Heck is Graph Engineering_2026-08-11T12_19_14+07_002026-08-10T14_06_16-07_00[[The AI Daily Brief_ Artificial Intelligence News]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=iPveX4yQ68w",
+    "stable_source_id": "youtube:iPveX4yQ68w",
+    "subtopics": [
+      "multi‑agent systems",
+      "nodes and edges",
+      "cyber capabilities",
+      "sandboxing",
+      "weight encryption",
+      "chain‑of‑thought monitoring"
+    ],
+    "summary": "The video explains graph engineering—designing multi‑agent systems that connect agents, tools, knowledge, and humans via nodes and edges—and discusses recent AI safety actions, notably OpenAI’s pause of the Astra model due to potential cyber capabilities.",
+    "tags": [
+      "Graph Engineering",
+      "OpenAI",
+      "Astra",
+      "ByteDance",
+      "Alibaba",
+      "Anthropic"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
     "workflow_status": "accepted"
   },
   {
@@ -55113,6 +59046,140 @@
     "summary": "A YouTube video by TrekCulture discussing the Q Continuum in Star Trek, published on 2025‑10‑07 and created on 2026‑08‑05.",
     "tags": [],
     "wiki_path": "Wiki/index.md#general-reference",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "2c1168c74f25a7c3d3b8618aedc89a6d3fa3e970b3b3c9062cb30dc08cb6a63c",
+    "document_id": "youtube:mMHyhneAxXY",
+    "entities": [
+      "Karl Marx",
+      "Friedrich Engels",
+      "Soviet Central Planning",
+      "Nordic Countries (Sweden, Norway, Finland)",
+      "Berlin (East & West)"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "mMHyhneAxXY"
+    },
+    "indexed_at": "2026-08-10T05:37:36.504616+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=mMHyhneAxXY",
+      "https://bit.ly/4hj4Neb"
+    ],
+    "map_entry": "The Simple Question Socialism Couldn't Answer",
+    "page_title": "The Simple Question Socialism Couldn't Answer",
+    "people": [
+      "Maxinomics"
+    ],
+    "primary_topic": "History & Society",
+    "processed_path": "Processed/The Simple Question Socialism Couldn't Answer2026-08-08T10_31_01+07_002026-08-07T15_17_00-07_00[[Maxinomics]].md",
+    "proposed_domains": [
+      "History & Society"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "2c1168c74f25a7c3d3b8618aedc89a6d3fa3e970b3b3c9062cb30dc08cb6a63c",
+      "enrichment_completed_at": "2026-08-10T05:37:34.135414Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:mMHyhneAxXY"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_mMHyhneAxXY.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "The Simple Question Socialism Couldn't Answer2026-08-08T10_31_01+07_002026-08-07T15_17_00-07_00[[Maxinomics]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=mMHyhneAxXY",
+    "stable_source_id": "youtube:mMHyhneAxXY",
+    "subtopics": [
+      "Socialism",
+      "Capitalism",
+      "Land Ownership",
+      "Price Mechanisms",
+      "Central Planning",
+      "Economic Signals",
+      "Nordic Model"
+    ],
+    "summary": "The video explores the evolution of socialism from a radical theory to a governing system, examining land ownership shifts, Marx’s critique in *Das Kapital*, price mechanisms, the Berlin experiment, and Nordic models.",
+    "tags": [
+      "Karl Marx",
+      "Friedrich Engels",
+      "Soviet Central Planning",
+      "Nordic Countries (Sweden, Norway, Finland)",
+      "Berlin (East & West)"
+    ],
+    "wiki_path": "Wiki/index.md#history-society",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "29212db1e730e3d39fecdf7314ef97b845648177fcfa2852472993b7db31c3c6",
+    "document_id": "youtube:mn7CD0JjVpw",
+    "entities": [
+      "Phi-4-Mini",
+      "Gemma-4E-2B",
+      "Mistral 7B",
+      "Qwen 2.5 7B",
+      "Qwen 3.5 9B",
+      "Llama 3.3 8B",
+      "Qwen 3.6 27B",
+      "Qwen 3 Coder Next"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "mn7CD0JjVpw"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=mn7CD0JjVpw"
+    ],
+    "map_entry": "Best Local AI Models For Every VRAM Tier",
+    "page_title": "Best Local AI Models For Every VRAM Tier",
+    "people": [
+      "Kai"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Best Local AI Models For Every VRAM Tier2026-08-11T22_01_56+07_002026-08-11T03_30_29-07_00[[Kai]].md",
+    "proposed_domains": [
+      "AI & LLMs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "29212db1e730e3d39fecdf7314ef97b845648177fcfa2852472993b7db31c3c6",
+      "enrichment_completed_at": "2026-08-12T02:25:06.622827Z",
+      "model_confidence": 1.0,
+      "stable_source_id": "youtube:mn7CD0JjVpw"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_mn7CD0JjVpw.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Best Local AI Models For Every VRAM Tier2026-08-11T22_01_56+07_002026-08-11T03_30_29-07_00[[Kai]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=mn7CD0JjVpw",
+    "stable_source_id": "youtube:mn7CD0JjVpw",
+    "subtopics": [
+      "VRAM tier",
+      "quantization",
+      "Ollama",
+      "LM Studio",
+      "Hugging Face",
+      "Artificial Analysis Intelligence Index",
+      "MMLU",
+      "HumanEval"
+    ],
+    "summary": "The video explains how to choose the largest local AI model that comfortably fits a GPU’s VRAM, covering 4 GB, 6 GB, 8 GB, 16 GB and 24 GB+ tiers. It lists specific models for each tier (Phi‑4‑Mini, Gemma‑4E‑2B, Mistral 7B, Qwen 2.5 7B, Qwen 3.5 9B, Llama 3.3 8B, Qwen 3.6 27B, Qwen 3 Coder Next) and discusses quantization, context length, RAM usage, and runtimes (Ollama, LM Studio). The video also covers real‑world failures such as VRAM overflow and slow inference.",
+    "tags": [
+      "Phi-4-Mini",
+      "Gemma-4E-2B",
+      "Mistral 7B",
+      "Qwen 2.5 7B",
+      "Qwen 3.5 9B",
+      "Llama 3.3 8B",
+      "Qwen 3.6 27B",
+      "Qwen 3 Coder Next"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
   {
@@ -56268,6 +60335,75 @@
       "Obsidian",
       "Granola",
       "Karpathy"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "ff29f8ff2ce2cb50385791d1c9acf38dd27eded5f35cfedb53b6cb37898ce88d",
+    "document_id": "youtube:zBfj19rM85w",
+    "entities": [
+      "Meta",
+      "Muse Glimmer 30B",
+      "Unslooth",
+      "Hugging Face",
+      "GitHub",
+      "OpenAI HumanEval"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "zBfj19rM85w"
+    },
+    "indexed_at": "2026-08-12T02:25:23.544344+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=zBfj19rM85w",
+      "https://huggingface.co/unsloth/Muse-Glimmer-30B-GGUF",
+      "https://github.com/lukesdevlab/youtube",
+      "https://github.com/openai/human-eval"
+    ],
+    "map_entry": "Meta Muse Glimmer 30B tested - 16GB Local LLM setup",
+    "page_title": "Meta Muse Glimmer 30B tested - 16GB Local LLM setup",
+    "people": [
+      "Luke's Dev Lab"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Meta Muse Glimmer 30B tested - 16GB Local LLM setup2026-08-11T20_59_56+07_002026-08-11T05_06_55-07_00[[Luke's Dev Lab]].md",
+    "proposed_domains": [
+      "AI & LLMs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "ff29f8ff2ce2cb50385791d1c9acf38dd27eded5f35cfedb53b6cb37898ce88d",
+      "enrichment_completed_at": "2026-08-12T02:25:21.133442Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:zBfj19rM85w"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_zBfj19rM85w.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Meta Muse Glimmer 30B tested - 16GB Local LLM setup2026-08-11T20_59_56+07_002026-08-11T05_06_55-07_00[[Luke's Dev Lab]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=zBfj19rM85w",
+    "stable_source_id": "youtube:zBfj19rM85w",
+    "subtopics": [
+      "local LLM",
+      "single GPU inference",
+      "performance benchmarks",
+      "memory context tests",
+      "tool‑calling agency test",
+      "HumanEval coding challenges",
+      "Kanban front‑end development",
+      "sand physics simulation"
+    ],
+    "summary": "Meta Muse Glimmer 30B tested - 16GB Local LLM setup",
+    "tags": [
+      "Meta",
+      "Muse Glimmer 30B",
+      "Unslooth",
+      "Hugging Face",
+      "GitHub",
+      "OpenAI HumanEval"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"

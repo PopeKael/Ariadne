@@ -6,13 +6,14 @@
   <title>Ariadne — Local AI Control Plane</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/page-shell.css">
 </head>
-<body>
+<body class="ariadne-page">
   <div class="shell">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark">◈</div>
-        <div><strong>Ariadne</strong><span>Local AI Control Plane</span></div>
+        <div><strong>Ariadne</strong><span>Local AI Control Plane</span></div><a class="home-back" href="/" aria-label="Back to Ariadne Home">← Back</a><a class="home-back" href="/configuration" aria-label="Open Ariadne Configuration">⚙ Setup</a><a class="home-back" href="/plugins" aria-label="Open Ariadne Plugins">◇ Plugins</a>
       </div>
       <div class="top-greeting">
         <span class="eyebrow">DESKTOP AI RIG</span>
@@ -74,48 +75,36 @@
     </div>
 
     <aside class="side-column">
-      <section class="panel quick-launch">
-        <div class="section-head quick-launch-head">
-          <div><h2>Quick Launch</h2><p>Open the services Ariadne works with.</p></div>
-          <span class="badge">LINKS</span>
+      <section class="panel host-capabilities-panel">
+        <div class="section-head">
+          <div><h2>Host capabilities</h2><p>Runtime services provided by this machine.</p></div>
+          <span class="badge">HOST</span>
         </div>
         <div class="launch-list">
-          <a class="launch-row" href="http://192.168.1.200:5000/" target="_blank" rel="noopener">
-            <span class="launch-icon synology-icon">▣</span>
-            <span class="launch-copy"><strong>Synology</strong><small>Hera NAS · DSM</small></span>
-            <span class="launch-status" id="synology-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="http://127.0.0.1:3000/" target="_blank" rel="noopener">
+          <a class="launch-row" id="openwebui-launch" href="/openwebui-loader" target="_blank" rel="noopener">
             <span class="launch-icon ollama-icon">◉</span>
-            <span class="launch-copy"><strong>Open WebUI</strong><small>Ollama · local models</small></span>
-            <span class="launch-status" id="ollama-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="http://127.0.0.1:9000/" target="_blank" rel="noopener">
-            <span class="launch-icon portainer-icon">◆</span>
-            <span class="launch-copy"><strong>Portainer</strong><small>Docker management · HTTP</small></span>
-            <span class="launch-status" id="portainer-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="obsidian://open?vault=KnowledgeVault">
-            <span class="launch-icon vault-icon">⌘</span>
-            <span class="launch-copy"><strong>Knowledge Vault</strong><small>Obsidian · local vault</small></span>
-            <span class="launch-status local" id="knowledge-vault-status">Local</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="https://github.com/PopeKael/Ariadne" target="_blank" rel="noopener">
-            <span class="launch-icon github-icon">●</span>
-            <span class="launch-copy"><strong>GitHub</strong><small>PopeKael · Ariadne repository</small></span>
-            <span class="launch-status local" id="github-status">External</span><span class="launch-arrow">↗</span>
-          </a>
-          <a class="launch-row" href="#knowledge-vault">
-            <span class="launch-icon ariadne-control-icon">◈</span>
-            <span class="launch-copy"><strong>Ariadne Control</strong><small>Knowledge Vault · integrated</small></span>
-            <span class="launch-status" id="ariadne-control-status">Ready</span><span class="launch-arrow">↗</span>
+            <span class="launch-copy"><strong>Open WebUI</strong><small>Local model interface</small></span>
+            <span class="launch-status" id="openwebui-status">Checking</span><span class="launch-arrow">↗</span>
           </a>
           <a class="launch-row" href="/launch/lmstudio">
             <span class="launch-icon lmstudio-icon">◈</span>
-            <span class="launch-copy"><strong>LM Studio</strong><small>Desktop app · server 1234</small></span>
+            <span class="launch-copy"><strong>LM Studio</strong><small>Local model runtime</small></span>
             <span class="launch-status" id="lmstudio-status">Checking</span><span class="launch-arrow">↗</span>
           </a>
+          <a class="launch-row" href="#knowledge-vault">
+            <span class="launch-icon ariadne-control-icon">◈</span>
+            <span class="launch-copy"><strong>Knowledge Vault controls</strong><small>Ariadne Core · local only</small></span>
+            <span class="launch-status local" id="ariadne-control-status">Ready</span><span class="launch-arrow">↓</span>
+          </a>
         </div>
+      </section>
+
+      <section class="panel installed-capabilities-panel">
+        <div class="section-head">
+          <div><h2>Installed Ariadne capabilities</h2><p>Manifest-backed plugins and integrations.</p></div>
+          <a class="badge" href="/plugins">VIEW ALL</a>
+        </div>
+        <div id="plugin-summary" class="plugin-summary"><div class="state-empty">Reading registry…</div></div>
       </section>
 
       <section class="panel">
@@ -130,8 +119,8 @@
     </aside>
   </section>
   <section class="interactive-ai-view" id="interactive-ai-view" aria-label="Interactive AI profile">
-    <div class="profile-view-head"><div><span class="eyebrow">INTERACTIVE AI PROFILE</span><h1>Linux workspace and video processor</h1><p>Ubuntu is the working environment. Local Music Video Renderer is the explicit GPU workload.</p></div><button type="button" class="view-back" data-profile="General">← General</button></div>
-    <section class="ai-runtime-grid"><article class="panel ai-runtime-card"><div class="card-head"><span>Ubuntu Linux Environment</span><span class="pill" id="ubuntu-profile-state">Checking</span></div><strong>Ubuntu 24.04 LTS</strong><p>WSL 2 scratchpad and active Linux tools.</p><button type="button" class="profile-action" id="ubuntu-session-button">Start Ubuntu session</button></article><article class="panel ai-runtime-card"><div class="card-head"><span>Local Music Video Renderer</span><span class="pill" id="wan2gp-profile-state">Checking</span></div><strong>Image-to-Video</strong><p id="wan2gp-profile-detail">GPU processor · models on F: · output to F:\AI\Local Music Video Renderer\outputs.</p><div class="runtime-actions"><button type="button" class="profile-action" id="wan2gp-launch-button">Start video processor</button><a id="wan2gp-open-button" class="profile-action secondary-action" href="http://127.0.0.1:8766/" target="_blank" rel="noopener" hidden>Open video processor</a></div></article></section>
+    <div class="profile-view-head"><div><span class="eyebrow">INTERACTIVE AI PROFILE</span><h1>Linux workspace and video processor</h1><p>Ubuntu is the working environment. Local Music Video Renderer is the explicit GPU workload.</p><p class="gpu-ownership" id="gpu-ownership">GPU ownership: checking…</p></div><button type="button" class="view-back" data-profile="General">← General</button></div>
+    <section class="ai-runtime-grid"><article class="panel ai-runtime-card"><div class="card-head"><span>Ubuntu Linux Environment</span><span class="pill" id="ubuntu-profile-state">Checking</span></div><strong>Ubuntu 24.04 LTS</strong><p>WSL 2 scratchpad and active Linux tools.</p><button type="button" class="profile-action" id="ubuntu-session-button">Start Ubuntu session</button></article><article class="panel ai-runtime-card"><div class="card-head"><span>Local Music Video Renderer</span><span class="pill" id="wan2gp-profile-state">Checking</span></div><strong>Image-to-Video</strong><p id="wan2gp-profile-detail">GPU processor · models on F: · output to F:\AI\Local Music Video Renderer\outputs.</p><p class="renderer-progress" id="wan2gp-progress" aria-live="polite"></p><div class="runtime-actions"><button type="button" class="profile-action" id="wan2gp-launch-button">Start video processor</button><a id="wan2gp-open-button" class="profile-action secondary-action" href="http://127.0.0.1:8766/" target="_blank" rel="noopener" hidden>Open video processor</a></div></article></section>
     <section class="panel processor-workspace"><div class="section-head"><div><h2>Video processor workspace</h2><p>Prepare the job here, then open Local Music Video Renderer when the GPU profile is ready.</p></div><span class="badge">LINUX RENDERER</span></div><div class="processor-grid"><div class="processor-slot"><span class="label">INPUT</span><strong>Image or prompt</strong><small>Choose an image-to-video source in Local Music Video Renderer.</small></div><div class="processor-slot"><span class="label">MODEL</span><strong>Local Music Video Renderer model library</strong><small>Checkpoints and LoRAs remain on F:.</small></div><div class="processor-slot"><span class="label">OUTPUT</span><strong>F:\AI\Local Music Video Renderer\outputs</strong><small>Generated video files stay local.</small></div></div></section>
   </section>
 
@@ -145,7 +134,8 @@
       <article class="vault-card"><div><h3>Embedding Index</h3><p>Check the local semantic-search index without changing vault notes.</p></div><button data-vault-action="embedding_status">Check status</button></article>
       <article class="vault-card"><div><h3>Evaluate Retrieval</h3><p>Run the versioned chunk-retrieval benchmark.</p></div><button data-vault-action="retrieval_evaluation">Run evaluation</button></article>
       <article class="vault-card"><div><h3>Regression Tests</h3><p>Validate the rebuild-v1 Python test suite.</p></div><button data-vault-action="regression_tests">Run tests</button></article>
-      <article class="vault-card"><div><h3>Downloads Preview</h3><p>Show proposed filing moves. No files move in preview mode.</p></div><button data-vault-action="downloads_preview">Preview moves</button></article>
+      <article class="vault-card"><div><h3>Cleanup Plugin · Preview</h3><p>Show proposed Downloads filing moves. Preview mode makes no filesystem changes.</p></div><button data-plugin-id="cleanup" data-plugin-action="preview">Preview moves</button></article>
+      <article class="vault-card warning-card"><div><h3>Cleanup Plugin · Organise</h3><p>Move files using the configured Cleanup rules. Collisions are skipped; existing files are never overwritten.</p></div><button data-plugin-id="cleanup" data-plugin-action="apply" data-confirm="Move the configured Downloads files now? Existing files will not be overwritten.">Organise Downloads</button></article>
       <article class="vault-card"><div><h3>Failure Audit</h3><p>Generate a read-only report from retained ingestion evidence.</p></div><button data-vault-action="audit_failures">Run audit</button></article>
       <article class="vault-card warning-card"><div><h3>Rebuild Embeddings</h3><p>Regenerate derived search data. Source Markdown is not altered.</p></div><button data-vault-action="embedding_rebuild" data-confirm="Rebuild the local embedding index now?">Rebuild index</button></article>
     </div>
@@ -161,7 +151,7 @@
   </section>
   <section class="panel notice">
     <div class="notice-icon">✓</div>
-    <div><strong>Read-only foundation</strong><p id="notice">Ariadne owns the active Knowledge Vault session. Workers are cancelled and local models are asked to release memory when this page closes.</p></div>
+    <div><strong>Session-owned workloads</strong><p id="notice">Leave this page open for deliberate background work. When the last Ariadne session closes or expires, local jobs are cancelled, Ollama models are unloaded, and managed workloads are stopped.</p></div>
     <span class="last-update" id="last-update">—</span>
   </section>
 </main>

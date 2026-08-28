@@ -78,9 +78,16 @@ Wiki/**
 /00_System/Data/embedding-index.json
 /00_System/Data/rebuild-v1/
 
+# Derived local SELF + NOW projection; refreshable from Vault sources.
+/00_System/Data/WorldState/*
+
 # Local browser librarian jobs and session caches.
 /00_System/Data/QueryJobs/*
 /00_System/Data/QueryCache/*
+
+# Short-lived local Home chat recovery records; Markdown archives are separate.
+/00_System/Data/HomeSessions/*
+!/00_System/Data/HomeSessions/README.md
 
 # ----------------------------------------------------------
 # Operating System Files
@@ -151,6 +158,16 @@ node_modules/
 
 dist/
 build/
+
+# Rust host build output
+/control-plane/host/target/
+/control-plane/host/target-msvc/
+
+# Alternate local MSVC Cargo build output
+/.host-build-msvc/
+
+# UI cleanup acceptance/runtime scratch directories
+/.tmp-ui-cleanup-*/
 
 # ----------------------------------------------------------
 # Environment Files

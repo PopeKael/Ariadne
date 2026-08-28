@@ -1,0 +1,3323 @@
+{
+  "captured_at": "2026-08-23T13:41:05+0700",
+  "model": "llama3.2:1b",
+  "suite": "control-plane\\evaluation\\planner_cases.json",
+  "summary": {
+    "model": "llama3.2:1b",
+    "cases": 60,
+    "core_correct": 1,
+    "core_accuracy": 0.0167,
+    "schema_valid": 51,
+    "fallbacks": 9,
+    "constraint_violations": 0,
+    "cold_latency_ms": [
+      4037
+    ],
+    "warm_latency_ms": [
+      644,
+      594,
+      662,
+      458,
+      573,
+      821,
+      715,
+      541,
+      828,
+      819,
+      861,
+      417,
+      589,
+      923,
+      484,
+      488,
+      487,
+      423,
+      610,
+      600,
+      513,
+      549,
+      557,
+      570,
+      471,
+      513,
+      473,
+      844,
+      733,
+      673,
+      887,
+      827,
+      626,
+      599,
+      993,
+      528,
+      501,
+      587,
+      681,
+      661,
+      564,
+      796,
+      538,
+      487,
+      804,
+      405,
+      631,
+      621,
+      749,
+      683
+    ],
+    "warm_p50_ms": 599.5,
+    "warm_p95_ms": 861,
+    "confidence_mean": 0.3471,
+    "high_confidence_incorrect": 0
+  },
+  "cases": [
+    {
+      "id": "ordinary-01",
+      "category": "ordinary",
+      "request": "How are you going today?",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "How are you going today?",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "answer questions",
+          "retrieve chunks",
+          "summarise",
+          "extract claims",
+          "answer questions",
+          "retrieve chunks"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 4037,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 4034,
+        "planner_latency_ms": 4037,
+        "load_duration_ms": 3403,
+        "model_load_occurred": true,
+        "prompt_tokens": 946,
+        "output_tokens": 66,
+        "residency_before": false,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-02",
+      "category": "ordinary",
+      "request": "What is the capital of Thailand?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 370,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "ordinary-03",
+      "category": "ordinary",
+      "request": "Give me three ideas for lunch today.",
+      "expected": {
+        "intent": "ordinary_ideas",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Give me three ideas for lunch today.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "summarize",
+          "extract claims",
+          "answer questions"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 644,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 640,
+        "planner_latency_ms": 644,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 949,
+        "output_tokens": 89,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-04",
+      "category": "ordinary",
+      "request": "Explain what a checksum is in plain English.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Explain what a checksum is in plain English.",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "answer questions",
+          "retrieve chunks"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 594,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 590,
+        "planner_latency_ms": 594,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 953,
+        "output_tokens": 85,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-05",
+      "category": "ordinary",
+      "request": "Can you help me write a polite message to a neighbour?",
+      "expected": {
+        "intent": "ordinary_writing",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "write_polite_message_to_neighbour",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "answer_question",
+          "summarize",
+          "extract_claims",
+          "answer_questions"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 662,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 660,
+        "planner_latency_ms": 662,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 958,
+        "output_tokens": 95,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-06",
+      "category": "ordinary",
+      "request": "What does the word pragmatic mean?",
+      "expected": {
+        "intent": "ordinary_definition",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "What does the word pragmatic mean",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "answer questions",
+          "retrieve chunks",
+          "summarise",
+          "extract claims",
+          "answer questions"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 458,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 456,
+        "planner_latency_ms": 458,
+        "load_duration_ms": 5,
+        "model_load_occurred": false,
+        "prompt_tokens": 948,
+        "output_tokens": 63,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-07",
+      "category": "ordinary",
+      "request": "Tell me a short joke about old computers.",
+      "expected": {
+        "intent": "ordinary_conversation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Tell me a short joke about old computers.",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "answer questions"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 573,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 569,
+        "planner_latency_ms": 573,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 951,
+        "output_tokens": 79,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-08",
+      "category": "ordinary",
+      "request": "What is the difference between RAM and storage?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "What is the difference between RAM and storage",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What is the difference between RAM and storage?",
+          "What are the differences between RAM and storage?",
+          "What's the difference between RAM and storage?",
+          "What are the key differences between RAM and storage?",
+          "What's the RAM vs storage difference?",
+          "What are the main differences between RAM and storage?"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 821,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 817,
+        "planner_latency_ms": 821,
+        "load_duration_ms": 5,
+        "model_load_occurred": false,
+        "prompt_tokens": 952,
+        "output_tokens": 110,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-09",
+      "category": "ordinary",
+      "request": "Help me make a simple packing list for a weekend.",
+      "expected": {
+        "intent": "ordinary_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "make a simple packing list for a weekend",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "summarize",
+          "extract claims",
+          "answer questions",
+          "retrieve chunks"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 715,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 711,
+        "planner_latency_ms": 715,
+        "load_duration_ms": 5,
+        "model_load_occurred": false,
+        "prompt_tokens": 955,
+        "output_tokens": 95,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "ordinary-10",
+      "category": "ordinary",
+      "request": "What is two plus two?",
+      "expected": {
+        "intent": "ordinary_factual",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "Math/Number/TwoPlusTwo",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What is two plus two?",
+          "What is the result of two plus two?",
+          "What is the answer to two plus two?"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 541,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 537,
+        "planner_latency_ms": 541,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 946,
+        "output_tokens": 75,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-01",
+      "category": "vault",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What have we discussed about local AI models",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 828,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 825,
+        "planner_latency_ms": 828,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 952,
+        "output_tokens": 109,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-02",
+      "category": "vault",
+      "request": "What did we decide about moving the Ollama model store?",
+      "expected": {
+        "intent": "vault_decision_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What did we decide about moving the Ollama model store",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "decide about moving the Ollama model store",
+          "primary_source",
+          "needs_current_information",
+          "use_heavy_model",
+          "confidence",
+          "0.5"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 819,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 791,
+        "planner_latency_ms": 819,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 960,
+        "output_tokens": 84,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-03",
+      "category": "vault",
+      "request": "What do we know about the Ariadne Home routing work?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What do we know about the Ariadne Home routing work",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What do we know about the Ariadne Home routing work?",
+          "What is the current Ariadne Home routing work?",
+          "What is the Ariadne Home routing work about?",
+          "What is the Ariadne Home routing work for?",
+          "What is the Ariadne Home routing work about?",
+          "What is the Ariadne Home routing work for?"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 861,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 859,
+        "planner_latency_ms": 861,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 960,
+        "output_tokens": 127,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-04",
+      "category": "vault",
+      "request": "Didn't we talk about the native reader shortcut?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "NativeReaderShortcut",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Didn't we talk about the native reader shortcut?",
+          "retrieve_chunks"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 417,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 415,
+        "planner_latency_ms": 417,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 57,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-05",
+      "category": "vault",
+      "request": "What ideas did we have for the Knowledge Vault?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 884,
+      "telemetry": {},
+      "error": "Planner returned invalid JSON: Unterminated string starting at: line 1 column 234 (char 233)"
+    },
+    {
+      "id": "vault-06",
+      "category": "vault",
+      "request": "What were we planning for semantic routing?",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What were we planning for semantic routing?",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "semantic routing planning",
+          "semantic reasoning",
+          "semantic analysis",
+          "semantic query planning",
+          "semantic planning",
+          "semantic reasoning planning"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 590,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 584,
+        "planner_latency_ms": 589,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 950,
+        "output_tokens": 70,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-07",
+      "category": "vault",
+      "request": "What have I forgotten about the Ariadne model tests?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What have I forgotten about the Ariadne model tests",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "forget_forget_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_what_"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 923,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 918,
+        "planner_latency_ms": 923,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 958,
+        "output_tokens": 139,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-08",
+      "category": "vault",
+      "request": "What have we tested with local inference so far?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What have we tested with local inference so far?",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What have we tested with local inference so far?"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 484,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 481,
+        "planner_latency_ms": 484,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 62,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-09",
+      "category": "vault",
+      "request": "Where did we leave off with the Home retrieval diagnosis?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Where did we leave off with the Home retrieval diagnosis",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "retrieve",
+          "diagnosis",
+          "Home",
+          "retention",
+          "retention_diagnosis"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 489,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 472,
+        "planner_latency_ms": 488,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 956,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "vault-10",
+      "category": "vault",
+      "request": "Can you remind me what we learned from the frozen benchmark?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Can you remind me what we learned from the frozen benchmark",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "remind_me",
+          "what_we_learned_from_the_frozen_benchmark"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 487,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 484,
+        "planner_latency_ms": 487,
+        "load_duration_ms": 5,
+        "model_load_occurred": false,
+        "prompt_tokens": 958,
+        "output_tokens": 68,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-01",
+      "category": "current",
+      "request": "Is this information still current?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 793,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "current-02",
+      "category": "current",
+      "request": "What is the latest news about Thailand today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "GetLatestNewsThailandToday",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "GetLatestNewsThailandToday"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 423,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 420,
+        "planner_latency_ms": 423,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 952,
+        "output_tokens": 54,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-03",
+      "category": "current",
+      "request": "Check the current Ollama documentation for structured outputs.",
+      "expected": {
+        "intent": "current_research",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Check the current Ollama documentation for structured outputs",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Check the current Ollama documentation for structured outputs",
+          "Retrieve structured outputs from Ollama documentation",
+          "Answer questions about structured outputs in Ollama documentation"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 610,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 607,
+        "planner_latency_ms": 610,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 955,
+        "output_tokens": 82,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-04",
+      "category": "current",
+      "request": "What is the exchange rate today?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What is the exchange rate today?",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "retrieve chunks"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 601,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 573,
+        "planner_latency_ms": 600,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 948,
+        "output_tokens": 77,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "current-05",
+      "category": "current",
+      "request": "Is this software version still supported?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 693,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "current-06",
+      "category": "current",
+      "request": "Look up the latest weather forecast for Bangkok.",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 440,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "current-07",
+      "category": "current",
+      "request": "Who is the current CEO of that company?",
+      "expected": {
+        "intent": "current_information",
+        "primary_source": "external",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 341,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "current-08",
+      "category": "current",
+      "request": "What date is tomorrow?",
+      "expected": {
+        "intent": "runtime_date",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "dateTomorrow",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "dateTomorrow",
+          "confidence:0.5"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 513,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 481,
+        "planner_latency_ms": 513,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 944,
+        "output_tokens": 54,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-01",
+      "category": "attachment",
+      "request": "Summarise this.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarise this.",
+        "primary_source": "conversation_history",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "extract claims",
+          "answer questions"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 549,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 545,
+        "planner_latency_ms": 549,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 987,
+        "output_tokens": 85,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-02",
+      "category": "attachment",
+      "request": "Explain the main argument in this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Explain the main argument in this document.",
+        "primary_source": "conversation_history",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "document-analysis"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 557,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 541,
+        "planner_latency_ms": 557,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 995,
+        "output_tokens": 84,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-03",
+      "category": "attachment",
+      "request": "Extract the principal claims from the article.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Extract the principal claims from the article.",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "extract claims"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 570,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 553,
+        "planner_latency_ms": 570,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 993,
+        "output_tokens": 82,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-04",
+      "category": "attachment",
+      "request": "What does this say about the proposed date?",
+      "expected": {
+        "intent": "attachment_question",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "What does this say about the proposed date?",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "extract claims",
+          "answer questions",
+          "retrieve chunks"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 471,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 439,
+        "planner_latency_ms": 471,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 996,
+        "output_tokens": 60,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-05",
+      "category": "attachment",
+      "request": "Don't search anything else; just explain this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "explain this document",
+        "primary_source": "conversation_history",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "explain this document"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 513,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 510,
+        "planner_latency_ms": 513,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 999,
+        "output_tokens": 78,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "attachment-06",
+      "category": "attachment",
+      "request": "Let's chat about this article.",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Let's chat about this article.",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Let's chat about this article.",
+          "document_analysis",
+          "extract claims",
+          "answer questions",
+          "retrieve chunks"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 473,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 469,
+        "planner_latency_ms": 473,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 991,
+        "output_tokens": 66,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-01",
+      "category": "heavy",
+      "request": "Design an architecture that keeps the Vault provider-independent while supporting several AI clients.",
+      "expected": {
+        "intent": "heavy_architecture",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Design an architecture that keeps the Vault provider-independent while supporting several AI",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Design an architecture that keeps the Vault provider-independent while supporting several AI clients.",
+          "Keep the Vault provider-independent"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 844,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 829,
+        "planner_latency_ms": 844,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 963,
+        "output_tokens": 104,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-02",
+      "category": "heavy",
+      "request": "Compare these three approaches across cost, latency, portability, and failure recovery.",
+      "expected": {
+        "intent": "heavy_comparison",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Compare these three approaches across cost, latency, portability, and failure recovery.",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Compare cost",
+          "Compare latency",
+          "Compare portability",
+          "Compare failure recovery"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 733,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 729,
+        "planner_latency_ms": 733,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 965,
+        "output_tokens": 103,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-03",
+      "category": "heavy",
+      "request": "Work through the competing constraints and give me a careful engineering decision.",
+      "expected": {
+        "intent": "heavy_reasoning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Work through the competing constraints and give me a careful engineering decision.",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Competing constraints",
+          "Careful engineering decision"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 673,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 670,
+        "planner_latency_ms": 673,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 959,
+        "output_tokens": 91,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-04",
+      "category": "heavy",
+      "request": "Diagnose this intermittent failure by tracing the likely causes and ranking the tests that would distinguish them.",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Diagnose this intermittent failure by tracing the likely causes and ranking the tests that would",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Document Analysis",
+          "Document Analysis",
+          "Document Analysis",
+          "Document Analysis",
+          "Document Analysis",
+          "Document Analysis"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 887,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 885,
+        "planner_latency_ms": 887,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 973,
+        "output_tokens": 113,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-05",
+      "category": "heavy",
+      "request": "Synthesize the trade-offs and recommend a migration order with rollback points.",
+      "expected": {
+        "intent": "heavy_synthesis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Synthesize the trade-offs and recommend a migration order with rollback points.",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "model_prior_knowledge",
+          "document_analysis",
+          "heavy_model",
+          "heavy_model",
+          "heavy_model",
+          "heavy_model"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 827,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 811,
+        "planner_latency_ms": 827,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 961,
+        "output_tokens": 111,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-06",
+      "category": "heavy",
+      "request": "Reason through why the observed measurements contradict the original hypothesis.",
+      "expected": {
+        "intent": "heavy_diagnosis",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Reason through why the observed measurements contradict the original hypothesis.",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Reason through why the observed measurements contradict the original hypothesis."
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 626,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 624,
+        "planner_latency_ms": 626,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 955,
+        "output_tokens": 89,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-07",
+      "category": "heavy",
+      "request": "Give me a robust plan that handles security, data integrity, and operational recovery together.",
+      "expected": {
+        "intent": "heavy_planning",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "robust_plan",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "security",
+          "data_integrity",
+          "operational_recovery"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 599,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 597,
+        "planner_latency_ms": 599,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 967,
+        "output_tokens": 85,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "heavy-08",
+      "category": "heavy",
+      "request": "What is the difference between a list and a tuple in Python?",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "What is the difference between a list and a tuple in Python",
+        "primary_source": "user_message",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What is the difference between a list and a tuple in Python?",
+          "What are the differences between Python's built-in lists and tuples?",
+          "What are the key differences between Python's lists and tuples?",
+          "What is the difference between a list and a tuple in Python?",
+          "What are the main differences between Python's built-in lists and tuples?",
+          "What are the key differences between Python's lists and tuples?"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 993,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 964,
+        "planner_latency_ms": 993,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 960,
+        "output_tokens": 138,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-01",
+      "category": "messy",
+      "request": "what did we do with that ollama thing again mate",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 541,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "messy-02",
+      "category": "messy",
+      "request": "Can u just have a squiz at this?",
+      "expected": {
+        "intent": "attachment_discussion",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Can u just have a squiz at this?",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "personal/project history",
+          "live information",
+          "attachment evidence",
+          "reasoning complexity"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 528,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 494,
+        "planner_latency_ms": 528,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 998,
+        "output_tokens": 67,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-03",
+      "category": "messy",
+      "request": "nah dont web it, what was our plan for the home page",
+      "expected": {
+        "intent": "vault_planning_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "nah dont web it, what was our plan for the home page",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "answer questions",
+          "retrieve chunks",
+          "extract claims",
+          "summarise",
+          "answer questions"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 501,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 484,
+        "planner_latency_ms": 501,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 960,
+        "output_tokens": 70,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-04",
+      "category": "messy",
+      "request": "I reckon this is wrong - can you work out why without going all fancy?",
+      "expected": {
+        "intent": "heavy_debugging",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 492,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "messy-05",
+      "category": "messy",
+      "request": "what's the go with qwen residency",
+      "expected": {
+        "intent": "vault_or_current_ambiguous",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "what's the go with qwen residency",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "answer questions",
+          "retrieve chunks",
+          "extract claims",
+          "summarise",
+          "retrieve chunks",
+          "answer questions"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 587,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 561,
+        "planner_latency_ms": 587,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 950,
+        "output_tokens": 68,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-06",
+      "category": "messy",
+      "request": "Summarise this, but don't go searching the vault, eh.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarise this, but don't go searching the vault, eh.",
+        "primary_source": "user_message",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Summarise this, but don't go searching the vault, eh."
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 681,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 677,
+        "planner_latency_ms": 681,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 1007,
+        "output_tokens": 102,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-07",
+      "category": "messy",
+      "request": "I forgot the name of the thing we tested last week",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Forget Thing Name Last Week",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "forgetThingNameLastWeek",
+          "forgetThingNameLastWeek",
+          "forgetThingNameLastWeek",
+          "forgetThingNameLastWeek",
+          "forgetThingNameLastWeek",
+          "forgetThingNameLastWeek"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 661,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 645,
+        "planner_latency_ms": 661,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 956,
+        "output_tokens": 82,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "messy-08",
+      "category": "messy",
+      "request": "Can you explain blorpification? No idea if that's even a word.",
+      "expected": {
+        "intent": "ordinary_explanation",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 0
+      },
+      "plan": {
+        "intent": "explain blorpification",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "explain blorpification"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 564,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 561,
+        "planner_latency_ms": 564,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 965,
+        "output_tokens": 77,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-01",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "vault",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "plan": {
+        "intent": "What have we discussed about local AI models",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 796,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 793,
+        "planner_latency_ms": 796,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 952,
+        "output_tokens": 109,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-02",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarise this document",
+        "primary_source": "conversation_history",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "document-analysis"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 538,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 535,
+        "planner_latency_ms": 538,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 989,
+        "output_tokens": 81,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-03",
+      "category": "constraints",
+      "request": "Summarise this document.",
+      "expected": {
+        "intent": "attachment_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1
+      },
+      "plan": {
+        "intent": "Summarise this document",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Summarize this document"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 487,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 483,
+        "planner_latency_ms": 487,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 928,
+        "output_tokens": 75,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-04",
+      "category": "constraints",
+      "request": "What have we discussed about local AI models?",
+      "expected": {
+        "intent": "vault_recall",
+        "primary_source": "user_message",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "plan": {
+        "intent": "What have we discussed about local AI models",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?",
+          "What have we discussed about local AI models?"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 804,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 799,
+        "planner_latency_ms": 804,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 954,
+        "output_tokens": 109,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "constraint-05",
+      "category": "constraints",
+      "request": "Check whether this is still current.",
+      "expected": {
+        "intent": "attachment_current_check",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 1,
+        "effective_use_vault": false
+      },
+      "plan": {
+        "intent": "Check whether this is still current.",
+        "primary_source": "attachment",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Check whether this is still current."
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": true,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 405,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 390,
+        "planner_latency_ms": 405,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 993,
+        "output_tokens": 54,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-01",
+      "category": "mixed",
+      "request": "Compare this article with what we've discussed before.",
+      "expected": {
+        "intent": "attachment_vault_comparison",
+        "primary_source": "attachment",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Compare this article with what we've discussed before",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Compare this article with what we've discussed before",
+          "retrieve_chunks",
+          "answer_questions",
+          "extract_claims",
+          "summarise",
+          "retrieve_chunks"
+        ],
+        "confidence": 0.0
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 631,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 607,
+        "planner_latency_ms": 631,
+        "load_duration_ms": 3,
+        "model_load_occurred": false,
+        "prompt_tokens": 997,
+        "output_tokens": 77,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-02",
+      "category": "mixed",
+      "request": "Explain this document and reason through its strongest and weakest claims.",
+      "expected": {
+        "intent": "attachment_heavy_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Explain this document and reason through its strongest and weakest claims.",
+        "primary_source": "conversation_history",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "reasoning_complexity",
+          "document_analysis"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 621,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 618,
+        "planner_latency_ms": 621,
+        "load_duration_ms": 2,
+        "model_load_occurred": false,
+        "prompt_tokens": 1003,
+        "output_tokens": 95,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-03",
+      "category": "mixed",
+      "request": "What did we decide about this, and is that decision still current?",
+      "expected": {
+        "intent": "vault_current_check",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "What did we decide about this, and is that decision still current?",
+        "primary_source": "conversation_history",
+        "tools": [],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "What did we decide about this, and is that decision still current?",
+          "confidence**:0.5"
+        ],
+        "confidence": 0.5
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 749,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 745,
+        "planner_latency_ms": 749,
+        "load_duration_ms": 4,
+        "model_load_occurred": false,
+        "prompt_tokens": 962,
+        "output_tokens": 78,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "mixed-04",
+      "category": "mixed",
+      "request": "Use our prior notes to design the next safe migration step.",
+      "expected": {
+        "intent": "vault_heavy_planning",
+        "primary_source": "vault",
+        "use_vault": true,
+        "needs_current_information": false,
+        "use_heavy_model": true,
+        "tools": [],
+        "task_count_min": 2
+      },
+      "plan": {},
+      "core_correct": false,
+      "tasks_present": false,
+      "schema_valid": false,
+      "fallback": true,
+      "controller": {
+        "use_vault": false,
+        "tools": [],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 895,
+      "telemetry": {},
+      "error": "Planner selected an attachment when none is attached."
+    },
+    {
+      "id": "mixed-05",
+      "category": "mixed",
+      "request": "Check current reporting on this article, then explain what it means.",
+      "expected": {
+        "intent": "attachment_current_analysis",
+        "primary_source": "attachment",
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": true,
+        "tools": [
+          "document-analysis"
+        ],
+        "task_count_min": 2
+      },
+      "plan": {
+        "intent": "Check current reporting on this article, then explain what it means.",
+        "primary_source": "conversation_history",
+        "tools": [
+          "document-analysis"
+        ],
+        "use_vault": false,
+        "needs_current_information": true,
+        "use_heavy_model": false,
+        "tasks": [
+          "Check current reporting on this article",
+          "explain what it means"
+        ],
+        "confidence": 0.8
+      },
+      "core_correct": false,
+      "tasks_present": true,
+      "schema_valid": true,
+      "fallback": false,
+      "controller": {
+        "use_vault": false,
+        "tools": [
+          "document-analysis"
+        ],
+        "vault_constraint_satisfied": true
+      },
+      "constraint_violation": false,
+      "wrapper_latency_ms": 683,
+      "telemetry": {
+        "planner_model": "llama3.2:1b",
+        "keep_alive": -1,
+        "planning_duration_ms": 679,
+        "planner_latency_ms": 683,
+        "load_duration_ms": 5,
+        "model_load_occurred": false,
+        "prompt_tokens": 1003,
+        "output_tokens": 99,
+        "residency_before": true,
+        "residency_verified": true,
+        "loaded_models": [
+          "llama3.2:1b",
+          "qwen3.5:9b-q4_K_M",
+          "qwen3:0.6b"
+        ]
+      },
+      "error": null
+    }
+  ]
+}

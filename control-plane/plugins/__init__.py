@@ -1,0 +1,1 @@
+"""Bundled Ariadne plugin packages."""

@@ -5,14 +5,21 @@ import os
 import sys
 from pathlib import Path
 
+from vault_config import VAULT_ROOT
 
 ROOT = Path(__file__).resolve().parent
-PROJECT_ROOT = ROOT.parent
-VAULT_ROOT = Path(os.environ.get("ARIADNE_VAULT_ROOT", str(PROJECT_ROOT))).expanduser().resolve()
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
-sys.path.insert(0, str(VAULT_SYSTEM))
+PROJECT_ROOT = ROOT.parent
+MCP_MODULE_PATH = PROJECT_ROOT / "00_System" / "ariadne_mcp.py"
+sys.path.insert(0, str(PROJECT_ROOT / "00_System"))
+import importlib.util
 
-import ariadne_mcp  # noqa: E402
+spec = importlib.util.spec_from_file_location("ariadne_mcp_active_vault_worker", MCP_MODULE_PATH)
+if spec is None or spec.loader is None:
+    raise RuntimeError(f"Ariadne MCP implementation is unavailable: {MCP_MODULE_PATH}")
+ariadne_mcp = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = ariadne_mcp
+spec.loader.exec_module(ariadne_mcp)
 
 
 def write_status(path: Path, payload: dict) -> None:

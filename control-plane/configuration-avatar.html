@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" class="avatar-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desktop Avatar · Ariadne Configuration</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/configuration.css">
+  <link rel="stylesheet" href="/configuration-avatar.css">
+  <link rel="stylesheet" href="/page-shell.css">
+</head>
+<body class="ariadne-page avatar-page">
+  <div class="configuration-shell avatar-configuration-shell">
+    <header class="configuration-header">
+      <a class="configuration-brand" href="/" aria-label="Back to Ariadne Home"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Home · local intelligence</small></span></a>
+      <div><span class="eyebrow">SETUP / CONFIGURATION</span><h1>Desktop Avatar</h1><p>Choose the local Avatar Pack used by Ariadne Host.</p></div>
+      <nav class="configuration-nav" aria-label="Ariadne navigation"><a class="nav-link" href="/">Home</a><a class="nav-link active" href="/configuration">Configuration</a><a class="nav-link" href="/system-details">System Details</a></nav>
+    </header>
+    <main class="configuration-main">
+      <div id="avatar-page-status" class="configuration-status" role="status" aria-live="polite">Reading Avatar Pack configuration…</div>
+      <section class="configuration-card avatar-settings-card">
+        <div class="card-heading"><div><span class="eyebrow">DESKTOP AVATAR</span><h2>Avatar Pack</h2><p>The host remains running when the presentation subsystem is disabled.</p></div><span class="card-mark">✦</span></div>
+        <div class="avatar-settings-grid">
+          <label class="avatar-enabled-control"><input id="avatar-enabled" type="checkbox"><span><strong>Avatar enabled</strong><small>Enable or disable only the desktop presentation.</small></span></label>
+          <label class="path-field"><span class="field-label">Avatar Pack Folder <small>absolute local directory containing avatar_states.json</small></span><input id="avatar-asset-directory" type="text" autocomplete="off" spellcheck="false"><span id="avatar-directory-status" class="field-status">Checking…</span></label>
+        </div>
+        <div class="avatar-actions"><button id="open-folder" class="secondary-button" type="button">Open folder</button><button id="validate-assets" class="secondary-button" type="button">Validate assets</button><button id="use-default-pack" class="secondary-button" type="button">Use default pack</button><button id="save-avatar" class="primary-button" type="button">Save avatar configuration</button></div>
+        <p class="configuration-note">The manifest supplies defaults. A saved per-state selection overrides that default without changing the canonical Avatar State names.</p>
+      </section>
+      <section class="configuration-card avatar-states-card">
+        <div class="card-heading"><div><span class="eyebrow">AVATAR STATES</span><h2>Image and action editor</h2><p id="pack-summary">Reading the selected pack…</p></div><span id="pack-badge" class="active-vault-badge">Checking</span></div>
+        <div class="avatar-test-toolbar"><button id="test-all-states" class="primary-button" type="button">Test All States</button><span id="test-all-feedback" role="status" aria-live="polite">Tests are temporary and do not change saved configuration.</span></div>
+        <div id="avatar-states-grid" class="avatar-states-grid"></div>
+        <div class="avatar-preview-actions"><button id="return-idle" class="secondary-button" type="button">Return to Idle</button><span id="preview-status" role="status" aria-live="polite">Preview uses the existing named-pipe Avatar State event.</span></div>
+      </section>
+      <div class="configuration-actions"><a class="secondary-button" href="/configuration">← Back to Configuration</a></div>
+    </main>
+    <footer class="configuration-footer">Private · Local · Under your control <span>•</span> Avatar artwork stays on this computer.</footer>
+  </div>
+  <script src="/configuration-avatar.js"></script>
+</body>
+</html>

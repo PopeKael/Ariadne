@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "states": {
+    "idle": "ariadne_idle.png",
+    "listening": "ariadne_listening.png",
+    "thinking": "ariadne_thinking.png",
+    "searching_vault": "ariadne_searching_vault.png",
+    "reading": "ariadne_reading.png",
+    "cross_referencing": "ariadne_cross_referencing.png",
+    "loading_model": "ariadne_loading_model.png",
+    "working": "ariadne_working.png",
+    "speaking": "ariadne_speaking.png",
+    "waiting": "ariadne_waiting.png",
+    "success": "ariadne_success.png",
+    "warning": "ariadne_warning.png",
+    "confused": "ariadne_confused.png",
+    "recovering": "ariadne_recovering.png",
+    "error": "ariadne_error.png",
+    "offline": "ariadne_offline.png"
+  }
+}

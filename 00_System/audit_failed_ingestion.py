@@ -84,7 +84,11 @@ def main() -> int:
     manifest = json.loads((run_dir / "source-manifest.json").read_text(encoding="utf-8"))
     rejections = json_lines(run_dir / "rejections.jsonl")
     captures = json_lines(run_dir / "model-captures.jsonl")
-    movement = json.loads((root / "Reports/rebuild-v1-movement.json").read_text(encoding="utf-8"))
+    movement_name = "rebuild-v1-daily-movement.json" if "\\daily\\" in str(run_dir).lower() or "/daily/" in run_dir.as_posix().lower() else "rebuild-v1-movement.json"
+    movement_path = root / "Reports" / movement_name
+    if not movement_path.is_file():
+        movement_path = root / "Reports/rebuild-v1-movement.json"
+    movement = json.loads(movement_path.read_text(encoding="utf-8"))
     active = json.loads((root / "00_System/library.json").read_text(encoding="utf-8"))
     records = {item["stable_source_id"]: item for item in manifest["records"]}
     movements = {item["stable_source_id"]: item for item in movement}

@@ -1,26 +1,566 @@
 {
-  "version": 1,
-  "description": "Curated Ariadne retrieval regression cases. Add a case when a real query is important or previously failed.",
+  "version": 2,
+  "frozen_at": "2026-08-23",
+  "description": "Frozen Vault Retrieval v1 evaluation set using actual Ariadne catalogue evidence. Expectations are not tuned after scoring.",
+  "categories": [
+    "direct",
+    "paraphrase",
+    "people_aliases",
+    "project_state",
+    "negative"
+  ],
   "cases": [
     {
-      "id": "ariadne-librarian",
+      "id": "direct-ariadne-librarian",
       "query": "Ariadne the librarian",
-      "expected_document_ids": ["youtube:1isr91GNrhU"]
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:1isr91GNrhU"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:1isr91GNrhU"
+      ]
     },
     {
-      "id": "mcp-retrieval",
+      "id": "direct-mcp-retrieval",
       "query": "MCP retrieval chunk embeddings",
-      "expected_document_ids": ["youtube:fcJZghMc5hk"]
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:fcJZghMc5hk"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:fcJZghMc5hk"
+      ]
     },
     {
-      "id": "synology-docker-terminal",
-      "query": "desktop shortcut Docker Bash terminal Synology",
-      "expected_document_ids": ["url:https://claude.ai/chat/f8f2bb66-b0fb-446b-ab11-094ab6a2669b"]
-    },
-    {
-      "id": "ariadne-github-update",
+      "id": "direct-github-update",
       "query": "first GitHub repo update Ariadne",
-      "expected_document_ids": ["youtube:oKrpJKVgN20"]
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:oKrpJKVgN20"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:oKrpJKVgN20"
+      ]
+    },
+    {
+      "id": "direct-vault-query",
+      "query": "What is the Vault Query?",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:7ejK17ML_do"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:7ejK17ML_do"
+      ]
+    },
+    {
+      "id": "direct-context-mcp",
+      "query": "How to build a personal context MCP",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:TVJ8lt4UfLY"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:TVJ8lt4UfLY"
+      ]
+    },
+    {
+      "id": "direct-image-filing",
+      "query": "Image renaming and filing",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:RRev9nbzRF0"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:RRev9nbzRF0"
+      ]
+    },
+    {
+      "id": "direct-channel-mode",
+      "query": "What is the Thailand Life Channel Mode?",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "sha256:9a80b9a47b18fdcf1a092e2af54aafac15b00811c7264cc726e5f2c8b4a27369"
+      ],
+      "expected_evidence_frozen": [
+        "sha256:9a80b9a47b18fdcf1a092e2af54aafac15b00811c7264cc726e5f2c8b4a27369"
+      ]
+    },
+    {
+      "id": "direct-local-ai-server",
+      "query": "Local AI server design",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/c/6a38a382-d180-83ec-aa20-bcf822b3ef12"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/c/6a38a382-d180-83ec-aa20-bcf822b3ef12"
+      ]
+    },
+    {
+      "id": "direct-project-checkpoint",
+      "query": "Project Checkpoint",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:dHFkMEsZjb8"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:dHFkMEsZjb8"
+      ]
+    },
+    {
+      "id": "direct-ai-architect",
+      "query": "The AI Systems Architect",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:dKwKpAL9Hpo"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:dKwKpAL9Hpo"
+      ]
+    },
+    {
+      "id": "direct-graph-engineering",
+      "query": "What is graph engineering?",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:iPveX4yQ68w"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:iPveX4yQ68w"
+      ]
+    },
+    {
+      "id": "direct-qwen-tts",
+      "query": "Qwen3 TTS versus dots TTS",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:jDudeaWppSE"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:jDudeaWppSE"
+      ]
+    },
+    {
+      "id": "direct-docker-wsl",
+      "query": "Goodbye Docker, hello native WSL containers",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:sF5opJgyh_A"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:sF5opJgyh_A"
+      ]
+    },
+    {
+      "id": "direct-second-brain",
+      "query": "Build an AI second brain knowledge base",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:yke4fLQUsh4"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:yke4fLQUsh4"
+      ]
+    },
+    {
+      "id": "direct-thailand-retirement",
+      "query": "Retirement in Thailand",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:3fX5zO6-sQc"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:3fX5zO6-sQc"
+      ]
+    },
+    {
+      "id": "direct-thai-tax",
+      "query": "Thai tax liability and filing requirements",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:O1l-NSryrVM"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:O1l-NSryrVM"
+      ]
+    },
+    {
+      "id": "direct-thai-cannabis",
+      "query": "Thailand cannabis laws July 2026",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:OqyQ4FrtYtU"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:OqyQ4FrtYtU"
+      ]
+    },
+    {
+      "id": "direct-librarian-interface",
+      "query": "Librarian interface for LLMs",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/c/6a11842e-2cd0-83ec-901a-ecaf044725e5"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/c/6a11842e-2cd0-83ec-901a-ecaf044725e5"
+      ]
+    },
+    {
+      "id": "direct-openwebui-search",
+      "query": "OpenWebUI search issue",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/c/6a26cd40-01a0-83ec-8ae0-59cc4a3274c7"
+      ]
+    },
+    {
+      "id": "direct-codex-storage",
+      "query": "Codex handover AI storage and Ariadne homepage",
+      "category": "direct",
+      "negative": false,
+      "expected_document_ids": [
+        "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b"
+      ],
+      "expected_evidence_frozen": [
+        "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b"
+      ]
+    },
+    {
+      "id": "paraphrase-ariadne-role",
+      "query": "Where does Ariadne act as a librarian?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:1isr91GNrhU"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:1isr91GNrhU"
+      ]
+    },
+    {
+      "id": "paraphrase-mcp-index",
+      "query": "Which note covers chunk embeddings for MCP retrieval?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:fcJZghMc5hk"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:fcJZghMc5hk"
+      ]
+    },
+    {
+      "id": "paraphrase-github-history",
+      "query": "Where did the first Ariadne repository update land?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:oKrpJKVgN20"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:oKrpJKVgN20"
+      ]
+    },
+    {
+      "id": "paraphrase-vault-query",
+      "query": "Where is the note about asking the Vault a query?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:7ejK17ML_do"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:7ejK17ML_do"
+      ]
+    },
+    {
+      "id": "paraphrase-image-work",
+      "query": "Where did we leave off with image filing?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:RRev9nbzRF0"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:RRev9nbzRF0"
+      ]
+    },
+    {
+      "id": "paraphrase-channel-policy",
+      "query": "What was the intended mode for the Thailand life channel?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "sha256:9a80b9a47b18fdcf1a092e2af54aafac15b00811c7264cc726e5f2c8b4a27369"
+      ],
+      "expected_evidence_frozen": [
+        "sha256:9a80b9a47b18fdcf1a092e2af54aafac15b00811c7264cc726e5f2c8b4a27369"
+      ]
+    },
+    {
+      "id": "paraphrase-mcp-context",
+      "query": "What was the personal-context MCP approach?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:TVJ8lt4UfLY"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:TVJ8lt4UfLY"
+      ]
+    },
+    {
+      "id": "paraphrase-local-server",
+      "query": "Where is the design for a local AI server?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/c/6a38a382-d180-83ec-aa20-bcf822b3ef12"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/c/6a38a382-d180-83ec-aa20-bcf822b3ef12"
+      ]
+    },
+    {
+      "id": "paraphrase-second-brain",
+      "query": "Which note explains building an AI second brain?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:yke4fLQUsh4"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:yke4fLQUsh4"
+      ]
+    },
+    {
+      "id": "paraphrase-docker",
+      "query": "What was the native WSL container alternative to Docker?",
+      "category": "paraphrase",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:sF5opJgyh_A"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:sF5opJgyh_A"
+      ]
+    },
+    {
+      "id": "identity-pope-alias",
+      "query": "What did @pope_kael say about the project?",
+      "category": "people_aliases",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a3d2558-4c04-83ec-bf2b-ecd5378dec8e"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a3d2558-4c04-83ec-bf2b-ecd5378dec8e"
+      ]
+    },
+    {
+      "id": "identity-wazza-chanya",
+      "query": "What did Chanya and Wazza say about Thailand?",
+      "category": "people_aliases",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:3fX5zO6-sQc"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:3fX5zO6-sQc"
+      ]
+    },
+    {
+      "id": "identity-pope-project",
+      "query": "What was Pope Kael TV's Ariadne project?",
+      "category": "people_aliases",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a3d2558-4c04-83ec-bf2b-ecd5378dec8e"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a3d2558-4c04-83ec-bf2b-ecd5378dec8e"
+      ]
+    },
+    {
+      "id": "identity-channel",
+      "query": "What is the Chanya and Wazza channel approach?",
+      "category": "people_aliases",
+      "negative": false,
+      "expected_document_ids": [
+        "sha256:9a80b9a47b18fdcf1a092e2af54aafac15b00811c7264cc726e5f2c8b4a27369"
+      ],
+      "expected_evidence_frozen": [
+        "sha256:9a80b9a47b18fdcf1a092e2af54aafac15b00811c7264cc726e5f2c8b4a27369"
+      ]
+    },
+    {
+      "id": "identity-ariadne-owner",
+      "query": "What are Wazza's Ariadne notes about?",
+      "category": "people_aliases",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:oKrpJKVgN20"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:oKrpJKVgN20"
+      ]
+    },
+    {
+      "id": "project-catalogue-index",
+      "query": "How did we reconcile the catalogue and embedding index?",
+      "category": "project_state",
+      "negative": false,
+      "expected_document_ids": [
+        "youtube:fcJZghMc5hk",
+        "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7"
+      ],
+      "expected_evidence_frozen": [
+        "youtube:fcJZghMc5hk",
+        "url:http://localhost:3000/c/6eb69bed-1728-4cce-be87-380c3485cdc7"
+      ]
+    },
+    {
+      "id": "project-librarian-harness",
+      "query": "What did we decide about the Librarian Harness?",
+      "category": "project_state",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/c/6a11842e-2cd0-83ec-901a-ecaf044725e5",
+        "youtube:1isr91GNrhU"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/c/6a11842e-2cd0-83ec-901a-ecaf044725e5",
+        "youtube:1isr91GNrhU"
+      ]
+    },
+    {
+      "id": "project-ariadne-architecture",
+      "query": "What is the current architecture of Ariadne?",
+      "category": "project_state",
+      "negative": false,
+      "expected_document_ids": [
+        "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+        "youtube:TVJ8lt4UfLY"
+      ],
+      "expected_evidence_frozen": [
+        "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
+        "youtube:TVJ8lt4UfLY"
+      ]
+    },
+    {
+      "id": "project-ollama",
+      "query": "What have we tested about Ollama model residency?",
+      "category": "project_state",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/c/6a5f73c7-5d90-83ec-b3b2-dbd07ce3f416",
+        "youtube:k386G2WOmqw"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/c/6a5f73c7-5d90-83ec-b3b2-dbd07ce3f416",
+        "youtube:k386G2WOmqw"
+      ]
+    },
+    {
+      "id": "project-pope-engineering",
+      "query": "What was the engineering versus vibing discussion?",
+      "category": "project_state",
+      "negative": false,
+      "expected_document_ids": [
+        "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a4e25b9-b810-83ec-98e9-d1c2423040e9"
+      ],
+      "expected_evidence_frozen": [
+        "url:https://chatgpt.com/g/g-p-69a23f75a5e4819194d1cafcbafc07a9/c/6a4e25b9-b810-83ec-98e9-d1c2423040e9"
+      ]
+    },
+    {
+      "id": "negative-quantum-banana",
+      "query": "What is the recipe for quantum banana propulsion?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
+    },
+    {
+      "id": "negative-moonbase",
+      "query": "What happened at the fictional Moonbase Zeta in 2041?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
+    },
+    {
+      "id": "negative-unlisted-project",
+      "query": "What did the fictional Ariadne Mars colony decide?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
+    },
+    {
+      "id": "negative-fake-person",
+      "query": "What did the imaginary person Zorblax say about the Vault?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
+    },
+    {
+      "id": "negative-made-up-law",
+      "query": "What is the Moonbase Zeta retirement law?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
+    },
+    {
+      "id": "negative-fabricated-repo",
+      "query": "Where is the Ariadne repo for Project Nebula 9000?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
+    },
+    {
+      "id": "negative-unseen-event",
+      "query": "What happened at the Bangkok time portal last Tuesday?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
+    },
+    {
+      "id": "negative-random-device",
+      "query": "How do I configure the quantum banana router?",
+      "category": "negative",
+      "negative": true,
+      "expected_document_ids": [],
+      "expected_evidence_frozen": []
     }
   ]
 }
