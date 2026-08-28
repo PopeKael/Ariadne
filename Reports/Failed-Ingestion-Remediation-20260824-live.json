@@ -1,0 +1,103 @@
+{
+  "report_version": 1,
+  "created_at": "2026-08-24T03:58:10.010541+00:00",
+  "audit": "Reports/Failed-Ingestion-Audit-20260824-live.json",
+  "receipt": "00_System/Data/rebuild-v1/failed-remediation/4a2f623c03bd71cd/remediation-receipt.json",
+  "before": {
+    "by_failure_message": {
+      "empty_model_response": 4,
+      "summary_too_short": 1
+    },
+    "by_classification": {
+      "manual-review": 1,
+      "retry-safe": 4
+    }
+  },
+  "after": {
+    "active_catalogue_records": 1202,
+    "processed_markdown_files": 1215,
+    "failed_markdown_files": 104,
+    "inbox_markdown_files": 1
+  },
+  "recovered": [
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "sha256:8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14",
+      "status": "accepted",
+      "reason": null
+    }
+  ],
+  "still_failed_after_retry": [],
+  "still_failed_by_reason": {},
+  "archived": [],
+  "backup": [
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0",
+      "source": "Failed/Islam Conflict Analysis2026-08-24T09_54_17+07_00.md",
+      "backup": "Archive/FailedRemediation/4a2f623c03bd71cd/originals/Islam Conflict Analysis2026-08-24T09_54_17+07_00.md",
+      "raw_sha256": "aa6ded2b6963efed8ce49a5ffe72582bc928c765c4fe64b103eb3f0307e5d09c",
+      "action": "copied"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6",
+      "source": "Failed/My Local AI System - Feature Creep Summary2026-08-24T09_55_28+07_00.md",
+      "backup": "Archive/FailedRemediation/4a2f623c03bd71cd/originals/My Local AI System - Feature Creep Summary2026-08-24T09_55_28+07_00.md",
+      "raw_sha256": "0e597340553ada3f770446d0d678f3ac93d7a8a857cf1f4cc54bc66bb183aed5",
+      "action": "copied"
+    },
+    {
+      "stable_source_id": "sha256:8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48",
+      "source": "Failed/Okay Ariadne give me 10 good ideas for my main video channel_80c37039.md",
+      "backup": "Archive/FailedRemediation/4a2f623c03bd71cd/originals/Okay Ariadne give me 10 good ideas for my main video channel_80c37039.md",
+      "raw_sha256": "5f0ab3d5b0ee8e5d8e404804128752b9178b4d974817fc1957be38c27f2fcc6d",
+      "action": "copied"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465",
+      "source": "Failed/Sing Sample Recording Tips2026-08-22T08_29_28+07_00.md",
+      "backup": "Archive/FailedRemediation/4a2f623c03bd71cd/originals/Sing Sample Recording Tips2026-08-22T08_29_28+07_00.md",
+      "raw_sha256": "2e3c870293750bfe790b924c37e277ba2258291f0345d8509c783972840dc62e",
+      "action": "copied"
+    },
+    {
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14",
+      "source": "Failed/Smart-glasses Privacy Watch2026-08-24T09_54_55+07_00.md",
+      "backup": "Archive/FailedRemediation/4a2f623c03bd71cd/originals/Smart-glasses Privacy Watch2026-08-24T09_54_55+07_00.md",
+      "raw_sha256": "a1e0fda38149a0c51f5107787a895457acc5cea0097d643fc283ec37b9d9595c",
+      "action": "copied"
+    }
+  ],
+  "embedding_update": {
+    "indexed": 46,
+    "skipped": 10042,
+    "failed": 0,
+    "removed": 0,
+    "documents": 1202,
+    "elapsed_seconds": 12.25,
+    "chunks": 10088,
+    "storage_bytes": 124311907,
+    "model": "nomic-embed-text",
+    "dimensions": 768,
+    "failure_count": 0
+  },
+  "manual_review_count": 104
+}

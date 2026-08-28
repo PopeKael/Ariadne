@@ -1,12 +1,14 @@
 # Commit.ps1
 #
-# Desktop publish button for the selected Ariadne repository.
+# Desktop publish button for both local Ariadne repositories.
 # Codex creates local commits; this script only publishes existing commits.
 
 [CmdletBinding()]
 param(
     [string]$RepoPath = 'D:\Downloads\Ariadne',
-    [string]$Remote = 'origin'
+    [string]$Remote = 'origin',
+    [string]$KnowledgeVaultRemote = 'origin',
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,87 +28,272 @@ function Invoke-GitChecked {
     return $output
 }
 
-if (-not (Test-Path -LiteralPath $RepoPath -PathType Container)) {
-    throw "Ariadne repository was not found: $RepoPath"
+function Invoke-GitOptional {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$ArgumentList
+    )
+
+    $output = & git -c core.pager=cat @ArgumentList 2>$null
+    $exitCode = $LASTEXITCODE
+    $outputText = if ($null -eq $output) { '' } else { ([string]$output).Trim() }
+    return [pscustomobject]@{
+        Output   = $outputText
+        ExitCode = $exitCode
+    }
 }
 
-$gitDirectory = Join-Path $RepoPath '.git'
-if (-not (Test-Path -LiteralPath $gitDirectory)) {
-    throw "The selected path is not a Git repository: $RepoPath"
-}
+function Get-OutgoingPaths {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RemoteRef,
+        [Parameter(Mandatory = $true)]
+        [bool]$HasRemoteBranch
+    )
 
-Push-Location -LiteralPath $RepoPath
-try {
-    $remoteUrl = ([string](Invoke-GitChecked -ArgumentList @('remote', 'get-url', $Remote))).Trim()
-    if ([string]::IsNullOrWhiteSpace($remoteUrl)) {
-        throw "Git remote '$Remote' is not configured in $RepoPath"
-    }
-
-    if ($remoteUrl -notmatch 'github\.com[:/]PopeKael/Ariadne(?:\.git)?$') {
-        throw "Remote '$Remote' is not the expected Ariadne GitHub repository: $remoteUrl"
-    }
-
-    $branch = ([string](Invoke-GitChecked -ArgumentList @('branch', '--show-current'))).Trim()
-    if ([string]::IsNullOrWhiteSpace($branch)) {
-        throw 'The repository is in detached-HEAD state. Check out the intended branch before using the publish button.'
-    }
-
-    Write-Host "Repository: $RepoPath"
-    Write-Host "Remote:     $remoteUrl"
-    Write-Host "Branch:     $branch"
-    Write-Host ''
-
-    # Refresh remote-tracking refs before comparing local and remote history.
-    Invoke-GitChecked -ArgumentList @('fetch', '--prune', $Remote)
-
-    $upstreamOutput = & git -c core.pager=cat rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>$null
-    $upstreamExitCode = $LASTEXITCODE
-    $upstream = ([string]$upstreamOutput).Trim()
-    $targetUpstream = "$Remote/$branch"
-    $hasTargetUpstream = $upstreamExitCode -eq 0 -and $upstream -eq $targetUpstream
-
-    $remoteRef = "refs/remotes/$Remote/$branch"
-    $remoteCommit = ([string](& git -c core.pager=cat rev-parse --verify --quiet $remoteRef 2>$null)).Trim()
-    $remoteRefExitCode = $LASTEXITCODE
-    $hasRemoteBranch = $remoteRefExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($remoteCommit)
-
-    if (-not $hasRemoteBranch) {
-        $head = ([string](& git -c core.pager=cat rev-parse --verify --quiet HEAD 2>$null)).Trim()
-        $headExitCode = $LASTEXITCODE
-        if ($headExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($head)) {
-            throw "Branch '$branch' has no local commit to push."
-        }
-
-        Invoke-GitChecked -ArgumentList @('push', '--set-upstream', $Remote, $branch)
-        Write-Host "Published existing commits to $targetUpstream."
-        return
-    }
-
-    $aheadCount = [int](([string](Invoke-GitChecked -ArgumentList @('rev-list', '--count', "$targetUpstream..HEAD"))).Trim())
-    $behindCount = [int](([string](Invoke-GitChecked -ArgumentList @('rev-list', '--count', "HEAD..$targetUpstream"))).Trim())
-
-    if ($aheadCount -eq 0 -and $behindCount -eq 0) {
-        Write-Host 'Nothing to push.'
-        return
-    }
-
-    if ($aheadCount -gt 0 -and $behindCount -gt 0) {
-        throw "Local branch '$branch' and '$targetUpstream' have diverged ($aheadCount ahead, $behindCount behind). Nothing was pushed."
-    }
-
-    if ($behindCount -gt 0) {
-        throw "Local branch '$branch' is behind '$targetUpstream' by $behindCount commit(s). Nothing was pushed."
-    }
-
-    if ($hasTargetUpstream) {
-        Invoke-GitChecked -ArgumentList @('push', $Remote, $branch)
+    if ($HasRemoteBranch) {
+        $commits = @(Invoke-GitChecked -ArgumentList @('rev-list', '--reverse', "$RemoteRef..HEAD"))
     }
     else {
-        Invoke-GitChecked -ArgumentList @('push', '--set-upstream', $Remote, $branch)
+        $commits = @(Invoke-GitChecked -ArgumentList @('rev-list', '--reverse', 'HEAD'))
     }
 
-    Write-Host "Published $aheadCount existing commit(s) to $targetUpstream."
+    $paths = foreach ($commit in $commits) {
+        @(Invoke-GitChecked -ArgumentList @('diff-tree', '--no-commit-id', '--name-only', '--root', '-r', '-m', $commit, '--'))
+    }
+
+    return @($paths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
 }
-finally {
-    Pop-Location
+
+function Get-PrivacyFinding {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    # --no-index makes Git apply .gitignore, .git/info/exclude, and configured
+    # global excludes even when the outgoing path is already tracked.
+    $ignoreResult = Invoke-GitOptional -ArgumentList @('check-ignore', '--no-index', '-v', '--', $Path)
+    if ($ignoreResult.ExitCode -gt 1) {
+        throw "Unable to check privacy exclusions for '$Path'."
+    }
+    if ($ignoreResult.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($ignoreResult.Output)) {
+        return [pscustomobject]@{
+            Path   = $Path
+            Reason = "Matched Git privacy/exclusion rule: $($ignoreResult.Output)"
+        }
+    }
+
+    $normalized = $Path.Replace('\', '/')
+    if ($normalized -match '(^|/)\.host-build-msvc(?:/|$)') {
+        return [pscustomobject]@{
+            Path   = $Path
+            Reason = 'Known generated MSVC host-build output.'
+        }
+    }
+    if ($normalized -match '(^|/)\.tmp-ui-[^/]*(?:/|$)') {
+        return [pscustomobject]@{
+            Path   = $Path
+            Reason = 'Known generated UI temporary/runtime output.'
+        }
+    }
+    if ($normalized -match '(^|/)target(?:-msvc)?(?:/|$)') {
+        return [pscustomobject]@{
+            Path   = $Path
+            Reason = 'Known generated Rust target output.'
+        }
+    }
+
+    return
+}
+
+function Invoke-RepositorySync {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$RemoteName
+    )
+
+    $result = [ordered]@{
+        Name         = $Name
+        Path         = $Path
+        Branch       = '(unavailable)'
+        Remote       = $RemoteName
+        RemoteUrl    = '(unavailable)'
+        Upstream     = '(none)'
+        WouldPush    = $false
+        Privacy      = 'not run'
+        Outcome      = 'not processed'
+    }
+
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+            throw "Repository directory was not found: $Path"
+        }
+
+        $gitDirectory = Join-Path $Path '.git'
+        if (-not (Test-Path -LiteralPath $gitDirectory)) {
+            throw "The selected path is not a Git repository: $Path"
+        }
+
+        Push-Location -LiteralPath $Path
+        try {
+            # Verify this repository's configured remote before fetching or
+            # inspecting any remote-dependent state.
+            $remoteUrl = ([string](Invoke-GitChecked -ArgumentList @('remote', 'get-url', $RemoteName))).Trim()
+            if ([string]::IsNullOrWhiteSpace($remoteUrl)) {
+                throw "Git remote '$RemoteName' is not configured in $Path"
+            }
+            $result.RemoteUrl = $remoteUrl
+
+            $branch = ([string](Invoke-GitChecked -ArgumentList @('branch', '--show-current'))).Trim()
+            if ([string]::IsNullOrWhiteSpace($branch)) {
+                throw 'The repository is in detached-HEAD state.'
+            }
+            $result.Branch = $branch
+
+            $targetUpstream = "$RemoteName/$branch"
+
+            # Refresh remote-tracking refs before deciding whether anything is pushable.
+            $null = Invoke-GitChecked -ArgumentList @('fetch', '--prune', $RemoteName)
+
+            $upstreamInfo = Invoke-GitOptional -ArgumentList @('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}')
+            if ($upstreamInfo.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($upstreamInfo.Output)) {
+                $result.Upstream = $upstreamInfo.Output
+                if ($upstreamInfo.Output -ne $targetUpstream) {
+                    throw "Configured upstream '$($upstreamInfo.Output)' does not match '$targetUpstream'."
+                }
+            }
+
+            $remoteRef = "refs/remotes/$RemoteName/$branch"
+            $remoteCommitInfo = Invoke-GitOptional -ArgumentList @('rev-parse', '--verify', '--quiet', $remoteRef)
+            $hasRemoteBranch = $remoteCommitInfo.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($remoteCommitInfo.Output)
+
+            if (-not $hasRemoteBranch) {
+                $headInfo = Invoke-GitOptional -ArgumentList @('rev-parse', '--verify', '--quiet', 'HEAD')
+                if ($headInfo.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($headInfo.Output)) {
+                    throw "Branch '$branch' has no local commit to push."
+                }
+
+                $outgoingPaths = @(Get-OutgoingPaths -RemoteRef $targetUpstream -HasRemoteBranch $false)
+                $findings = @(foreach ($outgoingPath in $outgoingPaths) {
+                    Get-PrivacyFinding -Path $outgoingPath
+                })
+                if ($findings.Count -gt 0) {
+                    $result.Privacy = "REFUSED: $($findings.Count) offending path(s)"
+                    $result.Outcome = 'Push refused by privacy preflight.'
+                    foreach ($finding in $findings) {
+                        Write-Host "  Offending path: $($finding.Path) [$($finding.Reason)]"
+                    }
+                }
+                elseif ($DryRun) {
+                    $result.WouldPush = $true
+                    $result.Privacy = "PASS: inspected $($outgoingPaths.Count) outgoing path(s)"
+                    $result.Outcome = "Would push with --set-upstream to $targetUpstream."
+                }
+                else {
+                    $null = Invoke-GitChecked -ArgumentList @('push', '--set-upstream', $RemoteName, $branch)
+                    $result.WouldPush = $true
+                    $result.Privacy = "PASS: inspected $($outgoingPaths.Count) outgoing path(s)"
+                    $result.Outcome = "Pushed with --set-upstream to $targetUpstream."
+                }
+            }
+            else {
+                $aheadCount = [int](([string](Invoke-GitChecked -ArgumentList @('rev-list', '--count', "$targetUpstream..HEAD"))).Trim())
+                $behindCount = [int](([string](Invoke-GitChecked -ArgumentList @('rev-list', '--count', "HEAD..$targetUpstream"))).Trim())
+
+                if ($aheadCount -eq 0 -and $behindCount -eq 0) {
+                    $result.Privacy = 'not required: no outgoing commits'
+                    $result.Outcome = 'Nothing to push.'
+                }
+                elseif ($aheadCount -gt 0 -and $behindCount -gt 0) {
+                    $result.Privacy = 'not run: no push attempted'
+                    $result.Outcome = "STOP: branches diverged ($aheadCount ahead, $behindCount behind)."
+                }
+                elseif ($behindCount -gt 0) {
+                    $result.Privacy = 'not run: no push attempted'
+                    $result.Outcome = "STOP: local branch is behind by $behindCount commit(s)."
+                }
+                else {
+                    $outgoingPaths = @(Get-OutgoingPaths -RemoteRef $targetUpstream -HasRemoteBranch $true)
+                    $findings = @(foreach ($outgoingPath in $outgoingPaths) {
+                        Get-PrivacyFinding -Path $outgoingPath
+                    })
+                    if ($findings.Count -gt 0) {
+                        $result.Privacy = "REFUSED: $($findings.Count) offending path(s)"
+                        $result.Outcome = 'Push refused by privacy preflight.'
+                        foreach ($finding in $findings) {
+                            Write-Host "  Offending path: $($finding.Path) [$($finding.Reason)]"
+                        }
+                    }
+                    elseif ($DryRun) {
+                        $result.WouldPush = $true
+                        $result.Privacy = "PASS: inspected $($outgoingPaths.Count) outgoing path(s)"
+                        if ($result.Upstream -eq $targetUpstream) {
+                            $result.Outcome = "Would push $aheadCount existing commit(s) to $targetUpstream."
+                        }
+                        else {
+                            $result.Outcome = "Would push $aheadCount existing commit(s) with --set-upstream to $targetUpstream."
+                        }
+                    }
+                    else {
+                        if ($result.Upstream -eq $targetUpstream) {
+                            $null = Invoke-GitChecked -ArgumentList @('push', $RemoteName, $branch)
+                            $result.Outcome = "Pushed $aheadCount existing commit(s) to $targetUpstream."
+                        }
+                        else {
+                            $null = Invoke-GitChecked -ArgumentList @('push', '--set-upstream', $RemoteName, $branch)
+                            $result.Outcome = "Pushed $aheadCount existing commit(s) with --set-upstream to $targetUpstream."
+                        }
+                        $result.WouldPush = $true
+                        $result.Privacy = "PASS: inspected $($outgoingPaths.Count) outgoing path(s)"
+                    }
+                }
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+    catch {
+        $result.WouldPush = $false
+        if ($result.Privacy -eq 'not run') {
+            $result.Privacy = 'ERROR: preflight incomplete'
+        }
+        $result.Outcome = "STOP: $($_.Exception.Message)"
+    }
+
+    Write-Host "$Name repository -> branch: $($result.Branch); remote: $($result.Remote) ($($result.RemoteUrl)); would-push: $($result.WouldPush)"
+    Write-Host "  privacy/preflight: $($result.Privacy)"
+    Write-Host "  result: $($result.Outcome)"
+    Write-Host ''
+
+    return [pscustomobject]$result
+}
+
+$repositorySpecs = @(
+    [pscustomobject]@{
+        Name   = 'Ariadne'
+        Path   = $RepoPath
+        Remote = $Remote
+    }
+    [pscustomobject]@{
+        Name   = 'KnowledgeVault'
+        Path   = 'D:\Downloads\KnowledgeVault'
+        Remote = $KnowledgeVaultRemote
+    }
+)
+
+$results = foreach ($repository in $repositorySpecs) {
+    Invoke-RepositorySync -Name $repository.Name -Path $repository.Path -RemoteName $repository.Remote
+}
+
+Write-Host 'Synchronization summary:'
+foreach ($result in $results) {
+    Write-Host "$($result.Name) repository -> branch: $($result.Branch); remote: $($result.Remote) ($($result.RemoteUrl)); would-push: $($result.WouldPush)"
+    Write-Host "  privacy/preflight: $($result.Privacy)"
+    Write-Host "  result: $($result.Outcome)"
 }

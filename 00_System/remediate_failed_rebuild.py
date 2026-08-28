@@ -119,7 +119,10 @@ def main() -> int:
         if not selected:
             atomic_json(output / "remediation-receipt.json", {"selection_key": selection_key, "backup": backup_rows, "archived": archive_rows, "retried": []})
             return 0
-        original_manifest = json.loads((root / "00_System/Data/rebuild-v1/bulk/source-manifest.json").read_text(encoding="utf-8"))
+        audit_run_dir = audit.get("run_dir")
+        current_manifest_path = root / str(audit_run_dir) / "source-manifest.json" if audit_run_dir else None
+        manifest_path = current_manifest_path if current_manifest_path and current_manifest_path.is_file() else root / "00_System/Data/rebuild-v1/bulk/source-manifest.json"
+        original_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         originals = {record["stable_source_id"]: record for record in original_manifest["records"]}
         records = [{**originals[row["stable_source_id"]], "relative_path": row["vault_relative_path"], "workflow_state": "failed"} for row in selected]
         manifest = {"schema_version": 1, "source_folders": ["Failed"], "records": records, "validation": validate_records(records)}
@@ -147,7 +150,8 @@ def main() -> int:
             print(f"  {outcome['status']}: {outcome['reason'] or 'schema and semantic validation passed'}", flush=True)
         if len(state["completed"]) != len(records):
             raise RuntimeError("Remediation did not reach terminal checkpoints for every selected source.")
-        subprocess.run([sys.executable, str(root / "00_System/integrate_rebuild.py"), "--vault", str(root), "--run-dir", str(output), "--merge-existing"], cwd=root, check=True)
+        integration_script = Path(__file__).resolve().parent / "integrate_rebuild.py"
+        subprocess.run([sys.executable, str(integration_script), "--vault", str(root), "--run-dir", str(output), "--merge-existing"], cwd=root, check=True)
         index_report = build_index(root, list(chunk_records()), rebuild=False)
         atomic_json(output / "embedding-update.json", index_report)
         outcomes = [item["outcome"] for item in state["completed"].values()]

@@ -13,7 +13,8 @@ param(
     [switch]$NoBrowser
 )
 
-$Vault = Split-Path $PSScriptRoot -Parent
+$Vault = if ($env:ARIADNE_VAULT_ROOT) { (Resolve-Path -LiteralPath $env:ARIADNE_VAULT_ROOT).Path } else { Split-Path $PSScriptRoot -Parent }
+$env:ARIADNE_VAULT_ROOT = $Vault
 $MenuPath = Join-Path $PSScriptRoot 'Ariadne-Control.html'
 $QueryPagePath = Join-Path $PSScriptRoot 'Ariadne-Query.html'
 $McpPath = Join-Path $PSScriptRoot 'ariadne_mcp.py'

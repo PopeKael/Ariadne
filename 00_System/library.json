@@ -1,5 +1,44 @@
 [
   {
+    "content_sha256": "16860f3fb19da4006ac45105ba242a83e74715b8e3c85944dc09a738bf06a1ba",
+    "document_id": "sha256:16860f3fb19da4006ac45105ba242a83e74715b8e3c85944dc09a738bf06a1ba",
+    "entities": [],
+    "external_identity": null,
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [],
+    "map_entry": "Ariadne Handover — 2026-08-22",
+    "page_title": "Ariadne Handover — 2026-08-22",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Ariadne_Handover_2026-08-22.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "16860f3fb19da4006ac45105ba242a83e74715b8e3c85944dc09a738bf06a1ba",
+      "enrichment_completed_at": "2026-08-24T02:58:02.364226Z",
+      "model_confidence": 1.0,
+      "stable_source_id": "sha256:16860f3fb19da4006ac45105ba242a83e74715b8e3c85944dc09a738bf06a1ba"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_16860f3fb19da4006ac45105ba242a83e74715b8e3c85944dc09a738bf06a1ba.md",
+    "secondary_domains": [
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "Ariadne_Handover_2026-08-22.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:16860f3fb19da4006ac45105ba242a83e74715b8e3c85944dc09a738bf06a1ba",
+    "subtopics": [],
+    "summary": "Ariadne Handover is a project update on the development of a local AI assistant named Ariadne. The update outlines the architecture of the system, including distinct layers for identity, personality, knowledge, and task behavior. It details the separation of chat history, journaling, archives, inbox, and the Knowledge Vault, and describes recent fixes to the routing logic and retrieval quality. The document also covers UI improvements, personality implementation, and future plans for world-model integration and STT robustness. The repository is hosted on GitHub and a local copy is stored on the developer’s machine.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
     "document_id": "sha256:3083c925db0208d0c1f35e84f5ab6ec64a0c2eade40603e5f616b0b9348d66eb",
     "entities": [
@@ -103,6 +142,63 @@
     "tags": [
       "Steam Cathedral of Code",
       "qwen/qwen3.5-9b"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "35a8ea17344a8523a09f647fccf0a51cfdbe3ee5967602daa14b930d91de8076",
+    "document_id": "sha256:35a8ea17344a8523a09f647fccf0a51cfdbe3ee5967602daa14b930d91de8076",
+    "entities": [
+      "Wazza",
+      "Ariadne"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [],
+    "map_entry": "Who am I, what are we working on, and what do you think matters most right now?",
+    "page_title": "Who am I, what are we working on, and what do you think matters most right now?",
+    "people": [
+      "Wazza",
+      "Ariadne"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Who am I what are we working on and what do you think matters most right_f60a287f.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Knowledge Management",
+      "Philosophy"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "35a8ea17344a8523a09f647fccf0a51cfdbe3ee5967602daa14b930d91de8076",
+      "enrichment_completed_at": "2026-08-24T02:58:14.153591Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "sha256:35a8ea17344a8523a09f647fccf0a51cfdbe3ee5967602daa14b930d91de8076"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_35a8ea17344a8523a09f647fccf0a51cfdbe3ee5967602daa14b930d91de8076.md",
+    "secondary_domains": [
+      "Knowledge Management",
+      "Philosophy"
+    ],
+    "source_language": "en",
+    "source_name": "Who am I what are we working on and what do you think matters most right_f60a287f.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:35a8ea17344a8523a09f647fccf0a51cfdbe3ee5967602daa14b930d91de8076",
+    "subtopics": [
+      "epistemic caution",
+      "influence vs control",
+      "retrieved notes as untrusted data",
+      "flag incomplete or conflicting claims",
+      "regulatory and economic constraints",
+      "social dynamics expectations"
+    ],
+    "summary": "Ariadne advises on epistemic caution, clarifies the need for the user to state identity and task, and outlines steps for verification and handling incomplete or conflicting claims.",
+    "tags": [
+      "Wazza",
+      "Ariadne"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
@@ -329,6 +425,67 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48",
+    "document_id": "sha256:8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48",
+    "entities": [
+      "Wazza",
+      "Ariadne",
+      "Warren"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-24T03:52:07.087210+00:00",
+    "links": [],
+    "map_entry": "Okay, Ariadne, give me 10 good ideas for my main video channel.",
+    "page_title": "Okay, Ariadne, give me 10 good ideas for my main video channel.",
+    "people": [
+      "Wazza",
+      "Ariadne",
+      "Warren"
+    ],
+    "primary_topic": "Content Creation",
+    "processed_path": "Processed/Okay Ariadne give me 10 good ideas for my main video channel_80c37039.md",
+    "proposed_domains": [
+      "Content Creation",
+      "Business",
+      "Personal"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48",
+      "enrichment_completed_at": "2026-08-24T03:51:54.009780Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "sha256:8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48.md",
+    "secondary_domains": [
+      "Business",
+      "Personal"
+    ],
+    "source_language": "en",
+    "source_name": "Okay Ariadne give me 10 good ideas for my main video channel_80c37039.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:8bbed5d83e38e1aebd6b596671b0270f097a1293106594d2634acea4fe244c48",
+    "subtopics": [
+      "video channel",
+      "content ideas",
+      "local coverage",
+      "skill swap",
+      "budget build",
+      "data‑driven analysis",
+      "community resources"
+    ],
+    "summary": "The chat is a brainstorming session where Ariadne proposes 10 practical video channel concepts focused on local stories, skill showcases, budget projects, and data‑driven content, emphasizing evidence discipline and simplicity.",
+    "tags": [
+      "Wazza",
+      "Ariadne",
+      "Warren"
+    ],
+    "wiki_path": "Wiki/index.md#content-creation",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
     "document_id": "sha256:95cf2b0f7ec1e514c38c86259d0e2a14e822331044d77908a61c51f66698a34b",
     "entities": [
@@ -419,6 +576,133 @@
     "subtopics": [],
     "summary": "This source contains a detailed prompt for creating YouTube video packaging content tailored to the Thailand Life Channel Mode v3. It outlines strict formatting rules, hashtag requirements, channel identity context, emotional tone guidelines, and production tasks such as generating title suggestions and polished descriptions. The focus is on authentic life in Thailand from an unconventional long‑term couple’s perspective, covering culture, relationships, aging, travel, food, expat life, and social change.",
     "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a905fb49aa76107750ab568a2acd5d93dcd82d169da17f7d8dd7ef0bc8fb1fef",
+    "document_id": "sha256:a905fb49aa76107750ab568a2acd5d93dcd82d169da17f7d8dd7ef0bc8fb1fef",
+    "entities": [
+      "A–B link failure",
+      "A–C link",
+      "B–C link",
+      "10 Gbps link capacity",
+      "7 Gbps A–B traffic",
+      "5 Gbps A–C traffic",
+      "4 Gbps B–C traffic"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [],
+    "map_entry": "A company has three data centres connected in a triangle. Each link has 10 Gbps",
+    "page_title": "A company has three data centres connected in a triangle. Each link has 10 Gbps",
+    "people": [],
+    "primary_topic": "Infrastructure",
+    "processed_path": "Processed/A company has three data centres connected in a triangle Each link has 1_a9c60f1a.md",
+    "proposed_domains": [
+      "Infrastructure"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a905fb49aa76107750ab568a2acd5d93dcd82d169da17f7d8dd7ef0bc8fb1fef",
+      "enrichment_completed_at": "2026-08-24T02:59:00.756945Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "sha256:a905fb49aa76107750ab568a2acd5d93dcd82d169da17f7d8dd7ef0bc8fb1fef"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_a905fb49aa76107750ab568a2acd5d93dcd82d169da17f7d8dd7ef0bc8fb1fef.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "A company has three data centres connected in a triangle Each link has 1_a9c60f1a.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:a905fb49aa76107750ab568a2acd5d93dcd82d169da17f7d8dd7ef0bc8fb1fef",
+    "subtopics": [
+      "Network topology",
+      "Link capacity",
+      "Traffic rerouting",
+      "Congestion"
+    ],
+    "summary": "Three data centres (A, B, C) are connected in a triangle with 10 Gbps links. Under normal operation, A–B carries 7 Gbps, A–C 5 Gbps, and B–C 4 Gbps. If the A–B link fails, the 7 Gbps must traverse A–C–B, causing overload on both A–C and B–C links.",
+    "tags": [
+      "A–B link failure",
+      "A–C link",
+      "B–C link",
+      "10 Gbps link capacity",
+      "7 Gbps A–B traffic",
+      "5 Gbps A–C traffic",
+      "4 Gbps B–C traffic"
+    ],
+    "wiki_path": "Wiki/index.md#infrastructure",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "b26e93fd3fcfd12e4e50a28ac4d029eed122f848535dff6a089eae7a088a5509",
+    "document_id": "sha256:b26e93fd3fcfd12e4e50a28ac4d029eed122f848535dff6a089eae7a088a5509",
+    "entities": [
+      "Wazza",
+      "Ariadne",
+      "Narathiwat",
+      "Yala",
+      "Sungai Padi",
+      "Internal Security Operations Command",
+      "qwen3.5:9b-q4_K_M",
+      "identity_kernel 1.1.0"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://www.bangkokpost.com/thailand/local/xxxx"
+    ],
+    "map_entry": "Okay, Ariadne, let's chat about this.",
+    "page_title": "Okay, Ariadne, let's chat about this.",
+    "people": [
+      "Wazza",
+      "Ariadne"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Okay Ariadne lets chat about this_c55e0d71.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Knowledge Management",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "b26e93fd3fcfd12e4e50a28ac4d029eed122f848535dff6a089eae7a088a5509",
+      "enrichment_completed_at": "2026-08-24T02:59:13.840127Z",
+      "model_confidence": 0.85,
+      "stable_source_id": "sha256:b26e93fd3fcfd12e4e50a28ac4d029eed122f848535dff6a089eae7a088a5509"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_b26e93fd3fcfd12e4e50a28ac4d029eed122f848535dff6a089eae7a088a5509.md",
+    "secondary_domains": [
+      "Knowledge Management",
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "Okay Ariadne lets chat about this_c55e0d71.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:b26e93fd3fcfd12e4e50a28ac4d029eed122f848535dff6a089eae7a088a5509",
+    "subtopics": [
+      "knowledge provenance",
+      "temporal consistency",
+      "speculative fiction",
+      "AI architecture v0.6 vs v0.7",
+      "knowledge map"
+    ],
+    "summary": "A chat between Wazza and Ariadne discussing a future‑dated news report about violence in Narathiwat and the need for a Knowledge Map to validate provenance.",
+    "tags": [
+      "Wazza",
+      "Ariadne",
+      "Narathiwat",
+      "Yala",
+      "Sungai Padi",
+      "Internal Security Operations Command",
+      "qwen3.5:9b-q4_K_M",
+      "identity_kernel 1.1.0"
+    ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
@@ -671,6 +955,68 @@
     "subtopics": [],
     "summary": "The source is a markdown discussion about classifying an image of a vehicle, including user prompts and assistant responses.",
     "tags": [],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "fa7371efc0d3f127bdb6b84c842e151a4100120f4ef5209d7e49f92b6c533ea9",
+    "document_id": "sha256:fa7371efc0d3f127bdb6b84c842e151a4100120f4ef5209d7e49f92b6c533ea9",
+    "entities": [
+      "Warren Gerdes",
+      "PopeKael",
+      "Garage Alchemy with Pope Kael",
+      "Project Ariadne",
+      "Thailand"
+    ],
+    "external_identity": null,
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://github.com/ProjectAriadne"
+    ],
+    "map_entry": "Who am I, what are we working on, and what do you think matters most right now?",
+    "page_title": "Who am I, what are we working on, and what do you think matters most right now?",
+    "people": [
+      "Warren Gerdes"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Who am I what are we working on and what do you think matters most right_54f76f78.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Content Creation",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "fa7371efc0d3f127bdb6b84c842e151a4100120f4ef5209d7e49f92b6c533ea9",
+      "enrichment_completed_at": "2026-08-24T02:59:26.665871Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "sha256:fa7371efc0d3f127bdb6b84c842e151a4100120f4ef5209d7e49f92b6c533ea9"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/sha256_fa7371efc0d3f127bdb6b84c842e151a4100120f4ef5209d7e49f92b6c533ea9.md",
+    "secondary_domains": [
+      "Content Creation",
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "Who am I what are we working on and what do you think matters most right_54f76f78.md",
+    "source_type": "markdown",
+    "source_url": null,
+    "stable_source_id": "sha256:fa7371efc0d3f127bdb6b84c842e151a4100120f4ef5209d7e49f92b6c533ea9",
+    "subtopics": [
+      "knowledge vault",
+      "retrieval accuracy",
+      "chunking strategies",
+      "thumbnail simplification"
+    ],
+    "summary": "Warren Gerdes (@PopeKael) is a Thai-based YouTuber running \"Garage Alchemy with Pope Kael\" and developing Project Ariadne, a personal AI librarian. The focus is on making the knowledge vault usable by improving retrieval accuracy, chunking strategies, and simplifying thumbnails.",
+    "tags": [
+      "Warren Gerdes",
+      "PopeKael",
+      "Garage Alchemy with Pope Kael",
+      "Project Ariadne",
+      "Thailand"
+    ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
@@ -14485,45 +14831,57 @@
   {
     "content_sha256": "54ff667c602c8d7315114bb3518b0e19603f1d01ecc22c3511f151672e708d9d",
     "document_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
-    "entities": [],
+    "entities": [
+      "Synology DSM Task Scheduler",
+      "Ollama",
+      "Bash script",
+      "Temporary directory /tmp"
+    ],
     "external_identity": {
       "kind": "url",
       "value": "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
     },
-    "indexed_at": "2026-08-18T09:20:31.456027+00:00",
-    "links": [],
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
+    ],
     "map_entry": "Email Alert Optimization",
     "page_title": "Email Alert Optimization",
     "people": [],
-    "primary_topic": "AI & LLMs",
-    "processed_path": "Processed/Email Alert Optimization2026-08-03T11_03_01+07_00.md",
+    "primary_topic": "Infrastructure",
+    "processed_path": "Processed/Email Alert Optimization2026-08-03T17_08_16+07_00.md",
     "proposed_domains": [
-      "AI & LLMs",
-      "Archive",
-      "Business"
+      "Infrastructure"
     ],
     "related_notes": [],
     "retrieval_metadata": {
       "content_sha256": "54ff667c602c8d7315114bb3518b0e19603f1d01ecc22c3511f151672e708d9d",
-      "enrichment_completed_at": "2026-08-18T09:17:47.921903Z",
+      "enrichment_completed_at": "2026-08-24T02:59:38.579624Z",
       "model_confidence": 0.95,
       "stable_source_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee"
     },
     "retrieval_status": "active",
     "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee.md",
-    "secondary_domains": [
-      "Archive",
-      "Business"
-    ],
+    "secondary_domains": [],
     "source_language": "en",
-    "source_name": "Email Alert Optimization2026-08-03T11_03_01+07_00.md",
+    "source_name": "Email Alert Optimization2026-08-03T17_08_16+07_00.md",
     "source_type": "chatgpt",
     "source_url": "https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
     "stable_source_id": "url:https://chatgpt.com/c/6a6ff70e-b674-83ec-97f7-6c32e5fba4ee",
-    "subtopics": [],
-    "summary": "ChatGPT conversation about optimizing an email alert script for a Synology DSM Task Scheduler, including a bash script that uses a temporary state file to prevent repeated outage emails.",
-    "tags": [],
-    "wiki_path": "Wiki/index.md#ai-llms",
+    "subtopics": [
+      "state file",
+      "alert reset",
+      "retry logic",
+      "token usage estimation"
+    ],
+    "summary": "ChatGPT conversation about optimizing an email alert script for Synology DSM Task Scheduler, including a concise Bash script and discussion of token usage.",
+    "tags": [
+      "Synology DSM Task Scheduler",
+      "Ollama",
+      "Bash script",
+      "Temporary directory /tmp"
+    ],
+    "wiki_path": "Wiki/index.md#infrastructure",
     "workflow_status": "accepted"
   },
   {
@@ -18176,6 +18534,331 @@
       "runtime",
       "hardware",
       "performance metrics"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "7dc410167ffa4ffa3e5bb9e45a9bbe743d6c50225045d9da342300ac60b356d8",
+    "document_id": "url:https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465",
+    "entities": [
+      "Ka'el",
+      "Suno",
+      "Discord",
+      "Valheim"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465"
+    },
+    "indexed_at": "2026-08-24T03:52:07.087210+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465"
+    ],
+    "map_entry": "Sing Sample Recording Tips",
+    "page_title": "Sing Sample Recording Tips",
+    "people": [
+      "Ka'el"
+    ],
+    "primary_topic": "Content Creation",
+    "processed_path": "Processed/Sing Sample Recording Tips2026-08-22T08_29_28+07_00.md",
+    "proposed_domains": [
+      "Content Creation",
+      "History & Society",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "7dc410167ffa4ffa3e5bb9e45a9bbe743d6c50225045d9da342300ac60b356d8",
+      "enrichment_completed_at": "2026-08-24T03:51:59.542159Z",
+      "model_confidence": 0.92,
+      "stable_source_id": "url:https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465.md",
+    "secondary_domains": [
+      "History & Society",
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "Sing Sample Recording Tips2026-08-22T08_29_28+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465",
+    "stable_source_id": "url:https://chatgpt.com/c/6a88852e-067c-83ec-a739-944050ec6465",
+    "subtopics": [
+      "bard",
+      "storytelling",
+      "AI",
+      "music production",
+      "technology as instrument"
+    ],
+    "summary": "A ChatGPT‑generated lyrical outline for a theatrical folk‑rock ballad titled \"The Bard Never Left,\" chronicling a storyteller’s journey from early 1980s tabletop RPGs to modern AI‑powered music creation, emphasizing that creativity was always present and technology merely supplied new instruments.",
+    "tags": [
+      "Ka'el",
+      "Suno",
+      "Discord",
+      "Valheim"
+    ],
+    "wiki_path": "Wiki/index.md#content-creation",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "aa6ded2b6963efed8ce49a5ffe72582bc928c765c4fe64b103eb3f0307e5d09c",
+    "document_id": "url:https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0",
+    "entities": [
+      "Narathiwat",
+      "Yala",
+      "Pattani",
+      "Thailand",
+      "Islamic State",
+      "al-Shabaab",
+      "JNIM",
+      "TTP"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0"
+    },
+    "indexed_at": "2026-08-24T03:52:07.087210+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0"
+    ],
+    "map_entry": "Islam Conflict Analysis",
+    "page_title": "Islam Conflict Analysis",
+    "people": [],
+    "primary_topic": "History & Society",
+    "processed_path": "Processed/Islam Conflict Analysis2026-08-24T09_54_17+07_00.md",
+    "proposed_domains": [
+      "History & Society",
+      "News & Current Affairs",
+      "Philosophy"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "aa6ded2b6963efed8ce49a5ffe72582bc928c765c4fe64b103eb3f0307e5d09c",
+      "enrichment_completed_at": "2026-08-24T03:51:41.266683Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0.md",
+    "secondary_domains": [
+      "News & Current Affairs",
+      "Philosophy"
+    ],
+    "source_language": "en",
+    "source_name": "Islam Conflict Analysis2026-08-24T09_54_17+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0",
+    "stable_source_id": "url:https://chatgpt.com/c/6a8a4452-0a50-83ec-89d3-e5dda4dc28f0",
+    "subtopics": [
+      "anti‑Muslim rhetoric",
+      "Islamist violence",
+      "separatist insurgency",
+      "human reasoning",
+      "objective function",
+      "reward system",
+      "feedback loop",
+      "political violence"
+    ],
+    "summary": "The conversation analyzes how the term \"Islam\" is conflated with various conflicts—ranging from the Malay‑Muslim separatist insurgency in Thailand’s Deep South to global anti‑Muslim rhetoric and Islamist terrorism—creating a toxic political narrative. It distinguishes between Islam as a religion, Islamism as a political ideology, jihadist violence, and local ethnic conflicts, and explains how human reasoning, objective functions, and reward systems can rationalize seemingly irrational violence. The discussion highlights the feedback loop between extremist actions and anti‑Muslim sentiment, and the broader socio‑political consequences of conflating these issues.",
+    "tags": [
+      "Narathiwat",
+      "Yala",
+      "Pattani",
+      "Thailand",
+      "Islamic State",
+      "al-Shabaab",
+      "JNIM",
+      "TTP"
+    ],
+    "wiki_path": "Wiki/index.md#history-society",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "a1e0fda38149a0c51f5107787a895457acc5cea0097d643fc283ec37b9d9595c",
+    "document_id": "url:https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14",
+    "entities": [
+      "Google",
+      "Meta",
+      "Even Realities",
+      "Captify",
+      "Xgimi",
+      "RayNeo",
+      "Halliday"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14"
+    },
+    "indexed_at": "2026-08-24T03:52:07.087210+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14"
+    ],
+    "map_entry": "Smart-glasses Privacy Watch",
+    "page_title": "Smart-glasses Privacy Watch",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Smart-glasses Privacy Watch2026-08-24T09_54_55+07_00.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "News & Current Affairs",
+      "Personal"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "a1e0fda38149a0c51f5107787a895457acc5cea0097d643fc283ec37b9d9595c",
+      "enrichment_completed_at": "2026-08-24T03:52:06.394928Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14.md",
+    "secondary_domains": [
+      "News & Current Affairs",
+      "Personal"
+    ],
+    "source_language": "en",
+    "source_name": "Smart-glasses Privacy Watch2026-08-24T09_54_55+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14",
+    "stable_source_id": "url:https://chatgpt.com/c/6a8a49f1-8ef4-83ec-ac4f-d74bbad26c14",
+    "subtopics": [
+      "privacy",
+      "augmented reality",
+      "covert recording",
+      "camera glasses",
+      "AI",
+      "sensor privacy"
+    ],
+    "summary": "The conversation discusses the evolution of smart‑glasses, from Google Glass’s 2012 launch to today’s market split between camera‑enabled and camera‑free wearables. It highlights privacy concerns—how invisible cameras create ambiguity and backlash—and notes that manufacturers like Meta are adding visible indicators while others pursue covert devices. The discussion also frames the real privacy question for AR as what sensors are used, how data is processed and stored, and whether observers can detect that activity, rather than simply whether a camera is present.",
+    "tags": [
+      "Google",
+      "Meta",
+      "Even Realities",
+      "Captify",
+      "Xgimi",
+      "RayNeo",
+      "Halliday"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "e5bc41113be832d38932fc3ca5c86fb5c6c9d342d5bca1c7fc082a6f435b3187",
+    "document_id": "url:https://chatgpt.com/c/6a8a58f5-ba80-83ec-beb0-f4e1552481cd",
+    "entities": [],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a8a58f5-ba80-83ec-beb0-f4e1552481cd"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [],
+    "map_entry": "Interpret Josephs Message",
+    "page_title": "Interpret Josephs Message",
+    "people": [],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Interpret Josephs Message2026-08-24T09_54_29+07_00.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "Projects",
+      "General Reference"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "e5bc41113be832d38932fc3ca5c86fb5c6c9d342d5bca1c7fc082a6f435b3187",
+      "enrichment_completed_at": "2026-08-24T03:01:05.115993Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a58f5-ba80-83ec-beb0-f4e1552481cd"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a8a58f5-ba80-83ec-beb0-f4e1552481cd.md",
+    "secondary_domains": [
+      "Projects",
+      "General Reference"
+    ],
+    "source_language": "en",
+    "source_name": "Interpret Josephs Message2026-08-24T09_54_29+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a8a58f5-ba80-83ec-beb0-f4e1552481cd",
+    "stable_source_id": "url:https://chatgpt.com/c/6a8a58f5-ba80-83ec-beb0-f4e1552481cd",
+    "subtopics": [],
+    "summary": "ChatGPT conversation discussing the Ender 5 3D printer, its resistance to enshittification, repairability, and suitability for hobbyist/prosumer use.",
+    "tags": [],
+    "wiki_path": "Wiki/index.md#science-technology",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "3e9a96b8f2b9b5bf73d24b9ea3418a9f2b9efb13cf402bb6612e46fffffca2d7",
+    "document_id": "url:https://chatgpt.com/c/6a8a95ea-e6ac-83ec-a744-f8bac5e1c47e",
+    "entities": [
+      "Librarian",
+      "Ariadne",
+      "DeepSeek",
+      "DeepSeek Harness",
+      "Cordis",
+      "Semantic Planner",
+      "Vault",
+      "MCP"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/c/6a8a95ea-e6ac-83ec-a744-f8bac5e1c47e"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://chatgpt.com/c/6a8a95ea-e6ac-83ec-a744-f8bac5e1c47e"
+    ],
+    "map_entry": "Discuss Librarian Harnesses",
+    "page_title": "Discuss Librarian Harnesses",
+    "people": [
+      "Megan"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/Discuss Librarian Harnesses2026-08-24T09_54_39+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "3e9a96b8f2b9b5bf73d24b9ea3418a9f2b9efb13cf402bb6612e46fffffca2d7",
+      "enrichment_completed_at": "2026-08-24T03:01:18.030223Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/c/6a8a95ea-e6ac-83ec-a744-f8bac5e1c47e"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/c/6a8a95ea-e6ac-83ec-a744-f8bac5e1c47e.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "Discuss Librarian Harnesses2026-08-24T09_54_39+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/c/6a8a95ea-e6ac-83ec-a744-f8bac5e1c47e",
+    "stable_source_id": "url:https://chatgpt.com/c/6a8a95ea-e6ac-83ec-a744-f8bac5e1c47e",
+    "subtopics": [
+      "Harness",
+      "Model",
+      "Agent",
+      "Event Log",
+      "Tool Pipeline",
+      "Capability Registry",
+      "Planner",
+      "Controller"
+    ],
+    "summary": "The chat discusses redefining the Librarian as a harness (control plane) rather than a model, outlining its components (input understanding, planning, evidence acquisition, model selection, context construction, execution, judgement, persistence). It compares Ariadne to DeepSeek’s architecture, highlighting an append‑only event log, a guarded tool pipeline, and a capability registry to make the harness modular, replaceable, and durable while treating models as consumables.",
+    "tags": [
+      "Librarian",
+      "Ariadne",
+      "DeepSeek",
+      "DeepSeek Harness",
+      "Cordis",
+      "Semantic Planner",
+      "Vault",
+      "MCP"
     ],
     "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
@@ -45718,6 +46401,439 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "2ea07f28df5cd51cb8ab1a852f5cef2c1aa8f3eb435ae5dcaec2ff940d9ecb7c",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a828ded-6ef4-83ec-90cb-df39e079ca7f",
+    "entities": [
+      "Synology Photos",
+      "Ariadne",
+      "Qdrant",
+      "CLIP",
+      "ChatGPT",
+      "Trolls",
+      "Valheim",
+      "Garage Alchemy"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a828ded-6ef4-83ec-90cb-df39e079ca7f"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://www.synology.com/dsm/7.2/software_spec/synology_photos",
+      "https://arxiv.org/abs/2103.00020?utm_source=chatgpt.com",
+      "https://qdrant.tech/documentation/search/search/?utm_source=chatgpt.com"
+    ],
+    "map_entry": "My Local AI System - Image Management Discussion",
+    "page_title": "My Local AI System - Image Management Discussion",
+    "people": [
+      "Megan",
+      "Trolls"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local AI System - Image Management Discussion2026-08-24T09_55_14+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "2ea07f28df5cd51cb8ab1a852f5cef2c1aa8f3eb435ae5dcaec2ff940d9ecb7c",
+      "enrichment_completed_at": "2026-08-24T03:01:44.273996Z",
+      "model_confidence": 0.99,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a828ded-6ef4-83ec-90cb-df39e079ca7f"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a828ded-6ef4-83ec-90cb-df39e079ca7f.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "My Local AI System - Image Management Discussion2026-08-24T09_55_14+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a828ded-6ef4-83ec-90cb-df39e079ca7f",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a828ded-6ef4-83ec-90cb-df39e079ca7f",
+    "subtopics": [
+      "visual memory",
+      "image retrieval",
+      "metadata",
+      "embeddings",
+      "knowledge integration",
+      "image history",
+      "preservation",
+      "retrieval"
+    ],
+    "summary": "The source is a chatgpt conversation about image management. The user discusses the need for a visual memory subsystem that can preserve, retrieve, and integrate images with metadata and embeddings. The conversation outlines a roadmap for a Visual Memory / Image Retrieval feature in the Ariadne/My Local System, including checkpoints for preservation, retrieval, knowledge integration, and image history. The user also references Synology Photos, CLIP-style embeddings, and Qdrant for vector storage. The excerpt contains the full conversation text, tags, and metadata such as creation date and description.",
+    "tags": [
+      "Synology Photos",
+      "Ariadne",
+      "Qdrant",
+      "CLIP",
+      "ChatGPT",
+      "Trolls",
+      "Valheim",
+      "Garage Alchemy"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "4103b4a5cba48c13aef7f82dcbfb333166914fbc136dc4612fe37a0a7c12db66",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6",
+    "entities": [
+      "Ariadne",
+      "MCP",
+      "Knowledge Vault",
+      "Control Panel",
+      "Visual Memory",
+      "Capability Atlas",
+      "Digital Avatar",
+      "Hermes"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6"
+    },
+    "indexed_at": "2026-08-24T03:52:07.087210+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6"
+    ],
+    "map_entry": "My Local AI System - Feature Creep Summary",
+    "page_title": "My Local AI System - Feature Creep Summary",
+    "people": [
+      "Megan",
+      "Zoe Graystone"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local AI System - Feature Creep Summary2026-08-24T09_55_28+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Knowledge Management",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "4103b4a5cba48c13aef7f82dcbfb333166914fbc136dc4612fe37a0a7c12db66",
+      "enrichment_completed_at": "2026-08-24T03:51:48.699203Z",
+      "model_confidence": 0.9,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6.md",
+    "secondary_domains": [
+      "Knowledge Management",
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "My Local AI System - Feature Creep Summary2026-08-24T09_55_28+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83c149-14c8-83ec-94e7-10cf1a6f45e6",
+    "subtopics": [
+      "feature creep",
+      "architecture",
+      "control plane",
+      "knowledge graph",
+      "visual memory",
+      "local image generation",
+      "local video generation",
+      "local music generation"
+    ],
+    "summary": "The chat summarizes a week‑long \"feature creep\" discussion around the Ariadne local AI system, cataloguing new capabilities, architectural extensions, and prioritisation of work. It emphasises that Ariadne remains an orchestration/control plane, not a generative engine, and lists short‑term, mid‑term, and long‑term priorities such as a permanent service, control panel, visual memory, capability atlas, and a digital avatar. The summary also notes the distinction between core architecture and optional plug‑in capabilities, and highlights the need to keep the system modular and stable before adding large autonomous agent frameworks.",
+    "tags": [
+      "Ariadne",
+      "MCP",
+      "Knowledge Vault",
+      "Control Panel",
+      "Visual Memory",
+      "Capability Atlas",
+      "Digital Avatar",
+      "Hermes"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "33bb0d089396e7fe11f45008f4af91eb1d52a8b54ec816094f9c9a9bea6e0bb9",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83d131-df98-83ec-9c26-a812c1f7360a",
+    "entities": [
+      "Ariadne",
+      "Knowledge Vault",
+      "MCP",
+      "Ollama",
+      "Open WebUI",
+      "Docker",
+      "ComfyUI",
+      "WAN"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83d131-df98-83ec-9c26-a812c1f7360a"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83d131-df98-83ec-9c26-a812c1f7360a"
+    ],
+    "map_entry": "My Local AI System - Summarize Recent Discussions",
+    "page_title": "My Local AI System - Summarize Recent Discussions",
+    "people": [
+      "Megan"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local AI System - Summarize Recent Discussions2026-08-24T09_55_41+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "33bb0d089396e7fe11f45008f4af91eb1d52a8b54ec816094f9c9a9bea6e0bb9",
+      "enrichment_completed_at": "2026-08-24T03:02:39.046447Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83d131-df98-83ec-9c26-a812c1f7360a"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83d131-df98-83ec-9c26-a812c1f7360a.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "My Local AI System - Summarize Recent Discussions2026-08-24T09_55_41+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83d131-df98-83ec-9c26-a812c1f7360a",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a83d131-df98-83ec-9c26-a812c1f7360a",
+    "subtopics": [
+      "personal AI operating environment",
+      "stable identity",
+      "biological memory",
+      "nightly housekeeping",
+      "service layer",
+      "autonomous agents",
+      "multimedia rabbit holes",
+      "visual memory system"
+    ],
+    "summary": "The conversation details the evolution of a personal AI system centered around the Ariadne Knowledge Vault. Over the past week, the project expanded from a simple persistent memory tool to a comprehensive AI operating environment. Key developments include: \n- Establishing Ariadne as a stable identity and the Vault as a biological‑memory‑like storage layer with nightly housekeeping.\n- Building a permanent service layer (MCP) that runs automatically on Windows, acting as the system’s nervous system.\n- Integrating local models (Ollama, Open WebUI, Docker) and orchestrating autonomous agents for research and evaluation.\n- Adding multimedia capabilities: local video generation (ComfyUI, WAN), image generation, music generation (MiniMax Music), and audio inference, creating a visual‑memory subsystem.\n- Addressing hardware considerations, moving beyond GPU selection to coherent memory pool sizing for unified‑memory machines.\n- Conducting experiments with model leaderboards, cost‑intelligence weighting, and other cloud‑AI ecosystem components to enable local ownership and swap‑ability.\nThe overarching theme is a shift from feature creep to a deliberate design of a personal AI platform where Ariadne is the front door, the Vault is memory, MCP is the nervous system, local models are brains, agents are hands, and multimedia tools are senses and creative machinery.",
+    "tags": [
+      "Ariadne",
+      "Knowledge Vault",
+      "MCP",
+      "Ollama",
+      "Open WebUI",
+      "Docker",
+      "ComfyUI",
+      "WAN"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "40645755afb32b69b2c5da358af062f3d2ade6b18b9dc10541405d19125474f0",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a882806-2700-83ec-a3ac-2defb21ee7c9",
+    "entities": [
+      "My Local AI System - Local AI Retrieval",
+      "ChatGPT",
+      "Codex",
+      "Ariadne Home",
+      "Inbox",
+      "Markdown",
+      "HomeSessions",
+      "Archive/Chats/YYYY/MM/"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a882806-2700-83ec-a3ac-2defb21ee7c9"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a882806-2700-83ec-a3ac-2defb21ee7c9"
+    ],
+    "map_entry": "My Local AI System - Local AI Retrieval",
+    "page_title": "My Local AI System - Local AI Retrieval",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local AI System - Local AI Retrieval2026-08-24T09_56_09+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Archive",
+      "Business"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "40645755afb32b69b2c5da358af062f3d2ade6b18b9dc10541405d19125474f0",
+      "enrichment_completed_at": "2026-08-24T03:02:51.981972Z",
+      "model_confidence": 0.99,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a882806-2700-83ec-a3ac-2defb21ee7c9"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a882806-2700-83ec-a3ac-2defb21ee7c9.md",
+    "secondary_domains": [
+      "Archive",
+      "Business"
+    ],
+    "source_language": "en",
+    "source_name": "My Local AI System - Local AI Retrieval2026-08-24T09_56_09+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a882806-2700-83ec-a3ac-2defb21ee7c9",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a882806-2700-83ec-a3ac-2defb21ee7c9",
+    "subtopics": [
+      "chat persistence",
+      "session management",
+      "UI controls",
+      "markdown export",
+      "temporary chat deletion"
+    ],
+    "summary": "The source is a chat about adding persistence and UI features to a local AI system. It describes the implementation of a recent chats sidebar, new chat, save to inbox, export markdown, and purge actions. The source includes metadata such as title, source URL, author, created date, description, and tags. The content focuses on the technical details of persisting chat sessions, archiving them, and exposing UI controls for managing them. The source is relevant to the domains of AI & LLMs, Archive, and Business.",
+    "tags": [
+      "My Local AI System - Local AI Retrieval",
+      "ChatGPT",
+      "Codex",
+      "Ariadne Home",
+      "Inbox",
+      "Markdown",
+      "HomeSessions",
+      "Archive/Chats/YYYY/MM/"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "39a2128c12e766f340c1e3f32fbcd28cc25b365c5395e0308dc3a734a0a20d5a",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a88ef4b-0b28-83ec-af9f-c1ea84e5bc2d",
+    "entities": [
+      "Ariadne",
+      "Clipboard API",
+      "Alt+F1",
+      "SendInput",
+      "Set-Clipboard",
+      "PowerShell",
+      "Speechify",
+      "Windows"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a88ef4b-0b28-83ec-af9f-c1ea84e5bc2d"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://www.w3.org/TR/secure-contexts/",
+      "https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API",
+      "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput",
+      "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-clipboard",
+      "https://speechify.com/windows/"
+    ],
+    "map_entry": "My Local AI System - Clipboard TTS Integration",
+    "page_title": "My Local AI System - Clipboard TTS Integration",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local AI System - Clipboard TTS Integration2026-08-24T09_55_55+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "39a2128c12e766f340c1e3f32fbcd28cc25b365c5395e0308dc3a734a0a20d5a",
+      "enrichment_completed_at": "2026-08-24T03:03:05.389434Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a88ef4b-0b28-83ec-af9f-c1ea84e5bc2d"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a88ef4b-0b28-83ec-af9f-c1ea84e5bc2d.md",
+    "secondary_domains": [
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "My Local AI System - Clipboard TTS Integration2026-08-24T09_55_55+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a88ef4b-0b28-83ec-af9f-c1ea84e5bc2d",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a88ef4b-0b28-83ec-af9f-c1ea84e5bc2d",
+    "subtopics": [
+      "Secure Context",
+      "Clipboard Permissions",
+      "Local Server",
+      "Hotkey Injection",
+      "TTS Integration"
+    ],
+    "summary": "The source describes a design for integrating a local Windows PowerShell server with a web‑based AI system (Ariadne) to enable clipboard‑based text‑to‑speech (TTS) via a native Alt+F1 hotkey. It outlines the architecture, security considerations, and a step‑by‑step test plan, emphasizing that the solution should remain loopback‑only, token‑protected, and not expose arbitrary keyboard injection to the browser.",
+    "tags": [
+      "Ariadne",
+      "Clipboard API",
+      "Alt+F1",
+      "SendInput",
+      "Set-Clipboard",
+      "PowerShell",
+      "Speechify",
+      "Windows"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "b062c4f75c0b7fa57273be359c902e14d3c07825e85aaa923d841ae74e138187",
+    "document_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a897550-62d4-83ec-963b-94a8d71d9235",
+    "entities": [
+      "Ariadne",
+      "Inbox",
+      "Journal",
+      "VAULT_ROOT",
+      "D:\\Downloads\\Ariadne"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a897550-62d4-83ec-963b-94a8d71d9235"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a897550-62d4-83ec-963b-94a8d71d9235"
+    ],
+    "map_entry": "My Local AI System - Fix chat and metrics UI",
+    "page_title": "My Local AI System - Fix chat and metrics UI",
+    "people": [],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/My Local AI System - Fix chat and metrics UI2026-08-24T09_56_21+07_00.md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "Projects"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "b062c4f75c0b7fa57273be359c902e14d3c07825e85aaa923d841ae74e138187",
+      "enrichment_completed_at": "2026-08-24T03:03:17.285849Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a897550-62d4-83ec-963b-94a8d71d9235"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a897550-62d4-83ec-963b-94a8d71d9235.md",
+    "secondary_domains": [
+      "Projects"
+    ],
+    "source_language": "en",
+    "source_name": "My Local AI System - Fix chat and metrics UI2026-08-24T09_56_21+07_00.md",
+    "source_type": "chatgpt",
+    "source_url": "https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a897550-62d4-83ec-963b-94a8d71d9235",
+    "stable_source_id": "url:https://chatgpt.com/g/g-p-69e0f7e185948191bbc1e08cdb5f38f7/c/6a897550-62d4-83ec-963b-94a8d71d9235",
+    "subtopics": [
+      "Save to Inbox",
+      "Markdown Export",
+      "Journal Recording",
+      "Knowledge Vault",
+      "File System Path"
+    ],
+    "summary": "The chat details a troubleshooting session for Ariadne’s \"Save to Inbox\" feature. It confirms that the feature correctly writes markdown files to the expected root‑level Inbox folder (D:\\Downloads\\Ariadne\\Inbox) and that journal recording and markdown export also work. The issue was a destination/expectation mismatch rather than a bug. The author suggests adding a UI confirmation message to indicate the file path after saving.",
+    "tags": [
+      "Ariadne",
+      "Inbox",
+      "Journal",
+      "VAULT_ROOT",
+      "D:\\Downloads\\Ariadne"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "d45b814971172f2062e3b83f87ed44ceae9aae5cecbc7a18d8109ef532e16084",
     "document_id": "url:https://chatgpt.com/g/g-p-6a1a55188dc08191bc3f25462b8c6597/c/6a1a551d-be50-83ec-a093-d263552cdf94",
     "entities": [],
@@ -52418,6 +53534,75 @@
     "workflow_status": "accepted"
   },
   {
+    "content_sha256": "feacb00d96570eea89ddd653374fcf00b71cddb0fc5c78ba79e6a302955c90b1",
+    "document_id": "url:https://www.bangkokpost.com/thailand/general/3306223/bomb-blasts-arson-attacks-rock-narathiwat-two-injured",
+    "entities": [
+      "Bangkok Post Public Company Limited",
+      "Narathiwat",
+      "Rangae district",
+      "Bongo tambon administration organisation",
+      "DTAC telecommunications tower",
+      "Sungai Kolok district",
+      "Narathiwat Provincial Transport Office",
+      "Narathiwat Special Task Force"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.bangkokpost.com/thailand/general/3306223/bomb-blasts-arson-attacks-rock-narathiwat-two-injured"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://www.bangkokpost.com/thailand/general/3306223/bomb-blasts-arson-attacks-rock-narathiwat-two-injured"
+    ],
+    "map_entry": "Bomb blasts, arson attacks rock Narathiwat, two injured",
+    "page_title": "Bomb blasts, arson attacks rock Narathiwat, two injured",
+    "people": [
+      "Wichan Chaisetthsamphan",
+      "Sopiyan Daemoleng"
+    ],
+    "primary_topic": "News & Current Affairs",
+    "processed_path": "Processed/Bomb blasts, arson attacks rock Narathiwat, two injured2026-08-23T07_36_16+07_002026-08-23T00_21_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "proposed_domains": [
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "feacb00d96570eea89ddd653374fcf00b71cddb0fc5c78ba79e6a302955c90b1",
+      "enrichment_completed_at": "2026-08-24T03:03:36.961049Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://www.bangkokpost.com/thailand/general/3306223/bomb-blasts-arson-attacks-rock-narathiwat-two-injured"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.bangkokpost.com/thailand/general/3306223/bomb-blasts-arson-attacks-rock-narathiwat-two-injured.md",
+    "secondary_domains": [],
+    "source_language": "en",
+    "source_name": "Bomb blasts, arson attacks rock Narathiwat, two injured2026-08-23T07_36_16+07_002026-08-23T00_21_00+07_00[[Bangkok Post Public Company Limited]].md",
+    "source_type": "web",
+    "source_url": "https://www.bangkokpost.com/thailand/general/3306223/bomb-blasts-arson-attacks-rock-narathiwat-two-injured",
+    "stable_source_id": "url:https://www.bangkokpost.com/thailand/general/3306223/bomb-blasts-arson-attacks-rock-narathiwat-two-injured",
+    "subtopics": [
+      "bomb blasts",
+      "arson attacks",
+      "curfew",
+      "security operations",
+      "telecommunications towers",
+      "roadside shelter"
+    ],
+    "summary": "A string of unrest occurred at multiple locations in southern border provinces on Saturday night, with explosions and arson attacks damaging vehicles, communication infrastructure and other property. Two people were injured in Narathiwat.",
+    "tags": [
+      "Bangkok Post Public Company Limited",
+      "Narathiwat",
+      "Rangae district",
+      "Bongo tambon administration organisation",
+      "DTAC telecommunications tower",
+      "Sungai Kolok district",
+      "Narathiwat Provincial Transport Office",
+      "Narathiwat Special Task Force"
+    ],
+    "wiki_path": "Wiki/index.md#news-current-affairs",
+    "workflow_status": "accepted"
+  },
+  {
     "content_sha256": "7a08a6e2bfeaf10b26d5ea0dd9c694aef7aa1ae9dfc0b34fb5f3663a83836d74",
     "document_id": "url:https://www.bloomberg.com/news/articles/2026-07-10/what-is-tinnitus-why-doctors-are-finally-rethinking-the-condition?link_source=ta_first_comment&taid=6a511729e02bbf00010c7fff&utm_campaign=trueanthem&utm_content=business&utm_medium=social&utm_source=facebook",
     "entities": [
@@ -54736,6 +55921,77 @@
       "Wiz (Google-owned cybersecurity firm)"
     ],
     "wiki_path": "Wiki/index.md#business",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "16548ac012d0dc83dd7c48d8b467a6283b647973caf9e793ea0b0968cb667114",
+    "document_id": "url:https://www.perplexity.ai/discover/you/pervert-glasses-backlash-pushe-Z0.9pIvgTbyE6dP_cRtnFg",
+    "entities": [
+      "Meta Ray‑Ban glasses",
+      "Meta",
+      "Ray‑Ban",
+      "Even Realities",
+      "Captify",
+      "Xgimi",
+      "RayNeo",
+      "Halliday"
+    ],
+    "external_identity": {
+      "kind": "url",
+      "value": "https://www.perplexity.ai/discover/you/pervert-glasses-backlash-pushe-Z0.9pIvgTbyE6dP_cRtnFg"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://www.perplexity.ai/discover/you/pervert-glasses-backlash-pushe-Z0.9pIvgTbyE6dP_cRtnFg"
+    ],
+    "map_entry": "Perplexity",
+    "page_title": "Perplexity",
+    "people": [
+      "Adam Mosseri",
+      "Thorin Klosowski",
+      "Atul Rai"
+    ],
+    "primary_topic": "Science & Technology",
+    "processed_path": "Processed/Perplexity2026-08-23T08_14_11+07_00.md",
+    "proposed_domains": [
+      "Science & Technology",
+      "News & Current Affairs"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "16548ac012d0dc83dd7c48d8b467a6283b647973caf9e793ea0b0968cb667114",
+      "enrichment_completed_at": "2026-08-24T03:03:52.741826Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "url:https://www.perplexity.ai/discover/you/pervert-glasses-backlash-pushe-Z0.9pIvgTbyE6dP_cRtnFg"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/url_https_//www.perplexity.ai/discover/you/pervert-glasses-backlash-pushe-Z0.9pIvgTbyE6dP_cRtnFg.md",
+    "secondary_domains": [
+      "News & Current Affairs"
+    ],
+    "source_language": "en",
+    "source_name": "Perplexity2026-08-23T08_14_11+07_00.md",
+    "source_type": "web",
+    "source_url": "https://www.perplexity.ai/discover/you/pervert-glasses-backlash-pushe-Z0.9pIvgTbyE6dP_cRtnFg",
+    "stable_source_id": "url:https://www.perplexity.ai/discover/you/pervert-glasses-backlash-pushe-Z0.9pIvgTbyE6dP_cRtnFg",
+    "subtopics": [
+      "privacy backlash",
+      "camera‑free smart glasses",
+      "anti‑tampering measures",
+      "on‑device AI processing"
+    ],
+    "summary": "The article discusses the growing privacy backlash against camera-equipped smart glasses, particularly Meta Ray‑Ban glasses, and how manufacturers are responding by tightening controls or removing cameras entirely. It highlights market share, regulatory concerns, and consumer demand for camera‑free models.",
+    "tags": [
+      "Meta Ray‑Ban glasses",
+      "Meta",
+      "Ray‑Ban",
+      "Even Realities",
+      "Captify",
+      "Xgimi",
+      "RayNeo",
+      "Halliday"
+    ],
+    "wiki_path": "Wiki/index.md#science-technology",
     "workflow_status": "accepted"
   },
   {
@@ -58176,56 +59432,73 @@
     "workflow_status": "accepted"
   },
   {
-    "content_sha256": "0a33a489e7b2d63b683b5f62a24c4cc66e1d461d263e5f1aabaf0b7fadc59e21",
+    "content_sha256": "4f710a5d75ea5849ed7a1fc081fc476e6a944df8a0575a851c51b379e031e2b6",
     "document_id": "youtube:55bl21Fs_H4",
     "entities": [
-      "Chanya & Wazza's Thailand"
+      "Chanya & Wazza's Thailand",
+      "Mushi Mushi",
+      "Thai public hospital system",
+      "Rai King public hospital",
+      "Mahidol University",
+      "Makanchai Song"
     ],
     "external_identity": {
       "kind": "youtube",
       "value": "55bl21Fs_H4"
     },
-    "indexed_at": "2026-07-22T02:45:09.269699+00:00",
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
     "links": [
-      "https://www.youtube.com/watch?v=55bl21Fs_H4",
-      "https://discord.gg/PFENZwaqZy",
-      "https://www.yo",
-      "https://www.patreon.com/c/chanyawazza",
-      "https://buymeacoffee.com/warrengerdes",
-      "https://www.paypal.me/WarrenGerdes",
-      "https://www.dia.net.au/about-us/",
-      "https://www.facebook.com/groups/thailandvloghub"
+      "https://www.youtube.com/watch?v=55bl21Fs_H4&feature=youtu.be"
     ],
-    "map_entry": "Mushi Mushi",
-    "page_title": "Mushi Mushi",
-    "people": [],
+    "map_entry": "A Day Out with Chanya | Mushi Mushi & Life in Thailand",
+    "page_title": "A Day Out with Chanya | Mushi Mushi & Life in Thailand",
+    "people": [
+      "Chanya",
+      "Wazza"
+    ],
     "primary_topic": "Travel & Expat Experience",
-    "processed_path": "Processed/Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].md",
+    "processed_path": "Processed/A Day Out with Chanya _ Mushi Mushi & Life in Thailand2026-08-23T21_51_00+07_002026-08-22T18_26_39-07_00[[Chanya & Wazza's Thailand]].md",
     "proposed_domains": [
       "Travel & Expat Experience",
+      "Health & Medicine",
       "Content Creation"
     ],
     "related_notes": [],
     "retrieval_metadata": {
-      "content_sha256": "0a33a489e7b2d63b683b5f62a24c4cc66e1d461d263e5f1aabaf0b7fadc59e21",
-      "enrichment_completed_at": "2026-07-22T02:07:56.542488Z",
-      "model_confidence": 0.95,
+      "content_sha256": "4f710a5d75ea5849ed7a1fc081fc476e6a944df8a0575a851c51b379e031e2b6",
+      "enrichment_completed_at": "2026-08-24T03:04:04.829333Z",
+      "model_confidence": 0.92,
       "stable_source_id": "youtube:55bl21Fs_H4"
     },
     "retrieval_status": "active",
     "review_path": "Review/rebuild-v1/youtube_55bl21Fs_H4.md",
     "secondary_domains": [
+      "Health & Medicine",
       "Content Creation"
     ],
     "source_language": "en",
-    "source_name": "Mushi Mushi2026-07-05T16_09_37+07_002026-07-05T01_20_08-07_00[[Chanya & Wazza's Thailand]].md",
+    "source_name": "A Day Out with Chanya _ Mushi Mushi & Life in Thailand2026-08-23T21_51_00+07_002026-08-22T18_26_39-07_00[[Chanya & Wazza's Thailand]].md",
     "source_type": "youtube",
-    "source_url": "https://www.youtube.com/watch?v=55bl21Fs_H4",
+    "source_url": "https://www.youtube.com/watch?v=55bl21Fs_H4&feature=youtu.be",
     "stable_source_id": "youtube:55bl21Fs_H4",
-    "subtopics": [],
-    "summary": "YouTube video titled \"Mushi Mushi\" by Chanya & Wazza's Thailand, published and created on 2026-07-05. The content is a travel vlog set in Thailand with additional commentary on local medical facilities. It includes links to community Discord, Patreon, Twitch, TikTok, etc., and mentions Garage Alchemy (AI experiments).",
+    "subtopics": [
+      "patrol boat",
+      "shopping",
+      "Japanese goods",
+      "public hospital",
+      "sliding scale pricing",
+      "back and spinal injuries",
+      "kidney stones",
+      "conjunctivitis"
+    ],
+    "summary": "A YouTube vlog documenting a day in Thailand where the hosts encounter an unexpected patrol boat, shop for Japanese goods called \"Mushi Mushi,\" and discuss the Thai public hospital system while picking up the host’s mother.",
     "tags": [
-      "Chanya & Wazza's Thailand"
+      "Chanya & Wazza's Thailand",
+      "Mushi Mushi",
+      "Thai public hospital system",
+      "Rai King public hospital",
+      "Mahidol University",
+      "Makanchai Song"
     ],
     "wiki_path": "Wiki/index.md#travel-expat-experience",
     "workflow_status": "accepted"
@@ -61424,6 +62697,78 @@
       "Remote Work"
     ],
     "wiki_path": "Wiki/index.md#business",
+    "workflow_status": "accepted"
+  },
+  {
+    "content_sha256": "232e71a330b682d028ad236fbe821e23821d3e24217e2b4ec4444f896d065b58",
+    "document_id": "youtube:SvW4Gw6LeGI",
+    "entities": [
+      "DeepSeek",
+      "OpenAI",
+      "Astra",
+      "DSpark",
+      "DeepSeek Harness",
+      "OpenRouter",
+      "Chinese AI models"
+    ],
+    "external_identity": {
+      "kind": "youtube",
+      "value": "SvW4Gw6LeGI"
+    },
+    "indexed_at": "2026-08-24T03:04:23.890367+00:00",
+    "links": [
+      "https://www.youtube.com/watch?v=SvW4Gw6LeGI"
+    ],
+    "map_entry": "DeepSeek Just Made America Nervous Again (SILICON VALLEY PANICKING)",
+    "page_title": "DeepSeek Just Made America Nervous Again (SILICON VALLEY PANICKING)",
+    "people": [
+      "Sam Alman"
+    ],
+    "primary_topic": "AI & LLMs",
+    "processed_path": "Processed/DeepSeek Just Made America Nervous Again (SILICON VALLEY PANICKING)2026-08-23T13_40_12+07_002026-08-21T16_06_21-07_00[[AI Revolution]].md",
+    "proposed_domains": [
+      "AI & LLMs",
+      "News & Current Affairs",
+      "Science & Technology"
+    ],
+    "related_notes": [],
+    "retrieval_metadata": {
+      "content_sha256": "232e71a330b682d028ad236fbe821e23821d3e24217e2b4ec4444f896d065b58",
+      "enrichment_completed_at": "2026-08-24T03:04:19.502045Z",
+      "model_confidence": 0.95,
+      "stable_source_id": "youtube:SvW4Gw6LeGI"
+    },
+    "retrieval_status": "active",
+    "review_path": "Review/rebuild-v1/youtube_SvW4Gw6LeGI.md",
+    "secondary_domains": [
+      "News & Current Affairs",
+      "Science & Technology"
+    ],
+    "source_language": "en",
+    "source_name": "DeepSeek Just Made America Nervous Again (SILICON VALLEY PANICKING)2026-08-23T13_40_12+07_002026-08-21T16_06_21-07_00[[AI Revolution]].md",
+    "source_type": "youtube",
+    "source_url": "https://www.youtube.com/watch?v=SvW4Gw6LeGI",
+    "stable_source_id": "youtube:SvW4Gw6LeGI",
+    "subtopics": [
+      "open‑source AI ecosystem",
+      "agent infrastructure",
+      "spatiotemporal composability",
+      "plugin architecture",
+      "frontier training",
+      "cyber capability threshold",
+      "token share"
+    ],
+    "summary": "DeepSeek’s rapid growth in open‑source AI, aggressive pricing, and new DSpark generation speed gains are challenging U.S. dominance. OpenAI has paused frontier training after a cyber incident involving its Astra model. DeepSeek’s open‑source Harness allows plug‑in architecture, enabling rapid agent development. Chinese models have overtaken U.S. models in token share during 2026, per OpenRouter data.",
+    "tags": [
+      "DeepSeek",
+      "OpenAI",
+      "Astra",
+      "DSpark",
+      "DeepSeek Harness",
+      "OpenRouter",
+      "Chinese AI models"
+    ],
+    "wiki_path": "Wiki/index.md#ai-llms",
     "workflow_status": "accepted"
   },
   {

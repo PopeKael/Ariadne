@@ -27,7 +27,8 @@ sys.stdin.reconfigure(encoding="utf-8")
 sys.stdout.reconfigure(encoding="utf-8")
 
 
-ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_VAULT_ROOT = Path(r"D:\Downloads\KnowledgeVault")
+ROOT = Path(os.environ.get("ARIADNE_VAULT_ROOT", str(DEFAULT_VAULT_ROOT))).expanduser().resolve()
 LIBRARY_PATH = ROOT / "00_System" / "library.json"
 IDENTITY_KERNEL_PATH = ROOT / "Ariadne Identity Kernel v1.0.0.md"
 PROCESSED_ROOT = (ROOT / "Processed").resolve()
