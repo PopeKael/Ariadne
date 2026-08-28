@@ -163,6 +163,12 @@ build/
 /control-plane/host/target/
 /control-plane/host/target-msvc/
 
+# Alternate local MSVC Cargo build output
+/.host-build-msvc/
+
+# UI cleanup acceptance/runtime scratch directories
+/.tmp-ui-cleanup-*/
+
 # ----------------------------------------------------------
 # Environment Files
 # ----------------------------------------------------------
