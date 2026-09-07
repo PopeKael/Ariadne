@@ -107,8 +107,15 @@ VIDEO_RENDERER_ROOT = "/root/lmv-comfyui"
 VIDEO_RENDERER_PYTHON = "/root/lmv-rocm-venv/bin/python"
 VIDEO_RENDERER_APP = "/home/warren/projects/local-music-video-renderer/app.py"
 WAN2GP_LOG = ROOT / "runtime" / "linux-renderer.log"
-SESSION_TTL_SECONDS = 20
-JOB_TIMEOUT_SECONDS = 300
+SESSION_TTL_SECONDS = max(30, int(os.environ.get("ARIADNE_SESSION_TTL_SECONDS", "90")))
+JOB_TIMEOUT_SECONDS = max(30, int(os.environ.get("ARIADNE_JOB_TIMEOUT_SECONDS", "300")))
+VAULT_ACTION_TIMEOUT_SECONDS = {
+    "ingest": max(300, int(os.environ.get("ARIADNE_INGEST_TIMEOUT_SECONDS", "7200"))),
+    "embedding_rebuild": max(300, int(os.environ.get("ARIADNE_EMBEDDING_REBUILD_TIMEOUT_SECONDS", "3600"))),
+    "retrieval_evaluation": max(300, int(os.environ.get("ARIADNE_EVALUATION_TIMEOUT_SECONDS", "1800"))),
+    "regression_tests": max(300, int(os.environ.get("ARIADNE_TEST_TIMEOUT_SECONDS", "1800"))),
+}
+MAX_JOB_OUTPUT_CHARS = 12_000
 SESSION_LOCK = threading.RLock()
 READER_LOCK = threading.Lock()
 SESSIONS: dict[str, dict[str, object]] = {}
@@ -1593,8 +1600,15 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
     output: list[str] = []
     if process.stdout:
         for line in process.stdout:
-            output.append(line.rstrip())
+            line = line.rstrip()
+            output.append(line)
             output[:] = output[-80:]
+            with SESSION_LOCK:
+                watched_job = JOBS.get(job_id)
+                if watched_job and watched_job.get("state") == "running":
+                    watched_job["output"] = "\n".join(output)[-MAX_JOB_OUTPUT_CHARS:]
+                    if line.strip():
+                        watched_job["message"] = line.strip()[:500]
     return_code = process.wait()
     structured_result = None
     presenter = None
@@ -1640,7 +1654,10 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
 
 
 def _timeout_job(job_id: str) -> None:
-    time.sleep(JOB_TIMEOUT_SECONDS)
+    with SESSION_LOCK:
+        initial_job = JOBS.get(job_id)
+        timeout_seconds = float(initial_job.get("timeout_seconds", JOB_TIMEOUT_SECONDS)) if initial_job else JOB_TIMEOUT_SECONDS
+    time.sleep(timeout_seconds)
     with SESSION_LOCK:
         job = JOBS.get(job_id)
         if not job or job.get("state") != "running":
@@ -1651,7 +1668,7 @@ def _timeout_job(job_id: str) -> None:
         job = JOBS.get(job_id)
         if job and job.get("state") == "running":
             job["state"] = "error"
-            job["message"] = "Worker timed out and was terminated after five minutes."
+            job["message"] = f"Worker timed out and was terminated after {int(timeout_seconds // 60)} minutes."
             presenter = job.get("activity_presenter")
         else:
             presenter = None
@@ -1672,7 +1689,8 @@ def start_vault_action(session_id: str, action: str) -> str:
     )
     job_id = uuid.uuid4().hex
     job = {"session_id": session_id, "kind": "action", "process": process, "started": time.monotonic(),
-           "state": "running", "message": "Starting…", "action": action}
+           "state": "running", "message": "Starting…", "output": "", "action": action,
+           "timeout_seconds": VAULT_ACTION_TIMEOUT_SECONDS.get(action, JOB_TIMEOUT_SECONDS)}
     with SESSION_LOCK:
         JOBS[job_id] = job
         SESSIONS[session_id].setdefault("jobs", set()).add(job_id)
@@ -3451,7 +3469,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             session_id = query.get("session_id")
             with SESSION_LOCK:
                 job = JOBS.get(job_id)
-                permitted = bool(job and job.get("session_id") == session_id and session_id in SESSIONS)
+            permitted = bool(job and job.get("session_id") == session_id)
+            if not _session(session_id):
+                permitted = False
             if not permitted:
                 self.send_json({"ok": False, "message": "Unknown or inactive Ariadne session."}, 404)
                 return

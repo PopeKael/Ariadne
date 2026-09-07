@@ -122,3 +122,4 @@
 .home-back { margin-left:14px; border:1px solid #3e7390; border-radius:7px; padding:7px 10px; background:#12364a; color:var(--text); font-size:12px; font-weight:650; text-decoration:none; white-space:nowrap; }
 .home-back:hover { background:#1a4b61; color:#eef4ff; }
 @media(max-width:520px){ .home-back { display:inline-block; margin:16px 0 0; } }
+.vault-job-monitor{margin:0 20px 18px;border:1px solid rgba(104,216,219,.32);border-radius:9px;background:rgba(2,9,22,.72);overflow:hidden}.vault-job-monitor-head{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(52,73,112,.45);color:var(--text);font-size:12px}.vault-job-monitor-head span{color:var(--cyan);font-size:11px}.vault-job-monitor pre{max-height:230px;overflow:auto;margin:0;padding:12px;color:#b8c9df;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}

@@ -18,6 +18,10 @@ main{padding-top:26px}.section-heading,.panel-heading{display:flex;align-items:f
   .side-column,.today-panel,.continue-panel { min-height:0; }
   .side-column { height:100%; }
   .today-panel,.continue-panel { overflow:hidden; display:flex; flex-direction:column; }
+  .today-panel { flex:0 1 154px; min-height:154px; }
+  .today-panel .signal-list { flex:1 1 auto; }
+  .continue-panel { flex:1 1 0; }
+  .continue-panel .activity-list { flex:1 1 auto; }
   .signal-list,.activity-list { min-height:0; overflow-y:auto; padding-right:5px; }
   .home-footer-note { flex:none; margin-top:clamp(8px,1.4vh,16px); padding-top:clamp(8px,1.5vh,15px); padding-bottom:clamp(8px,1.5vh,15px); }
 }

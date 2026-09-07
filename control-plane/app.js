@@ -267,6 +267,7 @@ function render(data) {
 
 let vaultSessionId = null;
 let vaultHeartbeat = null;
+let vaultHeartbeatInFlight = false;
 
 async function postJson(url, payload, keepalive = false) {
   const response = await fetch(url, {
@@ -316,9 +317,23 @@ function markVaultSessionLost(message = "Start an Ariadne session first.") {
   updateSessionButtons();
 }
 
+function renderVaultJob(job) {
+  const monitor = document.querySelector("#vault-job-monitor");
+  const title = document.querySelector("#vault-job-title");
+  const state = document.querySelector("#vault-job-state");
+  const output = document.querySelector("#vault-job-output");
+  if (!monitor || !title || !state || !output) return;
+  monitor.hidden = false;
+  title.textContent = job.action ? `Knowledge Vault · ${job.action}` : "Knowledge Vault operation";
+  state.textContent = job.stage ? `${job.state || "running"} · ${job.stage}` : (job.state || "running");
+  output.textContent = job.output || job.message || "Waiting for worker output…";
+  output.scrollTop = output.scrollHeight;
+}
+
 async function startVaultSession() {
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
+  vaultHeartbeatInFlight = false;
   vaultSessionId = null;
   vaultSessionLabel("Starting", "starting");
   updateSessionButtons();
@@ -330,11 +345,14 @@ async function startVaultSession() {
     updateSessionButtons();
     const seconds = Math.max(3, Number(session.heartbeat_seconds || 5));
     vaultHeartbeat = setInterval(async () => {
-      if (!vaultSessionId) return;
+      if (!vaultSessionId || vaultHeartbeatInFlight) return;
+      vaultHeartbeatInFlight = true;
       try {
         await postJson("/api/session/heartbeat", {session_id: vaultSessionId});
       } catch (error) {
         markVaultSessionLost("The session expired. Start it again to continue.");
+      } finally {
+        vaultHeartbeatInFlight = false;
       }
     }, seconds * 1000);
   } catch (error) {
@@ -394,6 +412,7 @@ async function runVaultAction(button) {
   const status = document.querySelector("#vault-query-status");
   status.className = "vault-status";
   status.textContent = `Starting ${button.closest(".vault-card").querySelector("h3").textContent}…`;
+  renderVaultJob({action: button.dataset.vaultAction || button.dataset.pluginAction, state: "starting", message: status.textContent});
   try {
     const pluginId = button.dataset.pluginId;
     const pluginAction = button.dataset.pluginAction;
@@ -402,7 +421,7 @@ async function runVaultAction(button) {
       ? {session_id: vaultSessionId, action: pluginAction, confirm: Boolean(button.dataset.confirm)}
       : {session_id: vaultSessionId, action: button.dataset.vaultAction};
     const started = await postJson(endpoint, request);
-    const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; });
+    const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; renderVaultJob(job); });
     const detail = finished.output ? `${finished.message}\n${finished.output}` : finished.message;
     if (finished.state !== "complete") {
       status.className = "vault-status error";
@@ -415,7 +434,7 @@ async function runVaultAction(button) {
     status.className = "vault-status error";
     status.textContent = error.message;
   } finally {
-    setVaultControlsDisabled(false);
+    setVaultControlsDisabled(!vaultSessionId);
   }
 }
 
@@ -429,9 +448,10 @@ async function runVaultQuery(mode) {
   document.querySelector("#vault-query-results").innerHTML = "";
   status.className = "vault-status";
   status.textContent = mode === "answer" ? "Starting the local librarian…" : mode === "summary" ? "Retrieving evidence and preparing a summary…" : "Searching the vault…";
+  renderVaultJob({action: `query · ${mode}`, state: "starting", message: status.textContent});
   try {
     const started = await postJson("/api/vault/query", {session_id: vaultSessionId, query, mode, limit: mode === "answer" ? 6 : 8});
-    const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; });
+    const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; renderVaultJob(job); });
     if (finished.state !== "complete") throw new Error(finished.message || "The vault query failed.");
     renderVaultResult(finished.result || {}, mode);
     status.textContent = mode === "search" ? `${finished.result?.match_count || 0} matching passages found.` : "Vault response ready.";
@@ -439,7 +459,7 @@ async function runVaultQuery(mode) {
     status.className = "vault-status error";
     status.textContent = error.message;
   } finally {
-    setVaultControlsDisabled(false);
+    setVaultControlsDisabled(!vaultSessionId);
   }
 }
 

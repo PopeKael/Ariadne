@@ -139,6 +139,10 @@
       <article class="vault-card"><div><h3>Failure Audit</h3><p>Generate a read-only report from retained ingestion evidence.</p></div><button data-vault-action="audit_failures">Run audit</button></article>
       <article class="vault-card warning-card"><div><h3>Rebuild Embeddings</h3><p>Regenerate derived search data. Source Markdown is not altered.</p></div><button data-vault-action="embedding_rebuild" data-confirm="Rebuild the local embedding index now?">Rebuild index</button></article>
     </div>
+    <div class="vault-job-monitor" id="vault-job-monitor" hidden>
+      <div class="vault-job-monitor-head"><strong id="vault-job-title">Vault operation</strong><span id="vault-job-state">Waiting</span></div>
+      <pre id="vault-job-output" aria-live="polite"></pre>
+    </div>
     <div class="vault-query">
       <div class="vault-query-head"><div><h3>Ask the Knowledge Vault</h3><p>Search the local corpus or ask the librarian for a cited answer.</p></div><span class="badge muted-badge">LOCAL ONLY</span></div>
       <form id="vault-query-form">
