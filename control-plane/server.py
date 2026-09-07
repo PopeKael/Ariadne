@@ -55,6 +55,7 @@ from plugin_activity import PluginActivityStream
 from plugin_execution import PluginExecutionError, build_plugin_command
 from plugin_registry import PLUGIN_REGISTRY
 from plugins.cleanup.cleanup import PLUGIN_CAPABILITY, effective_configuration, normalize_configuration
+from signal_service_client import SignalServiceClient
 from vault_config import VAULT_ROOT, VAULT_ROOT_SOURCE, vault_counts
 
 ROOT = Path(__file__).resolve().parent
@@ -94,6 +95,7 @@ PLUGIN_ACTIVITY_STREAM = PluginActivityStream(PLUGIN_ACTIVITY_PATH)
 OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "adaptive")
 OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://127.0.0.1:3000/")
 OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
+SIGNAL_SERVICE_CLIENT = SignalServiceClient()
 HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
 HOME_CHAT_STORE = ChatStore(VAULT_ROOT)
 DOCUMENT_WORK_ROOT = ROOT / 'runtime' / 'document_contexts'
@@ -2457,6 +2459,13 @@ def home_health_payload() -> dict[str, object]:
     )
     index = home_index_status()
     add("Semantic index", str(index["state"]), str(index["detail"]))
+    signal_health = SIGNAL_SERVICE_CLIENT.health()
+    signal_state = str(signal_health.get("state") or "attention")
+    add(
+        "Signal Service",
+        "healthy" if signal_state == "healthy" else "offline" if signal_state == "offline" else "attention",
+        str(signal_health.get("message") or ("Cached briefing and configured sources are available." if signal_state == "healthy" else "Signal briefing is unavailable.")),
+    )
 
     states = {str(item["state"]) for item in services}
     overall = "healthy" if states == {"healthy"} else "offline" if "offline" in states and states <= {"healthy", "offline"} else "attention"
@@ -2472,6 +2481,7 @@ def home_health_payload() -> dict[str, object]:
         "ollama_store": configured_ollama_store(),
         "ollama": ollama,
         "index": index,
+        "signal_service": signal_health,
         "vault_root": str(VAULT_ROOT),
         "vault_root_source": VAULT_ROOT_SOURCE,
         "vault_counts": counts,
@@ -2479,8 +2489,32 @@ def home_health_payload() -> dict[str, object]:
     }
 
 
-def home_today_payload(health: dict[str, object]) -> list[dict[str, str]]:
-    signals: list[dict[str, str]] = []
+def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
+    signals: list[dict[str, object]] = []
+    briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=4)
+    for item in briefing.get("signals", []):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "Signal")
+        source = str(item.get("source_name") or "Unknown source")
+        summary = re.sub(r"\s+", " ", str(item.get("summary") or item.get("content") or "")).strip()
+        if len(summary) > 260:
+            summary = summary[:257].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
+        detail = f"{source} · {summary}" if summary else source
+        if briefing.get("stale"):
+            detail = "Cached · " + detail
+        url = str(item.get("url") or "")
+        if url.startswith(("http://", "https://")):
+            signals.append({
+                "label": title,
+                "summary": summary,
+                "source": source,
+                "published_at": str(item.get("published_at") or item.get("updated_at") or ""),
+                "detail": detail,
+                "tone": "quiet",
+                "url": url,
+                "stale": bool(briefing.get("stale")),
+            })
     for service in health.get("services", []):
         if not isinstance(service, dict) or service.get("state") == "healthy":
             continue

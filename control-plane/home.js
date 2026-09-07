@@ -113,7 +113,7 @@ function renderHealth(payload) {
   const root = document.querySelector("#header-health");
   if (!root) return;
   root.replaceChildren();
-  const compactNames = {"Ariadne backend":"Backend", "Knowledge Vault":"Vault", "MCP / retrieval":"MCP", "Ollama":"Ollama", "Semantic index":"Semantic"};
+  const compactNames = {"Ariadne backend":"Backend", "Knowledge Vault":"Vault", "MCP / retrieval":"MCP", "Ollama":"Ollama", "Semantic index":"Semantic", "Signal Service":"Signals"};
   for (const [index, service] of (payload.services || []).entries()) {
     const stateName = service.state || "attention";
     const stateLabel = stateName.charAt(0).toUpperCase() + stateName.slice(1);
@@ -142,10 +142,35 @@ function renderToday(items) {
   const root = document.querySelector("#today-list");
   root.replaceChildren();
   for (const item of items || []) {
-    const row = el("div", "signal-item " + (item.tone || "quiet"));
-    row.append(el("span", "signal-icon"), el("div", "signal-copy"));
-    row.lastChild.append(el("strong", "", item.label), el("span", "", item.detail));
-    root.append(row);
+    const card = el("article", "signal-card " + (item.tone || "quiet"));
+    const validUrl = item.url && /^https?:\/\//i.test(item.url);
+    const title = validUrl ? el("a", "signal-card-title", item.label) : el("h3", "signal-card-title", item.label);
+    if (validUrl) {
+      title.href = item.url;
+      title.target = "_blank";
+      title.rel = "noopener noreferrer";
+      title.title = "Open original source";
+    }
+    const summary = el("p", "signal-summary", item.summary || item.detail || "");
+    const meta = el("div", "signal-meta");
+    meta.append(el("span", "signal-source", item.source || "Ariadne"));
+    const published = item.published_at ? new Date(item.published_at) : null;
+    if (published && !Number.isNaN(published.getTime())) {
+      const time = el("time", "signal-published", published.toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}));
+      time.dateTime = item.published_at;
+      meta.append(el("span", "signal-meta-separator", "·"), time);
+    }
+    if (item.stale) meta.append(el("span", "signal-cached", "Cached"));
+    card.append(title, summary, meta);
+    if (validUrl) {
+      const sourceLink = el("a", "signal-source-link", "Read original source ↗");
+      sourceLink.href = item.url;
+      sourceLink.target = "_blank";
+      sourceLink.rel = "noopener noreferrer";
+      sourceLink.title = "Open original source";
+      card.append(sourceLink);
+    }
+    root.append(card);
   }
 }
 function renderActivity(items) {

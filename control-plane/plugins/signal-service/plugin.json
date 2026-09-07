@@ -1,0 +1,21 @@
+{
+  "manifest_version": "0.1",
+  "plugin_id": "ariadne.signal-service",
+  "name": "Signal Service",
+  "version": "0.1.0",
+  "description": "Portable background refinery for normalized, ranked and cached information signals.",
+  "author": "Ariadne Core",
+  "plugin_type": "service",
+  "capabilities": ["signals.ingest", "signals.briefing"],
+  "entry_point": "",
+  "ui": {"available": false, "route": null},
+  "settings": {"available": false, "route": null},
+  "permissions": ["network.request", "filesystem.write"],
+  "dependencies": [],
+  "hardware_requirements": {},
+  "resource_requirements": {"execution": "background", "storage": "sqlite"},
+  "startup": "background",
+  "enabled": true,
+  "health": {"state": "healthy", "detail": "Independent Signal Service integration is available through its HTTP client."},
+  "activity": {"supported": true, "transport": "ariadne-core", "progress": true}
+}

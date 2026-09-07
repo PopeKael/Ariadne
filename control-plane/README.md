@@ -78,6 +78,16 @@ in [`docs/PLUGIN-FRAMEWORK-V0.1.md`](docs/PLUGIN-FRAMEWORK-V0.1.md).
 Core/Host/Plugin ownership and the conversation interaction seam are documented
 in [`docs/CORE-BOUNDARIES-V0.1.md`](docs/CORE-BOUNDARIES-V0.1.md).
 
+## Signal Service v0.1
+
+The independent `../signal-service/` process owns RSS/Atom collection,
+normalization, deduplication, basic ranking, SQLite persistence, and cached
+briefings. Ariadne Core reads it through `signal_service_client.py`; Home only
+renders the returned signals and their original source links. Set
+`ARIADNE_SIGNAL_SERVICE_URL` to point Core at another host. If the service is
+offline, Core keeps operating and Home falls back to its existing local Today
+items.
+
 ## Ariadne Tools v1
 
 The Home composer exposes a registry-driven Tools palette. The first tool is

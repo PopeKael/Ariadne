@@ -1141,7 +1141,10 @@ impl AvatarOverlay {
                     ));
                 }
                 AvatarInteractionMode::PotentialClick => {
-                    open_dashboard("avatar click");
+                    // Shell/HTTP startup can briefly block. Keep it off the
+                    // host UI thread so idle WebM frame messages continue to
+                    // be serviced while the dashboard opens.
+                    thread::spawn(|| open_dashboard("avatar click"));
                 }
             }
         }
@@ -1354,9 +1357,13 @@ impl AvatarOverlay {
     }
 
     fn idle_webm_path(&self) -> PathBuf {
-        let scaled = self.asset_root.join("ariadne_idle_small.webm");
-        if scaled.is_file() {
-            scaled
+        // The small asset is the pre-scaled runtime rendition.  The canonical
+        // WebM remains the source-quality fallback for packs that do not ship
+        // the runtime rendition; decoding and Lanczos-resizing it on every
+        // frame can starve the UI thread at the loop boundary.
+        let runtime = self.asset_root.join("ariadne_idle_small.webm");
+        if runtime.is_file() {
+            runtime
         } else {
             self.asset_root.join("ariadne_idle.webm")
         }

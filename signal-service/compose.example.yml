@@ -1,0 +1,16 @@
+services:
+  ariadne-signal-service:
+    build: .
+    container_name: ariadne-signal-service
+    restart: unless-stopped
+    ports:
+      - "8788:8788"
+    environment:
+      SIGNAL_SERVICE_BIND_ADDRESS: 0.0.0.0
+      SIGNAL_SERVICE_PORT: 8788
+      SIGNAL_SERVICE_DATABASE: /data/signals.sqlite3
+      SIGNAL_SERVICE_REFRESH_SECONDS: 900
+      # Optional override: "Name|https://example/feed.xml,Other|https://example/feed.atom"
+      # SIGNAL_SERVICE_FEEDS: "Ars Technica|https://feeds.arstechnica.com/arstechnica/index"
+    volumes:
+      - ./data:/data
