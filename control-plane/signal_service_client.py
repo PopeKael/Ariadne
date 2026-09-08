@@ -10,7 +10,7 @@ from typing import Any
 
 class SignalServiceClient:
     def __init__(self, base_url: str | None = None, *, timeout: float | None = None):
-        self.base_url = (base_url or os.environ.get("ARIADNE_SIGNAL_SERVICE_URL", "http://127.0.0.1:8788")).rstrip("/")
+        self.base_url = (base_url or os.environ.get("ARIADNE_SIGNAL_SERVICE_URL", "http://192.168.1.200:8788")).rstrip("/")
         self.timeout = max(0.1, float(timeout if timeout is not None else os.environ.get("ARIADNE_SIGNAL_SERVICE_TIMEOUT", "0.5")))
 
     def _get(self, path: str) -> dict[str, Any]:
