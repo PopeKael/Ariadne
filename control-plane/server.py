@@ -2519,6 +2519,7 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
                 "published_at": str(item.get("published_at") or item.get("updated_at") or ""),
                 "image_url": str(item.get("image_url") or ""),
                 "category": str(item.get("category") or ""),
+                "watchlist_matches": item.get("watchlist_matches") if isinstance(item.get("watchlist_matches"), list) else [],
                 "feedback": item.get("feedback") if isinstance(item.get("feedback"), dict) else None,
                 "detail": detail,
                 "tone": "quiet",

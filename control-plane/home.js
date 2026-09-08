@@ -171,6 +171,12 @@ function renderSignalCard(item) {
     time.dateTime = item.published_at;
     meta.append(el("span", "signal-meta-separator", "·"), time);
   }
+  const watchlistTopics = Array.isArray(item.watchlist_matches)
+    ? item.watchlist_matches.map(match => typeof match === "string" ? match : match && match.topic).filter(Boolean)
+    : [];
+  if (watchlistTopics.length) {
+    meta.append(el("span", "signal-meta-separator", "·"), el("span", "signal-watchlist-match", `Watching: ${watchlistTopics.join(", ")}`));
+  }
   if (item.stale) meta.append(el("span", "signal-cached", "Cached"));
   body.append(title, summary, meta);
   const fallback = () => el("div", "signal-image signal-image-placeholder", "✦");
@@ -227,9 +233,10 @@ function renderToday(items) {
     const sectionHeading = el("div", "signal-section-heading");
     const headingCopy = el("div");
     headingCopy.append(el("span", "eyebrow", label), el("p", "signal-section-description", description));
-    const matches = signals.filter(item => item.category === category);
+    const matches = category === "Watchlist"
+      ? signals.filter(item => item.category === "Watchlist" || (Array.isArray(item.watchlist_matches) && item.watchlist_matches.length > 0))
+      : signals.filter(item => item.category === category);
     const visibleMatches = matches.slice(0, MAX_SIGNALS_PER_SECTION);
-    if (visibleMatches.length > 1 && visibleMatches.length % 2) visibleMatches.pop();
     sectionHeading.append(headingCopy, el("span", "signal-section-count", `${visibleMatches.length}`));
     section.append(sectionHeading);
     const grid = el("div", "signal-section-grid");

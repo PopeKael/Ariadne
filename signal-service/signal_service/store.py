@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import re
 import sqlite3
 import threading
 import uuid
@@ -33,7 +34,9 @@ CREATE TABLE IF NOT EXISTS signals (
     rank_score REAL NOT NULL DEFAULT 0,
     rank_reason TEXT NOT NULL DEFAULT '',
     first_seen_at TEXT NOT NULL,
-    last_seen_at TEXT NOT NULL
+    last_seen_at TEXT NOT NULL,
+    image_enrichment_attempted_at TEXT,
+    image_enrichment_error TEXT NOT NULL DEFAULT ''
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_url_key ON signals(dedupe_key);
 CREATE INDEX IF NOT EXISTS idx_signals_content_key ON signals(content_key);
@@ -89,6 +92,10 @@ class SignalStore:
         columns = {str(row[1]) for row in self._connection.execute("PRAGMA table_info(signals)").fetchall()}
         if "category" not in columns:
             self._connection.execute("ALTER TABLE signals ADD COLUMN category TEXT NOT NULL DEFAULT 'Main News Feed'")
+        if "image_enrichment_attempted_at" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_attempted_at TEXT")
+        if "image_enrichment_error" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_error TEXT NOT NULL DEFAULT ''")
         self._connection.commit()
 
     def close(self) -> None:
@@ -138,7 +145,8 @@ class SignalStore:
     def save_briefing(self, signals: Iterable[Signal], collection: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             selected = list(signals)
-            payload = {"signals": [signal.as_dict() for signal in selected]}
+            topics = self.watchlist_topics()
+            payload = {"signals": [self._signal_payload(signal.as_dict(), topics) for signal in selected]}
             briefing = {"briefing_id": "briefing-" + uuid.uuid4().hex[:16], "generated_at": utc_now(), "signal_count": len(selected), "signals": payload["signals"], "collection": collection}
             self._connection.execute("INSERT INTO briefings (briefing_id,generated_at,signal_count,signals_json,collection_json) VALUES (?,?,?,?,?)", (briefing["briefing_id"], briefing["generated_at"], len(selected), json.dumps(payload["signals"], ensure_ascii=False), json.dumps(collection, ensure_ascii=False)))
             self._connection.commit()
@@ -151,10 +159,38 @@ class SignalStore:
                 return None
             signals = json.loads(row["signals_json"])
             feedback = self.latest_feedback([item.get("signal_id") for item in signals if isinstance(item, dict)])
+            topics = self.watchlist_topics()
             for item in signals:
-                if isinstance(item, dict) and item.get("signal_id") in feedback:
+                if not isinstance(item, dict):
+                    continue
+                item["watchlist_matches"] = self._signal_watchlist_matches(item, topics)
+                if item.get("signal_id") in feedback:
                     item["feedback"] = feedback[item["signal_id"]]
             return {"briefing_id": row["briefing_id"], "generated_at": row["generated_at"], "signal_count": row["signal_count"], "signals": signals, "collection": json.loads(row["collection_json"])}
+
+    @staticmethod
+    def _watchlist_text(value: object) -> str:
+        text = str(value or "").casefold()
+        return re.sub(r"[^\w]+", " ", text, flags=re.UNICODE).strip()
+
+    @classmethod
+    def _signal_watchlist_matches(cls, signal: dict[str, Any], topics: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+        haystack = cls._watchlist_text(" ".join(str(signal.get(key) or "") for key in ("title", "summary", "content", "source_name")))
+        if not haystack:
+            return []
+        padded_haystack = f" {haystack} "
+        matches: list[dict[str, Any]] = []
+        for topic in topics:
+            normalized = cls._watchlist_text(topic.get("topic"))
+            if normalized and f" {normalized} " in padded_haystack:
+                matches.append({"topic_id": topic["topic_id"], "topic": topic["topic"]})
+        return matches
+
+    @classmethod
+    def _signal_payload(cls, signal: dict[str, Any], topics: Iterable[dict[str, Any]]) -> dict[str, Any]:
+        payload = dict(signal)
+        payload["watchlist_matches"] = cls._signal_watchlist_matches(payload, topics)
+        return payload
 
     def record_feedback(self, signal_id: str, value: str, recorded_at: str | None = None) -> dict[str, Any]:
         with self._lock:
@@ -181,6 +217,24 @@ class SignalStore:
             for row in rows:
                 result.setdefault(str(row["signal_id"]), {"value": str(row["feedback_value"]), "timestamp": str(row["recorded_at"])})
             return result
+
+    def image_enrichment_state(self, dedupe_key: str) -> dict[str, str] | None:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT signal_id,image_url,image_enrichment_attempted_at FROM signals WHERE dedupe_key = ? LIMIT 1",
+                (dedupe_key,),
+            ).fetchone()
+            if row is None:
+                return None
+            return {"signal_id": str(row["signal_id"]), "image_url": str(row["image_url"] or ""), "attempted_at": str(row["image_enrichment_attempted_at"] or "")}
+
+    def mark_image_enrichment(self, signal_id: str, image_url: str = "", error: str = "") -> None:
+        with self._lock:
+            self._connection.execute(
+                "UPDATE signals SET image_url = CASE WHEN ? <> '' THEN ? ELSE image_url END, image_enrichment_attempted_at = ?, image_enrichment_error = ? WHERE signal_id = ?",
+                (image_url, image_url, utc_now(), error[:500], signal_id),
+            )
+            self._connection.commit()
 
     def upsert_watchlist_topic(self, topic: str, active: bool = True) -> dict[str, Any]:
         clean_topic = " ".join(str(topic).split()).strip()

@@ -28,10 +28,19 @@ background refresh on startup and every 15 minutes. Configure feeds with
 - Intake candidates may include `category` (`Main News Feed`, `Thailand Focus`,
   `AI Watch`, or `Watchlist`). The existing n8n intake path defaults to
   `Thailand Focus` when no category is supplied, so the current news workflow
-  can remain the producer without a schema rewrite.
+  can remain the producer without a schema rewrite. The adapter also accepts
+  n8n's item form, such as `[{ "json": { ...candidate fields... } }]`.
 - `GET /v1/watchlist/topics` returns active persistent topics.
 - `POST /v1/watchlist/topics` accepts `{ "topic": "...", "active": true }`
-  and stores the topic for future local collection.
+  and stores the topic. Active topics are matched case-insensitively against
+  incoming title, summary, content, and source text. Matching signals keep
+  their original category and carry `watchlist_matches` for the Watchlist view.
+
+Candidates without an image are refined in the Signal Service by making one
+short, cached article-page request. The service prefers `og:image` and falls
+back to `twitter:image`; an incoming `image_url` is never replaced, and a
+failed lookup is recorded without rejecting the signal. The timeout defaults
+to two seconds and can be adjusted with `SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS`.
 
 Candidates may use common names such as `title`/`headline`, `url`/`link`,
 `summary`/`description`, and `published_at`/`published`/`pubDate`. The original

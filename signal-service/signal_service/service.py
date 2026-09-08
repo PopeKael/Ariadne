@@ -2,17 +2,145 @@
 from __future__ import annotations
 
 import os
+import json
 import threading
 import time
+from dataclasses import replace
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urljoin, urlsplit, urlencode
+from urllib.request import Request, urlopen
 
 from .diagnostics import emit_diagnostic
 from .feeds import FeedDefinition, configured_feeds, fetch_feed
-from .models import Signal, normalize_candidate, utc_now
+from .models import Signal, canonical_url, normalize_candidate, utc_now
 from .ranking import BasicRanker, SignalRanker
 from .store import SignalStore
+
+
+class _ImageMetaParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.og_image = ""
+        self.og_secure_image = ""
+        self.twitter_image = ""
+        self.twitter_src_image = ""
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.casefold() != "meta":
+            return
+        values = {str(key).casefold(): str(value or "").strip() for key, value in attrs}
+        key = values.get("property", "").casefold() or values.get("name", "").casefold()
+        content = values.get("content", "").strip()
+        if not content:
+            return
+        if key == "og:image" and not self.og_image:
+            self.og_image = content
+        elif key == "og:image:secure_url" and not self.og_secure_image:
+            self.og_secure_image = content
+        elif key == "twitter:image" and not self.twitter_image:
+            self.twitter_image = content
+        elif key == "twitter:image:src" and not self.twitter_src_image:
+            self.twitter_src_image = content
+
+
+class _GoogleNewsParamsParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.params: dict[str, str] = {}
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.casefold() != "div":
+            return
+        values = {str(key).casefold(): str(value or "").strip() for key, value in attrs}
+        if values.get("data-n-a-id"):
+            for key in ("data-n-a-id", "data-n-a-ts", "data-n-a-sg"):
+                if values.get(key):
+                    self.params[key] = values[key]
+
+
+def _google_news_article_id(url: str) -> str:
+    parts = urlsplit(url)
+    if (parts.hostname or "").casefold() != "news.google.com":
+        return ""
+    segments = [segment for segment in parts.path.split("/") if segment]
+    for marker in ("articles", "read"):
+        if marker in segments:
+            index = segments.index(marker)
+            return segments[index + 1] if index + 1 < len(segments) else ""
+    return ""
+
+
+def _resolve_google_news_url(url: str, timeout: float) -> str:
+    article_id = _google_news_article_id(url)
+    if not article_id:
+        return url
+    page_request = Request(
+        f"https://news.google.com/articles/{article_id}?hl=en-US&gl=US&ceid=US:en",
+        headers={
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cookie": "CONSENT=PENDING+987",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+        },
+    )
+    with urlopen(page_request, timeout=timeout) as response:
+        raw = response.read(2_000_000)
+        charset = response.headers.get_content_charset() or "utf-8"
+    parser = _GoogleNewsParamsParser()
+    parser.feed(raw.decode(charset, errors="replace"))
+    source = parser.params
+    if not all(source.get(key) for key in ("data-n-a-id", "data-n-a-ts", "data-n-a-sg")):
+        return url
+    inner = [
+        "garturlreq",
+        [["X", "X", ["X", "X"], None, None, 1, 1, "US:en", None, 1, None, None, None, None, None, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1, None, 0, 0, None, 0],
+        source["data-n-a-id"],
+        int(source["data-n-a-ts"]),
+        source["data-n-a-sg"],
+    ]
+    articles_request = ["Fbv4je", json.dumps(inner, separators=(",", ":"))]
+    body = urlencode({"f.req": json.dumps([[articles_request]], separators=(",", ":"))}).encode("utf-8")
+    batch_request = Request(
+        "https://news.google.com/_/DotsSplashUi/data/batchexecute",
+        data=body,
+        headers={
+            "Accept": "*/*",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "Cookie": "CONSENT=PENDING+987",
+            "Origin": "https://news.google.com",
+            "Referer": "https://news.google.com/",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+            "X-Same-Domain": "1",
+        },
+    )
+    with urlopen(batch_request, timeout=timeout) as response:
+        result = response.read(200_000).decode(response.headers.get_content_charset() or "utf-8", errors="replace")
+    json_part = result.split("\n\n", 1)[1]
+    outer = json.loads(json_part)
+    decoded = json.loads(outer[0][2])
+    resolved = decoded[1] if isinstance(decoded, list) and len(decoded) > 1 else ""
+    return resolved if isinstance(resolved, str) and resolved.startswith(("http://", "https://")) else url
+
+
+def fetch_article_image(url: str, timeout: float = 2.0) -> str:
+    """Resolve an article's preferred social image without making intake fragile."""
+    bounded_timeout = max(0.5, min(float(timeout), 10.0))
+    article_url = _resolve_google_news_url(url, bounded_timeout)
+    request = Request(article_url, headers={"Accept": "text/html,application/xhtml+xml", "User-Agent": "Ariadne Signal Service/0.1"})
+    with urlopen(request, timeout=max(0.5, min(float(timeout), 10.0))) as response:
+        raw = response.read(512_000)
+        charset = response.headers.get_content_charset() or "utf-8"
+        final_url = response.geturl() if hasattr(response, "geturl") else article_url
+    parser = _ImageMetaParser()
+    parser.feed(raw.decode(charset, errors="replace"))
+    candidate = parser.og_image or parser.og_secure_image or parser.twitter_image or parser.twitter_src_image
+    if not candidate:
+        return ""
+    resolved = canonical_url(urljoin(final_url, candidate))
+    return resolved if resolved.startswith(("http://", "https://")) else ""
 
 
 def _iso_age_seconds(value: str | None) -> float | None:
@@ -60,7 +188,22 @@ class SignalService:
         for candidate in candidates:
             try:
                 signal = normalize_candidate(candidate, default_source_name=default_source_name, default_source_url=default_source_url, ingest_type=ingest_type, adapter=adapter, default_category=default_category)
-                _, created = self.store.upsert(signal)
+                existing = self.store.image_enrichment_state(signal.dedupe_key)
+                image_error = ""
+                if existing and existing["image_url"]:
+                    signal = replace(signal, image_url=str(existing["image_url"]))
+                elif not signal.image_url and not (existing and existing["attempted_at"]):
+                    try:
+                        image_url = fetch_article_image(signal.url, timeout=float(os.environ.get("SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS", "5")))
+                    except Exception as exc:
+                        image_url = ""
+                        image_error = str(exc)
+                    signal = replace(signal, image_url=image_url)
+                stored, created = self.store.upsert(signal)
+                if not signal.image_url and not (existing and existing["attempted_at"]):
+                    self.store.mark_image_enrichment(stored.signal_id, error=image_error)
+                elif signal.image_url and not (existing and existing["attempted_at"]):
+                    self.store.mark_image_enrichment(stored.signal_id, signal.image_url)
                 accepted += 1
                 if not created:
                     duplicates += 1
@@ -197,17 +340,24 @@ class SignalService:
 
 def extract_intake_candidates(payload: object) -> tuple[list[object], dict[str, Any]]:
     """Accept common n8n item wrappers without binding Core to n8n's schema."""
+    def unwrap(value: object) -> object:
+        if isinstance(value, dict) and isinstance(value.get("json"), dict):
+            return value["json"]
+        return value
+
     if isinstance(payload, list):
-        return payload, {}
+        return [unwrap(item) for item in payload], {}
     if not isinstance(payload, dict):
         return [], {}
     for key in ("candidates", "items", "signals", "data", "results"):
         value = payload.get(key)
         if isinstance(value, list):
-            return value, payload
+            return [unwrap(item) for item in value], payload
+    if isinstance(payload.get("json"), dict):
+        return [payload["json"]], payload
     if any(key in payload for key in ("title", "headline", "link", "url")):
         return [payload], payload
     return [], payload
 
 
-__all__ = ["SignalService", "extract_intake_candidates"]
+__all__ = ["SignalService", "extract_intake_candidates", "fetch_article_image"]

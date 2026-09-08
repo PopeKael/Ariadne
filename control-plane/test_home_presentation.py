@@ -28,6 +28,8 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("AI Watch", js)
         self.assertIn("Watchlist", js)
         self.assertIn("signal-image-placeholder", js)
+        self.assertIn("signal-watchlist-match", js)
+        self.assertNotIn("visibleMatches.pop()", js)
         self.assertIn("signal-feedback", css)
         self.assertIn("live-module", css)
         self.assertIn("signal-section-grid", css)
