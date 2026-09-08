@@ -66,6 +66,28 @@ class HomeChatStoreTests(unittest.TestCase):
         self.assertEqual(record["messages"][1]["response_state"], "interrupted")
         self.assertNotIn("", [record["messages"][0]["content"]])
 
+    def test_response_feedback_is_persisted_against_assistant_message(self):
+        chat = self.store.create()
+        turn_id, started = self.store.begin_turn(chat["chat_id"], "Rate this answer", "qwen3.5:9b", {})
+        assistant = next(item for item in started["messages"] if item["role"] == "assistant")
+        self.store.complete_turn(
+            chat["chat_id"], turn_id, "A durable answer.", model="qwen3.5:9b", used_vault=False,
+            sources=[], retrieval={}, timing={}, identity_kernel={},
+            active_source_signal_ids=["signal-article123"],
+        )
+        feedback = self.store.record_feedback(
+            chat["chat_id"], assistant["message_id"], "needs_work",
+            ["signal-article123"], "The explanation needs one more example.",
+        )
+        restarted = ChatStore(self.vault, now_fn=lambda: self.current)
+        stored = restarted.get(chat["chat_id"])["messages"][1]["feedback"]
+        self.assertEqual(feedback["message_id"], assistant["message_id"])
+        self.assertEqual(stored["chat_id"], chat["chat_id"])
+        self.assertEqual(stored["active_source_signal_ids"], ["signal-article123"])
+        self.assertEqual(stored["rating"], "needs_work")
+        self.assertEqual(stored["comment"], "The explanation needs one more example.")
+        self.assertTrue(stored["timestamp"])
+
     def test_expiry_removes_only_json_and_preserves_archive(self):
         chat = self.store.create()
         turn_id, _ = self.store.begin_turn(chat["chat_id"], "Keep my history", "qwen3.5:9b", {"version": "1.1.0"})

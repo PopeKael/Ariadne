@@ -56,6 +56,7 @@ from plugin_execution import PluginExecutionError, build_plugin_command
 from plugin_registry import PLUGIN_REGISTRY
 from plugins.cleanup.cleanup import PLUGIN_CAPABILITY, effective_configuration, normalize_configuration
 from signal_service_client import SignalServiceClient
+from source_article import promote_signal
 from vault_config import VAULT_ROOT, VAULT_ROOT_SOURCE, vault_counts
 
 ROOT = Path(__file__).resolve().parent
@@ -83,6 +84,7 @@ HOME_VISIBLE_EVENT_KINDS = frozenset({
     "vault_retrieval_performed",
     "document_analysis_performed",
     "chat_saved_to_inbox",
+    "signal_promoted_to_vault",
     "chat_exported",
     "significant_error",
 })
@@ -1523,6 +1525,12 @@ def _session(session_id: object) -> dict[str, object] | None:
         return session
 
 
+def _session_processing(session_id: str) -> bool:
+    with SESSION_LOCK:
+        session = SESSIONS.get(session_id)
+        return bool(session and session.get("processing"))
+
+
 def _start_process(command: list[str], cwd: Path) -> subprocess.Popen:
     child_environment = os.environ.copy()
     child_environment["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
@@ -2647,6 +2655,31 @@ def home_documents_payload(chat_id: str) -> dict[str, object]:
     return {'ok': True, 'chat_id': chat_id, 'documents': list_documents(DOCUMENT_WORK_ROOT, chat_id)}
 
 
+def _source_article_signal_id(document: dict[str, object]) -> str:
+    metadata = document.get("metadata") if isinstance(document.get("metadata"), dict) else {}
+    signal_id = metadata.get("signal_id") if isinstance(metadata, dict) else None
+    document_type = metadata.get("type") if isinstance(metadata, dict) else None
+    if isinstance(signal_id, str) and signal_id.strip() and (document_type == "source-article" or signal_id.startswith("signal-")):
+        return signal_id.strip()
+    match = re.search(r"__(signal-[A-Za-z0-9_-]+)\.md$", str(document.get("filename") or ""))
+    if match:
+        return match.group(1)
+    return ""
+
+
+def _active_source_signal_ids(documents: list[dict[str, object]]) -> list[str]:
+    values: list[str] = []
+    for document in documents:
+        signal_id = _source_article_signal_id(document)
+        if signal_id and signal_id not in values:
+            values.append(signal_id)
+    return values
+
+
+def _is_source_article_document(document: dict[str, object]) -> bool:
+    return bool(_source_article_signal_id(document))
+
+
 def home_planner_context(query: str, history: object, attachments: list[dict[str, object]], vault_mode: str, selected_tool_ids: set[str]) -> dict[str, object]:
     """Build the small authoritative context sent to the semantic planner."""
     local_now = datetime.now().astimezone()
@@ -3099,6 +3132,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     emit_state("thinking")
     safe_history = HOME_CHAT_STORE.model_history(chat_id, limit=8)
     attachment_summaries = list_documents(DOCUMENT_WORK_ROOT, chat_id)
+    active_source_signal_ids = _active_source_signal_ids(attachment_summaries)
     planner_result = home_planner_request(query, safe_history, attachment_summaries, mode, selected_tools, request_id=request_id, session_id=chat_id)
     planner_plan = planner_result.get("plan") if isinstance(planner_result.get("plan"), dict) else {}
     world_state = planner_result.get("world_state") if isinstance(planner_result.get("world_state"), dict) else {}
@@ -3143,7 +3177,15 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         document_activity.progress(100, f"Read {document_analysis['retrieved_chunks']} attachment chunk(s).", stage="reading")
     mcp = _home_mcp()
     identity, identity_meta = mcp.identity_system_prefix()
-    turn_id, _ = HOME_CHAT_STORE.begin_turn(chat_id, query, HOME_CHAT_MODEL, identity_meta)
+    turn_id, turn_record = HOME_CHAT_STORE.begin_turn(chat_id, query, HOME_CHAT_MODEL, identity_meta)
+    assistant_message_id = next(
+        (
+            str(item.get("message_id"))
+            for item in reversed(turn_record.get("messages", []))
+            if isinstance(item, dict) and item.get("role") == "assistant" and item.get("message_id")
+        ),
+        turn_id,
+    )
     CORE_INTERACTION_STREAM.emit(
         "turn_started", conversation_id=chat_id, turn_id=turn_id,
         data={"surface": "home", "model": HOME_CHAT_MODEL},
@@ -3301,6 +3343,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         HOME_CHAT_STORE.complete_turn(
             chat_id, turn_id, answer, model=HOME_CHAT_MODEL, used_vault=use_vault,
             sources=sources, retrieval=retrieval, timing=dict(timing), identity_kernel=response_identity,
+            active_source_signal_ids=active_source_signal_ids,
         )
         CORE_INTERACTION_STREAM.emit(
             "response_completed", conversation_id=chat_id, turn_id=turn_id, response_id=turn_id,
@@ -3328,6 +3371,8 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
             "planner": {"plan": planner_plan, "fallback": planner_fallback, "telemetry": planner_telemetry},
             "chat_id": chat_id,
             "turn_id": turn_id,
+            "message_id": assistant_message_id,
+            "active_source_signal_ids": active_source_signal_ids,
             "identity_kernel": response_identity,
         }
     except Exception as exc:
@@ -3738,7 +3783,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 with SESSION_LOCK:
                     SESSIONS[session_id] = {
                         "last_seen": time.monotonic(), "jobs": set(), "used_ollama": False,
-                        "chat_id": chat["chat_id"],
+                        "chat_id": chat["chat_id"], "processing": False,
                     }
                 lifecycle = "chat_resumed" if resumed else "chat_started"
                 record_home_event(lifecycle, f"{chat.get('title') or 'Ariadne Home chat'} ({chat['chat_id']})")
@@ -3789,6 +3834,64 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 result = SIGNAL_SERVICE_CLIENT.feedback(signal_id.strip(), feedback)
                 self.send_json(result, 200 if result.get("ok") else 502)
                 return
+            if path == "/api/home/signals/promote":
+                if _session_processing(session_id):
+                    self.send_json({"ok": False, "message": "Finish the current Ariadne response before changing article context."}, 409)
+                    return
+                signal_id = body.get("signal_id")
+                if not isinstance(signal_id, str) or not signal_id.strip():
+                    self.send_json({"ok": False, "message": "A signal_id is required."}, 400)
+                    return
+                briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=40)
+                if not briefing.get("ok", True):
+                    self.send_json({"ok": False, "message": str(briefing.get("message") or "Signal Service is unavailable.")}, 502)
+                    return
+                signal = next((item for item in briefing.get("signals", []) if isinstance(item, dict) and item.get("signal_id") == signal_id.strip()), None)
+                if signal is None:
+                    self.send_json({"ok": False, "message": "That signal is no longer available in the current briefing."}, 404)
+                    return
+                mode = body.get("mode", "replace")
+                if mode not in {"replace", "add"}:
+                    self.send_json({"ok": False, "message": "Article context mode must be replace or add."}, 400)
+                    return
+                result = promote_signal(VAULT_ROOT, signal)
+                note_path = (VAULT_ROOT / str(result.get("path") or "")).resolve()
+                allowed_roots = [(VAULT_ROOT / name).resolve() for name in ("Inbox", "Processed", "Failed")]
+                if not any(note_path == root or root in note_path.parents for root in allowed_roots):
+                    self.send_json({"ok": False, "message": "The promoted source article path is outside the Knowledge Vault."}, 500)
+                    return
+                try:
+                    content = note_path.read_text(encoding="utf-8")
+                    current_documents = list_documents(DOCUMENT_WORK_ROOT, active_chat_id)
+                    existing_document = next(
+                        (
+                            item for item in current_documents
+                            if item.get("filename") == note_path.name
+                        ),
+                        None,
+                    )
+                    if mode == "replace":
+                        for current_document in current_documents:
+                            if _is_source_article_document(current_document) and current_document.get("filename") != note_path.name:
+                                remove_document(
+                                    DOCUMENT_WORK_ROOT,
+                                    active_chat_id,
+                                    str(current_document.get("document_id") or ""),
+                                )
+                    document = existing_document or attach_document(DOCUMENT_WORK_ROOT, active_chat_id, note_path.name, content)
+                except (OSError, UnicodeError, ValueError) as exc:
+                    self.send_json({"ok": False, "message": f"The source article was saved but could not be attached: {exc}"}, 500)
+                    return
+                record_home_event("signal_promoted_to_vault", f"{signal_id.strip()} -> {result['path']} attached to chat {active_chat_id}")
+                self.send_json({
+                    "ok": True,
+                    "chat_id": active_chat_id,
+                    "document": document,
+                    "documents": list_documents(DOCUMENT_WORK_ROOT, active_chat_id),
+                    "mode": mode,
+                    **result,
+                }, 200)
+                return
             plugin_match = re.fullmatch(r"/api/plugins/([^/]+)/run", path)
             if plugin_match:
                 plugin_id = unquote(plugin_match.group(1))
@@ -3836,6 +3939,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True, "chat": new_chat, "archive_path": archive_path, "documents": []})
                 return
             if path == "/api/home/documents/attach":
+                if _session_processing(session_id):
+                    self.send_json({"ok": False, "message": "Finish the current Ariadne response before changing article context."}, 409)
+                    return
                 requested_chat_id = body.get("chat_id")
                 if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
                     self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
@@ -3854,6 +3960,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True, "chat_id": active_chat_id, "document": document})
                 return
             if path == "/api/home/documents/remove":
+                if _session_processing(session_id):
+                    self.send_json({"ok": False, "message": "Finish the current Ariadne response before changing article context."}, 409)
+                    return
                 document_id = body.get("document_id")
                 if not isinstance(document_id, str) or not document_id:
                     self.send_json({"ok": False, "message": "A document_id is required."}, 400)
@@ -3863,6 +3972,48 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 record_home_event("document_removed", f"Temporary attachment removed from chat {active_chat_id}.")
                 self.send_json({"ok": True, "chat_id": active_chat_id, "documents": list_documents(DOCUMENT_WORK_ROOT, active_chat_id)})
+                return
+            if path == "/api/home/feedback":
+                requested_chat_id = body.get("chat_id")
+                if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
+                    self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
+                    return
+                message_id = body.get("message_id")
+                rating = body.get("rating")
+                comment = body.get("comment", "")
+                source_signal_ids = body.get("active_source_signal_ids", [])
+                if not isinstance(message_id, str) or not message_id.strip():
+                    self.send_json({"ok": False, "message": "A response message_id is required."}, 400)
+                    return
+                if rating not in {"good", "needs_work", "wrong"}:
+                    self.send_json({"ok": False, "message": "Feedback rating must be good, needs_work, or wrong."}, 400)
+                    return
+                if not isinstance(comment, str):
+                    self.send_json({"ok": False, "message": "Feedback comment must be text."}, 400)
+                    return
+                if not isinstance(source_signal_ids, list):
+                    self.send_json({"ok": False, "message": "Active source signal IDs must be a list."}, 400)
+                    return
+                try:
+                    feedback = HOME_CHAT_STORE.record_feedback(
+                        active_chat_id,
+                        message_id.strip(),
+                        rating,
+                        source_signal_ids,
+                        comment,
+                    )
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                    return
+                record_home_event("response_feedback_recorded", f"{rating} for {message_id.strip()} in chat {active_chat_id}.")
+                CORE_INTERACTION_STREAM.emit(
+                    "feedback_recorded",
+                    conversation_id=active_chat_id,
+                    turn_id=message_id.strip(),
+                    response_id=message_id.strip(),
+                    data=feedback,
+                )
+                self.send_json({"ok": True, "chat_id": active_chat_id, "feedback": feedback}, 200)
                 return
             if path == "/api/home/chat/save":
                 requested_chat_id = body.get("chat_id")
@@ -3950,11 +4101,16 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 with SESSION_LOCK:
                     SESSIONS[session_id]["used_ollama"] = True
+                    SESSIONS[session_id]["processing"] = True
                 try:
                     with ai_gpu_admission():
                         self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids))
                 except RuntimeError as exc:
                     self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
+                finally:
+                    with SESSION_LOCK:
+                        if session_id in SESSIONS:
+                            SESSIONS[session_id]["processing"] = False
                 return
             if path == "/api/vault/run":
                 action = body.get("action")

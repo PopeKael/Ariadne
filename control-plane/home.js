@@ -1,4 +1,4 @@
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, requestStarted: 0};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false};
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -56,15 +56,43 @@ function renderAttachments(documents) {
   if (!root) return;
   root.replaceChildren();
   for (const document of state.attachments) {
-    const chip = el("span", "attachment-chip");
-    chip.append(el("span", "", document.filename || document.title || "Attached document"));
+    const metadata = document.metadata && typeof document.metadata === "object" ? document.metadata : {};
+    const inferredSignalId = metadata.signal_id || String(document.filename || "").match(/__(signal-[A-Za-z0-9_-]+)\.md$/)?.[1] || "";
+    const isArticle = metadata.type === "source-article" || Boolean(inferredSignalId);
+    const chip = el("span", "attachment-chip" + (isArticle ? " source-article-chip" : ""));
+    chip.title = isArticle ? (metadata.title || document.title || document.filename || "Source article") : (document.title || document.filename || "Attached document");
+    chip.append(el("span", "", isArticle ? (metadata.title || document.title || document.filename || "Source article") : (document.filename || document.title || "Attached document")));
     const remove = el("button", "attachment-remove", "×");
     remove.type = "button";
-    remove.title = "Remove temporary attachment";
+    remove.disabled = state.processing;
+    remove.title = isArticle ? "Remove article context" : "Remove temporary attachment";
     remove.addEventListener("click", () => removeAttachment(document.document_id));
     chip.append(remove);
     root.append(chip);
   }
+  const addArticle = el("button", "add-article-button", "+ Add article");
+  addArticle.type = "button";
+  addArticle.disabled = state.processing;
+  addArticle.classList.toggle("selected", state.addArticleMode);
+  addArticle.title = state.addArticleMode ? "Select a Discover article to add to the current context" : "Keep the current article context and add another Discover article";
+  addArticle.addEventListener("click", beginArticleAdd);
+  root.append(addArticle);
+}
+function beginArticleAdd() {
+  const status = document.querySelector("#ask-status");
+  if (state.processing) {
+    status.textContent = "Finish the current Ariadne response before changing article context.";
+    return;
+  }
+  state.addArticleMode = true;
+  status.textContent = "Select a Discover article to add to the current context.";
+  renderAttachments(state.attachments);
+}
+function setContextMutationState(processing) {
+  state.processing = processing;
+  document.querySelectorAll(".think-button, .attachment-remove, .add-article-button").forEach(button => {
+    button.disabled = processing;
+  });
 }
 async function loadTools() {
   try {
@@ -77,6 +105,10 @@ async function loadTools() {
 }
 async function attachFile(file) {
   const status = document.querySelector("#ask-status");
+  if (state.processing) {
+    status.textContent = "Finish the current Ariadne response before changing article context.";
+    return;
+  }
   if (!file || !state.sessionId) return;
   if (!/\.(md|txt)$/i.test(file.name)) {
     status.textContent = "Only Markdown and text attachments are supported.";
@@ -99,6 +131,10 @@ async function attachFile(file) {
   }
 }
 async function removeAttachment(documentId) {
+  if (state.processing) {
+    document.querySelector("#ask-status").textContent = "Finish the current Ariadne response before changing article context.";
+    return;
+  }
   try {
     const result = await postWithSessionRecovery("/api/home/documents/remove", {
       session_id: state.sessionId, chat_id: state.chatId, document_id: documentId
@@ -200,6 +236,7 @@ function renderSignalCard(item) {
     body.append(sourceLink);
   }
   if (item.signal_id) {
+    const actions = el("div", "signal-card-actions");
     const feedback = el("div", "signal-feedback");
     feedback.append(el("span", "feedback-label", "Your take"));
     const feedbackValues = [["useful", "Useful"], ["interesting", "Interesting"], ["not_useful", "Not useful"]];
@@ -216,7 +253,16 @@ function renderSignalCard(item) {
       feedback.append(button);
     }
     feedback.append(el("span", "feedback-status"));
-    body.append(feedback);
+
+    const promotion = el("div", "signal-promotion");
+    const thinkButton = el("button", "think-button", "Think with Ariadne");
+    thinkButton.type = "button";
+    thinkButton.setAttribute("aria-label", `Promote ${item.label || "this signal"} into the Knowledge Vault`);
+    const promotionStatus = el("span", "promotion-status");
+    thinkButton.addEventListener("click", () => promoteSignalToVault(item.signal_id, thinkButton, promotionStatus));
+    promotion.append(thinkButton, promotionStatus);
+    actions.append(feedback, promotion);
+    card.append(actions);
   }
   return card;
 }
@@ -263,6 +309,48 @@ async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
     buttons.forEach(button => { button.disabled = false; });
   }
 }
+async function promoteSignalToVault(signalId, button, status) {
+  if (state.processing) {
+    status.textContent = "Finish the current Ariadne response before changing article context.";
+    return;
+  }
+  if (!state.sessionId || button.disabled) return;
+  const mode = state.addArticleMode ? "add" : "replace";
+  state.contextMutationInFlight = true;
+  setContextMutationState(true);
+  button.disabled = true;
+  status.textContent = "Reading source…";
+  document.querySelector("#ask-status").textContent = "Reading source article…";
+  try {
+    const result = await postWithSessionRecovery("/api/home/signals/promote", {session_id: state.sessionId, signal_id: signalId, mode});
+    if (!result.ok) throw new Error(result.message || "The signal was not promoted.");
+    if (!result.document) throw new Error("The source article was saved, but could not be attached to this conversation.");
+    state.addArticleMode = false;
+    renderAttachments(result.documents || [result.document]);
+    button.classList.add("promoted");
+    status.textContent = result.fetch_error ? "Attached with signal fallback" : mode === "add" ? "Article added to Ask Ariadne" : result.updated ? "Article replaced and attached" : "Attached to Ask Ariadne";
+    button.title = result.path || "Source article note saved to the Knowledge Vault.";
+    document.querySelector("#ask-status").textContent = status.textContent + ". Ask Ariadne is ready for your question.";
+    openAskAriadne();
+  } catch (error) {
+    status.textContent = "Not promoted";
+    button.title = error.message || "The signal could not be promoted.";
+    document.querySelector("#ask-status").textContent = "Could not read that source article: " + (error.message || "promotion failed");
+  } finally {
+    state.contextMutationInFlight = false;
+    setContextMutationState(false);
+    button.disabled = false;
+  }
+}
+function openAskAriadne() {
+  document.body.classList.add("chat-expanded");
+  const collapse = document.querySelector("#collapse-chat");
+  if (collapse) collapse.hidden = false;
+  const panel = document.querySelector(".ask-panel");
+  if (panel) panel.scrollIntoView({block: "start", inline: "nearest", behavior: "smooth"});
+  const input = document.querySelector("#ask-input");
+  if (input) window.setTimeout(() => input.focus({preventScroll: true}), 0);
+}
 function renderActivity(items) {
   const root = document.querySelector("#activity-list");
   root.replaceChildren();
@@ -274,6 +362,7 @@ function renderActivity(items) {
     vault_retrieval_performed: "Vault retrieval completed",
     document_analysis_performed: "Document analysis completed",
     chat_saved_to_inbox: "Saved to Inbox",
+    signal_promoted_to_vault: "Signal promoted to Vault",
     chat_exported: "Chat exported",
     significant_error: "Ariadne needs attention",
   };
@@ -432,6 +521,80 @@ async function purgeCurrentChat() {
     document.querySelector("#ask-status").textContent = "Purge failed: " + error.message;
   }
 }
+function responseFeedbackNeedsComment(rating) {
+  return rating === "needs_work" || rating === "wrong";
+}
+function applyResponseFeedbackState(root, feedback) {
+  const rating = feedback && feedback.rating ? feedback.rating : "";
+  root.querySelectorAll(".response-feedback-button").forEach(button => {
+    button.classList.toggle("selected", button.dataset.rating === rating);
+  });
+  const comment = root.querySelector(".response-feedback-comment");
+  const input = root.querySelector(".response-feedback-input");
+  if (comment) comment.hidden = !responseFeedbackNeedsComment(rating);
+  if (input && feedback && typeof feedback.comment === "string") input.value = feedback.comment;
+}
+async function saveResponseFeedback(metadata, root, rating, comment) {
+  const status = root.querySelector(".response-feedback-status");
+  const buttons = Array.from(root.querySelectorAll("button"));
+  buttons.forEach(button => { button.disabled = true; });
+  if (status) status.textContent = "Saving…";
+  try {
+    const result = await postWithSessionRecovery("/api/home/feedback", {
+      session_id: state.sessionId,
+      chat_id: state.chatId,
+      message_id: metadata.message_id || metadata.turn_id,
+      active_source_signal_ids: Array.isArray(metadata.active_source_signal_ids) ? metadata.active_source_signal_ids : [],
+      rating,
+      comment: comment || "",
+    });
+    metadata.feedback = result.feedback;
+    applyResponseFeedbackState(root, result.feedback);
+    if (status) status.textContent = "Saved";
+  } catch (error) {
+    if (status) status.textContent = "Not saved";
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+function buildResponseFeedback(metadata) {
+  const root = el("div", "response-feedback");
+  root.append(el("span", "response-feedback-label", "Response feedback"));
+  const actions = el("div", "response-feedback-actions");
+  const ratings = [
+    ["good", "Good answer"],
+    ["needs_work", "Needs work"],
+    ["wrong", "Wrong"],
+  ];
+  for (const [rating, label] of ratings) {
+    const button = el("button", "response-feedback-button", label);
+    button.type = "button";
+    button.dataset.rating = rating;
+    button.addEventListener("click", () => {
+      applyResponseFeedbackState(root, {rating});
+      saveResponseFeedback(metadata, root, rating, root.querySelector(".response-feedback-input")?.value || "");
+    });
+    actions.append(button);
+  }
+  root.append(actions);
+  const comment = el("div", "response-feedback-comment");
+  const label = el("label", "response-feedback-comment-label", "Tell Ariadne why (optional)");
+  const input = el("textarea", "response-feedback-input");
+  input.rows = 1;
+  input.maxLength = 2_000;
+  input.placeholder = "Tell Ariadne why";
+  label.append(input);
+  const save = el("button", "response-feedback-save", "Save feedback");
+  save.type = "button";
+  save.addEventListener("click", () => {
+    const rating = root.querySelector(".response-feedback-button.selected")?.dataset.rating;
+    if (rating) saveResponseFeedback(metadata, root, rating, input.value);
+  });
+  comment.append(label, save);
+  root.append(comment, el("span", "response-feedback-status"));
+  applyResponseFeedbackState(root, metadata.feedback);
+  return root;
+}
 function addMessage(role, content, metadata) {
   const log = document.querySelector("#chat-log");
   document.querySelector(".empty-chat")?.remove();
@@ -440,9 +603,9 @@ function addMessage(role, content, metadata) {
   const displayContent = content || (metadata && metadata.state === "pending" ? "Response pending…" : metadata && metadata.state === "interrupted" ? "Response interrupted; no complete response was recorded." : "");
   const messageBody = el("div", "message-body", displayContent);
   message.append(messageBody);
-  if (role === "assistant" && metadata && metadata.model && !["pending", "interrupted"].includes(metadata.state)) {
+  if (role === "assistant" && metadata && !["pending", "interrupted"].includes(metadata.state)) {
     const meta = el("div", "message-meta");
-    meta.append(el("span", "", metadata.model));
+    if (metadata.model) meta.append(el("span", "", metadata.model));
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
     if (metadata.used_documents) meta.append(el("span", "message-attachment-badge", "Temporary document used"));
     const timing = formatTiming(metadata.timing);
@@ -474,6 +637,7 @@ function addMessage(role, content, metadata) {
       }
       message.append(details);
     }
+    message.append(buildResponseFeedback(metadata));
   }
   log.append(message);
   if (role === "assistant") {
@@ -715,6 +879,7 @@ function endRequestStatus() {
   state.requestTimer = null;
 }
 async function loadHome() {
+  if (state.contextMutationInFlight) return;
   try {
     const data = await getJson("/api/home/activity");
     renderHealth(data.health);
@@ -787,6 +952,7 @@ async function ask(event) {
   addMessage("user", message);
   input.value = "";
   submit.disabled = true;
+  setContextMutationState(true);
   beginRequestStatus(status);
   try {
     const result = await postJson("/api/home/chat", {
@@ -811,6 +977,7 @@ async function ask(event) {
   } finally {
     endRequestStatus();
     submit.disabled = false;
+    setContextMutationState(false);
     input.focus();
   }
 }

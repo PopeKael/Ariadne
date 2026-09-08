@@ -216,6 +216,8 @@ class ChatStore:
             now = self.now_fn()
             timestamp = isoformat(now)
             turn_id = uuid.uuid4().hex
+            user_message_id = uuid.uuid4().hex
+            assistant_message_id = uuid.uuid4().hex
             if not record.get("messages"):
                 record["title"] = title_from_message(message)
             record["last_activity_at"] = timestamp
@@ -224,6 +226,7 @@ class ChatStore:
             record["identity_kernel"] = identity_kernel
             record["messages"].extend([
                 {
+                    "message_id": user_message_id,
                     "turn_id": turn_id,
                     "role": "user",
                     "content": message,
@@ -232,6 +235,7 @@ class ChatStore:
                     "response_state": "submitted",
                 },
                 {
+                    "message_id": assistant_message_id,
                     "turn_id": turn_id,
                     "role": "assistant",
                     "content": "",
@@ -253,7 +257,8 @@ class ChatStore:
 
     def complete_turn(self, chat_id: str, turn_id: str, answer: str, *, model: str,
                       used_vault: bool, sources: list[Any], retrieval: dict[str, Any],
-                      timing: dict[str, Any], identity_kernel: dict[str, Any]) -> dict[str, Any]:
+                      timing: dict[str, Any], identity_kernel: dict[str, Any],
+                      active_source_signal_ids: list[str] | None = None) -> dict[str, Any]:
         with _process_lock(self.lock_path):
             record = self._load_locked(chat_id)
             if not record:
@@ -272,11 +277,60 @@ class ChatStore:
                 "retrieval": retrieval,
                 "timing": timing,
                 "identity_kernel": identity_kernel,
+                "active_source_signal_ids": [
+                    str(item) for item in (active_source_signal_ids or [])
+                    if isinstance(item, str) and item.strip()
+                ],
             })
             record["last_activity_at"] = timestamp
             record["expires_at"] = isoformat(now + timedelta(days=RETENTION_DAYS))
             self._write_locked(record)
             return record
+
+    def record_feedback(self, chat_id: str, message_id: str, rating: str,
+                        active_source_signal_ids: list[str] | None = None,
+                        comment: str = "") -> dict[str, Any]:
+        if rating not in {"good", "needs_work", "wrong"}:
+            raise ValueError("Feedback rating must be good, needs_work, or wrong.")
+        if not isinstance(message_id, str) or not message_id.strip():
+            raise ValueError("A response message_id is required.")
+        if not isinstance(comment, str):
+            raise ValueError("Feedback comment must be text.")
+        signal_ids = [
+            str(item).strip() for item in (active_source_signal_ids or [])
+            if isinstance(item, str) and item.strip()
+        ][:32]
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record or record.get("status") != "active":
+                raise ValueError("The durable Home chat is not active.")
+            message = next(
+                (
+                    item for item in reversed(record.get("messages", []))
+                    if isinstance(item, dict)
+                    and item.get("role") == "assistant"
+                    and (item.get("message_id") == message_id or item.get("turn_id") == message_id)
+                ),
+                None,
+            )
+            if not message:
+                raise ValueError("That Ariadne response was not found in this chat.")
+            if message.get("state") != "complete":
+                raise ValueError("Feedback can only be recorded for a completed Ariadne response.")
+            timestamp = isoformat(self.now_fn())
+            feedback = {
+                "chat_id": chat_id,
+                "message_id": str(message.get("message_id") or message.get("turn_id") or message_id),
+                "active_source_signal_ids": signal_ids,
+                "rating": rating,
+                "comment": comment.strip()[:2_000],
+                "timestamp": timestamp,
+            }
+            message["feedback"] = feedback
+            record["last_activity_at"] = timestamp
+            record["expires_at"] = isoformat(self.now_fn() + timedelta(days=RETENTION_DAYS))
+            self._write_locked(record)
+            return feedback
 
     def interrupt_turn(self, chat_id: str, turn_id: str, error: str) -> dict[str, Any] | None:
         with _process_lock(self.lock_path):

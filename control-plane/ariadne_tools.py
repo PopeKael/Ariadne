@@ -26,7 +26,9 @@ TOKEN_RE = re.compile(r"[\w-]+", re.UNICODE)
 SUPPORTED_EXTENSIONS = {".md", ".txt"}
 METADATA_KEYS = {
     "title", "source", "author", "published", "published_date", "created",
-    "created_date", "description", "tags",
+    "created_date", "description", "tags", "type", "signal_id", "source_url",
+    "resolved_url", "published_at", "captured_at", "category", "image_url",
+    "watchlist_matches", "provenance",
 }
 
 
@@ -176,11 +178,17 @@ def _chunk_markdown(content: str) -> list[dict[str, Any]]:
 
 
 def _document_summary(document: dict[str, Any]) -> dict[str, Any]:
+    metadata = dict(document.get("metadata", {})) if isinstance(document.get("metadata"), dict) else {}
+    if not metadata.get("signal_id"):
+        match = re.search(r"__(signal-[A-Za-z0-9_-]+)\.md$", str(document.get("filename") or ""))
+        if match:
+            metadata.setdefault("type", "source-article")
+            metadata.setdefault("signal_id", match.group(1))
     return {
         "document_id": document["document_id"],
         "filename": document["filename"],
-        "title": document.get("metadata", {}).get("title") or document["filename"],
-        "metadata": document.get("metadata", {}),
+        "title": metadata.get("title") or document["filename"],
+        "metadata": metadata,
         "size_bytes": document["size_bytes"],
         "content_chars": document["content_chars"],
         "chunk_count": len(document.get("chunks", [])),
