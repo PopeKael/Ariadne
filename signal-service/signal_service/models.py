@@ -15,6 +15,8 @@ from urllib.parse import urlsplit, urlunsplit
 TAG_RE = re.compile(r"<[^>]+>")
 WHITESPACE_RE = re.compile(r"\s+")
 
+SIGNAL_CATEGORIES = ("Main News Feed", "Thailand Focus", "AI Watch", "Watchlist")
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -66,6 +68,21 @@ def _candidate_value(candidate: dict[str, Any], *names: str) -> object:
     return ""
 
 
+def _candidate_image_url(candidate: dict[str, Any]) -> str:
+    direct = _candidate_value(candidate, "image_url", "image", "thumbnail", "og_image", "og:image")
+    if direct:
+        return canonical_url(direct)
+    metadata = candidate.get("metadata")
+    if isinstance(metadata, dict):
+        return canonical_url(_candidate_value(metadata, "image_url", "image", "thumbnail", "og_image", "og:image"))
+    return ""
+
+
+def normalize_category(value: object, default: str = "Main News Feed") -> str:
+    text = clean_text(value, 80)
+    return text if text in SIGNAL_CATEGORIES else default if default in SIGNAL_CATEGORIES else SIGNAL_CATEGORIES[0]
+
+
 @dataclass(frozen=True)
 class Signal:
     signal_id: str
@@ -81,6 +98,7 @@ class Signal:
     updated_at: str
     discovered_at: str
     image_url: str = ""
+    category: str = "Main News Feed"
     media: dict[str, Any] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
     rank_score: float = 0.0
@@ -99,6 +117,7 @@ class Signal:
             "updated_at": self.updated_at,
             "discovered_at": self.discovered_at,
             "image_url": self.image_url,
+            "category": self.category,
             "media": self.media,
             "provenance": self.provenance,
             "rank_score": round(self.rank_score, 4),
@@ -113,6 +132,7 @@ def normalize_candidate(
     default_source_url: str = "",
     ingest_type: str = "candidate",
     adapter: str = "external",
+    default_category: str = "Main News Feed",
 ) -> Signal:
     if not isinstance(candidate, dict):
         raise ValueError("Candidate must be an object")
@@ -133,7 +153,8 @@ def normalize_candidate(
     source_url = canonical_url(_candidate_value(candidate, "source_url", "feed_url")) or canonical_url(default_source_url)
     published_at = normalize_timestamp(_candidate_value(candidate, "published_at", "published", "pubDate", "date", "timestamp"), observed_at)
     updated_at = normalize_timestamp(_candidate_value(candidate, "updated_at", "updated", "modified"), published_at)
-    image_url = canonical_url(_candidate_value(candidate, "image_url", "image", "thumbnail"))
+    image_url = _candidate_image_url(candidate)
+    category = normalize_category(_candidate_value(candidate, "category", "section", "feed_category"), default_category)
     media = _candidate_value(candidate, "media", "media_metadata", "enclosure")
     if not isinstance(media, dict):
         media = {}
@@ -163,6 +184,7 @@ def normalize_candidate(
         updated_at=updated_at,
         discovered_at=observed_at,
         image_url=image_url,
+        category=category,
         media=media,
         provenance=provenance,
     )

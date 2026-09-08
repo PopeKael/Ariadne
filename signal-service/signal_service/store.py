@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sqlite3
 import threading
 import uuid
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS signals (
     updated_at TEXT NOT NULL,
     discovered_at TEXT NOT NULL,
     image_url TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'Main News Feed',
     media_json TEXT NOT NULL,
     provenance_json TEXT NOT NULL,
     rank_score REAL NOT NULL DEFAULT 0,
@@ -57,6 +59,21 @@ CREATE TABLE IF NOT EXISTS briefings (
     collection_json TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_briefings_generated_at ON briefings(generated_at DESC);
+CREATE TABLE IF NOT EXISTS signal_feedback (
+    feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signal_id TEXT NOT NULL REFERENCES signals(signal_id) ON DELETE CASCADE,
+    feedback_value TEXT NOT NULL CHECK (feedback_value IN ('useful', 'interesting', 'not_useful')),
+    recorded_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_signal_feedback_signal ON signal_feedback(signal_id, recorded_at DESC);
+CREATE TABLE IF NOT EXISTS watchlist_topics (
+    topic_id TEXT PRIMARY KEY,
+    topic TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_watchlist_topics_active ON watchlist_topics(active, updated_at DESC);
 """
 
 
@@ -69,6 +86,9 @@ class SignalStore:
         self._connection.row_factory = sqlite3.Row
         self._connection.execute("PRAGMA foreign_keys = ON")
         self._connection.executescript(SCHEMA)
+        columns = {str(row[1]) for row in self._connection.execute("PRAGMA table_info(signals)").fetchall()}
+        if "category" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN category TEXT NOT NULL DEFAULT 'Main News Feed'")
         self._connection.commit()
 
     def close(self) -> None:
@@ -85,15 +105,15 @@ class SignalStore:
                 summary = signal.summary if len(signal.summary) >= len(row["summary"]) else str(row["summary"])
                 content = signal.content if len(signal.content) >= len(row["content"]) else str(row["content"])
                 connection.execute(
-                    """UPDATE signals SET summary=?, content=?, updated_at=?, image_url=?, media_json=?, provenance_json=?, last_seen_at=? WHERE signal_id=?""",
-                    (summary, content, signal.updated_at, signal.image_url or row["image_url"], json.dumps(signal.media or json.loads(row["media_json"]), ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), now, signal_id),
+                    """UPDATE signals SET summary=?, content=?, updated_at=?, image_url=?, category=?, media_json=?, provenance_json=?, last_seen_at=? WHERE signal_id=?""",
+                    (summary, content, signal.updated_at, signal.image_url or row["image_url"], signal.category or row["category"], json.dumps(signal.media or json.loads(row["media_json"]), ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), now, signal_id),
                 )
                 stored = Signal(**{**signal.__dict__, "signal_id": signal_id, "summary": summary, "content": content})
                 created = False
             else:
                 connection.execute(
-                    """INSERT INTO signals (signal_id,dedupe_key,content_key,title,summary,content,url,source_name,source_url,published_at,updated_at,discovered_at,image_url,media_json,provenance_json,rank_score,rank_reason,first_seen_at,last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (signal.signal_id, signal.dedupe_key, signal.content_key, signal.title, signal.summary, signal.content, signal.url, signal.source_name, signal.source_url, signal.published_at, signal.updated_at, signal.discovered_at, signal.image_url, json.dumps(signal.media, ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), signal.rank_score, signal.rank_reason, now, now),
+                    """INSERT INTO signals (signal_id,dedupe_key,content_key,title,summary,content,url,source_name,source_url,published_at,updated_at,discovered_at,image_url,category,media_json,provenance_json,rank_score,rank_reason,first_seen_at,last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (signal.signal_id, signal.dedupe_key, signal.content_key, signal.title, signal.summary, signal.content, signal.url, signal.source_name, signal.source_url, signal.published_at, signal.updated_at, signal.discovered_at, signal.image_url, signal.category, json.dumps(signal.media, ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), signal.rank_score, signal.rank_reason, now, now),
                 )
                 stored = signal
                 created = True
@@ -111,7 +131,7 @@ class SignalStore:
             result: list[Signal] = []
             for row in rows:
                 result.append(Signal(
-                    signal_id=row["signal_id"], dedupe_key=row["dedupe_key"], content_key=row["content_key"], title=row["title"], summary=row["summary"], content=row["content"], url=row["url"], source_name=row["source_name"], source_url=row["source_url"], published_at=row["published_at"], updated_at=row["updated_at"], discovered_at=row["discovered_at"], image_url=row["image_url"], media=json.loads(row["media_json"]), provenance=json.loads(row["provenance_json"]), rank_score=float(row["rank_score"]), rank_reason=row["rank_reason"],
+                    signal_id=row["signal_id"], dedupe_key=row["dedupe_key"], content_key=row["content_key"], title=row["title"], summary=row["summary"], content=row["content"], url=row["url"], source_name=row["source_name"], source_url=row["source_url"], published_at=row["published_at"], updated_at=row["updated_at"], discovered_at=row["discovered_at"], image_url=row["image_url"], category=row["category"], media=json.loads(row["media_json"]), provenance=json.loads(row["provenance_json"]), rank_score=float(row["rank_score"]), rank_reason=row["rank_reason"],
                 ))
             return result
 
@@ -129,7 +149,63 @@ class SignalStore:
             row = self._connection.execute("SELECT * FROM briefings ORDER BY generated_at DESC LIMIT 1").fetchone()
             if not row:
                 return None
-            return {"briefing_id": row["briefing_id"], "generated_at": row["generated_at"], "signal_count": row["signal_count"], "signals": json.loads(row["signals_json"]), "collection": json.loads(row["collection_json"])}
+            signals = json.loads(row["signals_json"])
+            feedback = self.latest_feedback([item.get("signal_id") for item in signals if isinstance(item, dict)])
+            for item in signals:
+                if isinstance(item, dict) and item.get("signal_id") in feedback:
+                    item["feedback"] = feedback[item["signal_id"]]
+            return {"briefing_id": row["briefing_id"], "generated_at": row["generated_at"], "signal_count": row["signal_count"], "signals": signals, "collection": json.loads(row["collection_json"])}
+
+    def record_feedback(self, signal_id: str, value: str, recorded_at: str | None = None) -> dict[str, Any]:
+        with self._lock:
+            timestamp = recorded_at or utc_now()
+            row = self._connection.execute("SELECT signal_id FROM signals WHERE signal_id = ?", (signal_id,)).fetchone()
+            if row is None:
+                raise ValueError("Unknown signal_id")
+            self._connection.execute("DELETE FROM signal_feedback WHERE signal_id = ?", (signal_id,))
+            self._connection.execute("INSERT INTO signal_feedback (signal_id,feedback_value,recorded_at) VALUES (?,?,?)", (signal_id, value, timestamp))
+            self._connection.commit()
+            return {"signal_id": signal_id, "feedback": value, "recorded_at": timestamp}
+
+    def latest_feedback(self, signal_ids: Iterable[str | None]) -> dict[str, dict[str, str]]:
+        values = [str(value) for value in signal_ids if value]
+        if not values:
+            return {}
+        with self._lock:
+            placeholders = ",".join("?" for _ in values)
+            rows = self._connection.execute(
+                f"SELECT signal_id, feedback_value, recorded_at FROM signal_feedback WHERE signal_id IN ({placeholders}) ORDER BY recorded_at DESC, feedback_id DESC",
+                values,
+            ).fetchall()
+            result: dict[str, dict[str, str]] = {}
+            for row in rows:
+                result.setdefault(str(row["signal_id"]), {"value": str(row["feedback_value"]), "timestamp": str(row["recorded_at"])})
+            return result
+
+    def upsert_watchlist_topic(self, topic: str, active: bool = True) -> dict[str, Any]:
+        clean_topic = " ".join(str(topic).split()).strip()
+        if not clean_topic or len(clean_topic) > 200:
+            raise ValueError("Watchlist topic must be between 1 and 200 characters")
+        topic_id = "watch-" + hashlib.sha256(clean_topic.casefold().encode("utf-8")).hexdigest()[:24]
+        timestamp = utc_now()
+        with self._lock:
+            self._connection.execute(
+                """INSERT INTO watchlist_topics (topic_id,topic,active,created_at,updated_at) VALUES (?,?,?,?,?)
+                   ON CONFLICT(topic) DO UPDATE SET active=excluded.active, updated_at=excluded.updated_at""",
+                (topic_id, clean_topic, 1 if active else 0, timestamp, timestamp),
+            )
+            self._connection.commit()
+            row = self._connection.execute("SELECT topic_id,topic,active,created_at,updated_at FROM watchlist_topics WHERE topic = ? COLLATE NOCASE", (clean_topic,)).fetchone()
+            return {"topic_id": row["topic_id"], "topic": row["topic"], "active": bool(row["active"]), "created_at": row["created_at"], "updated_at": row["updated_at"]}
+
+    def watchlist_topics(self, active_only: bool = True) -> list[dict[str, Any]]:
+        with self._lock:
+            query = "SELECT topic_id,topic,active,created_at,updated_at FROM watchlist_topics"
+            if active_only:
+                query += " WHERE active = 1"
+            query += " ORDER BY updated_at DESC, topic COLLATE NOCASE"
+            rows = self._connection.execute(query).fetchall()
+            return [{"topic_id": row["topic_id"], "topic": row["topic"], "active": bool(row["active"]), "created_at": row["created_at"], "updated_at": row["updated_at"]} for row in rows]
 
 
 __all__ = ["SignalStore"]

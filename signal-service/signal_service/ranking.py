@@ -8,7 +8,7 @@ from .models import Signal
 
 
 class SignalRanker(Protocol):
-    def rank(self, signals: Iterable[Signal], limit: int = 6, profile: object = None) -> list[Signal]: ...
+    def rank(self, signals: Iterable[Signal], limit: int = 30, profile: object = None) -> list[Signal]: ...
 
 
 def _age_hours(timestamp: str, now: datetime) -> float:
@@ -24,7 +24,7 @@ def _age_hours(timestamp: str, now: datetime) -> float:
 class BasicRanker:
     """Recency plus useful-content scoring; profile is intentionally unused in v0.1."""
 
-    def rank(self, signals: Iterable[Signal], limit: int = 6, profile: object = None) -> list[Signal]:
+    def rank(self, signals: Iterable[Signal], limit: int = 30, profile: object = None) -> list[Signal]:
         now = datetime.now(timezone.utc)
         scored: list[Signal] = []
         for signal in signals:
@@ -39,11 +39,13 @@ class BasicRanker:
         source_counts: dict[str, int] = {}
         for signal in scored:
             source_key = signal.source_name.casefold()
-            if source_counts.get(source_key, 0) >= 2:
+            # Keep source diversity as a guardrail, but allow enough items for
+            # the Discover sections to reach their six-item floor.
+            if source_counts.get(source_key, 0) >= 10:
                 continue
             selected.append(signal)
             source_counts[source_key] = source_counts.get(source_key, 0) + 1
-            if len(selected) >= max(1, min(int(limit), 20)):
+            if len(selected) >= max(1, min(int(limit), 40)):
                 break
         return selected
 

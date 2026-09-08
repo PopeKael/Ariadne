@@ -20,11 +20,18 @@ background refresh on startup and every 15 minutes. Configure feeds with
 ## API
 
 - `GET /v1/health` reports configured sources, collection state, and cache state.
-- `GET /v1/briefing?limit=6` returns the cached briefing. If collection has
+- `GET /v1/briefing?limit=30` returns the cached briefing. If collection has
   failed, the last successful briefing is returned with `stale: true` and the
   source errors.
 - `POST /v1/intake/candidates` accepts a candidate list or common wrappers such
   as `{ "items": [...] }`, `{ "candidates": [...] }`, or one candidate object.
+- Intake candidates may include `category` (`Main News Feed`, `Thailand Focus`,
+  `AI Watch`, or `Watchlist`). The existing n8n intake path defaults to
+  `Thailand Focus` when no category is supplied, so the current news workflow
+  can remain the producer without a schema rewrite.
+- `GET /v1/watchlist/topics` returns active persistent topics.
+- `POST /v1/watchlist/topics` accepts `{ "topic": "...", "active": true }`
+  and stores the topic for future local collection.
 
 Candidates may use common names such as `title`/`headline`, `url`/`link`,
 `summary`/`description`, and `published_at`/`published`/`pubDate`. The original

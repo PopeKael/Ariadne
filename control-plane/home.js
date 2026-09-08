@@ -138,39 +138,122 @@ function renderHealth(payload) {
   document.querySelector("#model-name").textContent = payload.resident_model || "Local model";
   document.querySelector("#model-context").textContent = Math.round((payload.context_tokens || 16384) / 1024) + "K context · local Ollama";
 }
+const SIGNAL_SECTIONS = [
+  ["Main News Feed", "Main News Feed", "The wider world, distilled locally."],
+  ["Thailand Focus", "Thailand Focus", "Thailand news and local-interest signals from the existing producer path."],
+  ["AI Watch", "AI Watch", "AI, automation, models and the tools changing the workshop."],
+  ["Watchlist", "Watchlist", "Topics you are monitoring for future local collection."]
+];
+const SIGNAL_CATEGORY_NAMES = new Set(SIGNAL_SECTIONS.map(section => section[0]));
+const MAX_SIGNALS_PER_SECTION = 10;
+
+function inferSignalCategory(item) {
+  const declared = String(item?.category || "").trim();
+  if (SIGNAL_CATEGORY_NAMES.has(declared)) return declared;
+  const text = `${item?.label || ""} ${item?.summary || ""} ${item?.source || ""}`.toLowerCase();
+  if (/thailand|thai|bangkok|phuket|pattaya|immigration|visa|baht|expat/.test(text)) return "Thailand Focus";
+  if (/artificial intelligence|\bai\b|machine learning|llm|openai|anthropic|google deepmind|hacker news|ars technica|automation|robot/.test(text)) return "AI Watch";
+  return "Main News Feed";
+}
+
+function renderSignalCard(item) {
+  const card = el("article", "signal-card " + (item.tone || "quiet"));
+  card.dataset.signalId = item.signal_id || "";
+  const validUrl = item.url && /^https?:\/\//i.test(item.url);
+  const body = el("div", "signal-card-body");
+  const title = el("h3", "signal-card-title", item.label || "Signal");
+  const summary = el("p", "signal-summary", item.summary || item.detail || "");
+  const meta = el("div", "signal-meta");
+  meta.append(el("span", "signal-source", item.source || "Ariadne"));
+  const published = item.published_at ? new Date(item.published_at) : null;
+  if (published && !Number.isNaN(published.getTime())) {
+    const time = el("time", "signal-published", published.toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}));
+    time.dateTime = item.published_at;
+    meta.append(el("span", "signal-meta-separator", "·"), time);
+  }
+  if (item.stale) meta.append(el("span", "signal-cached", "Cached"));
+  body.append(title, summary, meta);
+  const fallback = () => el("div", "signal-image signal-image-placeholder", "✦");
+  const imageUrl = item.image_url && /^https?:\/\//i.test(item.image_url) ? item.image_url : "";
+  if (imageUrl) {
+    const image = el("img", "signal-image");
+    image.src = imageUrl;
+    image.alt = "";
+    image.loading = "lazy";
+    image.referrerPolicy = "no-referrer";
+    image.addEventListener("error", () => image.replaceWith(fallback()), {once: true});
+    card.append(image);
+  } else card.append(fallback());
+  card.append(body);
+  if (validUrl) {
+    const sourceLink = el("a", "signal-source-link", "Read original source ↗");
+    sourceLink.href = item.url;
+    sourceLink.target = "_blank";
+    sourceLink.rel = "noopener noreferrer";
+    sourceLink.title = "Open original source";
+    body.append(sourceLink);
+  }
+  if (item.signal_id) {
+    const feedback = el("div", "signal-feedback");
+    feedback.append(el("span", "feedback-label", "Your take"));
+    const feedbackValues = [["useful", "Useful"], ["interesting", "Interesting"], ["not_useful", "Not useful"]];
+    for (const [value, label] of feedbackValues) {
+      const button = el("button", "feedback-button", label);
+      button.type = "button";
+      button.dataset.value = value;
+      button.setAttribute("aria-label", `${label} signal`);
+      if (item.feedback && item.feedback.value === value) button.classList.add("selected");
+      button.addEventListener("click", () => {
+        if (button.classList.contains("selected")) return;
+        submitSignalFeedback(item.signal_id, value, card, feedback);
+      });
+      feedback.append(button);
+    }
+    feedback.append(el("span", "feedback-status"));
+    body.append(feedback);
+  }
+  return card;
+}
+
 function renderToday(items) {
   const root = document.querySelector("#today-list");
+  const count = document.querySelector("#signal-count");
   root.replaceChildren();
-  for (const item of items || []) {
-    const card = el("article", "signal-card " + (item.tone || "quiet"));
-    const validUrl = item.url && /^https?:\/\//i.test(item.url);
-    const title = validUrl ? el("a", "signal-card-title", item.label) : el("h3", "signal-card-title", item.label);
-    if (validUrl) {
-      title.href = item.url;
-      title.target = "_blank";
-      title.rel = "noopener noreferrer";
-      title.title = "Open original source";
-    }
-    const summary = el("p", "signal-summary", item.summary || item.detail || "");
-    const meta = el("div", "signal-meta");
-    meta.append(el("span", "signal-source", item.source || "Ariadne"));
-    const published = item.published_at ? new Date(item.published_at) : null;
-    if (published && !Number.isNaN(published.getTime())) {
-      const time = el("time", "signal-published", published.toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}));
-      time.dateTime = item.published_at;
-      meta.append(el("span", "signal-meta-separator", "·"), time);
-    }
-    if (item.stale) meta.append(el("span", "signal-cached", "Cached"));
-    card.append(title, summary, meta);
-    if (validUrl) {
-      const sourceLink = el("a", "signal-source-link", "Read original source ↗");
-      sourceLink.href = item.url;
-      sourceLink.target = "_blank";
-      sourceLink.rel = "noopener noreferrer";
-      sourceLink.title = "Open original source";
-      card.append(sourceLink);
-    }
-    root.append(card);
+  const signals = (items || []).filter(item => item && item.signal_id).map(item => ({...item, category: inferSignalCategory(item)}));
+  if (count) count.textContent = `${signals.length} curated signals`;
+  for (const [category, label, description] of SIGNAL_SECTIONS) {
+    const section = el("section", "signal-section");
+    section.dataset.category = category;
+    const sectionHeading = el("div", "signal-section-heading");
+    const headingCopy = el("div");
+    headingCopy.append(el("span", "eyebrow", label), el("p", "signal-section-description", description));
+    const matches = signals.filter(item => item.category === category);
+    const visibleMatches = matches.slice(0, MAX_SIGNALS_PER_SECTION);
+    if (visibleMatches.length > 1 && visibleMatches.length % 2) visibleMatches.pop();
+    sectionHeading.append(headingCopy, el("span", "signal-section-count", `${visibleMatches.length}`));
+    section.append(sectionHeading);
+    const grid = el("div", "signal-section-grid");
+    if (visibleMatches.length) visibleMatches.forEach(item => grid.append(renderSignalCard(item)));
+    else grid.append(el("p", "signal-section-empty", category === "Watchlist" ? "No watchlist topics are active yet." : "No signals in this section yet."));
+    section.append(grid);
+    root.append(section);
+  }
+}
+async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
+  if (!state.sessionId) return;
+  const buttons = Array.from(feedbackRoot.querySelectorAll("button"));
+  const status = feedbackRoot.querySelector(".feedback-status");
+  buttons.forEach(button => { button.disabled = true; });
+  if (status) status.textContent = "Saving…";
+  try {
+    const result = await postWithSessionRecovery("/api/home/signals/feedback", {session_id: state.sessionId, signal_id: signalId, feedback: value});
+    if (!result.ok) throw new Error(result.message || "Signal feedback was not saved.");
+    buttons.forEach(button => button.classList.toggle("selected", button.dataset.value === value));
+    if (status) status.textContent = "Saved";
+  } catch (error) {
+    if (status) status.textContent = "Not saved";
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
   }
 }
 function renderActivity(items) {
@@ -691,6 +774,8 @@ async function ask(event) {
     return;
   }
   const history = state.messages.slice(-8);
+  document.body.classList.add("chat-expanded");
+  document.querySelector("#collapse-chat").hidden = false;
   state.messages.push({role: "user", content: message});
   addMessage("user", message);
   input.value = "";
@@ -728,6 +813,10 @@ function closeSession() {
   navigator.sendBeacon("/api/session/close", new Blob([payload], {type: "application/json"}));
   state.sessionId = null;
 }
+document.querySelector("#collapse-chat").addEventListener("click", () => {
+  document.body.classList.remove("chat-expanded");
+  document.querySelector("#collapse-chat").hidden = true;
+});
 document.querySelector("#ask-form").addEventListener("submit", ask);
 document.querySelector("#document-input").addEventListener("change", async event => {
   for (const file of Array.from(event.target.files || [])) await attachFile(file);

@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from .diagnostics import emit_diagnostic
+from .models import normalize_category
 from .service import SignalService, extract_intake_candidates
 
 
@@ -38,23 +41,53 @@ class SignalHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         if parsed.path == "/v1/health":
-            self._send(self.server.service.health())
+            payload = self.server.service.health()
+            emit_diagnostic(
+                "health_response",
+                state=payload.get("state"),
+                cached_briefing=payload.get("cached_briefing"),
+                last_success_at=payload.get("last_success_at"),
+            )
+            self._send(payload)
             return
         if parsed.path == "/v1/briefing":
             try:
-                limit = int(parse_qs(parsed.query).get("limit", ["6"])[0])
+                limit = int(parse_qs(parsed.query).get("limit", ["40"])[0])
             except ValueError:
-                limit = 6
+                limit = 40
             briefing = self.server.service.briefing(limit)
             if briefing is None:
                 self._send({"ok": False, "stale": True, "signals": [], "message": "No successful briefing is cached.", "health": self.server.service.health()}, 503)
             else:
                 self._send({"ok": True, **briefing})
             return
+        if parsed.path == "/v1/watchlist/topics":
+            self._send({"ok": True, "topics": self.server.service.watchlist_topics()})
+            return
         self._send({"ok": False, "message": "Not found."}, 404)
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        feedback_match = re.fullmatch(r"/v1/signals/([^/]+)/feedback", parsed.path)
+        if feedback_match:
+            try:
+                payload = self._read_json()
+                value = payload.get("feedback") if isinstance(payload, dict) else None
+                result = self.server.service.record_feedback(feedback_match.group(1), str(value or ""))
+                self._send({"ok": True, **result})
+            except ValueError as exc:
+                self._send({"ok": False, "message": str(exc)}, 400)
+            return
+        if parsed.path == "/v1/watchlist/topics":
+            try:
+                payload = self._read_json()
+                topic = payload.get("topic") if isinstance(payload, dict) else None
+                active = payload.get("active", True) if isinstance(payload, dict) else True
+                result = self.server.service.add_watchlist_topic(str(topic or ""), bool(active))
+                self._send({"ok": True, "topic": result})
+            except ValueError as exc:
+                self._send({"ok": False, "message": str(exc)}, 400)
+            return
         if parsed.path != "/v1/intake/candidates":
             self._send({"ok": False, "message": "Not found."}, 404)
             return
@@ -63,7 +96,9 @@ class SignalHandler(BaseHTTPRequestHandler):
             candidates, wrapper = extract_intake_candidates(payload)
             source_name = str(wrapper.get("source_name") or wrapper.get("source") or "n8n candidate producer") if isinstance(wrapper, dict) else "n8n candidate producer"
             source_url = str(wrapper.get("source_url") or wrapper.get("feed_url") or "") if isinstance(wrapper, dict) else ""
-            result = self.server.service.ingest_candidates(candidates, default_source_name=source_name, default_source_url=source_url, ingest_type="candidate_intake", adapter="n8n_or_external")
+            requested_category = wrapper.get("category") or wrapper.get("section") if isinstance(wrapper, dict) else ""
+            default_category = normalize_category(requested_category, "Thailand Focus")
+            result = self.server.service.ingest_candidates(candidates, default_source_name=source_name, default_source_url=source_url, ingest_type="candidate_intake", adapter="n8n_or_external", default_category=default_category)
             briefing = self.server.service.briefing()
             self._send({"ok": True, "accepted": result["accepted"], "duplicates": result["duplicates"], "rejected": result["rejected"], "errors": result["errors"], "briefing": briefing})
         except (ValueError, json.JSONDecodeError) as exc:
@@ -86,10 +121,12 @@ def build_service() -> SignalService:
 def main() -> None:
     host = os.environ.get("SIGNAL_SERVICE_BIND_ADDRESS", "127.0.0.1")
     port = int(os.environ.get("SIGNAL_SERVICE_PORT", "8788"))
+    emit_diagnostic("service_starting", host=host, port=port)
     service = build_service()
+    emit_diagnostic("service_initialized", feed_count=len(service.feeds))
     service.start_background_refresh()
     httpd = SignalHTTPServer((host, port), service)
-    print(f"Ariadne Signal Service listening at http://{host}:{port}", flush=True)
+    emit_diagnostic("service_listening", host=host, port=port, url=f"http://{host}:{port}")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -14,6 +14,24 @@ import server  # noqa: E402
 
 
 class HomePresentationTests(unittest.TestCase):
+    def test_home_is_signals_first_and_keeps_chat_memory(self):
+        html = Path(__file__).with_name("home.html").read_text(encoding="utf-8")
+        css = Path(__file__).with_name("home.css").read_text(encoding="utf-8")
+        self.assertIn('href="/" aria-label="Ariadne Home"', html)
+        self.assertIn('id="recent-chat-list"', html)
+        self.assertIn('id="today-list"', html)
+        self.assertIn('id="activity-details"', html)
+        self.assertIn("Discover", html)
+        js = Path(__file__).with_name("home.js").read_text(encoding="utf-8")
+        self.assertIn("Main News Feed", js)
+        self.assertIn("Thailand Focus", js)
+        self.assertIn("AI Watch", js)
+        self.assertIn("Watchlist", js)
+        self.assertIn("signal-image-placeholder", js)
+        self.assertIn("signal-feedback", css)
+        self.assertIn("live-module", css)
+        self.assertIn("signal-section-grid", css)
+
     def test_home_activity_hides_routine_events_but_keeps_raw_journal(self):
         with tempfile.TemporaryDirectory() as temporary:
             original_path = server.HOME_EVENTS_PATH

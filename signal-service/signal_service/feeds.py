@@ -11,9 +11,9 @@ from .models import clean_text
 
 
 DEFAULT_FEEDS = (
-    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
-    ("NASA Breaking News", "https://www.nasa.gov/rss/dyn/breaking_news.rss"),
-    ("Hacker News", "https://hnrss.org/frontpage"),
+    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "AI Watch"),
+    ("NASA Breaking News", "https://www.nasa.gov/rss/dyn/breaking_news.rss", "Main News Feed"),
+    ("Hacker News", "https://hnrss.org/frontpage", "AI Watch"),
 )
 
 
@@ -21,6 +21,7 @@ DEFAULT_FEEDS = (
 class FeedDefinition:
     name: str
     url: str
+    category: str = "Main News Feed"
 
 
 def configured_feeds(raw: str | None = None) -> list[FeedDefinition]:
@@ -32,8 +33,11 @@ def configured_feeds(raw: str | None = None) -> list[FeedDefinition]:
         for entry in value.split(","):
             name, separator, url = entry.partition("|")
             if separator and name.strip() and url.strip():
-                pairs.append((name.strip(), url.strip()))
-    return [FeedDefinition(name, url) for name, url in pairs if url.startswith(("http://", "https://"))]
+                category = "Main News Feed"
+                if "|" in url:
+                    url, category = url.split("|", 1)
+                pairs.append((name.strip(), url.strip(), category.strip() or "Main News Feed"))
+    return [FeedDefinition(name, url, category) for name, url, category in pairs if url.startswith(("http://", "https://"))]
 
 
 def _local_name(tag: object) -> str:
@@ -96,6 +100,7 @@ def fetch_feed(feed: FeedDefinition, *, timeout: float = 15.0, item_limit: int =
             "content": summary,
             "source_name": feed_title,
             "source_url": feed.url,
+            "category": feed.category,
             "published_at": published,
             "image_url": image_url,
             "media": media,

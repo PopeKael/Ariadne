@@ -16,7 +16,7 @@
       <div class="header-actions"><div id="header-health" class="header-health" aria-label="Local service health" aria-live="polite"><span class="header-health-loading">Checking...</span></div><div class="header-meta"><span id="health-updated" class="quiet header-updated">Checking...</span><span class="local-badge"><i></i> LOCAL ONLY</span><a class="text-button" href="/configuration" aria-label="Open Ariadne Configuration">⚙ Setup</a><a class="text-button" href="/plugins" aria-label="Open Ariadne Plugins">◇ Plugins</a><a class="text-button" href="/system-details">System Details</a></div></div>
     </header>
     <main>
-      <section class="home-grid">
+      <section class="home-layout">
         <aside class="recent-column">
           <section class="panel recent-panel" aria-labelledby="recent-heading">
             <div class="panel-heading compact recent-heading">
@@ -31,18 +31,22 @@
             <div id="recent-chat-list" class="recent-chat-list" aria-live="polite"><div class="loading-row">Reading recent chats…</div></div>
           </section>
         </aside>
-        <section class="panel ask-panel" aria-labelledby="ask-heading">
-          <div class="panel-heading"><div><span class="eyebrow">CONCIERGE</span><h2 id="ask-heading">Ask Ariadne</h2><p>Have a conversation, or ask about your local Knowledge Vault.</p></div><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div></div>
-          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+        <div class="home-main-column">
+          <section class="panel ask-panel" aria-labelledby="ask-heading">
+            <div class="panel-heading compact"><div><span class="eyebrow">CONCIERGE</span><h2 id="ask-heading">Ask Ariadne</h2><p>Ask a quick question, then return to your signals.</p></div><div class="ask-heading-actions"><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div><button id="collapse-chat" class="chat-collapse" type="button" hidden>Back to Signals</button></div></div>
           <form id="ask-form" class="ask-form">
             <label class="sr-only" for="ask-input">Ask Ariadne a question</label>
-            <textarea id="ask-input" rows="3" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea><div class="tool-row"><label class="attach-button" for="document-input">+ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
-            <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet" role="status">Ready.</span><button id="ask-submit" class="primary-button" type="submit">Ask Ariadne <span>↗</span></button></div><p class="empty-helper">Normal questions stay local. Ariadne can use your Vault when relevant.</p>
+            <div class="ask-input-row"><textarea id="ask-input" rows="1" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea><button id="ask-submit" class="primary-button" type="submit">Ask <span>↗</span></button></div><div class="tool-row"><label class="attach-button" for="document-input">+ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
+            <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet" role="status">Ready.</span></div><p class="empty-helper">Normal questions stay local. Ariadne can use your Vault when relevant.</p>
           </form>
-        </section>
-        <aside class="side-column">
-          <section class="panel today-panel" aria-labelledby="today-heading"><div class="panel-heading compact"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Today</h2><p>Live briefing</p></div><span class="panel-mark">◌</span></div><div id="today-list" class="signal-list"><div class="loading-row">Reading local signals…</div></div></section>
-          <section class="panel continue-panel" aria-labelledby="continue-heading"><div class="panel-heading compact"><div><span class="eyebrow">EPISODIC CAPTURE</span><h2 id="continue-heading">Continue</h2><p>Meaningful work, saves, warnings and failures.</p></div><span class="panel-mark">↻</span></div><div id="activity-list" class="activity-list"><div class="loading-row">Reading activity…</div></div><p id="activity-empty" class="quiet empty-state" hidden>No meaningful activity recorded yet.</p></section>
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+          </section>
+          <section class="panel signals-panel" aria-labelledby="today-heading"><div class="panel-heading signals-heading"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Discover</h2><p>Curated locally from your connected sources.</p></div><div class="signals-heading-meta"><span id="signal-count" class="signal-count">Loading signals…</span><span class="panel-mark">◌</span></div></div><div id="today-list" class="signal-feed"><div class="loading-row">Reading local signals…</div></div></section>
+        </div>
+        <aside class="live-column" aria-label="Live information">
+          <section class="panel live-module"><span class="eyebrow">LOCAL WEATHER</span><h2>Weather</h2><p>Live weather will appear here when a local provider is configured.</p><span class="module-state">INACTIVE · NO FAKE DATA</span></section>
+          <section class="panel live-module"><span class="eyebrow">MARKETS</span><h2>Watchlist</h2><p>Market data is held until a clean local source is available.</p><span class="module-state">INACTIVE · NO FAKE DATA</span></section>
+          <details class="panel diagnostics-panel" id="activity-details"><summary><span><span class="eyebrow">DIAGNOSTICS / HISTORY</span><strong>Episodic Capture</strong><small>Meaningful work, saves, warnings and failures.</small></span><span class="panel-mark">↻</span></summary><div id="activity-list" class="activity-list"><div class="loading-row">Reading activity…</div></div><p id="activity-empty" class="quiet empty-state" hidden>No meaningful activity recorded yet.</p></details>
         </aside>
       </section>
       <section class="home-footer-note"><span class="shield">✓</span><span><strong>Private by design.</strong> Ariadne Home stays on this computer. Use the Windows tray menu to restart or stop Ariadne.</span><a href="/system-details">Open the detailed console →</a></section>

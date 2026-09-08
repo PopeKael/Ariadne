@@ -12,15 +12,26 @@ import server  # noqa: E402
 class HomeSignalIntegrationTests(unittest.TestCase):
     def test_today_renders_cached_signal_with_source_url(self):
         fake_client = Mock()
-        fake_client.briefing.return_value = {"ok": True, "stale": True, "signals": [{"title": "A signal", "summary": "A concise summary", "source_name": "Example", "published_at": "2026-09-07T12:34:00+07:00", "url": "https://example.test/story"}]}
+        fake_client.briefing.return_value = {"ok": True, "stale": True, "signals": [{"signal_id": "signal-1", "title": "A signal", "summary": "A concise summary with enough context for the card.", "source_name": "Example", "category": "AI Watch", "published_at": "2026-09-07T12:34:00+07:00", "url": "https://example.test/story", "image_url": "https://example.test/image.jpg", "feedback": {"value": "useful", "timestamp": "2026-09-07T12:35:00+07:00"}}]}
         with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client):
             result = server.home_today_payload({"services": []})
         self.assertEqual(result[0]["label"], "A signal")
         self.assertEqual(result[0]["url"], "https://example.test/story")
-        self.assertEqual(result[0]["summary"], "A concise summary")
+        self.assertEqual(result[0]["summary"], "A concise summary with enough context for the card.")
         self.assertEqual(result[0]["source"], "Example")
         self.assertEqual(result[0]["published_at"], "2026-09-07T12:34:00+07:00")
+        self.assertEqual(result[0]["signal_id"], "signal-1")
+        self.assertEqual(result[0]["image_url"], "https://example.test/image.jpg")
+        self.assertEqual(result[0]["category"], "AI Watch")
+        self.assertEqual(result[0]["feedback"]["value"], "useful")
         self.assertTrue(result[0]["detail"].startswith("Cached · Example"))
+
+    def test_home_requests_discover_sized_briefing(self):
+        fake_client = Mock()
+        fake_client.briefing.return_value = {"ok": True, "stale": False, "signals": []}
+        with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client):
+            server.home_today_payload({"services": []})
+        fake_client.briefing.assert_called_once_with(limit=40)
 
     def test_today_ignores_unavailable_signal_service_without_breaking_local_status(self):
         fake_client = Mock()

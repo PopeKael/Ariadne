@@ -2491,13 +2491,19 @@ def home_health_payload() -> dict[str, object]:
 
 def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
     signals: list[dict[str, object]] = []
-    briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=4)
+    briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=40)
     for item in briefing.get("signals", []):
         if not isinstance(item, dict):
             continue
         title = str(item.get("title") or "Signal")
         source = str(item.get("source_name") or "Unknown source")
         summary = re.sub(r"\s+", " ", str(item.get("summary") or item.get("content") or "")).strip()
+        summary = re.sub(r"(?:Article|Comments)\s+URL:\s*", "", summary, flags=re.IGNORECASE)
+        summary = re.sub(r"https?://\S+", "", summary, flags=re.IGNORECASE)
+        summary = re.sub(r"Points:\s*\d+\s+#\s*Comments:\s*\d+", "", summary, flags=re.IGNORECASE)
+        summary = re.sub(r"\s+", " ", summary).strip(" ·-—")
+        if not summary or len(summary) < 24 or summary.casefold() == source.casefold():
+            summary = f"A curated signal from {source}."
         if len(summary) > 260:
             summary = summary[:257].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
         detail = f"{source} · {summary}" if summary else source
@@ -2506,10 +2512,14 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
         url = str(item.get("url") or "")
         if url.startswith(("http://", "https://")):
             signals.append({
+                "signal_id": str(item.get("signal_id") or ""),
                 "label": title,
                 "summary": summary,
                 "source": source,
                 "published_at": str(item.get("published_at") or item.get("updated_at") or ""),
+                "image_url": str(item.get("image_url") or ""),
+                "category": str(item.get("category") or ""),
+                "feedback": item.get("feedback") if isinstance(item.get("feedback"), dict) else None,
                 "detail": detail,
                 "tone": "quiet",
                 "url": url,
@@ -2523,15 +2533,9 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
             "detail": str(service.get("detail") or "Needs attention."),
             "tone": "offline" if service.get("state") == "offline" else "attention",
         })
-    catalogue = VAULT_SYSTEM / "library.json"
-    try:
-        changed = datetime.fromtimestamp(catalogue.stat().st_mtime).astimezone().strftime("%d %b %H:%M")
-        signals.append({"label": "Vault catalogue", "detail": f"Last changed {changed}.", "tone": "quiet"})
-    except OSError:
-        pass
     if not signals:
         signals.append({"label": "System attention", "detail": "No local attention items are currently reported.", "tone": "healthy"})
-    return signals[:6]
+    return signals[:30]
 
 
 def home_query_requires_vault(query: str) -> bool:
@@ -3772,6 +3776,18 @@ class AriadneHandler(BaseHTTPRequestHandler):
             session_id = str(session_id)
             with SESSION_LOCK:
                 active_chat_id = str(SESSIONS[session_id].get("chat_id") or "")
+            if path == "/api/home/signals/feedback":
+                signal_id = body.get("signal_id")
+                feedback = body.get("feedback")
+                if not isinstance(signal_id, str) or not signal_id.strip():
+                    self.send_json({"ok": False, "message": "A signal_id is required."}, 400)
+                    return
+                if feedback not in {"useful", "interesting", "not_useful"}:
+                    self.send_json({"ok": False, "message": "Feedback must be useful, interesting, or not_useful."}, 400)
+                    return
+                result = SIGNAL_SERVICE_CLIENT.feedback(signal_id.strip(), feedback)
+                self.send_json(result, 200 if result.get("ok") else 502)
+                return
             plugin_match = re.fullmatch(r"/api/plugins/([^/]+)/run", path)
             if plugin_match:
                 plugin_id = unquote(plugin_match.group(1))
