@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import time
 import urllib.error
@@ -12,6 +13,13 @@ from pathlib import Path
 from typing import Any
 
 from librarian_events import LibrarianEventStream
+
+
+LEGACY_SOURCE_CATEGORIES = {
+    "Ars Technica": "AI Watch",
+    "NASA Breaking News": "Main News Feed",
+    "Hacker News": "AI Watch",
+}
 
 
 class SignalServiceClient:
@@ -81,6 +89,80 @@ class SignalServiceClient:
         if not result.get("ok"):
             result.setdefault("state", "offline")
         return result
+
+    def adaptive(self) -> dict[str, Any]:
+        result = self._get("/v1/health")
+        return result if isinstance(result, dict) else {"ok": False, "state": "offline"}
+
+    def interests(self) -> dict[str, Any]:
+        return self._get("/v1/interests")
+
+    def sources(self) -> dict[str, Any]:
+        result = self._get("/v1/sources")
+        if result.get("ok") and isinstance(result.get("sources"), list):
+            return result
+        # Signal Service 0.1 predates the source registry endpoint.  Keep
+        # Setup truthful during rolling upgrades by projecting its existing
+        # configured feeds and health timestamps without mutating the service.
+        health = self.health()
+        feeds = health.get("feeds") if isinstance(health.get("feeds"), list) else []
+        statuses = {
+            str(item.get("name")): item
+            for item in health.get("source_status", [])
+            if isinstance(item, dict) and item.get("name")
+        }
+        sources: list[dict[str, Any]] = []
+        for feed in feeds:
+            if not isinstance(feed, dict):
+                continue
+            name = str(feed.get("name") or "").strip()
+            endpoint = str(feed.get("url") or feed.get("endpoint") or "").strip()
+            if not name or not endpoint:
+                continue
+            status = statuses.get(name, {})
+            source_id = "legacy-" + hashlib.sha256(f"{name}|{endpoint}".encode("utf-8")).hexdigest()[:24]
+            sources.append({
+                "source_id": source_id,
+                "name": name,
+                "adapter_type": "rss_atom",
+                "endpoint": endpoint,
+                "category": LEGACY_SOURCE_CATEGORIES.get(name, "Main News Feed"),
+                "enabled": True,
+                "last_attempt_at": status.get("attempted_at") or health.get("last_attempt_at"),
+                "last_success_at": status.get("last_success_at") or health.get("last_success_at"),
+                "item_count": int(status.get("items") or status.get("item_count") or 0),
+                "health": status.get("state") or ("healthy" if health.get("last_collection_ok") else "unknown"),
+                "error": status.get("error") or "",
+                "legacy_projection": True,
+            })
+        return {"ok": bool(sources) or health.get("ok", False), "sources": sources, "legacy_projection": True, "message": "Projected configured feeds from the legacy Signal Service health endpoint."}
+
+    def profile(self) -> dict[str, Any]:
+        return self._get("/v1/profile")
+
+    def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        request = urllib.request.Request(self.base_url + path, data=json.dumps(payload).encode("utf-8"), headers={"Accept": "application/json", "Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                value = json.loads(response.read(500_000).decode("utf-8"))
+            return value if isinstance(value, dict) else {"ok": False, "message": "Signal Service returned a non-object response."}
+        except (OSError, urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            return {"ok": False, "message": f"Signal Service unavailable: {str(exc)[:180]}"}
+
+    def upsert_interest(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._post("/v1/interests", payload)
+
+    def upsert_source(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._post("/v1/sources", payload)
+
+    def delete_source(self, source_id: str) -> dict[str, Any]:
+        request = urllib.request.Request(self.base_url + "/v1/sources/" + urllib.parse.quote(source_id, safe=""), headers={"Accept": "application/json"}, method="DELETE")
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                value = json.loads(response.read(200_000).decode("utf-8"))
+            return value if isinstance(value, dict) else {"ok": False, "message": "Signal Service returned a non-object response."}
+        except (OSError, urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            return {"ok": False, "message": f"Signal Service unavailable: {str(exc)[:180]}"}
 
 
 __all__ = ["SignalServiceClient"]

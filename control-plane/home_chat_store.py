@@ -148,6 +148,7 @@ class ChatStore:
         self.root = (self.vault_root / "00_System" / "Data" / "HomeSessions").resolve()
         self.archive_root = (self.vault_root / "Archive" / "Chats").resolve()
         self.lock_path = self.root / ".chats.lock"
+        self.response_preferences_path = self.vault_root / "00_System" / "Data" / "response-preference-evidence.json"
         self.now_fn = now_fn
 
     def _path(self, chat_id: str) -> Path:
@@ -357,7 +358,33 @@ class ChatStore:
             record["last_activity_at"] = timestamp
             record["expires_at"] = isoformat(self.now_fn() + timedelta(days=RETENTION_DAYS))
             self._write_locked(record)
+            self._record_response_preference(feedback)
             return feedback
+
+    def _record_response_preference(self, feedback: dict[str, Any]) -> None:
+        """Persist answer-feedback evidence separately from chat transcripts."""
+        try:
+            existing = json.loads(self.response_preferences_path.read_text(encoding="utf-8")) if self.response_preferences_path.is_file() else {}
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            existing = {}
+        if not isinstance(existing, dict):
+            existing = {}
+        ratings = existing.get("ratings") if isinstance(existing.get("ratings"), dict) else {}
+        rating = str(feedback.get("rating") or "")
+        ratings[rating] = int(ratings.get(rating, 0)) + 1
+        comments = existing.get("comments") if isinstance(existing.get("comments"), list) else []
+        comment = str(feedback.get("comment") or "").strip()
+        if comment:
+            comments.append({"rating": rating, "comment": comment[:2_000], "timestamp": feedback.get("timestamp")})
+        payload = {"version": 1, "ratings": ratings, "comment_count": len(comments), "comments": comments[-100:], "updated_at": feedback.get("timestamp")}
+        _atomic_bytes(self.response_preferences_path, (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+
+    def response_preferences(self) -> dict[str, Any]:
+        try:
+            value = json.loads(self.response_preferences_path.read_text(encoding="utf-8"))
+            return value if isinstance(value, dict) else {"version": 1, "ratings": {}, "comment_count": 0, "comments": []}
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return {"version": 1, "ratings": {}, "comment_count": 0, "comments": []}
 
     def interrupt_turn(self, chat_id: str, turn_id: str, error: str) -> dict[str, Any] | None:
         with _process_lock(self.lock_path):

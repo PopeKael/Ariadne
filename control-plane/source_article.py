@@ -266,6 +266,36 @@ def _front_matter_signal_id(path: Path) -> str:
     return str(parsed) if parsed else ""
 
 
+def _cached_article_text(path: Path) -> str:
+    """Return previously fetched article text from a promoted note, if present."""
+    try:
+        content = path.read_text(encoding="utf-8-sig")
+    except OSError:
+        return ""
+    match = re.search(r"(?ms)^## Article text\s*\n\s*(.*?)\s*\n\s*## ", content)
+    if not match:
+        return ""
+    value = match.group(1).strip()
+    if not value or value.casefold().startswith("no article text was available"):
+        return ""
+    return value
+
+
+def _cached_front_matter_value(path: Path, key: str) -> str:
+    try:
+        header = path.read_text(encoding="utf-8-sig").split("\n---", 1)[0]
+    except OSError:
+        return ""
+    match = re.search(rf"(?m)^{re.escape(key)}:\s*(.+?)\s*$", header)
+    if not match:
+        return ""
+    try:
+        value = json.loads(match.group(1).strip())
+    except json.JSONDecodeError:
+        value = match.group(1).strip().strip("'\"")
+    return str(value or "")
+
+
 def _find_existing_note(vault_root: Path, signal_id: str) -> Path | None:
     for folder in ("Inbox", "Processed", "Failed"):
         directory = vault_root / folder
@@ -297,13 +327,14 @@ def _provenance(signal: dict[str, Any], resolved_url: str, original_url: str) ->
     return values
 
 
-def _render_note(signal: dict[str, Any], *, resolved_url: str, article_text: str, captured_at: str) -> str:
+def _render_note(signal: dict[str, Any], *, resolved_url: str, article_text: str, captured_at: str, fetch_error: str = "") -> str:
     signal_id = str(signal.get("signal_id") or "")
     title = str(signal.get("title") or "Signal")
     source = str(signal.get("source_name") or "Unknown source")
     original_url = str(signal.get("url") or "")
     published_at = str(signal.get("published_at") or "")
     category = str(signal.get("category") or "Main News Feed")
+    summary = str(signal.get("summary") or signal.get("content") or "").strip()
     image_url = str(signal.get("image_url") or "")
     matches = _signal_matches(signal)
     provenance = _provenance(signal, resolved_url, original_url)
@@ -319,7 +350,11 @@ def _render_note(signal: dict[str, Any], *, resolved_url: str, article_text: str
         f"captured_at: {_yaml_string(captured_at)}",
         f"category: {_yaml_string(category)}",
         f"image_url: {_yaml_string(image_url)}",
+        f"description: {_yaml_string(summary)}",
+        f"article_status: {_yaml_string('unavailable' if fetch_error else 'ready')}",
     ]
+    if fetch_error:
+        lines.append(f"article_error: {_yaml_string(fetch_error)}")
     if matches:
         lines.append("watchlist_matches:")
         lines.extend(f"  - {_yaml_string(value)}" for value in matches)
@@ -335,6 +370,14 @@ def _render_note(signal: dict[str, Any], *, resolved_url: str, article_text: str
         "",
         f"# {title}",
         "",
+        "## Signal context",
+        "",
+        "The following fields are the stored Signal Service record, not additional article reporting.",
+        f"- Title: {title}",
+        f"- Digest: {summary or 'No digest was supplied.'}",
+        f"- Source: {source}",
+        f"- URL: {original_url}",
+        "",
         "## Source",
         "",
         f"{source}, {published_at or 'publication date unavailable'}.",
@@ -347,7 +390,7 @@ def _render_note(signal: dict[str, Any], *, resolved_url: str, article_text: str
         "",
         "## Ariadne context",
         "",
-        "This article was promoted from Discover using “Think with Ariadne”.",
+        "This article was promoted from Discover using “Think with Ariadne”. Keep article claims separate from Ariadne inference or analogy; any comparison to Warren's setup must be labelled as inference, not attributed to the article.",
         "",
     ])
     return "\n".join(lines)
@@ -362,15 +405,26 @@ def promote_signal(vault_root: Path, signal: dict[str, Any], *, timeout: float =
         raise ValueError("The signal does not contain a valid source URL.")
     root = Path(vault_root).resolve()
     timestamp = captured_at or datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-    try:
-        resolved_url, page_title, article_text = _fetch_article(original_url, timeout)
-    except (OSError, ValueError, TypeError) as exc:
-        resolved_url = original_url
-        page_title = ""
-        article_text = ""
-        fetch_error = str(exc)[:240]
-    else:
+    with _PROMOTION_LOCK:
+        existing = _find_existing_note(root, signal_id)
+        cached_text = _cached_article_text(existing) if existing else ""
+    if cached_text:
+        resolved_url = _cached_front_matter_value(existing, "resolved_url") or original_url
+        page_title = str(signal.get("title") or "")
+        article_text = cached_text
         fetch_error = ""
+        cache_hit = True
+    else:
+        cache_hit = False
+        try:
+            resolved_url, page_title, article_text = _fetch_article(original_url, timeout)
+        except (OSError, ValueError, TypeError) as exc:
+            resolved_url = original_url
+            page_title = ""
+            article_text = ""
+            fetch_error = str(exc)[:240]
+        else:
+            fetch_error = ""
     if page_title and not signal.get("title"):
         signal = {**signal, "title": page_title}
     with _PROMOTION_LOCK:
@@ -378,7 +432,7 @@ def promote_signal(vault_root: Path, signal: dict[str, Any], *, timeout: float =
         path = existing or (root / "Inbox" / f"{_safe_filename(str(signal.get('title') or 'source-article'))}__{signal_id}.md")
         if path.parent != root / "Inbox" and (existing is None or path.parent not in {root / "Processed", root / "Failed"}):
             raise ValueError("Source article path escaped the Knowledge Vault.")
-        _atomic_write(path, _render_note(signal, resolved_url=resolved_url, article_text=article_text, captured_at=timestamp))
+        _atomic_write(path, _render_note(signal, resolved_url=resolved_url, article_text=article_text, captured_at=timestamp, fetch_error=fetch_error))
     return {
         "signal_id": signal_id,
         "path": path.relative_to(root).as_posix(),
@@ -387,6 +441,7 @@ def promote_signal(vault_root: Path, signal: dict[str, Any], *, timeout: float =
         "article_title": page_title or str(signal.get("title") or ""),
         "article_text_chars": len(article_text),
         "fetch_error": fetch_error,
+        "cache_hit": cache_hit,
     }
 
 

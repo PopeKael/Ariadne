@@ -53,6 +53,38 @@ class IdentityKernelLoaderTests(unittest.TestCase):
 
 
 class IdentityHealthTests(unittest.TestCase):
+    def test_setup_and_home_share_canonical_identity_and_show_eris_provenance(self):
+        with patch.object(server, "_home_mcp") as mcp_factory, \
+             patch.object(server.PLUGIN_REGISTRY, "discover", return_value=[]), \
+             patch.object(server.SIGNAL_SERVICE_CLIENT, "health", return_value={"ok": True, "state": "healthy", "feeds": [], "source_status": []}):
+            mcp_factory.return_value.identity_system_prefix.return_value = (
+                "IDENTITY",
+                {"id": "ariadne", "version": "1.1.0", "source": "Ariadne Identity Kernel v1.1.0.md", "scope": "user"},
+            )
+            setup = server.configuration_payload(self._configuration_snapshot())
+            home = server.home_health_payload()
+        self.assertEqual(setup["identity_kernel"]["source"], home["identity_kernel"]["source"])
+        self.assertEqual(setup["identity_provenance"]["core_identity"]["source"], home["identity_provenance"]["core_identity"]["source"])
+        self.assertEqual(setup["identity_provenance"]["base_personality"]["name"], "Eris Archetype v4")
+        self.assertIn("folded into", setup["identity_provenance"]["base_personality"]["relationship"])
+
+    @staticmethod
+    def _configuration_snapshot():
+        return {
+            "storage": {
+                "knowledge_vault": str(Path(__file__).resolve().parents[1]),
+                "documents": str(Path(__file__).resolve().parent),
+                "images": str(Path(__file__).resolve().parent),
+                "videos": str(Path(__file__).resolve().parent),
+                "screenshots": str(Path(__file__).resolve().parent),
+                "intake_root": str(Path(__file__).resolve().parent),
+            },
+            "sources": {
+                "knowledge_vault": "test", "documents": "test", "images": "test",
+                "videos": "test", "screenshots": "test", "intake_root": "test",
+            },
+            "avatar": {}, "avatar_sources": {}, "plugins": {}, "personality": {},
+        }
     @staticmethod
     def health_with_metadata(metadata):
         class FakeMcp:

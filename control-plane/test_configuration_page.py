@@ -4,6 +4,7 @@ import threading
 import urllib.request
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import server
@@ -126,6 +127,20 @@ class ConfigurationPageTests(unittest.TestCase):
         self.assertIn('trigger: "manual"', javascript)
         self.assertIn("showConfigurationDialog", javascript)
         self.assertIn("pluginSettingsRoute", Path(__file__).with_name("plugin.js").read_text(encoding="utf-8"))
+        self.assertIn('class="field-label">Interest name', html)
+        self.assertIn('class="field-label">What does this interest mean to Ariadne?', html)
+        self.assertIn('id="interest-form-status"', html)
+        self.assertIn('</form>\n      <section class="configuration-card adaptive-management-card">', html)
+        self.assertIn("Describe the subject naturally", html)
+        self.assertIn('if (!payload.ok || !payload.interest)', javascript)
+        self.assertIn('form.reset()', javascript)
+        self.assertIn('Interest saved.', javascript)
+        self.assertIn('Interest could not be saved:', javascript)
+        self.assertIn('button.disabled = true', javascript)
+        self.assertIn('ensureInterestVisible', javascript)
+        self.assertIn("Core Identity", html)
+        self.assertIn("Base Personality / Temperament", html)
+        self.assertIn("Voice Preferences", html)
 
     def test_invalid_configuration_save_leaves_existing_file_unchanged(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -137,6 +152,42 @@ class ConfigurationPageTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 save_configuration(storage={**snapshot["storage"], "knowledge_vault": "relative"}, path=target)
             self.assertEqual(target.read_bytes(), before)
+
+    def test_home_adaptive_uses_persisted_interest_collection(self):
+        interest = {"interest_id": "interest-local-ai", "name": "Local AI hardware", "description": "Local inference hardware", "enabled": True}
+        fake_client = SimpleNamespace(
+            health=lambda: {"ok": True, "state": "healthy", "active_interests": [], "learned_preferences": {}, "semantic": {}, "inference": {}},
+            interests=lambda: {"ok": True, "interests": [interest]},
+            sources=lambda: {"ok": True, "sources": []},
+        )
+        with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client), \
+            patch.object(server, "ollama_status", return_value={"state": "offline"}), \
+            patch.object(server, "configuration_snapshot", return_value={"personality": {}}), \
+            patch.object(server, "home_identity_kernel_status", return_value={}):
+            payload = server.home_adaptive_payload()
+        self.assertEqual(payload["interests"], [interest])
+
+    def test_interest_post_route_returns_confirmed_service_record(self):
+        interest = {"interest_id": "interest-local-ai", "name": "Local AI hardware", "description": "Local inference hardware", "enabled": True}
+        fake_client = SimpleNamespace(upsert_interest=lambda body: {"ok": True, "interest": interest})
+        httpd = None
+        try:
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            threading.Thread(target=httpd.serve_forever, daemon=True).start()
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{httpd.server_port}/api/signals/interests",
+                data=json.dumps({"name": interest["name"], "description": interest["description"]}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client), patch.object(server, "_expire_sessions"):
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    payload = json.loads(response.read())
+            self.assertEqual(payload, {"ok": True, "interest": interest})
+        finally:
+            if httpd is not None:
+                httpd.shutdown()
+                httpd.server_close()
 
 
 if __name__ == "__main__":

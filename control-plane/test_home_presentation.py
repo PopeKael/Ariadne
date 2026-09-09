@@ -39,6 +39,15 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("/api/home/feedback", js)
         self.assertIn("active_source_signal_ids", js)
         self.assertIn("Reading source article…", js)
+        self.assertIn("Opening discussion…", js)
+        self.assertIn("Answering…", js)
+        self.assertIn("/api/home/signals/promote/status", js)
+        self.assertIn("/api/home/activity-state", js)
+        self.assertIn("generation_truncated", js)
+        self.assertIn("Continue", js)
+        self.assertIn("summarizeCitations", js)
+        self.assertIn("cited passage", js)
+        self.assertIn("signalArticleBusy", js)
         self.assertIn("contextMutationInFlight", js)
         self.assertIn('document.body.classList.toggle("chat-expanded", meaningful)', js)
         self.assertIn('document.querySelector("#collapse-chat").hidden = !meaningful', js)
@@ -49,6 +58,17 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("signal-card-actions", css)
         self.assertIn("live-module", css)
         self.assertIn("signal-section-grid", css)
+        self.assertIn("generation-warning", css)
+
+    def test_canonical_activity_stream_has_operational_states(self):
+        self.assertEqual(
+            server.HOME_ACTIVITY_STREAM.snapshot("missing-chat").state,
+            "idle",
+        )
+        self.assertEqual(
+            server.home_activity_state_payload("missing-chat")["activity"]["state"],
+            "idle",
+        )
 
     def test_home_activity_hides_routine_events_but_keeps_raw_journal(self):
         with tempfile.TemporaryDirectory() as temporary:

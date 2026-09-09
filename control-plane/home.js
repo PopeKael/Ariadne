@@ -1,4 +1,4 @@
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map()};
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -61,7 +61,8 @@ function renderAttachments(documents) {
     const isArticle = metadata.type === "source-article" || Boolean(inferredSignalId);
     const chip = el("span", "attachment-chip" + (isArticle ? " source-article-chip" : ""));
     chip.title = isArticle ? (metadata.title || document.title || document.filename || "Source article") : (document.title || document.filename || "Attached document");
-    chip.append(el("span", "", isArticle ? (metadata.title || document.title || document.filename || "Source article") : (document.filename || document.title || "Attached document")));
+    const articleLabel = metadata.article_status === "loading" ? " · reading" : metadata.article_status === "unavailable" ? " · unavailable" : "";
+    chip.append(el("span", "", isArticle ? (metadata.title || document.title || document.filename || "Source article") + articleLabel : (document.filename || document.title || "Attached document")));
     const remove = el("button", "attachment-remove", "×");
     remove.type = "button";
     remove.disabled = state.processing;
@@ -171,8 +172,9 @@ function renderHealth(payload) {
     root.append(indicator);
   }
   document.querySelector("#health-updated").textContent = "Updated " + new Date(payload.timestamp).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-  document.querySelector("#model-name").textContent = payload.resident_model || "Local model";
-  document.querySelector("#model-context").textContent = Math.round((payload.context_tokens || 16384) / 1024) + "K context · local Ollama";
+  const homeRoute = payload.inference?.routes?.home_chat || {};
+  document.querySelector("#model-name").textContent = homeRoute.model_id || payload.resident_model || "No Home model selected";
+  document.querySelector("#model-context").textContent = `${Math.round((payload.context_tokens || 16384) / 1024)}K context · ${homeRoute.provider_id || "unconfigured"} · ${homeRoute.location || "—"}`;
 }
 const SIGNAL_SECTIONS = [
   ["Main News Feed", "Main News Feed", "The wider world, distilled locally."],
@@ -212,6 +214,18 @@ function renderSignalCard(item) {
     : [];
   if (watchlistTopics.length) {
     meta.append(el("span", "signal-meta-separator", "·"), el("span", "signal-watchlist-match", `Watching: ${watchlistTopics.join(", ")}`));
+  }
+  const semanticMatches = Array.isArray(item.semantic_matches) ? item.semantic_matches.filter(match => match && match.interest) : [];
+  if (semanticMatches.length) {
+    const why = el("div", "signal-why");
+    why.append(el("strong", "", "Why this appeared"));
+    why.append(el("span", "", semanticMatches.slice(0, 2).map(match => `${match.interest} · semantic ${Number(match.semantic_score || 0).toFixed(2)}`).join(" · ")));
+    body.append(why);
+  }
+  if (item.why_appeared && !semanticMatches.length) {
+    const why = el("div", "signal-why");
+    why.append(el("strong", "", "Why this appeared"), el("span", "", item.why_appeared));
+    body.append(why);
   }
   if (item.stale) meta.append(el("span", "signal-cached", "Cached"));
   body.append(title, summary, meta);
@@ -258,7 +272,9 @@ function renderSignalCard(item) {
     const thinkButton = el("button", "think-button", "Think with Ariadne");
     thinkButton.type = "button";
     thinkButton.setAttribute("aria-label", `Promote ${item.label || "this signal"} into the Knowledge Vault`);
+    thinkButton.disabled = state.signalArticleBusy.has(item.signal_id);
     const promotionStatus = el("span", "promotion-status");
+    if (thinkButton.disabled) promotionStatus.textContent = "Reading source article…";
     thinkButton.addEventListener("click", () => promoteSignalToVault(item.signal_id, thinkButton, promotionStatus));
     promotion.append(thinkButton, promotionStatus);
     actions.append(feedback, promotion);
@@ -292,6 +308,29 @@ function renderToday(items) {
     root.append(section);
   }
 }
+function renderAdaptive(payload) {
+  const root = document.querySelector("#adaptive-summary");
+  if (!root) return;
+  const profile = payload?.learned_preferences || {};
+  const interests = Array.isArray(payload?.interests) ? payload.interests : [];
+  const entries = [
+    ...(Array.isArray(profile.sources) ? profile.sources : []).slice(0, 3),
+    ...(Array.isArray(profile.interests) ? profile.interests : []).slice(0, 3),
+  ];
+  root.replaceChildren();
+  if (payload?.semantic?.state && payload.semantic.state !== "healthy") root.append(el("p", "adaptive-warning", `Semantic matching ${payload.semantic.state}: ${payload.semantic.error || "raw signals remain available"}.`));
+  if (entries.length) {
+    for (const entry of entries) {
+      const row = el("div", "adaptive-row");
+      row.append(el("strong", "", entry.label || "Preference"), el("span", "", `${entry.state || "evidence"} · ${entry.evidence_count || 0} signal${entry.evidence_count === 1 ? "" : "s"}`));
+      root.append(row);
+    }
+  } else root.append(el("p", "quiet", interests.length ? `${interests.length} active interest${interests.length === 1 ? "" : "s"}; feedback will build the evidence profile.` : "No learned preferences yet. Your signal feedback will teach Ariadne gradually."));
+  const response = payload?.response_preferences || {};
+  const ratings = response.ratings || {};
+  const ratingTotal = Object.values(ratings).reduce((total, value) => total + Number(value || 0), 0);
+  if (ratingTotal) root.append(el("p", "adaptive-response-evidence", `Answer-style evidence: ${ratingTotal} response rating${ratingTotal === 1 ? "" : "s"} · ${Number(response.comment_count || 0)} comment${Number(response.comment_count || 0) === 1 ? "" : "s"}.`));
+}
 async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
   if (!state.sessionId) return;
   const buttons = Array.from(feedbackRoot.querySelectorAll("button"));
@@ -319,8 +358,10 @@ async function promoteSignalToVault(signalId, button, status) {
   state.contextMutationInFlight = true;
   setContextMutationState(true);
   button.disabled = true;
-  status.textContent = "Reading source…";
-  document.querySelector("#ask-status").textContent = "Reading source article…";
+  state.signalArticleBusy.add(signalId);
+  status.textContent = "Opening discussion…";
+  document.querySelector("#ask-status").textContent = "Opening discussion…";
+  openAskAriadne();
   try {
     const result = await postWithSessionRecovery("/api/home/signals/promote", {session_id: state.sessionId, signal_id: signalId, mode});
     if (!result.ok) throw new Error(result.message || "The signal was not promoted.");
@@ -328,19 +369,59 @@ async function promoteSignalToVault(signalId, button, status) {
     state.addArticleMode = false;
     renderAttachments(result.documents || [result.document]);
     button.classList.add("promoted");
-    status.textContent = result.fetch_error ? "Attached with signal fallback" : mode === "add" ? "Article added to Ask Ariadne" : result.updated ? "Article replaced and attached" : "Attached to Ask Ariadne";
-    button.title = result.path || "Source article note saved to the Knowledge Vault.";
-    document.querySelector("#ask-status").textContent = status.textContent + ". Ask Ariadne is ready for your question.";
-    openAskAriadne();
+    status.textContent = "Reading source article…";
+    document.querySelector("#ask-status").textContent = "Reading source article… Signal context is ready; the full article is loading in the background.";
+    watchSignalArticle(signalId, result.document.document_id, button, status);
   } catch (error) {
+    state.signalArticleBusy.delete(signalId);
     status.textContent = "Not promoted";
     button.title = error.message || "The signal could not be promoted.";
     document.querySelector("#ask-status").textContent = "Could not read that source article: " + (error.message || "promotion failed");
   } finally {
     state.contextMutationInFlight = false;
     setContextMutationState(false);
-    button.disabled = false;
+    button.disabled = state.signalArticleBusy.has(signalId);
   }
+}
+function watchSignalArticle(signalId, documentId, button, status) {
+  const existing = state.signalArticlePollers.get(signalId);
+  if (existing) window.clearTimeout(existing);
+  const poll = async () => {
+    try {
+      const result = await postWithSessionRecovery("/api/home/signals/promote/status", {session_id: state.sessionId, chat_id: state.chatId, signal_id: signalId, document_id: documentId});
+      const job = result.job || {};
+      if (job.status === "loading") {
+        status.textContent = "Reading source article…";
+        document.querySelector("#ask-status").textContent = job.message || "Reading source article…";
+        const timer = window.setTimeout(poll, 500);
+        state.signalArticlePollers.set(signalId, timer);
+        return;
+      }
+      state.signalArticleBusy.delete(signalId);
+      state.signalArticlePollers.delete(signalId);
+      if (result.document) {
+        renderAttachments(state.attachments.map(item => item.document_id === documentId ? result.document : item));
+      }
+      button.disabled = false;
+      if (job.status === "ready") {
+        status.textContent = job.message || "Source article ready.";
+        button.title = "Source article cached in the Knowledge Vault.";
+        document.querySelector("#ask-status").textContent = "Source article ready. Ask Ariadne has the Signal context and article evidence.";
+      } else {
+        status.textContent = "Signal context attached; article unavailable";
+        button.title = job.message || "The source article was unavailable.";
+        document.querySelector("#ask-status").textContent = job.message || "Source article unavailable; the stored Signal context remains available.";
+      }
+    } catch (error) {
+      state.signalArticleBusy.delete(signalId);
+      state.signalArticlePollers.delete(signalId);
+      button.disabled = false;
+      status.textContent = "Article status unavailable";
+      document.querySelector("#ask-status").textContent = "Signal context remains attached, but article status could not be checked: " + error.message;
+    }
+  };
+  const timer = window.setTimeout(poll, 200);
+  state.signalArticlePollers.set(signalId, timer);
 }
 function openAskAriadne() {
   document.body.classList.add("chat-expanded");
@@ -621,6 +702,24 @@ function addMessage(role, content, metadata) {
       wireTelemetryPopover(telemetryTrigger, telemetryPopover);
       meta.append(telemetryTrigger);
     }
+    const generationTruncated = Boolean(
+      metadata.generation_truncated
+      || metadata.generation_status === "truncated"
+      || metadata.timing?.generation_status === "truncated"
+    );
+    if (generationTruncated) {
+      meta.append(el("span", "generation-warning", "Response stopped at the model output limit."));
+      const continueButton = el("button", "continue-button", "Continue");
+      continueButton.type = "button";
+      continueButton.title = "Ask Ariadne to continue from the end of this partial response";
+      continueButton.addEventListener("click", () => {
+        const input = document.querySelector("#ask-input");
+        input.value = "Continue your previous answer from exactly where it stopped. Do not repeat text already provided.";
+        input.focus();
+        document.querySelector("#ask-status").textContent = "Continue is ready to send.";
+      });
+      meta.append(continueButton);
+    }
     const readButton = el("button", "read-button", "Read Answer");
     readButton.type = "button";
     readButton.title = "Copy this answer to the Windows reader and send Alt+F1";
@@ -629,7 +728,8 @@ function addMessage(role, content, metadata) {
     message.append(meta);
     if (metadata.sources && metadata.sources.length) {
       const details = el("details", "sources");
-      details.append(el("summary", "", metadata.sources.length + " cited source" + (metadata.sources.length === 1 ? "" : "s")));
+      const citationCounts = summarizeCitations(metadata.sources);
+      details.append(el("summary", "", `${citationCounts.sourceCount} source${citationCounts.sourceCount === 1 ? "" : "s"} · ${citationCounts.passageCount} cited passage${citationCounts.passageCount === 1 ? "" : "s"}`));
       for (const source of metadata.sources.slice(0, 8)) {
         const item = el("div", "source-item");
         const citation = source.citation_text || (source.citation && source.citation.display) || source.chunk_id || "";
@@ -646,6 +746,15 @@ function addMessage(role, content, metadata) {
   } else {
     log.scrollTop = log.scrollHeight;
   }
+}
+function summarizeCitations(sources) {
+  const identities = new Set();
+  for (const source of Array.isArray(sources) ? sources : []) {
+    const citation = source && typeof source.citation === "object" ? source.citation : {};
+    const identity = source?.source_id || source?.path || source?.document_id || citation.source_id || citation.path || citation.document_id || source?.filename || citation.filename || source?.title || citation.title || source?.chunk_id || "unknown";
+    identities.add(String(identity));
+  }
+  return {sourceCount: identities.size, passageCount: Array.isArray(sources) ? sources.length : 0};
 }
 function restoreMessages(messages) {
   state.messages = [];
@@ -815,6 +924,7 @@ function buildTelemetryPopover(metadata) {
   const totalTokens = inputTokens !== null && outputTokens !== null ? inputTokens + outputTokens : null;
   telemetryRow(modelRows, "Input tokens", metricInteger(inputTokens));
   telemetryRow(modelRows, "Output tokens", metricInteger(outputTokens));
+  telemetryRow(modelRows, "Finish reason", native.finish_reason || timing.generation_finish_reason || "");
   telemetryRow(modelRows, "Total tokens", metricInteger(totalTokens));
   telemetryRow(modelRows, "Prompt processing", metricDurationNs(native.prompt_eval_duration_ns));
   telemetryRow(modelRows, "Prompt processing speed", metricRate(inputTokens, native.prompt_eval_duration_ns));
@@ -860,6 +970,7 @@ function formatTiming(timing) {
   const rate = evalCount && evalDuration > 0 ? (evalCount / evalDuration).toFixed(1) + " tok/s" : "";
   const parts = [];
   if (timing.estimated) parts.push("estimated");
+  if (timing.generation_status === "truncated") parts.push("output limit reached");
   if (load > 0) parts.push("load " + formatClock(load));
   if (rate) parts.push(rate);
   if (total > 0) parts.push("total " + formatClock(total));
@@ -867,17 +978,26 @@ function formatTiming(timing) {
 }
 function beginRequestStatus(status) {
   state.requestStarted = performance.now();
-  let phaseStarted = state.requestStarted;
-  let phase = "Loading local model";
-  status.textContent = phase + " · 0.0s";
-  state.requestTimer = window.setInterval(() => {
-    const now = performance.now();
-    if (now - state.requestStarted > 1800 && phase === "Loading local model") {
-      phase = "Thinking locally";
-      phaseStarted = now;
+  if (state.activityTimer) window.clearInterval(state.activityTimer);
+  status.textContent = "Opening discussion · 0.0s";
+  const refresh = async () => {
+    if (!state.sessionId || !state.chatId) return;
+    try {
+      const query = new URLSearchParams({session_id: state.sessionId, chat_id: state.chatId});
+      const payload = await getJson("/api/home/activity-state?" + query.toString());
+      const activity = payload.activity || {};
+      const changedAt = Number(activity.changed_at || 0) * 1000;
+      const elapsed = changedAt ? formatClock(Math.max(0, Date.now() - changedAt)) : "0.0s";
+      status.textContent = (activity.label || "Working") + " · " + elapsed;
+    } catch (_) {
+      // The request remains authoritative; a transient status poll failure
+      // must not alter or delay the Home generation.
     }
-    status.textContent = phase + " · " + formatClock(now - phaseStarted);
-  }, 250);
+  };
+  refresh();
+  state.requestTimer = window.setInterval(() => {
+    refresh();
+  }, 200);
 }
 function endRequestStatus() {
   if (state.requestTimer) window.clearInterval(state.requestTimer);
@@ -890,6 +1010,7 @@ async function loadHome() {
     renderHealth(data.health);
     renderToday(data.today);
     renderActivity(data.activity);
+    try { renderAdaptive(await getJson("/api/home/adaptive")); } catch (_) { renderAdaptive({}); }
   } catch (error) {
     document.querySelector("#header-health").replaceChildren(el("span", "header-health-loading", "Status unavailable"));
     document.querySelector("#health-updated").textContent = "Status unavailable";
@@ -969,16 +1090,19 @@ async function ask(event) {
       tool_ids: Array.from(state.selectedToolIds)
     });
     result.timing = result.timing || fallbackTiming(result.answer);
+    status.textContent = "Answering…";
     state.messages.push({role: "assistant", content: result.answer});
     addMessage("assistant", result.answer, result);
     const timing = formatTiming(result.timing);
-    status.textContent = result.used_documents ? "Answered from temporary document context." : (result.used_vault ? "Answered with local Vault evidence." : "Answered by the local model.");
+    status.textContent = result.generation_truncated
+      ? "Response stopped at the output limit. Continue is available."
+      : "Complete.";
     if (timing) status.textContent += " · " + timing;
     loadHome();
     loadRecentChats();
   } catch (error) {
     addMessage("assistant", "I could not complete that locally: " + error.message);
-    status.textContent = "The local request failed.";
+    status.textContent = "Error: the local request failed.";
   } finally {
     endRequestStatus();
     submit.disabled = false;

@@ -42,6 +42,20 @@
             </section>
           </article>
         </section>
+        <section id="adaptive-settings" class="configuration-grid">
+          <article class="configuration-card inference-card">
+            <div class="card-heading"><div><span class="eyebrow">AI / INFERENCE</span><h2>Task routing</h2><p>See the provider, model, location, capability and runtime state selected for each ordinary Ariadne task.</p></div><span class="card-mark">⌁</span></div>
+            <div id="inference-routes" class="inference-routes"><div class="loading-row">Reading inference routes…</div></div>
+            <p class="configuration-note">Secrets stay in the runtime environment. Setup shows only Configured, Missing, or Unavailable.</p>
+          </article>
+          <article class="configuration-card personality-card">
+            <div class="card-heading"><div><span class="eyebrow">PERSONALITY / VOICE</span><h2>How Ariadne speaks</h2><p>Guidance is separate from factual memory and is sent with every Home conversation.</p></div><span id="identity-badge" class="active-vault-badge">Checking</span></div>
+            <div class="identity-meta"><span id="identity-version">Identity version —</span><span id="identity-source">Source —</span></div>
+            <div class="identity-layers" aria-label="Identity and personality provenance"><section class="identity-layer"><h3>Core Identity</h3><strong id="identity-core-name">Ariadne Identity Kernel</strong><small id="identity-core-detail">Loading canonical identity…</small></section><section class="identity-layer"><h3>Base Personality / Temperament</h3><strong id="identity-base-name">Eris Archetype v4</strong><small id="identity-base-detail">Loading reviewed provenance…</small><p id="identity-base-relationship" class="configuration-note"></p></section><section class="identity-layer"><h3>Voice Preferences</h3><small>Editable overlay beside Core Identity; it is not a replacement identity source.</small></section></div>
+            <div class="personality-fields"><label class="path-field"><span class="field-label">Relationship / role</span><input id="personality-relationship" type="text"></label><label class="path-field"><span class="field-label">Conversational style</span><input id="personality-style" type="text"></label><label class="path-field"><span class="field-label">Humour and directness</span><textarea id="personality-directness" rows="2"></textarea></label><label class="path-field"><span class="field-label">Curiosity and verbosity</span><textarea id="personality-verbosity" rows="2"></textarea></label><label class="path-field"><span class="field-label">Avoid</span><textarea id="personality-avoid" rows="2"></textarea></label></div>
+            <p class="configuration-note">Active Identity Kernel remains the canonical Markdown source. These fields are explicit voice guidance layered beside it.</p>
+          </article>
+        </section>
         <section id="core-knowledge" class="configuration-card knowledge-card">
           <div class="card-heading"><div><span class="eyebrow">KNOWLEDGE SYSTEM STATUS</span><h2>Live Vault evidence</h2><p id="vault-source-note">Checking the active source…</p></div><span class="active-vault-badge" id="vault-active-badge">Checking</span></div>
           <div class="metric-grid"><div><span>Catalogue records</span><strong id="catalogue-count">—</strong></div><div><span>Embedding documents</span><strong id="embedding-documents">—</strong></div><div><span>Embedding chunks</span><strong id="embedding-chunks">—</strong></div><div><span>Last ingest / rebuild</span><strong id="last-ingest">—</strong></div></div>
@@ -49,6 +63,11 @@
         <div id="plugin-configuration-sections" aria-live="polite"></div>
         <div class="configuration-actions"><a id="back-link" class="secondary-button" href="/">Cancel / Back</a><button class="primary-button" type="submit">Save configuration</button></div>
       </form>
+      <section class="configuration-card adaptive-management-card">
+        <div class="card-heading"><div><span class="eyebrow">ADAPTIVE PROFILE</span><h2>Interests, learned preferences, and sources</h2><p>Manage the inputs Ariadne uses to enrich and rank public Signals. Historical Signals are retained when a source is disabled or removed.</p></div></div>
+        <div class="adaptive-management-grid"><div><h3>Interests</h3><div id="interest-list" class="managed-list"><div class="loading-row">Reading interests…</div></div><form id="interest-form" class="managed-form"><label class="path-field"><span class="field-label">Interest name</span><input id="interest-name" type="text" required></label><label class="path-field"><span class="field-label">What does this interest mean to Ariadne?</span><textarea id="interest-description" rows="3" required></textarea></label><p class="configuration-note">Describe the subject naturally. Ariadne uses this description for semantic matching; keywords are not required.</p><p id="interest-form-status" class="field-status" role="status" aria-live="polite"></p><button class="secondary-button" type="submit">Add interest</button></form></div><div><h3>Sources</h3><div id="source-list" class="managed-list"><div class="loading-row">Reading sources…</div></div><form id="source-form" class="managed-form"><label class="path-field"><span class="field-label">Source name</span><input id="source-name" type="text" required></label><label class="path-field"><span class="field-label">RSS / Atom URL</span><input id="source-endpoint" type="url" placeholder="https://…" required></label><label class="path-field"><span class="field-label">Category</span><select id="source-category"><option>Main News Feed</option><option>Thailand Focus</option><option>AI Watch</option><option>Watchlist</option></select></label><button class="secondary-button" type="submit">Add RSS source</button></form></div></div>
+        <div class="learned-preferences-block"><h3>Learned Preferences</h3><div id="learned-preferences" class="managed-list"><div class="loading-row">Reading evidence…</div></div></div>
+      </section>
     </main>
     <dialog id="configuration-dialog" class="ariadne-dialog" aria-labelledby="configuration-dialog-title">
       <div class="dialog-kicker">ARIADNE CONFIGURATION</div>

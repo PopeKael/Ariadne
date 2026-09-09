@@ -44,11 +44,16 @@ class HomeDocumentHttpTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             original_store = server.HOME_CHAT_STORE
             original_mcp = server._home_mcp
+            original_planner = server.home_planner_request
             original_docs = server.DOCUMENT_WORK_ROOT
             original_events = server.record_home_event
             fake = FakeDocumentMcp()
             server.HOME_CHAT_STORE = ChatStore(Path(temporary))
             server._home_mcp = lambda: fake
+            server.home_planner_request = lambda query, history, attachments, vault_mode, selected_tools, **kwargs: {
+                "plan": {"use_vault": vault_mode == "always", "tools": ["document-analysis"], "primary_source": "attachment"},
+                "world_state": {}, "fallback": True, "telemetry": {"error": "test planner"},
+            }
             server.DOCUMENT_WORK_ROOT = Path(temporary) / "document_contexts"
             server.record_home_event = lambda *args, **kwargs: None
             httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
@@ -101,6 +106,7 @@ class HomeDocumentHttpTests(unittest.TestCase):
                 httpd.server_close()
                 server.HOME_CHAT_STORE = original_store
                 server._home_mcp = original_mcp
+                server.home_planner_request = original_planner
                 server.DOCUMENT_WORK_ROOT = original_docs
                 server.record_home_event = original_events
 

@@ -28,7 +28,7 @@ METADATA_KEYS = {
     "title", "source", "author", "published", "published_date", "created",
     "created_date", "description", "tags", "type", "signal_id", "source_url",
     "resolved_url", "published_at", "captured_at", "category", "image_url",
-    "watchlist_matches", "provenance",
+    "watchlist_matches", "provenance", "article_status", "article_error", "signal_context",
 }
 
 
@@ -230,6 +230,34 @@ def attach_document(root: Path, chat_id: str, filename: str, content: str) -> di
         "chunks": chunks,
     }
     workspace["documents"].append(document)
+    _atomic_write(_workspace_path(root, chat_id), workspace)
+    return _document_summary(document)
+
+
+def update_document(root: Path, chat_id: str, document_id: str, content: str) -> dict[str, Any] | None:
+    """Replace one temporary document while retaining its durable identity."""
+    if not isinstance(document_id, str) or not document_id.strip():
+        raise ValueError("A document_id is required.")
+    if not isinstance(content, str) or not content:
+        raise ValueError("The updated document is empty.")
+    content_bytes = content.encode("utf-8")
+    if len(content_bytes) > MAX_DOCUMENT_BYTES:
+        raise ValueError(f"Keep each attached document below {MAX_DOCUMENT_BYTES // 1_000_000} MB.")
+    workspace = _load_workspace(root, chat_id)
+    document = next((item for item in workspace["documents"] if item.get("document_id") == document_id), None)
+    if not isinstance(document, dict):
+        return None
+    filename = str(document.get("filename") or "document.md")
+    metadata, body = parse_front_matter(content) if Path(filename).suffix.casefold() == ".md" else ({}, content)
+    document.update({
+        "metadata": metadata,
+        "size_bytes": len(content_bytes),
+        "content_chars": len(content),
+        "content_hash": hashlib.sha256(content_bytes).hexdigest(),
+        "handling": "direct" if len(body) <= DIRECT_DOCUMENT_CHARS else "chunked",
+        "chunks": _chunk_markdown(body),
+        "updated_at": time.time(),
+    })
     _atomic_write(_workspace_path(root, chat_id), workspace)
     return _document_summary(document)
 

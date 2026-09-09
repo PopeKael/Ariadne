@@ -7,6 +7,7 @@ let cleanupSessionId = null;
 let cleanupHeartbeat = null;
 let cleanupRun = null;
 let cleanupRunPollTimer = null;
+let inferenceProviders = [];
 const CleanupState = window.AriadneCleanupState;
 
 async function configurationJson(url, options) {
@@ -39,6 +40,14 @@ function setStatus(message, tone = "quiet") {
   if (node) {
     node.textContent = message;
     node.className = `configuration-status ${tone}`;
+  }
+}
+
+function setInterestFormStatus(message, tone = "quiet") {
+  const node = document.querySelector("#interest-form-status");
+  if (node) {
+    node.textContent = message || "";
+    node.className = `field-status ${tone}`;
   }
 }
 
@@ -130,6 +139,88 @@ function renderRuntimeUnavailable() {
   setText("runtime-load-status", "Live status unavailable.");
   const badge = document.querySelector("#vault-active-badge");
   if (badge) { badge.textContent = "LIVE STATUS UNAVAILABLE"; badge.className = "active-vault-badge attention"; }
+}
+
+function renderInference(payload) {
+  const root = document.querySelector("#inference-routes");
+  if (!root) return;
+  const inference = payload.inference || {};
+  inferenceProviders = Array.isArray(inference.providers) ? inference.providers : [];
+  const routes = inference.routes || {};
+  const labels = {home_chat: "Home conversation", planner: "Planner", embedding: "Semantic matching", summarization_classification: "Classification / summarisation"};
+  root.innerHTML = Object.entries(routes).map(([task, route]) => {
+    const options = inferenceProviders.filter(provider => provider.enabled !== false && Array.isArray(provider.capabilities) && provider.capabilities.some(capability => (task === "embedding" ? capability === "embeddings" : task === "planner" ? capability === "structured_output" : task === "summarization_classification" ? capability === "classification" : capability === "chat"))).map(provider => `<option value="${htmlEscape(provider.provider_id)}" ${provider.provider_id === route.provider_id ? "selected" : ""}>${htmlEscape(provider.provider_id)} · ${htmlEscape(provider.model_id || "model not selected")} · ${htmlEscape(provider.location)}</option>`).join("");
+    return `<div class="inference-route" data-inference-task="${htmlEscape(task)}"><div><strong>${htmlEscape(labels[task] || task)}</strong><small>${htmlEscape(route.provider_type || "No compatible provider")} · ${htmlEscape(route.model_id || "No model selected")} · ${htmlEscape(route.location || "—")}</small></div><div class="inference-route-controls"><select data-inference-select aria-label="${htmlEscape(labels[task] || task)} provider">${options || `<option value="">No compatible provider</option>`}</select><span class="active-vault-badge ${route.state === "Configured" ? "active" : "attention"}">${htmlEscape(route.state || "Unavailable")}</span></div></div>`;
+  }).join("") || `<p class="configuration-note">No compatible inference routes are configured.</p>`;
+  root.querySelectorAll("[data-inference-select]").forEach(select => select.addEventListener("change", () => { dirty = true; }));
+}
+
+function renderPersonality(payload) {
+  const personality = payload.personality || {};
+  for (const [id, key] of [["personality-relationship", "relationship"], ["personality-style", "style"], ["personality-directness", "directness"], ["personality-verbosity", "verbosity"], ["personality-avoid", "avoid"]]) {
+    const node = document.querySelector(`#${id}`);
+    if (node && document.activeElement !== node) node.value = personality[key] || "";
+  }
+  const identity = payload.identity_kernel || {};
+  setText("identity-version", `Identity ${identity.version || "—"}`);
+  setText("identity-source", identity.source ? `Source ${identity.source}` : "Source unavailable");
+  const badge = document.querySelector("#identity-badge");
+  if (badge) { badge.textContent = identity.status === "healthy" ? "Loaded" : "Needs attention"; badge.className = `active-vault-badge ${identity.status === "healthy" ? "active" : "attention"}`; }
+  const provenance = payload.identity_provenance || {};
+  const core = provenance.core_identity || {};
+  const base = provenance.base_personality || {};
+  setText("identity-core-name", `${core.name || "Ariadne Identity Kernel"} · v${core.version || "—"}`);
+  setText("identity-core-detail", `${core.status === "healthy" ? "Loaded" : "Needs attention"} · ${core.source || "Source unavailable"}`);
+  setText("identity-base-name", base.name || "Eris Archetype v4");
+  setText("identity-base-detail", `${base.status || "Historical reference"} · ${base.source || "Source record unavailable"}`);
+  setText("identity-base-relationship", base.relationship || "No provenance note available.");
+}
+
+function renderAdaptiveManagement(payload) {
+  const interests = Array.isArray(payload.interests) ? payload.interests : [];
+  const sources = Array.isArray(payload.sources) ? payload.sources : [];
+  const profile = payload.learned_preferences || {};
+  const interestRoot = document.querySelector("#interest-list");
+  if (interestRoot) interestRoot.innerHTML = interests.map(interestMarkup).join("") || `<p class="configuration-note">No interests yet.</p>`;
+  const sourceRoot = document.querySelector("#source-list");
+  if (sourceRoot) sourceRoot.innerHTML = sources.map(item => { const timestamps = [item.last_attempt_at ? `attempt ${htmlEscape(item.last_attempt_at)}` : "", item.last_success_at ? `success ${htmlEscape(item.last_success_at)}` : ""].filter(Boolean).join(" · "); return `<div class="managed-row"><div><strong>${htmlEscape(item.name)}</strong><small>${htmlEscape(item.adapter_type || "rss_atom")} · ${htmlEscape(item.endpoint)} · ${htmlEscape(item.category || "Main News Feed")} · ${item.enabled ? "enabled" : "disabled"} · ${htmlEscape(item.health || "unknown")}${timestamps ? ` · ${timestamps}` : ""}</small></div><div class="managed-row-actions"><button type="button" class="secondary-button" data-source-toggle="${htmlEscape(item.source_id)}" data-source-enabled="${item.enabled ? "true" : "false"}">${item.enabled ? "Disable" : "Enable"}</button><button type="button" class="secondary-button" data-source-remove="${htmlEscape(item.source_id)}">Remove</button></div></div>`; }).join("") || `<p class="configuration-note">No sources registered.</p>`;
+  const learnedRoot = document.querySelector("#learned-preferences");
+  const entries = [...(profile.sources || []), ...(profile.categories || []), ...(profile.interests || [])];
+  if (learnedRoot) learnedRoot.innerHTML = entries.map(item => `<div class="managed-row"><div><strong>${htmlEscape(item.label)}</strong><small>${htmlEscape(item.state)} · ${Number(item.evidence_count || 0)} evidence item${Number(item.evidence_count || 0) === 1 ? "" : "s"}</small></div><span class="preference-score">${Number(item.score || 0).toFixed(2)}</span></div>`).join("") || `<p class="configuration-note">No learned preferences yet. Signal feedback will appear here.</p>`;
+}
+
+async function loadAdaptiveManagement({silent = true} = {}) {
+  try {
+    const payload = await configurationJson("/api/home/adaptive");
+    renderAdaptiveManagement(payload);
+    return payload;
+  } catch (error) {
+    if (!silent) throw error;
+    if (document.querySelector("#interest-list .loading-row")) renderAdaptiveManagement({});
+    return null;
+  }
+}
+
+function interestMarkup(item) {
+  return `<div class="managed-row" data-interest-id="${htmlEscape(item.interest_id)}"><div><strong>${htmlEscape(item.name)}</strong><small>${htmlEscape(item.description || "No description")}</small></div><button type="button" class="secondary-button" data-interest-toggle="${htmlEscape(item.interest_id)}" data-interest-enabled="${item.enabled ? "true" : "false"}">${item.enabled ? "Disable" : "Enable"}</button></div>`;
+}
+
+function ensureInterestVisible(interest) {
+  if (!interest || !interest.interest_id) return;
+  const root = document.querySelector("#interest-list");
+  if (!root || [...root.querySelectorAll("[data-interest-id]")].some(item => String(item.dataset.interestId) === String(interest.interest_id))) return;
+  root.querySelector(".configuration-note")?.remove();
+  root.insertAdjacentHTML("beforeend", interestMarkup(interest));
+}
+
+function formInference() {
+  const routes = {};
+  document.querySelectorAll("[data-inference-task]").forEach(row => { const select = row.querySelector("[data-inference-select]"); if (select?.value) routes[row.dataset.inferenceTask] = select.value; });
+  return {routes};
+}
+
+function formPersonality() {
+  return {relationship: document.querySelector("#personality-relationship")?.value.trim() || "", style: document.querySelector("#personality-style")?.value.trim() || "", directness: document.querySelector("#personality-directness")?.value.trim() || "", verbosity: document.querySelector("#personality-verbosity")?.value.trim() || "", avoid: document.querySelector("#personality-avoid")?.value.trim() || ""};
 }
 
 function renderAvatar(payload) {
@@ -244,6 +335,8 @@ function renderPluginConfigurations(payload) {
 function render(payload) {
   renderStorage(payload);
   renderAvatar(payload.avatar);
+  renderInference(payload);
+  renderPersonality(payload);
   const selectedPlugin = renderPluginConfigurations(payload);
   if (payload.runtime || payload.vault) renderRuntime(payload);
   return selectedPlugin;
@@ -452,7 +545,7 @@ async function save(event) {
   setStatus("Validating and saving configuration…");
   try {
     const plugins = formPlugins();
-    const body = {storage: formStorage()};
+    const body = {storage: formStorage(), inference: formInference(), personality: formPersonality()};
     if (plugins) body.plugins = plugins;
     const payload = await configurationJson("/api/configuration", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     if (!payload.persistence?.verified) throw new Error("The server did not verify the persisted configuration.");
@@ -461,6 +554,7 @@ async function save(event) {
     setStatus(payload.message || "Configuration saved.", "success");
     void showConfigurationDialog({title: "Configuration saved", message: payload.message || "Your Ariadne configuration was saved successfully.", tone: "success"});
     void loadConfigurationHealth();
+    void loadAdaptiveManagement();
   } catch (error) {
     const errors = error.payload?.errors || {};
     for (const key of STORAGE_KEYS) {
@@ -474,6 +568,71 @@ async function save(event) {
     void showConfigurationDialog({title: "Configuration not saved", message: configurationErrorMessage(error), tone: "error"});
   }
 }
+
+async function updateInterest(interestId, enabled) {
+  try {
+    await configurationJson("/api/signals/interests", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({interest_id: interestId, enabled})});
+    await loadAdaptiveManagement();
+  } catch (error) { setStatus(`Interest update failed: ${error.message}`, "error"); }
+}
+
+async function updateSource(sourceId, enabled) {
+  try {
+    await configurationJson("/api/signals/sources", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({source_id: sourceId, enabled})});
+    await loadAdaptiveManagement();
+  } catch (error) { setStatus(`Source update failed: ${error.message}`, "error"); }
+}
+
+async function removeSource(sourceId) {
+  try {
+    await configurationJson(`/api/signals/sources/${encodeURIComponent(sourceId)}`, {method: "DELETE"});
+    await loadAdaptiveManagement();
+  } catch (error) { setStatus(`Source removal failed: ${error.message}`, "error"); }
+}
+
+document.addEventListener("click", event => {
+  const target = event.target;
+  if (target.matches("[data-interest-toggle]")) { updateInterest(target.dataset.interestToggle, target.dataset.interestEnabled !== "true"); return; }
+  if (target.matches("[data-source-toggle]")) { updateSource(target.dataset.sourceToggle, target.dataset.sourceEnabled !== "true"); return; }
+  if (target.matches("[data-source-remove]")) { removeSource(target.dataset.sourceRemove); }
+});
+
+document.querySelector("#interest-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button[type=submit]");
+  const name = document.querySelector("#interest-name")?.value.trim() || "";
+  const description = document.querySelector("#interest-description")?.value.trim() || "";
+  if (!name || !description || button?.disabled) {
+    if (!name || !description) setInterestFormStatus("Enter both an interest name and a description.", "attention");
+    return;
+  }
+  if (button) { button.disabled = true; button.textContent = "Saving…"; }
+  setInterestFormStatus("Saving interest…");
+  try {
+    const payload = await configurationJson("/api/signals/interests", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, description})});
+    if (!payload.ok || !payload.interest) throw new Error(payload.message || "Signal Service did not confirm the saved interest.");
+    await loadAdaptiveManagement();
+    ensureInterestVisible(payload.interest);
+    form.reset();
+    setInterestFormStatus("Interest saved.", "success");
+    setStatus("Interest saved.", "success");
+  } catch (error) {
+    const message = `Interest could not be saved: ${error.message}`;
+    setInterestFormStatus(message, "attention");
+    setStatus(message, "error");
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "Add interest"; }
+  }
+});
+
+document.querySelector("#source-form")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    await configurationJson("/api/signals/sources", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name: document.querySelector("#source-name").value, endpoint: document.querySelector("#source-endpoint").value, category: document.querySelector("#source-category").value, adapter_type: "rss_atom", enabled: true})});
+    event.target.reset(); await loadAdaptiveManagement(); setStatus("RSS source saved.", "success");
+  } catch (error) { setStatus(`Source could not be saved: ${error.message}`, "error"); }
+});
 
 async function toggleAvatar() {
   if (!currentAvatar) return;
@@ -503,3 +662,4 @@ window.addEventListener("pagehide", () => {
 });
 
 load();
+void loadAdaptiveManagement();

@@ -64,6 +64,18 @@ class SignalHandler(BaseHTTPRequestHandler):
         if parsed.path == "/v1/watchlist/topics":
             self._send({"ok": True, "topics": self.server.service.watchlist_topics()})
             return
+        if parsed.path == "/v1/interests":
+            self._send({"ok": True, "interests": self.server.service.interests()})
+            return
+        if parsed.path == "/v1/profile":
+            self._send({"ok": True, "profile": self.server.service.store.learned_preferences()})
+            return
+        if parsed.path == "/v1/sources":
+            self._send({"ok": True, "sources": self.server.service.sources()})
+            return
+        if parsed.path == "/v1/inference":
+            self._send({"ok": True, **self.server.service.inference.snapshot()})
+            return
         self._send({"ok": False, "message": "Not found."}, 404)
 
     def do_POST(self) -> None:  # noqa: N802
@@ -88,6 +100,34 @@ class SignalHandler(BaseHTTPRequestHandler):
             except ValueError as exc:
                 self._send({"ok": False, "message": str(exc)}, 400)
             return
+        if parsed.path == "/v1/interests":
+            try:
+                payload = self._read_json()
+                result = self.server.service.upsert_interest(payload if isinstance(payload, dict) else {})
+                self._send({"ok": True, "interest": result})
+            except ValueError as exc:
+                self._send({"ok": False, "message": str(exc)}, 400)
+            return
+        if parsed.path == "/v1/sources":
+            try:
+                payload = self._read_json()
+                result = self.server.service.upsert_source(payload if isinstance(payload, dict) else {})
+                self._send({"ok": True, "source": result})
+            except ValueError as exc:
+                self._send({"ok": False, "message": str(exc)}, 400)
+            return
+        if parsed.path == "/v1/inference":
+            try:
+                payload = self._read_json()
+                providers = payload.get("providers") if isinstance(payload, dict) else None
+                routes = payload.get("routes") if isinstance(payload, dict) else None
+                self._send({"ok": True, **self.server.service.inference.save(providers if isinstance(providers, list) else None, routes if isinstance(routes, dict) else None)})
+            except (ValueError, TypeError) as exc:
+                self._send({"ok": False, "message": str(exc)}, 400)
+            return
+        if parsed.path == "/v1/profile/reset":
+            self._send({"ok": True, "profile": self.server.service.reset_learned_preferences()})
+            return
         if parsed.path != "/v1/intake/candidates":
             self._send({"ok": False, "message": "Not found."}, 404)
             return
@@ -103,6 +143,15 @@ class SignalHandler(BaseHTTPRequestHandler):
             self._send({"ok": True, "accepted": result["accepted"], "duplicates": result["duplicates"], "rejected": result["rejected"], "errors": result["errors"], "briefing": briefing})
         except (ValueError, json.JSONDecodeError) as exc:
             self._send({"ok": False, "message": str(exc)}, 400)
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        parsed = urlparse(self.path)
+        match = re.fullmatch(r"/v1/sources/([^/]+)", parsed.path)
+        if not match:
+            self._send({"ok": False, "message": "Not found."}, 404)
+            return
+        removed = self.server.service.delete_source(match.group(1))
+        self._send({"ok": removed, "removed": removed}, 200 if removed else 404)
 
 
 class SignalHTTPServer(ThreadingHTTPServer):

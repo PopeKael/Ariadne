@@ -51,15 +51,18 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 )
-                with patch.object(server, "promote_signal", return_value={"signal_id": signal["signal_id"], "path": "Inbox/A signal.md", "updated": False}) as promote:
-                    with patch.object(server, "attach_document", return_value={"document_id": "doc-1", "filename": "A signal.md", "title": "A signal"}) as attach:
+                with patch.object(server, "_start_signal_article_job", return_value={"status": "loading", "stage": "reading"}) as start:
+                    with patch.object(server, "attach_document", return_value={"document_id": "doc-1", "filename": "signal-context__signal-1234567890abcdef.md", "title": "A signal", "metadata": {"type": "source-article", "signal_id": signal["signal_id"]}}) as attach:
                         with urllib.request.urlopen(promote_request, timeout=5) as response:
                             result = json.loads(response.read().decode("utf-8"))
                 self.assertTrue(result["ok"])
                 self.assertEqual(result["document"]["document_id"], "doc-1")
                 fake_client.briefing.assert_called_once_with(limit=40)
-                promote.assert_called_once_with(vault_root, signal)
-                attach.assert_called_once_with(server.DOCUMENT_WORK_ROOT, started["chat_id"], "A signal.md", note_path.read_text(encoding="utf-8"))
+                self.assertEqual(result["stage"], "opening_discussion")
+                start.assert_called_once_with(started["session_id"], started["chat_id"], signal, "doc-1")
+                attach.assert_called_once()
+                self.assertIn("signal-context__signal-1234567890abcdef.md", attach.call_args.args)
+                self.assertIn("Signal context", attach.call_args.args[-1])
             finally:
                 httpd.shutdown()
                 httpd.server_close()
@@ -72,7 +75,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         signal = {"signal_id": "signal-1234567890abcdef", "title": "A signal", "url": "https://example.test/story"}
         fake_client = Mock()
         fake_client.briefing.return_value = {"ok": True, "signals": [signal]}
-        existing_document = {"document_id": "doc-existing", "filename": "A signal.md", "title": "A signal"}
+        existing_document = {"document_id": "doc-existing", "filename": "A signal.md", "title": "A signal", "metadata": {"type": "source-article", "signal_id": signal["signal_id"]}}
         with tempfile.TemporaryDirectory() as temporary:
             original_store = server.HOME_CHAT_STORE
             original_client = server.SIGNAL_SERVICE_CLIENT
@@ -105,11 +108,12 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 )
-                with patch.object(server, "promote_signal", return_value={"signal_id": signal["signal_id"], "path": "Inbox/A signal.md", "updated": True}), patch.object(server, "list_documents", return_value=[existing_document]) as listed, patch.object(server, "attach_document") as attach:
+                with patch.object(server, "_start_signal_article_job", return_value={"status": "loading", "stage": "reading"}) as start, patch.object(server, "list_documents", return_value=[existing_document]) as listed, patch.object(server, "attach_document") as attach:
                     with urllib.request.urlopen(promote_request, timeout=5) as response:
                         result = json.loads(response.read().decode("utf-8"))
                 self.assertTrue(result["ok"])
                 self.assertEqual(result["document"], existing_document)
+                start.assert_called_once_with(started["session_id"], started["chat_id"], signal, "doc-existing")
                 self.assertEqual(listed.call_count, 2)
                 listed.assert_any_call(server.DOCUMENT_WORK_ROOT, started["chat_id"])
                 attach.assert_not_called()
@@ -157,12 +161,13 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                     data=json.dumps({"session_id": started["session_id"], "signal_id": signal["signal_id"], "mode": "add"}).encode("utf-8"),
                     headers={"Content-Type": "application/json"}, method="POST",
                 )
-                with patch.object(server, "promote_signal", return_value={"signal_id": signal["signal_id"], "path": "Inbox/Second signal.md", "updated": False}), patch.object(server, "list_documents", side_effect=[existing_documents, existing_documents + [{"document_id": "doc-second", "filename": "Second signal.md", "title": "Second signal", "metadata": {"type": "source-article", "signal_id": signal["signal_id"]}}]]) as listed, patch.object(server, "attach_document", return_value={"document_id": "doc-second", "filename": "Second signal.md", "title": "Second signal", "metadata": {"type": "source-article", "signal_id": signal["signal_id"]}}) as attach, patch.object(server, "remove_document") as remove:
+                with patch.object(server, "_start_signal_article_job", return_value={"status": "loading", "stage": "reading"}) as start, patch.object(server, "list_documents", side_effect=[existing_documents, existing_documents + [{"document_id": "doc-second", "filename": "signal-context__signal-2234567890abcdef.md", "title": "Second signal", "metadata": {"type": "source-article", "signal_id": signal["signal_id"]}}]]) as listed, patch.object(server, "attach_document", return_value={"document_id": "doc-second", "filename": "signal-context__signal-2234567890abcdef.md", "title": "Second signal", "metadata": {"type": "source-article", "signal_id": signal["signal_id"]}}) as attach, patch.object(server, "remove_document") as remove:
                     with urllib.request.urlopen(promote_request, timeout=5) as response:
                         result = json.loads(response.read().decode("utf-8"))
                 self.assertTrue(result["ok"])
                 self.assertEqual(result["mode"], "add")
                 attach.assert_called_once()
+                start.assert_called_once_with(started["session_id"], started["chat_id"], signal, "doc-second")
                 remove.assert_not_called()
                 self.assertEqual(listed.call_count, 2)
             finally:

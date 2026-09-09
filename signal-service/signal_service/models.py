@@ -103,6 +103,7 @@ class Signal:
     provenance: dict[str, Any] = field(default_factory=dict)
     rank_score: float = 0.0
     rank_reason: str = ""
+    semantic_matches: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -122,6 +123,8 @@ class Signal:
             "provenance": self.provenance,
             "rank_score": round(self.rank_score, 4),
             "rank_reason": self.rank_reason,
+            "semantic_matches": self.semantic_matches,
+            "why_appeared": self.rank_reason,
         }
 
 

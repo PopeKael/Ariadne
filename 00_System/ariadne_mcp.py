@@ -42,6 +42,8 @@ MAX_DOCUMENT_CHARS = 24_000
 MAX_CHUNK_CHARS = 2_400
 DEFAULT_CHUNK_CHARS = 1_600
 DEFAULT_CONTEXT_TOKENS = 8_192
+# Keep the bounded fallback for non-Home MCP callers.  Home supplies its own
+# explicit, configurable generation budget at the control-plane boundary.
 DEFAULT_OUTPUT_TOKENS = 1_024
 TOKEN_RE = re.compile(r"[\w-]+", re.UNICODE)
 EMBEDDING_INDEX_CACHE: tuple[float, dict[str, Any] | None] | None = None
@@ -1132,7 +1134,8 @@ def search_chunks(arguments: dict[str, Any]) -> dict[str, Any]:
 def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
                 context_tokens: int | None = None,
                 metrics: dict[str, Any] | None = None,
-                keep_alive: int | str | None = None) -> str:
+                keep_alive: int | str | None = None,
+                output_tokens: int | None = None) -> str:
     """Generate text only through the configured loopback Ollama endpoint."""
     base_url = DEFAULT_OLLAMA_URL
     selected_model = model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
@@ -1142,10 +1145,13 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
         1_024,
         int(context_tokens or os.environ.get("ARIADNE_NUM_CTX", DEFAULT_CONTEXT_TOKENS)),
     )
-    output_tokens = max(128, int(os.environ.get("ARIADNE_NUM_PREDICT", DEFAULT_OUTPUT_TOKENS)))
+    selected_output_tokens = max(
+        128,
+        int(output_tokens or os.environ.get("ARIADNE_NUM_PREDICT", DEFAULT_OUTPUT_TOKENS)),
+    )
     body = {"model": selected_model, "messages": messages, "stream": False,
             "options": {"temperature": 0, "seed": 42, "num_ctx": selected_context_tokens,
-                        "num_predict": output_tokens}}
+                        "num_predict": selected_output_tokens}}
     if keep_alive is not None:
         body["keep_alive"] = keep_alive
     if selected_model.casefold().startswith("qwen3"):
@@ -1165,7 +1171,8 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
         metrics.setdefault("ollama_calls", []).append({
             key: payload.get(key) for key in (
                 "total_duration", "load_duration", "prompt_eval_count",
-                "prompt_eval_duration", "eval_count", "eval_duration"
+                "prompt_eval_duration", "eval_count", "eval_duration",
+                "done_reason", "finish_reason"
             ) if payload.get(key) is not None
         })
     content = payload.get("message", {}).get("content")

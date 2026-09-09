@@ -88,7 +88,8 @@ class SourceArticleTests(unittest.TestCase):
             self.assertFalse(first["updated"])
             self.assertTrue(second["updated"])
             self.assertEqual(first["path"], second["path"])
-            self.assertEqual(fetch.call_count, 2)
+            self.assertEqual(fetch.call_count, 1)
+            self.assertTrue(second["cache_hit"])
             notes = list((root / "Inbox").glob("*.md"))
             self.assertEqual(len(notes), 1)
             note = notes[0].read_text(encoding="utf-8")
@@ -100,6 +101,7 @@ class SourceArticleTests(unittest.TestCase):
             self.assertIn('  - "Google News RSS"', note)
             self.assertIn('  - "resolved publisher URL"', note)
             self.assertIn("Clean source article text.", note)
+            self.assertIn("## Signal context", note)
             self.assertIn("Think with Ariadne", note)
 
 

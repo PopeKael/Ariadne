@@ -43,6 +43,15 @@ DEFAULT_STORAGE = {
     "screenshots": r"D:\Downloads\Screenshots",
     "intake_root": r"D:\Downloads",
 }
+DEFAULT_PERSONALITY = {
+    "relationship": "Practical thinking partner and knowledge navigator.",
+    "style": "Warm, direct, calm, curious, and practical.",
+    "humour": "Dry intelligent humour only when the moment can carry it.",
+    "directness": "Lead with the useful conclusion and challenge weak assumptions calmly.",
+    "curiosity": "Ask or leave open a worthwhile question when it improves the work.",
+    "verbosity": "Simple requests stay simple; technical work remains precise and actionable.",
+    "avoid": "No theatrical role-play, forced humour, false certainty, or invented familiarity.",
+}
 STORAGE_ENVIRONMENT = {
     "knowledge_vault": "ARIADNE_VAULT_ROOT",
     "documents": "ARIADNE_DOCUMENTS_ROOT",
@@ -241,6 +250,8 @@ def save_configuration(
     storage: dict[str, object] | None = None,
     avatar: dict[str, object] | None = None,
     plugins: dict[str, object] | None = None,
+    inference: dict[str, object] | None = None,
+    personality: dict[str, object] | None = None,
     path: Path | None = None,
 ) -> dict[str, Any]:
     target = path or configuration_path()
@@ -265,6 +276,19 @@ def save_configuration(
     selected_plugins = dict(current_plugins)
     if plugins is not None:
         selected_plugins.update(plugins)
+    current_inference = current.get("inference", {})
+    if not isinstance(current_inference, dict):
+        current_inference = {}
+    selected_inference = dict(current_inference)
+    if inference is not None:
+        selected_inference.update(inference)
+    current_personality = current.get("personality", {})
+    if not isinstance(current_personality, dict):
+        current_personality = {}
+    selected_personality = dict(DEFAULT_PERSONALITY)
+    selected_personality.update(current_personality)
+    if personality is not None:
+        selected_personality.update(personality)
     selected_avatar.setdefault("state_assets", current_avatar.get("state_assets", {}))
     storage_errors = validate_storage(selected_storage)
     avatar_errors = validate_avatar(selected_avatar)
@@ -281,6 +305,8 @@ def save_configuration(
             "state_assets": _normalized_state_assets(selected_avatar.get("state_assets")),
         },
         "plugins": selected_plugins,
+        "inference": selected_inference,
+        "personality": selected_personality,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
     _atomic_write_configuration(payload, target)
@@ -395,7 +421,8 @@ def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
     target = (path or configuration_path()).expanduser().resolve()
     values, sources = effective_storage(target)
     avatar, avatar_sources = effective_avatar(target)
-    saved_plugins = _read_saved(target).get("plugins", {})
+    saved = _read_saved(target)
+    saved_plugins = saved.get("plugins", {})
     if not isinstance(saved_plugins, dict):
         saved_plugins = {}
     return {
@@ -412,4 +439,6 @@ def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
         "avatar": avatar,
         "avatar_sources": avatar_sources,
         "plugins": saved_plugins,
+        "inference": saved.get("inference", {}) if isinstance(saved.get("inference", {}), dict) else {},
+        "personality": {**DEFAULT_PERSONALITY, **(saved.get("personality", {}) if isinstance(saved.get("personality", {}), dict) else {})},
     }

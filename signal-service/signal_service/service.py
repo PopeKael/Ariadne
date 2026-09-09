@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import os
 import json
+import hashlib
+import math
 import threading
 import time
 from dataclasses import replace
@@ -18,6 +20,7 @@ from .feeds import FeedDefinition, configured_feeds, fetch_feed
 from .models import Signal, canonical_url, normalize_candidate, utc_now
 from .ranking import BasicRanker, SignalRanker
 from .store import SignalStore
+from .inference import InferenceRegistry, ProviderUnavailable
 
 
 class _ImageMetaParser(HTMLParser):
@@ -156,12 +159,20 @@ def _iso_age_seconds(value: str | None) -> float | None:
 
 
 class SignalService:
+    MIN_SEMANTIC_MATCH_SCORE = 0.58
+
     """Portable service object used by both the HTTP server and tests."""
 
-    def __init__(self, database_path: str | Path, feeds: Iterable[FeedDefinition] | None = None, *, ranker: SignalRanker | None = None, feed_timeout: float = 15.0, item_limit: int = 20):
+    def __init__(self, database_path: str | Path, feeds: Iterable[FeedDefinition] | None = None, *, ranker: SignalRanker | None = None, feed_timeout: float = 15.0, item_limit: int = 20, inference: InferenceRegistry | None = None):
         self.store = SignalStore(database_path)
-        self.feeds = list(feeds) if feeds is not None else configured_feeds()
+        if feeds is not None:
+            self.feeds = list(feeds)
+        elif os.environ.get("SIGNAL_SERVICE_FEEDS", "").strip():
+            self.feeds = configured_feeds()
+        else:
+            self.feeds = [FeedDefinition(item["name"], item["endpoint"], item["category"]) for item in self.store.enabled_rss_sources()]
         self.ranker = ranker or BasicRanker()
+        self.inference = inference or InferenceRegistry(Path(database_path).parent / "inference.json")
         self.feed_timeout = max(1.0, float(feed_timeout))
         self.item_limit = max(1, min(int(item_limit), 100))
         self._lock = threading.RLock()
@@ -172,15 +183,114 @@ class SignalService:
         self._last_source_status: list[dict[str, Any]] = []
         self._refresh_running = False
         self._successful_feed_collection_logged = False
+        self._semantic_status: dict[str, Any] = {"state": "pending", "provider_id": None, "model_id": None, "embedded_signals": 0, "embedded_interests": 0, "match_count": 0, "error": ""}
 
     def close(self) -> None:
         self.store.close()
 
     def _build_cached_briefing(self, collection: dict[str, Any]) -> dict[str, Any]:
-        ranked = self.ranker.rank(self.store.recent(), limit=40)
+        profile = self.store.learned_preferences()
+        profile["semantic_state"] = self._semantic_status.get("state")
+        profile["semantic_interest_count"] = len(self.store.list_interests(active_only=True))
+        ranked = self.ranker.rank(self.store.recent(), limit=40, profile=profile)
         return self.store.save_briefing(ranked, collection)
 
+    @staticmethod
+    def _signal_text(signal: Signal) -> str:
+        # Source and category are downstream metadata, not article meaning.
+        # Including them makes every item from the AI Watch feed look related.
+        parts = [signal.title, signal.summary, signal.content[:4_000]]
+        return "\n".join(part.strip() for part in parts if part and part.strip())[:8_000]
+
+    @staticmethod
+    def _interest_text(interest: dict[str, Any]) -> str:
+        aliases = ", ".join(str(item) for item in interest.get("aliases", []) if str(item).strip())
+        return "\n".join(part for part in (interest.get("name"), interest.get("description"), aliases) if str(part or "").strip())[:4_000]
+
+    @staticmethod
+    def _cosine(left: list[float], right: list[float]) -> float:
+        if not left or len(left) != len(right):
+            return 0.0
+        product = sum(a * b for a, b in zip(left, right))
+        norm_left = math.sqrt(sum(a * a for a in left))
+        norm_right = math.sqrt(sum(b * b for b in right))
+        return product / (norm_left * norm_right) if norm_left and norm_right else 0.0
+
+    def _semantic_enrich(self, signals: Iterable[Signal] | None = None) -> dict[str, Any]:
+        selected_provider = self.inference.route("embedding")
+        if selected_provider is None:
+            self._semantic_status = {"state": "unavailable", "provider_id": None, "model_id": None, "embedded_signals": 0, "embedded_interests": 0, "match_count": 0, "error": "No compatible embedding provider is configured."}
+            return self._semantic_status
+        provider_state = self.inference.state(selected_provider)
+        if provider_state in {"Missing", "Unavailable"}:
+            self._semantic_status = {"state": provider_state.casefold(), "provider_id": selected_provider.provider_id, "model_id": selected_provider.model_id, "location": selected_provider.location, "embedded_signals": 0, "embedded_interests": 0, "match_count": 0, "error": f"Embedding provider is {provider_state.casefold()}."}
+            return self._semantic_status
+        interests = self.store.list_interests(active_only=True)
+        signal_list = list(signals) if signals is not None else self.store.recent(limit=500)
+        interest_vectors: dict[str, list[float]] = {}
+        interest_pending: list[tuple[dict[str, Any], str]] = []
+        for interest in interests:
+            text = self._interest_text(interest)
+            source_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            cached = self.store.embedding("interest", interest["interest_id"], selected_provider.provider_id, selected_provider.model_id, selected_provider.embedding_version)
+            if cached and cached["source_text_hash"] == source_hash and isinstance(cached.get("vector"), list):
+                interest_vectors[interest["interest_id"]] = cached["vector"]
+            else:
+                interest_pending.append((interest, source_hash))
+        signal_pending: list[tuple[Signal, str]] = []
+        signal_vectors: dict[str, list[float]] = {}
+        for signal in signal_list:
+            text = self._signal_text(signal)
+            source_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            cached = self.store.embedding("signal", signal.signal_id, selected_provider.provider_id, selected_provider.model_id, selected_provider.embedding_version)
+            if cached and cached["source_text_hash"] == source_hash and isinstance(cached.get("vector"), list):
+                signal_vectors[signal.signal_id] = cached["vector"]
+            else:
+                signal_pending.append((signal, source_hash))
+        embedded_interests = 0
+        embedded_signals = 0
+        try:
+            if interest_pending:
+                vectors = self.inference.embed_many([self._interest_text(item) for item, _ in interest_pending], selected_provider)
+                for (interest, source_hash), vector in zip(interest_pending, vectors):
+                    self.store.save_embedding("interest", interest["interest_id"], selected_provider.provider_id, selected_provider.model_id, len(vector), selected_provider.embedding_version, source_hash, vector)
+                    interest_vectors[interest["interest_id"]] = vector
+                    embedded_interests += 1
+            if signal_pending:
+                vectors = self.inference.embed_many([self._signal_text(item) for item, _ in signal_pending], selected_provider)
+                for (signal, source_hash), vector in zip(signal_pending, vectors):
+                    self.store.save_embedding("signal", signal.signal_id, selected_provider.provider_id, selected_provider.model_id, len(vector), selected_provider.embedding_version, source_hash, vector)
+                    signal_vectors[signal.signal_id] = vector
+                    embedded_signals += 1
+        except ProviderUnavailable as exc:
+            self._semantic_status = {"state": "unavailable", "provider_id": selected_provider.provider_id, "model_id": selected_provider.model_id, "location": selected_provider.location, "embedded_signals": embedded_signals, "embedded_interests": embedded_interests, "match_count": 0, "error": str(exc)[:500]}
+            return self._semantic_status
+        match_count = 0
+        for signal in signal_list:
+            signal_vector = signal_vectors.get(signal.signal_id)
+            if not signal_vector:
+                continue
+            matches = []
+            for interest in interests:
+                interest_vector = interest_vectors.get(interest["interest_id"])
+                if not interest_vector or len(interest_vector) != len(signal_vector):
+                    continue
+                score = self._cosine(signal_vector, interest_vector)
+                if score >= self.MIN_SEMANTIC_MATCH_SCORE:
+                    matches.append({"interest_id": interest["interest_id"], "semantic_score": score})
+            matches.sort(key=lambda item: (-float(item["semantic_score"]), item["interest_id"]))
+            self.store.replace_signal_matches(signal.signal_id, matches[:6], selected_provider.provider_id, selected_provider.model_id, selected_provider.embedding_version)
+            match_count += len(matches)
+        embedding_counts = self.store.embedding_counts(selected_provider.provider_id, selected_provider.model_id, selected_provider.embedding_version)
+        self._semantic_status = {"state": "healthy", "provider_id": selected_provider.provider_id, "model_id": selected_provider.model_id, "location": selected_provider.location, "embedded_signals": embedded_signals, "embedded_interests": embedded_interests, "stored_signal_embeddings": embedding_counts["signals"], "stored_interest_embeddings": embedding_counts["interests"], "match_count": match_count, "error": ""}
+        return self._semantic_status
+
     def ingest_candidates(self, candidates: Iterable[object], *, default_source_name: str = "External candidate producer", default_source_url: str = "", ingest_type: str = "candidate", adapter: str = "external", default_category: str = "Main News Feed") -> dict[str, Any]:
+        if ingest_type == "candidate_intake":
+            try:
+                self.store.upsert_source({"name": default_source_name, "endpoint": default_source_url or "n8n://candidate-intake", "adapter_type": adapter, "category": default_category, "enabled": True})
+            except ValueError:
+                pass
         accepted = 0
         duplicates = 0
         rejected = 0
@@ -211,6 +321,8 @@ class SignalService:
                 rejected += 1
                 errors.append(str(exc))
         collection = {"mode": ingest_type, "accepted": accepted, "duplicates": duplicates, "rejected": rejected, "errors": errors}
+        if accepted:
+            self._semantic_enrich()
         briefing = self._build_cached_briefing(collection) if accepted else self.store.latest_briefing()
         now = utc_now()
         with self._lock:
@@ -241,13 +353,16 @@ class SignalService:
                     accepted += int(result["accepted"])
                     duplicates += int(result["duplicates"])
                     source_status.append({"name": feed.name, "url": feed.url, "state": "healthy", "items": len(candidates), "accepted": result["accepted"], "duplicates": result["duplicates"]})
+                    self.store.update_source_status(feed.name, state="healthy", item_count=len(candidates))
                 except Exception as exc:  # one bad source must not stop the refinery
                     detail = str(exc)[:500]
                     errors.append({"source": feed.name, "url": feed.url, "error": detail})
                     source_status.append({"name": feed.name, "url": feed.url, "state": "attention", "error": detail})
+                    self.store.update_source_status(feed.name, state="attention", error=detail)
             successful_sources = sum(1 for item in source_status if item.get("state") == "healthy")
             collection = {"mode": "feeds", "attempted_at": attempted_at, "sources": source_status, "successful_sources": successful_sources, "accepted": accepted, "duplicates": duplicates, "errors": errors}
             if successful_sources:
+                self._semantic_enrich()
                 briefing = self._build_cached_briefing(collection)
                 success_at = utc_now()
             else:
@@ -309,18 +424,49 @@ class SignalService:
             attempt = self._last_attempt_at
             collection_ok = self._last_collection_ok
         state = "healthy" if latest and not errors and collection_ok is not False else "attention" if latest or errors else "starting"
-        return {"ok": True, "service": "ariadne-signal-service", "version": "0.1.0", "state": state, "feeds": [{"name": feed.name, "url": feed.url} for feed in self.feeds], "last_attempt_at": attempt, "last_success_at": last_success, "last_success_age_seconds": _iso_age_seconds(last_success), "last_collection_ok": collection_ok, "refresh_running": running, "source_status": source_status, "errors": errors, "cached_briefing": bool(latest)}
+        semantic_state = dict(self._semantic_status)
+        if semantic_state.get("state") in {"unavailable", "missing"} and state == "healthy":
+            state = "attention"
+        return {"ok": True, "service": "ariadne-signal-service", "version": "0.2.0", "state": state, "feeds": [{"name": feed.name, "url": feed.url} for feed in self.feeds], "sources": self.store.list_sources(), "last_attempt_at": attempt, "last_success_at": last_success, "last_success_age_seconds": _iso_age_seconds(last_success), "last_collection_ok": collection_ok, "refresh_running": running, "source_status": source_status, "errors": errors, "cached_briefing": bool(latest), "semantic": semantic_state, "inference": self.inference.snapshot(), "learned_preferences": self.store.learned_preferences(), "active_interests": self.store.list_interests(active_only=True)}
 
     def record_feedback(self, signal_id: str, value: str, recorded_at: str | None = None) -> dict[str, Any]:
         if value not in {"useful", "interesting", "not_useful"}:
             raise ValueError("Feedback must be useful, interesting, or not_useful")
-        return self.store.record_feedback(signal_id, value, recorded_at)
+        result = self.store.record_feedback(signal_id, value, recorded_at)
+        result["learned_preferences"] = self.store.rebuild_learned_preferences()
+        self._build_cached_briefing({"mode": "feedback", "signal_id": signal_id, "feedback": value})
+        return result
 
     def add_watchlist_topic(self, topic: str, active: bool = True) -> dict[str, Any]:
         return self.store.upsert_watchlist_topic(topic, active)
 
     def watchlist_topics(self, active_only: bool = True) -> list[dict[str, Any]]:
         return self.store.watchlist_topics(active_only)
+
+    def interests(self, active_only: bool = False) -> list[dict[str, Any]]:
+        return self.store.list_interests(active_only)
+
+    def upsert_interest(self, value: dict[str, Any]) -> dict[str, Any]:
+        result = self.store.upsert_interest(value)
+        self._semantic_enrich()
+        self._build_cached_briefing({"mode": "interest_updated", "interest_id": result["interest_id"]})
+        return result
+
+    def sources(self) -> list[dict[str, Any]]:
+        return self.store.list_sources()
+
+    def upsert_source(self, value: dict[str, Any]) -> dict[str, Any]:
+        result = self.store.upsert_source(value)
+        self.feeds = [FeedDefinition(item["name"], item["endpoint"], item["category"]) for item in self.store.enabled_rss_sources()]
+        return result
+
+    def delete_source(self, source_id: str) -> bool:
+        removed = self.store.delete_source(source_id)
+        self.feeds = [FeedDefinition(item["name"], item["endpoint"], item["category"]) for item in self.store.enabled_rss_sources()]
+        return removed
+
+    def reset_learned_preferences(self) -> dict[str, Any]:
+        return self.store.reset_learned_preferences()
 
     def start_background_refresh(self, interval_seconds: float | None = None) -> threading.Thread:
         interval = max(60.0, float(interval_seconds if interval_seconds is not None else os.environ.get("SIGNAL_SERVICE_REFRESH_SECONDS", "900")))

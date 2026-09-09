@@ -217,6 +217,11 @@ class SignalServiceTests(unittest.TestCase):
                 briefing = json.loads(response.read())
             with urlopen(base + "/v1/watchlist/topics", timeout=2) as response:
                 watchlist = json.loads(response.read())
+            interest_request = Request(base + "/v1/interests", data=json.dumps({"name": "Local AI hardware", "description": "Local inference hardware"}).encode(), headers={"Content-Type": "application/json"}, method="POST")
+            with urlopen(interest_request, timeout=2) as response:
+                interest_created = json.loads(response.read())
+            with urlopen(base + "/v1/interests", timeout=2) as response:
+                interests = json.loads(response.read())
             watchlist_request = Request(base + "/v1/watchlist/topics", data=json.dumps({"topic": "Thailand immigration"}).encode(), headers={"Content-Type": "application/json"}, method="POST")
             with urlopen(watchlist_request, timeout=2) as response:
                 watchlist_created = json.loads(response.read())
@@ -242,6 +247,8 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(feedback["feedback"], "interesting")
         self.assertEqual(watchlist["topics"], [])
         self.assertEqual(watchlist_created["topic"]["topic"], "Thailand immigration")
+        self.assertTrue(interest_created["ok"])
+        self.assertEqual(interests["interests"][0]["name"], "Local AI hardware")
         self.assertTrue(stale_briefing["stale"])
         self.assertEqual(stale_briefing["signals"][0]["url"], "https://example.test/story/1")
 

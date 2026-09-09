@@ -61,6 +61,28 @@ class SignalServiceClientTests(unittest.TestCase):
         self.assertEqual(events[0]["data"]["path"], "/v1/health")
         self.assertEqual(events[1]["data"]["state"], "healthy")
 
+    def test_sources_projects_legacy_health_feeds_during_rolling_upgrade(self):
+        client = SignalServiceClient("http://127.0.0.1:8788", diagnostics_path=self.diagnostics_path)
+        legacy_health = {
+            "ok": True,
+            "state": "healthy",
+            "feeds": [
+                {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index"},
+                {"name": "NASA Breaking News", "url": "https://www.nasa.gov/rss/dyn/breaking_news.rss"},
+                {"name": "Hacker News", "url": "https://hnrss.org/frontpage"},
+            ],
+            "last_attempt_at": "2026-09-09T01:00:00+00:00",
+            "last_success_at": "2026-09-09T01:00:01+00:00",
+            "last_collection_ok": True,
+            "source_status": [],
+        }
+        with patch.object(client, "_get", side_effect=[{"ok": False, "state": "offline"}, legacy_health]):
+            result = client.sources()
+        self.assertTrue(result["legacy_projection"])
+        self.assertEqual([item["name"] for item in result["sources"]], ["Ars Technica", "NASA Breaking News", "Hacker News"])
+        self.assertEqual(result["sources"][0]["adapter_type"], "rss_atom")
+        self.assertEqual(result["sources"][0]["category"], "AI Watch")
+
 
 if __name__ == "__main__":
     unittest.main()
