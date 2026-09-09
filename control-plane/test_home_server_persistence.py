@@ -37,7 +37,23 @@ class FakeMcp:
         return "A durable answer."
 
 
+def fake_home_planner(*args, **kwargs):
+    return {
+        "plan": {"intent": "conversation", "tools": [], "use_vault": False, "primary_source": "conversation"},
+        "world_state": {},
+        "fallback": False,
+        "telemetry": {},
+    }
+
+
 class HomeServerPersistenceTests(unittest.TestCase):
+    def setUp(self):
+        self.original_planner = server.home_planner_request
+        server.home_planner_request = fake_home_planner
+
+    def tearDown(self):
+        server.home_planner_request = self.original_planner
+
     def post(self, port, path, payload):
         request = urllib.request.Request(
             f"http://127.0.0.1:{port}{path}",
@@ -45,7 +61,9 @@ class HomeServerPersistenceTests(unittest.TestCase):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=5) as response:
+        # The local planner may cold-start a model before the durable response
+        # is returned; this is a persistence test, not a five-second latency SLA.
+        with urllib.request.urlopen(request, timeout=30) as response:
             return json.loads(response.read().decode("utf-8"))
 
     def get(self, port, path):
@@ -82,7 +100,10 @@ class HomeServerPersistenceTests(unittest.TestCase):
                     "surface": "home", "chat_id": started["chat_id"],
                 })
                 self.assertTrue(resumed["resumed"])
-                self.assertEqual(resumed["messages"][0]["content"], "Live endpoint question")
+                self.assertEqual(
+                    [item["content"] for item in resumed["messages"]],
+                    ["Live endpoint question", "A durable answer."],
+                )
                 closed = self.post(port, "/api/home/chat/close", {
                     "session_id": resumed["session_id"], "chat_id": started["chat_id"],
                 })
@@ -130,6 +151,10 @@ class HomeServerPersistenceTests(unittest.TestCase):
                 self.assertTrue((Path(temporary) / new_chat["archive_path"]).is_file())
                 selected = self.post(port, "/api/home/chat/select", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
                 self.assertEqual(selected["chat"]["chat_id"], started["chat_id"])
+                self.assertEqual(
+                    [item["content"] for item in selected["chat"]["messages"]],
+                    ["Lifecycle question", "A durable answer."],
+                )
                 with self.assertRaises(urllib.error.HTTPError):
                     self.post(port, "/api/home/chat/purge", {"session_id": started["session_id"], "chat_id": started["chat_id"]})
                 purged = self.post(port, "/api/home/chat/purge", {"session_id": started["session_id"], "chat_id": started["chat_id"], "confirm": True})

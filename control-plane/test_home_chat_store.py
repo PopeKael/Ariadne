@@ -123,7 +123,7 @@ class HomeChatStoreTests(unittest.TestCase):
         self.assertEqual(resumed["status"], "active")
         self.assertEqual(self.store.get(first["chat_id"])["status"], "active")
 
-    def test_recent_list_preserves_empty_archived_or_inbox_records(self):
+    def test_recent_list_hides_empty_records_without_touching_archived_or_inbox_copies(self):
         active = self.store.create()
         inbox = self.store.create()
         self.store.save_to_inbox(inbox["chat_id"])
@@ -132,8 +132,48 @@ class HomeChatStoreTests(unittest.TestCase):
 
         visible = {item["chat_id"] for item in self.store.list_recent()}
         self.assertNotIn(active["chat_id"], visible)
-        self.assertIn(inbox["chat_id"], visible)
-        self.assertIn(archived["chat_id"], visible)
+        self.assertNotIn(inbox["chat_id"], visible)
+        self.assertNotIn(archived["chat_id"], visible)
+        inbox_record = self.store.get(inbox["chat_id"])
+        archived_record = self.store.get(archived["chat_id"])
+        self.assertTrue((self.vault / inbox_record["inbox_path"]).is_file())
+        self.assertTrue((self.vault / archived_record["archive_path"]).is_file())
+
+    def test_empty_cleanup_is_idempotent_and_protects_context_and_copies(self):
+        removable = self.store.create()
+        protected = self.store.create()
+        inbox = self.store.create()
+        self.store.save_to_inbox(inbox["chat_id"])
+        archived = self.store.create()
+        _, archive_path = self.store.close_and_archive(archived["chat_id"])
+
+        removed = self.store.cleanup_empty_transient({protected["chat_id"]})
+        self.assertEqual([item["chat_id"] for item in removed], [removable["chat_id"]])
+        self.assertIsNone(self.store.get(removable["chat_id"]))
+        self.assertIsNotNone(self.store.get(protected["chat_id"]))
+        self.assertIsNotNone(self.store.get(inbox["chat_id"]))
+        self.assertIsNotNone(self.store.get(archived["chat_id"]))
+        self.assertTrue((self.vault / archive_path).is_file())
+        self.assertEqual(self.store.cleanup_empty_transient({protected["chat_id"]}), [])
+
+    def test_empty_cleanup_leaves_nonempty_record_bytes_unchanged(self):
+        chat = self.store.create()
+        turn_id, _ = self.store.begin_turn(chat["chat_id"], "Keep this transcript", "qwen3.5:9b", {})
+        self.store.complete_turn(chat["chat_id"], turn_id, "Keep this answer", model="qwen3.5:9b", used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={})
+        path = self.vault / "00_System" / "Data" / "HomeSessions" / f"{chat['chat_id']}.json"
+        before = path.read_bytes()
+        self.assertEqual(self.store.cleanup_empty_transient(), [])
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_recent_list_reports_actual_durable_turn_count(self):
+        chat = self.store.create()
+        first_turn, _ = self.store.begin_turn(chat["chat_id"], "First", "qwen3.5:9b", {})
+        self.store.complete_turn(chat["chat_id"], first_turn, "First answer", model="qwen3.5:9b", used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={})
+        second_turn, _ = self.store.begin_turn(chat["chat_id"], "Second", "qwen3.5:9b", {})
+        self.store.complete_turn(chat["chat_id"], second_turn, "Second answer", model="qwen3.5:9b", used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={})
+        row = self.store.list_recent()[0]
+        self.assertEqual(row["message_count"], 4)
+        self.assertEqual(row["turn_count"], 2)
 
     def test_save_to_inbox_is_idempotent_and_export_preserves_transcript_order(self):
         chat = self.store.create()

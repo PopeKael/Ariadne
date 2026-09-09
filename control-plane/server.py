@@ -1994,6 +1994,27 @@ def expire_home_chats() -> list[dict[str, object]]:
             "chat_expired",
             f"{record.get('title') or 'Ariadne Home chat'} ({record.get('chat_id')}) temporary state expired; archive preserved.",
         )
+    protected_chat_ids: set[str] = set()
+    with SESSION_LOCK:
+        protected_chat_ids.update(
+            str(session.get("chat_id"))
+            for session in SESSIONS.values()
+            if isinstance(session, dict) and isinstance(session.get("chat_id"), str)
+        )
+    try:
+        for context_path in DOCUMENT_WORK_ROOT.glob("*.json"):
+            try:
+                context = json.loads(context_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, json.JSONDecodeError):
+                continue
+            if isinstance(context, dict) and isinstance(context.get("documents"), list) and context["documents"]:
+                if re.fullmatch(r"[0-9a-f]{32}", context_path.stem):
+                    protected_chat_ids.add(context_path.stem)
+    except OSError:
+        pass
+    empty = HOME_CHAT_STORE.cleanup_empty_transient(protected_chat_ids)
+    if empty:
+        record_home_event("empty_chat_pruned", f"Removed {len(empty)} empty transient Home chat record(s); preserved copies and active context.")
     return expired
 
 

@@ -43,6 +43,33 @@ def title_from_message(message: str) -> str:
     return cleaned[:80].rstrip() or "Ariadne Home chat"
 
 
+def _meaningful_messages(messages: object) -> list[dict[str, Any]]:
+    if not isinstance(messages, list):
+        return []
+    return [
+        item for item in messages
+        if isinstance(item, dict)
+        and item.get("role") in {"user", "assistant"}
+        and isinstance(item.get("content"), str)
+        and item["content"].strip()
+    ]
+
+
+def _conversation_turn_count(messages: object) -> int:
+    """Count real user turns without inventing one for an empty record."""
+    user_turn_ids: set[str] = set()
+    anonymous_user_turns = 0
+    for item in _meaningful_messages(messages):
+        if item.get("role") != "user":
+            continue
+        turn_id = item.get("turn_id")
+        if isinstance(turn_id, str) and turn_id.strip():
+            user_turn_ids.add(turn_id)
+        else:
+            anonymous_user_turns += 1
+    return len(user_turn_ids) + anonymous_user_turns
+
+
 def _safe_filename(value: str) -> str:
     value = re.sub(r"[^A-Za-z0-9 _-]+", "", value).strip()
     value = re.sub(r"\s+", " ", value)
@@ -446,20 +473,11 @@ class ChatStore:
                 if not isinstance(chat_id, str) or not _CHAT_ID.fullmatch(chat_id) or path.stem != chat_id:
                     continue
                 messages = record.get("messages") if isinstance(record.get("messages"), list) else []
-                meaningful_messages = any(
-                    isinstance(item, dict)
-                    and item.get("role") in {"user", "assistant"}
-                    and isinstance(item.get("content"), str)
-                    and item["content"].strip()
-                    for item in messages
-                )
-                preserved_copy = bool(record.get("archive_path") or record.get("inbox_path"))
-                archived = str(record.get("status") or "active") == "closed"
-                # Session startup creates an empty durable record so attachments
-                # and turns have a stable chat_id. Keep it durable, but do not
-                # present it as a conversation until it has meaningful content
-                # or an explicit archive/Inbox lifecycle.
-                if not meaningful_messages and not preserved_copy and not archived:
+                meaningful_messages = _meaningful_messages(messages)
+                # Archives and Inbox copies remain on disk, but a record with no
+                # actual dialogue is not a Recent Chat. This also hides legacy
+                # empty archive shells created when a fresh chat was closed.
+                if not meaningful_messages:
                     continue
                 rows.append({
                     "chat_id": chat_id,
@@ -469,12 +487,43 @@ class ChatStore:
                     "last_activity_at": record.get("last_activity_at"),
                     "expires_at": record.get("expires_at"),
                     "message_count": len(messages),
+                    "turn_count": _conversation_turn_count(messages),
                     "has_interrupted": any(isinstance(item, dict) and item.get("state") == "interrupted" for item in messages),
                     "archive_path": record.get("archive_path"),
                     "inbox_path": record.get("inbox_path"),
                 })
         rows.sort(key=lambda item: str(item.get("last_activity_at") or ""), reverse=True)
         return rows
+
+    def cleanup_empty_transient(self, protected_chat_ids: set[str] | None = None) -> list[dict[str, Any]]:
+        """Remove only empty temporary JSON records, preserving copies and context."""
+        removed: list[dict[str, Any]] = []
+        protected = {
+            item for item in (protected_chat_ids or set())
+            if isinstance(item, str) and _CHAT_ID.fullmatch(item)
+        }
+        with _process_lock(self.lock_path):
+            self.root.mkdir(parents=True, exist_ok=True)
+            for path in sorted(self.root.glob("*.json"), key=lambda item: item.name):
+                try:
+                    record = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, ValueError, json.JSONDecodeError):
+                    continue
+                chat_id = record.get("chat_id") if isinstance(record, dict) else None
+                if not isinstance(chat_id, str) or not _CHAT_ID.fullmatch(chat_id) or path.stem != chat_id:
+                    continue
+                if chat_id in protected or _meaningful_messages(record.get("messages")):
+                    continue
+                # Inbox and archive copies are deliberate permanent lifecycle
+                # outputs; leave both the copy and its record alone.
+                if record.get("inbox_path") or record.get("archive_path"):
+                    continue
+                try:
+                    path.unlink()
+                except OSError:
+                    continue
+                removed.append(record)
+        return removed
 
     def resume(self, chat_id: str) -> dict[str, Any]:
         with _process_lock(self.lock_path):

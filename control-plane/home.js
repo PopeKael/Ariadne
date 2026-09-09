@@ -423,7 +423,8 @@ function renderRecentChats(chats) {
     item.append(el("span", "recent-chat-title", chat.title || "Ariadne Home chat"));
     const meta = el("span", "recent-chat-meta");
     meta.append(el("span", "", recentTime(chat.last_activity_at || chat.started_at)));
-    meta.append(el("span", "", `${Math.max(1, Math.ceil(Number(chat.message_count || 0) / 2))} turn${Number(chat.message_count || 0) > 2 ? "s" : ""}`));
+    const turnCount = Math.max(0, Number(chat.turn_count || 0));
+    meta.append(el("span", "", `${turnCount} turn${turnCount === 1 ? "" : "s"}`));
     if (chat.status === "closed") meta.append(el("span", "recent-chat-status", "Archived"));
     if (chat.inbox_path) meta.append(el("span", "recent-chat-badge", "Inbox"));
     if (chat.has_interrupted) meta.append(el("span", "recent-chat-status", "Interrupted"));
@@ -648,7 +649,11 @@ function addMessage(role, content, metadata) {
 }
 function restoreMessages(messages) {
   state.messages = [];
-  document.querySelector("#chat-log").replaceChildren();
+  const log = document.querySelector("#chat-log");
+  const meaningful = (messages || []).some(item => item && ["user", "assistant"].includes(item.role) && String(item.content || "").trim());
+  document.body.classList.toggle("chat-expanded", meaningful);
+  document.querySelector("#collapse-chat").hidden = !meaningful;
+  log.replaceChildren();
   for (const item of messages || []) {
     if (!item || !["user", "assistant"].includes(item.role)) continue;
     const content = String(item.content || "");
