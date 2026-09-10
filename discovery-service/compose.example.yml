@@ -1,0 +1,28 @@
+services:
+  ariadne-discovery-service:
+    build: .
+    container_name: ariadne-discovery-service
+    restart: unless-stopped
+    ports:
+      - "8789:8789"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DISCOVERY_SERVICE_BIND_ADDRESS: 0.0.0.0
+      DISCOVERY_SERVICE_PORT: 8789
+      DISCOVERY_SERVICE_DATABASE: /data/discovery.sqlite3
+      DISCOVERY_SERVICE_REFRESH_SECONDS: 900
+      DISCOVERY_SERVICE_ITEMS_PER_SOURCE: 40
+      DISCOVERY_SERVICE_CONCURRENCY: 6
+      DISCOVERY_SERVICE_MAX_STORIES: 240
+      # Use the Docker host gateway so separate Container Manager projects
+      # can reach the Signal Service without relying on NAS hairpin routing.
+      DISCOVERY_SERVICE_SIGNAL_SERVICE_URL: http://host.docker.internal:8788
+      DISCOVERY_SERVICE_PUSH_TIMEOUT_SECONDS: 180
+      # Optional SearXNG expansion. Leave empty until the endpoint is confirmed.
+      DISCOVERY_SERVICE_SEARXNG_URL: ""
+      DISCOVERY_SERVICE_SOURCES_FILE: /app/sources.example.json
+    volumes:
+      - ./data:/data
+      # Replace this file with a private sources.json when adding more feeds.
+      - ./sources.example.json:/app/sources.example.json:ro

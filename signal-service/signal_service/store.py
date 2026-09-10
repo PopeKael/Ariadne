@@ -219,11 +219,12 @@ class SignalStore:
                 signal_id = str(row["signal_id"])
                 summary = signal.summary if len(signal.summary) >= len(row["summary"]) else str(row["summary"])
                 content = signal.content if len(signal.content) >= len(row["content"]) else str(row["content"])
+                title = signal.title if signal.provenance.get("discovery") else str(row["title"])
                 connection.execute(
-                    """UPDATE signals SET summary=?, content=?, updated_at=?, image_url=?, category=?, media_json=?, provenance_json=?, last_seen_at=? WHERE signal_id=?""",
-                    (summary, content, signal.updated_at, signal.image_url or row["image_url"], signal.category or row["category"], json.dumps(signal.media or json.loads(row["media_json"]), ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), now, signal_id),
+                    """UPDATE signals SET title=?, summary=?, content=?, updated_at=?, image_url=?, category=?, media_json=?, provenance_json=?, last_seen_at=? WHERE signal_id=?""",
+                    (title, summary, content, signal.updated_at, signal.image_url or row["image_url"], signal.category or row["category"], json.dumps(signal.media or json.loads(row["media_json"]), ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), now, signal_id),
                 )
-                stored = Signal(**{**signal.__dict__, "signal_id": signal_id, "summary": summary, "content": content})
+                stored = Signal(**{**signal.__dict__, "signal_id": signal_id, "title": title, "summary": summary, "content": content})
                 created = False
             else:
                 connection.execute(

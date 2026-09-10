@@ -48,6 +48,10 @@ if (-not $LegacyPythonTray) {
     if (-not (Test-Path -LiteralPath $hostExe -PathType Leaf)) {
         throw "Canonical Ariadne Host executable was not found: $hostExe. Build it first with the release target."
     }
+    $bundledPython = 'C:\Users\Warren\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+    if (-not $env:ARIADNE_PYTHON -and (Test-Path -LiteralPath $bundledPython -PathType Leaf)) {
+        $env:ARIADNE_PYTHON = $bundledPython
+    }
     Write-Host "Starting Ariadne Rust Host: $hostExe" -ForegroundColor Green
     Start-Process -FilePath (Resolve-Path -LiteralPath $hostExe).Path -WorkingDirectory $projectRoot -WindowStyle Hidden
     if ($OpenBrowser) {

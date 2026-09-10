@@ -167,14 +167,24 @@ class SignalService:
         self.store = SignalStore(database_path)
         if feeds is not None:
             self.feeds = list(feeds)
+        elif os.environ.get("SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS", "").casefold() in {"1", "true", "yes", "on"}:
+            # Discovery Engine owns collection in the NAS deployment. Keep
+            # this opt-in so existing standalone Signal Service deployments
+            # retain their historical feed behaviour.
+            self.feeds = []
         elif os.environ.get("SIGNAL_SERVICE_FEEDS", "").strip():
             self.feeds = configured_feeds()
         else:
             self.feeds = [FeedDefinition(item["name"], item["endpoint"], item["category"]) for item in self.store.enabled_rss_sources()]
+        if os.environ.get("SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS", "").casefold() in {"1", "true", "yes", "on"}:
+            # Final guard for the Hera deployment: intake-only means no local
+            # feed collector regardless of persisted source configuration.
+            self.feeds = []
         self.ranker = ranker or BasicRanker()
         self.inference = inference or InferenceRegistry(Path(database_path).parent / "inference.json")
         self.feed_timeout = max(1.0, float(feed_timeout))
         self.item_limit = max(1, min(int(item_limit), 100))
+        self.briefing_pool_limit = max(40, min(int(os.environ.get("SIGNAL_SERVICE_BRIEFING_POOL", "240")), 300))
         self._lock = threading.RLock()
         self._last_attempt_at: str | None = None
         self._last_success_at: str | None = None
@@ -192,7 +202,7 @@ class SignalService:
         profile = self.store.learned_preferences()
         profile["semantic_state"] = self._semantic_status.get("state")
         profile["semantic_interest_count"] = len(self.store.list_interests(active_only=True))
-        ranked = self.ranker.rank(self.store.recent(), limit=40, profile=profile)
+        ranked = self.ranker.rank(self.store.recent(limit=self.briefing_pool_limit), limit=self.briefing_pool_limit, profile=profile)
         return self.store.save_briefing(ranked, collection)
 
     @staticmethod
@@ -396,7 +406,7 @@ class SignalService:
             with self._lock:
                 self._refresh_running = False
 
-    def briefing(self, limit: int = 40) -> dict[str, Any] | None:
+    def briefing(self, limit: int = 100) -> dict[str, Any] | None:
         cached = self.store.latest_briefing()
         if cached is None:
             self.refresh()
@@ -404,7 +414,7 @@ class SignalService:
         if cached is None:
             return None
         result = dict(cached)
-        result["signals"] = list(cached.get("signals", []))[: max(1, min(int(limit), 40))]
+        result["signals"] = list(cached.get("signals", []))[: max(1, min(int(limit), 200))]
         age = _iso_age_seconds(self._last_success_at)
         result["stale"] = self._last_collection_ok is False or bool(age is not None and age > max(300, int(os.environ.get("SIGNAL_SERVICE_STALE_AFTER_SECONDS", "21600"))))
         result["last_success_at"] = self._last_success_at or cached.get("generated_at")

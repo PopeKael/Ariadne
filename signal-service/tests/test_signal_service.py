@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 from signal_service.feeds import FeedDefinition
 from signal_service.app import SignalHTTPServer
 from signal_service.models import normalize_candidate
+from signal_service.ranking import BasicRanker
 from signal_service.service import SignalService, extract_intake_candidates, fetch_article_image
 
 
@@ -39,6 +40,11 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(signal.source_url, "https://example.test/feed.xml")
         self.assertEqual(signal.provenance["adapter"], "rss_atom")
 
+    def test_normalization_preserves_additive_discovery_provenance(self):
+        signal = normalize_candidate(candidate(provenance={"discovery": {"story_id": "story-1", "source_count": 3}}))
+        self.assertEqual(signal.provenance["discovery"]["story_id"], "story-1")
+        self.assertEqual(signal.provenance["discovery"]["source_count"], 3)
+
     def test_normalization_accepts_open_graph_image_metadata(self):
         signal = normalize_candidate({"title": "Story", "url": "https://example.test/story", "summary": "Summary", "metadata": {"og:image": "https://cdn.example.test/story.jpg"}})
         self.assertEqual(signal.image_url, "https://cdn.example.test/story.jpg")
@@ -46,6 +52,11 @@ class SignalServiceTests(unittest.TestCase):
     def test_normalization_preserves_category(self):
         signal = normalize_candidate(candidate(category="AI Watch"))
         self.assertEqual(signal.category, "AI Watch")
+
+    def test_ranker_preserves_explicit_specialist_category_without_semantic_match(self):
+        signal = normalize_candidate(candidate(category="AI Watch"))
+        ranked = BasicRanker().rank([signal], profile={"semantic_state": "healthy", "semantic_interest_count": 1})
+        self.assertEqual(ranked[0].category, "AI Watch")
 
     def test_ingestion_deduplicates_url_and_content(self):
         first = self.service.ingest_candidates([candidate()])
@@ -64,6 +75,26 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(stored["signal_count"], 1)
         provenance = self.service.store._connection.execute("SELECT source_name, adapter, original_url FROM signal_provenance").fetchone()
         self.assertEqual(tuple(provenance), ("Example Feed", "external", "https://example.test/story/1"))
+
+    def test_briefing_ranks_from_the_larger_cached_pool(self):
+        candidates = [
+            candidate(
+                url=f"https://example.test/story/{index}",
+                title=f"Useful story {index}",
+                summary=f"A distinct retained story about topic {index}.",
+                image_url="https://cdn.example.test/story.jpg",
+                published_at=f"2026-09-07T08:{index % 60:02d}:00+00:00",
+                category="AI Watch" if index % 2 else "Main News Feed",
+                source_name="Ariadne Discovery Engine",
+                provenance={"discovery": {"source_domains": [f"source-{index % 12}.example"]}},
+            )
+            for index in range(60)
+        ]
+        result = self.service.ingest_candidates(candidates)
+        self.assertEqual(result["accepted"], 60)
+        briefing = self.service.briefing(limit=100)
+        self.assertEqual(briefing["signal_count"], 60)
+        self.assertEqual(len(briefing["signals"]), 60)
 
     def test_briefing_capacity_reaches_discover_section_floor(self):
         candidates = [

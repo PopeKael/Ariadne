@@ -16,6 +16,11 @@ python run.py
 The service listens on `http://127.0.0.1:8788` by default. It performs a
 background refresh on startup and every 15 minutes. Configure feeds with
 `SIGNAL_SERVICE_FEEDS`, using `Name|URL` entries separated by commas.
+For the NAS Discovery Engine deployment, set
+`SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS=true` after Discovery has been verified;
+the Signal Service then remains the intake, ranking, and presentation API.
+`SIGNAL_SERVICE_BRIEFING_POOL` controls the size of the ranked cached briefing;
+the default is 240, while Ariadne Home requests up to 100 items for browsing.
 
 ## API
 

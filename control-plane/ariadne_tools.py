@@ -78,6 +78,13 @@ TOOL_REGISTRY.register(ToolDefinition(
     capabilities=("summarise", "extract claims", "answer questions", "retrieve chunks"),
     supported_input_types=("text/markdown", "text/plain", ".md", ".txt"),
 ))
+TOOL_REGISTRY.register(ToolDefinition(
+    tool_id="external-research",
+    display_name="Live Source Search",
+    description="Search configured live sources when a factual answer needs verification.",
+    capabilities=("search", "fetch sources", "verify current claims"),
+    supported_input_types=("text/plain",),
+))
 
 
 def _atomic_write(path: Path, value: dict[str, Any]) -> None:

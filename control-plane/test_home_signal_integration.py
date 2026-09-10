@@ -5,6 +5,7 @@ import threading
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
+import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent
@@ -15,6 +16,59 @@ from home_chat_store import ChatStore  # noqa: E402
 
 
 class HomeSignalIntegrationTests(unittest.TestCase):
+    def test_chat_refuses_to_run_while_source_article_is_loading(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_events = server.HOME_EVENTS_PATH
+            server.HOME_CHAT_STORE = ChatStore(Path(temporary))
+            server.HOME_EVENTS_PATH = Path(temporary) / "Journal" / "Ariadne Home Events.md"
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            try:
+                port = httpd.server_address[1]
+                start_request = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/api/session/start",
+                    data=b"{}",
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(start_request, timeout=5) as response:
+                    started = json.loads(response.read().decode("utf-8"))
+                chat_request = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/api/home/chat",
+                    data=json.dumps({
+                        "session_id": started["session_id"],
+                        "chat_id": started["chat_id"],
+                        "message": "What does this article mean?",
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                loading_document = {
+                    "document_id": "doc-loading",
+                    "filename": "signal-context__signal-1234567890abcdef.md",
+                    "metadata": {
+                        "type": "source-article",
+                        "signal_id": "signal-1234567890abcdef",
+                        "article_status": "loading",
+                    },
+                }
+                with patch.object(server, "_loading_source_article_documents", return_value=[loading_document]), patch.object(server, "home_chat_payload") as generation:
+                    with self.assertRaises(urllib.error.HTTPError) as raised:
+                        urllib.request.urlopen(chat_request, timeout=5)
+                    payload = json.loads(raised.exception.read().decode("utf-8"))
+                self.assertEqual(raised.exception.code, 409)
+                self.assertEqual(payload["code"], "source_article_loading")
+                self.assertEqual(payload["article_status"], "loading")
+                self.assertEqual(payload["document_ids"], ["doc-loading"])
+                generation.assert_not_called()
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                server.HOME_CHAT_STORE = original_store
+                server.HOME_EVENTS_PATH = original_events
+
     def test_signal_promotion_endpoint_uses_current_signal_service_record(self):
         signal = {"signal_id": "signal-1234567890abcdef", "title": "A signal", "url": "https://example.test/story"}
         fake_client = Mock()
@@ -247,7 +301,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         fake_client.briefing.return_value = {"ok": True, "stale": False, "signals": []}
         with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client):
             server.home_today_payload({"services": []})
-        fake_client.briefing.assert_called_once_with(limit=40)
+        fake_client.briefing.assert_called_once_with(limit=100)
 
     def test_today_ignores_unavailable_signal_service_without_breaking_local_status(self):
         fake_client = Mock()

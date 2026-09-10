@@ -266,6 +266,11 @@ fn resolve_python(project_root: &Path) -> Option<PathBuf> {
         candidates.push(PathBuf::from(value));
     }
     candidates.push(project_root.join(".venv\\Scripts\\python.exe"));
+    if let Some(user_profile) = env::var_os("USERPROFILE") {
+        candidates.push(PathBuf::from(user_profile).join(
+            ".cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+        ));
+    }
     if let Some(local_app_data) = env::var_os("LOCALAPPDATA") {
         candidates
             .push(PathBuf::from(local_app_data).join("Programs\\Python\\Python312\\python.exe"));

@@ -165,6 +165,7 @@ def normalize_candidate(
     content_key = hashlib.sha256(content_material.encode("utf-8")).hexdigest()
     dedupe_key = "url:" + hashlib.sha256(url.encode("utf-8")).hexdigest()
     signal_id = "signal-" + hashlib.sha256((dedupe_key + content_key).encode("ascii")).hexdigest()[:24]
+    supplied_provenance = candidate.get("provenance")
     provenance = {
         "ingest_type": ingest_type,
         "adapter": adapter,
@@ -173,6 +174,10 @@ def normalize_candidate(
         "source_name": source_name,
         "source_url": source_url,
     }
+    if isinstance(supplied_provenance, dict):
+        # Preserve additive upstream context such as Discovery story/evidence
+        # metadata without allowing it to replace the canonical intake facts.
+        provenance.update({str(key): value for key, value in supplied_provenance.items() if str(key) not in {"ingest_type", "adapter", "observed_at", "original_url", "source_name", "source_url"}})
     return Signal(
         signal_id=signal_id,
         dedupe_key=dedupe_key,

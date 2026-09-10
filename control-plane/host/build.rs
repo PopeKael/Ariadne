@@ -6,6 +6,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=ariadne.rc");
     println!("cargo:rerun-if-changed=assets/branding/ariadne.ico");
+    println!("cargo:rerun-if-env-changed=PATH");
 
     if env::var_os("CARGO_CFG_WINDOWS").is_none() {
         return;
@@ -15,7 +16,7 @@ fn main() {
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").expect("build output dir"));
     let resource_file = manifest_dir.join("ariadne.rc");
     let resource_output = out_dir.join("ariadne.res");
-    let status = Command::new("rc.exe")
+    let status = match Command::new("rc.exe")
         .current_dir(&manifest_dir)
         .args([
             "/nologo".to_string(),
@@ -23,7 +24,13 @@ fn main() {
             resource_file.display().to_string(),
         ])
         .status()
-        .expect("rc.exe was not found; build through the Visual Studio MSVC environment");
+    {
+        Ok(status) => status,
+        Err(error) => {
+            println!("cargo:warning=rc.exe unavailable; building without the optional host icon: {error}");
+            return;
+        }
+    };
     if !status.success() {
         panic!("rc.exe failed with status {status}");
     }

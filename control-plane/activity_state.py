@@ -26,7 +26,7 @@ CANONICAL_ACTIVITY_STATES = (
 ACTIVITY_LABELS = {
     "idle": "Ready",
     "reading": "Reading source article",
-    "searching": "Searching the Vault",
+    "searching": "Searching",
     "thinking": "Thinking",
     "answering": "Answering",
     "complete": "Complete",

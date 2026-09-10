@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from dataclasses import replace
 from typing import Iterable, Protocol
 
 from .models import Signal
@@ -23,8 +22,6 @@ def _age_hours(timestamp: str, now: datetime) -> float:
 
 
 class BasicRanker:
-    AI_WATCH_REQUIRES_SEMANTIC_MATCH = True
-
     DEFAULT_WEIGHTS = {
         "semantic_interest": 0.40,
         "learned_affinity": 0.20,
@@ -43,10 +40,6 @@ class BasicRanker:
         category_scores = {str(item.get("label")): float(item.get("score", 0.0)) for item in profile.get("categories", []) if isinstance(item, dict)}
         semantic_available = profile.get("semantic_state") == "healthy" and int(profile.get("semantic_interest_count", 0)) > 0
         for signal in signals:
-            if self.AI_WATCH_REQUIRES_SEMANTIC_MATCH and semantic_available and signal.category == "AI Watch" and not signal.semantic_matches:
-                # Keep raw source category/provenance intact and adjust only the
-                # briefing projection when semantic matching is available.
-                signal = replace(signal, category="Main News Feed")
             age = _age_hours(signal.published_at, now)
             recency = max(0.0, 1.0 - min(age, 168.0) / 168.0)
             content = min(1.0, len(signal.summary or signal.content) / 600.0)
@@ -76,14 +69,19 @@ class BasicRanker:
         selected: list[Signal] = []
         source_counts: dict[str, int] = {}
         for signal in scored:
-            source_key = signal.source_name.casefold()
+            discovery = signal.provenance.get("discovery") if isinstance(signal.provenance, dict) else None
+            discovery_domains = discovery.get("source_domains", []) if isinstance(discovery, dict) else []
+            source_keys = [f"discovery:{str(domain).casefold()}" for domain in discovery_domains if str(domain).strip()]
+            if not source_keys:
+                source_keys = [f"source:{signal.source_name.casefold()}"]
             # Keep source diversity as a guardrail, but allow enough items for
-            # the Discover sections to reach their six-item floor.
-            if source_counts.get(source_key, 0) >= 10:
+            # the Discover sections to reach their larger browse projection.
+            if all(source_counts.get(source_key, 0) >= 10 for source_key in source_keys):
                 continue
             selected.append(signal)
-            source_counts[source_key] = source_counts.get(source_key, 0) + 1
-            if len(selected) >= max(1, min(int(limit), 40)):
+            for source_key in source_keys:
+                source_counts[source_key] = source_counts.get(source_key, 0) + 1
+            if len(selected) >= max(1, min(int(limit), 300)):
                 break
         return selected
 

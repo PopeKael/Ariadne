@@ -10,11 +10,7 @@ services:
       SIGNAL_SERVICE_PORT: 8788
       SIGNAL_SERVICE_DATABASE: /data/signals.sqlite3
       SIGNAL_SERVICE_REFRESH_SECONDS: 900
-      # When ariadne-discovery-service owns collection, enable this after
-      # validating Discovery at http://192.168.1.200:8789/v1/health.
-      # SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS: "true"
+      SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS: "true"
       SIGNAL_SERVICE_BRIEFING_POOL: 240
-      # Optional override: "Name|https://example/feed.xml,Other|https://example/feed.atom"
-      # SIGNAL_SERVICE_FEEDS: "Ars Technica|https://feeds.arstechnica.com/arstechnica/index"
     volumes:
       - ./data:/data

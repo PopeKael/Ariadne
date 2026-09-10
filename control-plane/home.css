@@ -291,6 +291,8 @@ body:not(.chat-expanded) .ask-panel:has(#chat-log:empty) .ask-form textarea { mi
 .signal-section-description { margin:4px 0 0; color:var(--muted); font-size:11px; line-height:1.35; }
 .signal-section-count { min-width:22px; padding:3px 7px; border:1px solid rgba(105,213,210,.24); border-radius:99px; color:var(--teal); font-size:10px; text-align:center; }
 .signal-section-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.signal-section-more { margin:10px 0 0; padding:7px 11px; border:1px solid rgba(105,213,210,.24); border-radius:8px; background:rgba(105,213,210,.06); color:var(--teal); font:inherit; font-size:11px; cursor:pointer; }
+.signal-section-more:hover { background:rgba(105,213,210,.12); }
 .signal-section-empty { grid-column:1 / -1; margin:0; padding:13px; border:1px dashed rgba(105,213,210,.2); border-radius:10px; color:var(--muted); font-size:12px; }
 .signal-image-placeholder { color:var(--teal); font-size:27px; text-shadow:0 0 16px rgba(105,213,210,.42); }
 @media (max-width:720px) { .signal-section-grid { grid-template-columns:1fr; } }

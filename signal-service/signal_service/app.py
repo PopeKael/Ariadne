@@ -52,9 +52,9 @@ class SignalHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/v1/briefing":
             try:
-                limit = int(parse_qs(parsed.query).get("limit", ["40"])[0])
+                limit = int(parse_qs(parsed.query).get("limit", ["100"])[0])
             except ValueError:
-                limit = 40
+                limit = 100
             briefing = self.server.service.briefing(limit)
             if briefing is None:
                 self._send({"ok": False, "stale": True, "signals": [], "message": "No successful briefing is cached.", "health": self.server.service.health()}, 503)
@@ -164,7 +164,13 @@ class SignalHTTPServer(ThreadingHTTPServer):
 
 def build_service() -> SignalService:
     database_path = Path(os.environ.get("SIGNAL_SERVICE_DATABASE", str(Path(__file__).resolve().parents[1] / "data" / "signals.sqlite3")))
-    return SignalService(database_path)
+    feeds = [] if os.environ.get("SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS", "").casefold() in {"1", "true", "yes", "on"} else None
+    service = SignalService(database_path, feeds=feeds)
+    # Keep the ownership boundary explicit even if an older service module is
+    # present in a cached image: Hera's receiver must never collect locally.
+    if feeds is not None:
+        service.feeds = []
+    return service
 
 
 def main() -> None:

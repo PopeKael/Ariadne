@@ -65,7 +65,7 @@ class SignalServiceClient:
             return {"ok": False, "state": "offline", "message": f"Signal Service unavailable: {str(exc)[:180]}"}
 
     def briefing(self, limit: int = 6) -> dict[str, Any]:
-        result = self._get(f"/v1/briefing?limit={max(1, min(int(limit), 30))}")
+        result = self._get(f"/v1/briefing?limit={max(1, min(int(limit), 100))}")
         if not isinstance(result.get("signals"), list):
             result["signals"] = []
         return result

@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+ARG DISCOVERY_HANDOFF_BUILD=2026-09-10-batched-retry
+COPY discovery_service ./discovery_service
+COPY run.py ./run.py
+COPY sources.example.json ./sources.example.json
+
+ENV DISCOVERY_SERVICE_BIND_ADDRESS=0.0.0.0
+ENV DISCOVERY_SERVICE_PORT=8789
+ENV DISCOVERY_SERVICE_DATABASE=/data/discovery.sqlite3
+ENV DISCOVERY_SERVICE_REFRESH_SECONDS=900
+ENV DISCOVERY_SERVICE_ITEMS_PER_SOURCE=40
+ENV DISCOVERY_SERVICE_CONCURRENCY=6
+ENV DISCOVERY_SERVICE_SOURCES_FILE=/app/sources.example.json
+
+VOLUME ["/data"]
+EXPOSE 8789
+
+CMD ["python", "run.py"]

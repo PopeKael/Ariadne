@@ -79,6 +79,14 @@ function renderAttachments(documents) {
   addArticle.addEventListener("click", beginArticleAdd);
   root.append(addArticle);
 }
+function loadingSourceArticles() {
+  return state.attachments.filter(document => {
+    const metadata = document && typeof document.metadata === "object" ? document.metadata : {};
+    const inferredSignalId = metadata.signal_id || String(document.filename || "").match(/__(signal-[A-Za-z0-9_-]+)\.md$/)?.[1] || "";
+    const isArticle = metadata.type === "source-article" || Boolean(inferredSignalId);
+    return isArticle && metadata.article_status === "loading";
+  });
+}
 function beginArticleAdd() {
   const status = document.querySelector("#ask-status");
   if (state.processing) {
@@ -183,7 +191,8 @@ const SIGNAL_SECTIONS = [
   ["Watchlist", "Watchlist", "Topics you are monitoring for future local collection."]
 ];
 const SIGNAL_CATEGORY_NAMES = new Set(SIGNAL_SECTIONS.map(section => section[0]));
-const MAX_SIGNALS_PER_SECTION = 10;
+const MAX_SIGNALS_PER_SECTION = 20;
+const INITIAL_SIGNALS_PER_SECTION = 10;
 
 function inferSignalCategory(item) {
   const declared = String(item?.category || "").trim();
@@ -203,6 +212,11 @@ function renderSignalCard(item) {
   const summary = el("p", "signal-summary", item.summary || item.detail || "");
   const meta = el("div", "signal-meta");
   meta.append(el("span", "signal-source", item.source || "Ariadne"));
+  const discovery = item.provenance && typeof item.provenance === "object" ? item.provenance.discovery : null;
+  const sourceCount = Number(discovery && discovery.source_count || 0);
+  if (Number.isFinite(sourceCount) && sourceCount > 0) {
+    meta.append(el("span", "signal-meta-separator", "·"), el("span", "signal-corroboration", `${sourceCount} independent source${sourceCount === 1 ? "" : "s"}`));
+  }
   const published = item.published_at ? new Date(item.published_at) : null;
   if (published && !Number.isNaN(published.getTime())) {
     const time = el("time", "signal-published", published.toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}));
@@ -288,6 +302,7 @@ function renderToday(items) {
   const count = document.querySelector("#signal-count");
   root.replaceChildren();
   const signals = (items || []).filter(item => item && item.signal_id).map(item => ({...item, category: inferSignalCategory(item)}));
+  const displayedSignalIds = new Set();
   if (count) count.textContent = `${signals.length} curated signals`;
   for (const [category, label, description] of SIGNAL_SECTIONS) {
     const section = el("section", "signal-section");
@@ -298,13 +313,29 @@ function renderToday(items) {
     const matches = category === "Watchlist"
       ? signals.filter(item => item.category === "Watchlist" || (Array.isArray(item.watchlist_matches) && item.watchlist_matches.length > 0))
       : signals.filter(item => item.category === category);
-    const visibleMatches = matches.slice(0, MAX_SIGNALS_PER_SECTION);
-    sectionHeading.append(headingCopy, el("span", "signal-section-count", `${visibleMatches.length}`));
+    // Reserve the whole bounded section before rendering its first page. This
+    // keeps the Watchlist projection from stealing or duplicating a signal
+    // when another section is expanded later.
+    const assignedMatches = matches.filter(item => !displayedSignalIds.has(item.signal_id)).slice(0, MAX_SIGNALS_PER_SECTION);
+    assignedMatches.forEach(item => displayedSignalIds.add(item.signal_id));
+    sectionHeading.append(headingCopy, el("span", "signal-section-count", `${assignedMatches.length}`));
     section.append(sectionHeading);
     const grid = el("div", "signal-section-grid");
-    if (visibleMatches.length) visibleMatches.forEach(item => grid.append(renderSignalCard(item)));
+    const renderMatches = values => values.forEach(item => grid.append(renderSignalCard(item)));
+    const initialMatches = assignedMatches.slice(0, INITIAL_SIGNALS_PER_SECTION);
+    if (initialMatches.length) renderMatches(initialMatches);
     else grid.append(el("p", "signal-section-empty", category === "Watchlist" ? "No watchlist topics are active yet." : "No signals in this section yet."));
     section.append(grid);
+    if (assignedMatches.length > INITIAL_SIGNALS_PER_SECTION) {
+      const remaining = assignedMatches.length - INITIAL_SIGNALS_PER_SECTION;
+      const more = el("button", "signal-section-more", `Show ${remaining} more`);
+      more.type = "button";
+      more.addEventListener("click", () => {
+        renderMatches(assignedMatches.slice(INITIAL_SIGNALS_PER_SECTION));
+        more.remove();
+      });
+      section.append(more);
+    }
     root.append(section);
   }
 }
@@ -688,6 +719,14 @@ function addMessage(role, content, metadata) {
   if (role === "assistant" && metadata && !["pending", "interrupted"].includes(metadata.state)) {
     const meta = el("div", "message-meta");
     if (metadata.model) meta.append(el("span", "", metadata.model));
+    const evidence = metadata.evidence_summary && typeof metadata.evidence_summary === "object" ? metadata.evidence_summary : null;
+    if (evidence && Number(evidence.total_sources || 0) > 0) {
+      const evidenceParts = [];
+      if (Number(evidence.attachment_sources || 0)) evidenceParts.push(`${evidence.attachment_sources} attachment${evidence.attachment_sources === 1 ? "" : "s"}`);
+      if (Number(evidence.vault_sources || 0)) evidenceParts.push(`${evidence.vault_sources} Vault note${evidence.vault_sources === 1 ? "" : "s"}`);
+      if (Number(evidence.live_sources || 0)) evidenceParts.push(`${evidence.live_sources} live source${evidence.live_sources === 1 ? "" : "s"}`);
+      if (evidenceParts.length) meta.append(el("span", "evidence-badge", "Evidence: " + evidenceParts.join(" · ")));
+    }
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
     if (metadata.used_documents) meta.append(el("span", "message-attachment-badge", "Temporary document used"));
     const timing = formatTiming(metadata.timing);
@@ -988,7 +1027,7 @@ function beginRequestStatus(status) {
       const activity = payload.activity || {};
       const changedAt = Number(activity.changed_at || 0) * 1000;
       const elapsed = changedAt ? formatClock(Math.max(0, Date.now() - changedAt)) : "0.0s";
-      status.textContent = (activity.label || "Working") + " · " + elapsed;
+      status.textContent = (activity.message || activity.label || "Working") + " · " + elapsed;
     } catch (_) {
       // The request remains authoritative; a transient status poll failure
       // must not alter or delay the Home generation.
@@ -1069,6 +1108,10 @@ async function ask(event) {
   const message = input.value.trim();
   if (!message || !state.sessionId) {
     status.textContent = state.sessionId ? "Type a question first." : "Starting the local session…";
+    return;
+  }
+  if (state.contextMutationInFlight || state.signalArticleBusy.size || loadingSourceArticles().length) {
+    status.textContent = "Wait for the selected source article to finish loading before asking Ariadne.";
     return;
   }
   const history = state.messages.slice(-8);
