@@ -1,0 +1,26 @@
+services:
+  signal:
+    container_name: ariadne-signal-service-prod
+    ports:
+      - "8788:8788"
+    environment:
+      ARIADNE_ENVIRONMENT: prod
+      ARIADNE_INSTANCE: hera-signal
+    volumes:
+      - type: bind
+        source: ${HERA_SIGNAL_DATA_PATH:-/volume1/docker/ariadne-signal-service/data}
+        target: /data
+
+  discovery:
+    container_name: ariadne-discovery-service-prod
+    ports:
+      - "8789:8789"
+    environment:
+      ARIADNE_ENVIRONMENT: prod
+      ARIADNE_INSTANCE: hera-discovery
+      # Hera uses the same private Compose network, never the NAS host route.
+      DISCOVERY_SERVICE_SIGNAL_SERVICE_URL: http://signal:8788
+    volumes:
+      - type: bind
+        source: ${HERA_DISCOVERY_DATA_PATH:-/volume1/docker/ariadne-discovery-service/data}
+        target: /data

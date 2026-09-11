@@ -91,7 +91,7 @@ $env:ARIADNE_MCP_PORT = '8790'
 .\.venv\Scripts\python.exe .\00_System\ariadne_mcp_http.py
 ```
 
-The MCP endpoint is `http://127.0.0.1:8790/mcp` by default. The transport is
+The MCP endpoint is `http://localhost:8790/mcp` by default. The transport is
 sessionless for the modern `2026-07-28` revision: clients must not expect an
 `Mcp-Session-Id` response header. Put TLS, network access controls, and token
 rotation at the reverse proxy before binding beyond loopback.

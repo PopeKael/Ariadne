@@ -21,6 +21,15 @@ CURRENT_WORDS = frozenset({
 PRECISION_WORDS = frozenset({"exact", "exactly", "date", "dates", "when", "quote", "quoted", "quotation", "statistic", "statistics", "percentage", "number"})
 CONFLICT_WORDS = frozenset({"conflicting", "contradictory", "contradiction", "disagree", "but", "versus", "vs"})
 FACTUAL_STARTERS = frozenset({"who", "what", "where", "when", "which", "is", "are", "was", "were", "did", "does", "do", "how"})
+KNOWN_PERSONAL_TERMS = frozenset({
+    "warren", "wazza", "chanya", "ariadne", "pope", "kael", "partner", "girlfriend", "boyfriend",
+    "wife", "husband", "family", "cousin", "mother", "mum", "father", "dad",
+})
+PERSONAL_HISTORY_WORDS = frozenset({"prior", "before", "remember", "decided", "discussed", "history", "vault", "source", "citation", "cite"})
+PERSONAL_FACT_WORDS = frozenset({
+    "actually", "really", "ever", "seen", "read", "watched", "heard", "said", "told", "met", "used",
+    "decided", "agreed", "confirmed", "confirm", "verified", "verify",
+})
 GENERIC_NAMED_WORDS = frozenset({
     "what", "where", "when", "which", "who", "is", "are", "was", "were", "did", "does", "do",
     "how", "the", "this", "that", "still", "there", "and", "or", "it", "work", "works",
@@ -37,6 +46,9 @@ class EvidenceDecision:
     current_information: bool
     explicit_verification: bool
     named_or_obscure: bool
+    personal_context: bool
+    personal_fact_verification: bool
+    quiet_personal_context: bool
     reason_codes: tuple[str, ...]
     failure_message: str = "I couldn't verify that from the Vault or live sources, so I don't want to guess."
 
@@ -48,6 +60,9 @@ class EvidenceDecision:
             "current_information": self.current_information,
             "explicit_verification": self.explicit_verification,
             "named_or_obscure": self.named_or_obscure,
+            "personal_context": self.personal_context,
+            "personal_fact_verification": self.personal_fact_verification,
+            "quiet_personal_context": self.quiet_personal_context,
             "reason_codes": list(self.reason_codes),
             "failure_message": self.failure_message,
         }
@@ -63,6 +78,36 @@ def _capitalized_name_phrase(query: str) -> bool:
     return bool(re.search(r"\b[A-Z][A-Za-z0-9'’-]+(?:\s+[A-Z][A-Za-z0-9'’-]+){1,}\b", query))
 
 
+def _personal_context_present(query: str, semantic: dict[str, Any]) -> bool:
+    words = set(_words(query))
+    if bool(semantic.get("needs_personal_history")):
+        return True
+    return bool(words.intersection(KNOWN_PERSONAL_TERMS)) or (
+        bool(words.intersection({"i", "me", "my", "mine", "our", "ours", "us", "we"}))
+        and bool(words.intersection({"people", "relationship", "context", "life", "work", "channel", "project", "history", "preference", "preferences"}))
+    )
+
+
+def _personal_fact_verification(query: str, personal_context: bool, explicit_verification: bool) -> bool:
+    if not personal_context:
+        return False
+    folded = query.casefold()
+    words = set(_words(query))
+    if explicit_verification:
+        return True
+    if not words.intersection(PERSONAL_FACT_WORDS):
+        return False
+    return bool(re.search(
+        r"\b(?:has|have|had|did|does|is|are|was|were|can|will|would|what|when|where|whether|if)\b",
+        folded,
+    ))
+
+
+def _remove_known_personal_terms(query: str) -> str:
+    pattern = r"\b(?:" + "|".join(re.escape(item) for item in sorted(KNOWN_PERSONAL_TERMS, key=len, reverse=True)) + r")\b"
+    return re.sub(pattern, "", query, flags=re.IGNORECASE)
+
+
 def classify_request(query: str, planner_result: dict[str, Any] | None = None) -> dict[str, Any]:
     words = _words(query)
     word_set = set(words)
@@ -75,7 +120,9 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
     current = (bool(word_set.intersection(CURRENT_WORDS)) or bool(re.search(r"\b20\d{2}\b|\bthis\s+(month|week|year)\b", query.casefold()))) and not conversational_greeting
     precise = bool(word_set.intersection(PRECISION_WORDS))
     conflict = bool(word_set.intersection(CONFLICT_WORDS))
-    named = _capitalized_name_phrase(query)
+    personal_context = _personal_context_present(query, semantic)
+    personal_fact_verification = _personal_fact_verification(query, personal_context, explicit)
+    named = _capitalized_name_phrase(_remove_known_personal_terms(query)) if personal_context else _capitalized_name_phrase(query)
     if not named:
         meaningful = [word for word in words if len(word) >= 4 and word not in GENERIC_NAMED_WORDS]
         named = len(meaningful) >= 2 and bool(word_set.intersection({"place", "town", "city", "person", "product", "company", "organisation", "organization", "clock", "museum", "station", "building"}))
@@ -91,15 +138,21 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
         (precise, "precision_claim"),
         (conflict or planner_ambiguous, "conflicting_or_ambiguous"),
         (planner_low_confidence, "low_interpretation_confidence"),
+        (personal_fact_verification, "personal_fact_verification"),
     ):
         if enabled:
             reasons.append(code)
 
-    verification_required = bool(reasons) and (factual or explicit or named or current or planner_current or precise or conflict or planner_low_confidence or planner_ambiguous)
+    verification_required = bool(reasons) and (
+        factual or explicit or named or current or planner_current or precise
+        or conflict or planner_low_confidence or planner_ambiguous or personal_fact_verification
+    )
     return {
         "current_information": current or planner_current,
         "explicit_verification": explicit,
         "named_or_obscure": named,
+        "personal_context": personal_context,
+        "personal_fact_verification": personal_fact_verification,
         "precision_claim": precise,
         "conflicting_or_ambiguous": conflict or planner_ambiguous,
         "low_interpretation_confidence": planner_low_confidence,
@@ -120,7 +173,7 @@ def decide(
 ) -> EvidenceDecision:
     classification = classify_request(query, planner_result)
     semantic = planner_result.get("semantic") if isinstance(planner_result, dict) and isinstance(planner_result.get("semantic"), dict) else {}
-    personal = bool(semantic.get("needs_personal_history"))
+    personal = bool(classification["personal_context"])
     personal = personal or bool(re.search(r"\b(my|our|we|wazza|warren|chanya|ariadne|vault|prior|remember|discussed)\b", query.casefold()))
     mode = vault_mode if vault_mode in {"auto", "always", "never"} else "auto"
     if mode == "always":
@@ -133,7 +186,22 @@ def decide(
         # the cheapest and most authoritative answer available.
         use_vault = vault_available and (personal or classification["verification_required"] or bool(attachments_present and semantic.get("needs_attachment")))
 
-    external = bool(classification["verification_required"] and search_available and mode != "never")
+    # Personal-fact verification belongs to the Vault. A web provider cannot
+    # establish whether Chanya saw, said, or decided something, so do not turn
+    # a missing local passage into an unrelated live-search request.
+    external = bool(
+        classification["verification_required"]
+        and not classification["personal_fact_verification"]
+        and search_available
+        and mode != "never"
+    )
+    quiet_personal_context = bool(
+        personal
+        and not classification["verification_required"]
+        and not classification["current_information"]
+        and not classification["explicit_verification"]
+        and not bool(set(_words(query)).intersection(PERSONAL_HISTORY_WORDS))
+    )
     return EvidenceDecision(
         use_vault=use_vault,
         external_search=external,
@@ -141,6 +209,9 @@ def decide(
         current_information=bool(classification["current_information"]),
         explicit_verification=bool(classification["explicit_verification"]),
         named_or_obscure=bool(classification["named_or_obscure"]),
+        personal_context=personal,
+        personal_fact_verification=bool(classification["personal_fact_verification"]),
+        quiet_personal_context=quiet_personal_context,
         reason_codes=tuple(classification["reason_codes"]),
     )
 

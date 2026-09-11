@@ -117,7 +117,7 @@ class ConfigurationPersistenceTests(unittest.TestCase):
                 with patch.dict(os.environ, environment, clear=True):
                     httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
                     threading.Thread(target=httpd.serve_forever, daemon=True).start()
-                    base = f"http://127.0.0.1:{httpd.server_port}"
+                    base = f"http://localhost:{httpd.server_port}"
                     status, response = self.request(base, "/api/configuration", request_payload)
                     self.assertEqual(status, 200)
                     self.assertTrue(response["persistence"]["verified"])

@@ -157,6 +157,13 @@ async function removeAttachment(documentId) {
 function renderHealth(payload) {
   const root = document.querySelector("#header-health");
   if (!root) return;
+  const deployment = payload.deployment || {};
+  const modeBadge = document.querySelector("#deployment-mode-badge");
+  if (modeBadge) {
+    modeBadge.textContent = deployment.display || "RUN · HERA";
+    modeBadge.title = deployment.transition_detail || "";
+    modeBadge.classList.toggle("dev-mode", deployment.mode === "DEV");
+  }
   root.replaceChildren();
   const compactNames = {"Ariadne backend":"Backend", "Knowledge Vault":"Vault", "MCP / retrieval":"MCP", "Ollama":"Ollama", "Semantic index":"Semantic", "Signal Service":"Signals"};
   for (const [index, service] of (payload.services || []).entries()) {

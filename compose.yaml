@@ -1,0 +1,60 @@
+name: ariadne-discovery-signal
+
+services:
+  signal:
+    build:
+      context: ./signal-service
+      args:
+        ARIADNE_BUILD_SHA: ${ARIADNE_BUILD_SHA:-unknown}
+    image: ariadne/signal-service:${ARIADNE_IMAGE_TAG:-local}
+    expose:
+      - "8788"
+    environment:
+      SIGNAL_SERVICE_BIND_ADDRESS: 0.0.0.0
+      SIGNAL_SERVICE_PORT: 8788
+      SIGNAL_SERVICE_DATABASE: /data/signals.sqlite3
+      SIGNAL_SERVICE_REFRESH_SECONDS: 900
+      SIGNAL_SERVICE_BRIEFING_POOL: 240
+      SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS: "true"
+      ARIADNE_ENVIRONMENT: ${ARIADNE_ENVIRONMENT:-unknown}
+      ARIADNE_INSTANCE: ${ARIADNE_INSTANCE:-signal}
+      ARIADNE_BUILD_SHA: ${ARIADNE_BUILD_SHA:-unknown}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8788/v1/health', timeout=5)"]
+      interval: 10s
+      timeout: 7s
+      retries: 12
+      start_period: 10s
+
+  discovery:
+    build:
+      context: ./discovery-service
+      args:
+        ARIADNE_BUILD_SHA: ${ARIADNE_BUILD_SHA:-unknown}
+    image: ariadne/discovery-service:${ARIADNE_IMAGE_TAG:-local}
+    expose:
+      - "8789"
+    environment:
+      DISCOVERY_SERVICE_BIND_ADDRESS: 0.0.0.0
+      DISCOVERY_SERVICE_PORT: 8789
+      DISCOVERY_SERVICE_DATABASE: /data/discovery.sqlite3
+      DISCOVERY_SERVICE_REFRESH_SECONDS: 900
+      DISCOVERY_SERVICE_ITEMS_PER_SOURCE: 40
+      DISCOVERY_SERVICE_CONCURRENCY: 6
+      DISCOVERY_SERVICE_MAX_STORIES: 240
+      DISCOVERY_SERVICE_SIGNAL_SERVICE_URL: http://signal:8788
+      DISCOVERY_SERVICE_PUSH_TIMEOUT_SECONDS: 180
+      DISCOVERY_SERVICE_SOURCES_FILE: /app/sources.example.json
+      DISCOVERY_SERVICE_SEARXNG_URL: ""
+      ARIADNE_ENVIRONMENT: ${ARIADNE_ENVIRONMENT:-unknown}
+      ARIADNE_INSTANCE: ${ARIADNE_INSTANCE:-discovery}
+      ARIADNE_BUILD_SHA: ${ARIADNE_BUILD_SHA:-unknown}
+    depends_on:
+      signal:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8789/v1/health', timeout=5)"]
+      interval: 10s
+      timeout: 7s
+      retries: 12
+      start_period: 10s

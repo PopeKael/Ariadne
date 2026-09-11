@@ -153,7 +153,7 @@ $Listener.Prefixes.Add("http://127.0.0.1:$Port/")
 
 try {
     $Listener.Start()
-    $Url = "http://127.0.0.1:$Port/?token=$Token"
+    $Url = "http://localhost:$Port/?token=$Token"
     Write-Host "Ariadne Control is running at $Url" -ForegroundColor Cyan
     Write-Host 'Press Ctrl+C here to stop the control menu.' -ForegroundColor DarkGray
     if (-not $NoBrowser) { Start-Process $Url }

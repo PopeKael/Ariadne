@@ -23,7 +23,7 @@ import server  # noqa: E402
 from librarian_harness import fallback_interpretation, fallback_plan, interpret_and_resolve  # noqa: E402
 
 
-ENDPOINT = "http://127.0.0.1:11434"
+ENDPOINT = "http://localhost:11434"
 CASES_PATH = Path(__file__).with_name("planner_cases.json")
 RESULTS_DIR = Path(__file__).with_name("results")
 

@@ -13,7 +13,7 @@ From this directory:
 python run.py
 ```
 
-The service listens on `http://127.0.0.1:8788` by default. It performs a
+The service listens on `http://localhost:8788` by default. It performs a
 background refresh on startup and every 15 minutes. Configure feeds with
 `SIGNAL_SERVICE_FEEDS`, using `Name|URL` entries separated by commas.
 For the NAS Discovery Engine deployment, set

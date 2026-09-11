@@ -32,7 +32,7 @@ class FakeDocumentMcp:
 class HomeDocumentHttpTests(unittest.TestCase):
     def post(self, port, path, payload):
         request = urllib.request.Request(
-            f"http://127.0.0.1:{port}{path}",
+            f"http://localhost:{port}{path}",
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
@@ -109,6 +109,55 @@ class HomeDocumentHttpTests(unittest.TestCase):
                 server.home_planner_request = original_planner
                 server.DOCUMENT_WORK_ROOT = original_docs
                 server.record_home_event = original_events
+
+    def test_article_remains_primary_when_personal_context_is_also_relevant(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_mcp = server._home_mcp
+            original_planner = server.home_planner_request
+            original_docs = server.DOCUMENT_WORK_ROOT
+            original_adaptive = server.home_adaptive_context_for_query
+            original_events = server.record_home_event
+            fake = FakeDocumentMcp()
+            server.HOME_CHAT_STORE = ChatStore(Path(temporary))
+            server._home_mcp = lambda: fake
+            server.home_planner_request = lambda *args, **kwargs: {
+                "plan": {"use_vault": True, "tools": ["document-analysis"], "primary_source": "attachment"},
+                "semantic": {"needs_personal_history": True, "needs_attachment": True, "needs_current_information": False, "confidence": 0.95},
+                "world_state": {}, "fallback": True, "telemetry": {"error": "test planner"},
+            }
+            server.DOCUMENT_WORK_ROOT = Path(temporary) / "document_contexts"
+            server.home_adaptive_context_for_query = lambda *args, **kwargs: {}
+            server.record_home_event = lambda *args, **kwargs: None
+            try:
+                chat = server.HOME_CHAT_STORE.create()
+                server.attach_document(
+                    server.DOCUMENT_WORK_ROOT,
+                    chat["chat_id"],
+                    "selected-article.md",
+                    "# Article finding\n\nThe article's main finding is that the local test succeeded.",
+                )
+                result = server.home_chat_payload(
+                    "Discuss this article first, then tell me what Chanya might think about it.",
+                    [], "always", chat["chat_id"], ["document-analysis"],
+                )
+            finally:
+                server.HOME_CHAT_STORE = original_store
+                server._home_mcp = original_mcp
+                server.home_planner_request = original_planner
+                server.DOCUMENT_WORK_ROOT = original_docs
+                server.home_adaptive_context_for_query = original_adaptive
+                server.record_home_event = original_events
+
+        system = fake.calls[0][0]["content"]
+        user_content = fake.calls[0][-1]["content"]
+        self.assertTrue(result["used_documents"])
+        self.assertTrue(result["used_vault"])
+        self.assertIn("discuss its contents first", system)
+        self.assertLess(
+            user_content.index("Temporary document evidence (primary article context)"),
+            user_content.index("Knowledge Vault context"),
+        )
 
 
 if __name__ == "__main__":

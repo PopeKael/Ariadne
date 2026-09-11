@@ -216,7 +216,7 @@ class CleanupPluginTests(unittest.TestCase):
             activity = PluginActivityStream(root / "activity.jsonl"); httpd = None
             try:
                 server.VAULT_ROOT = root; server.VAULT_SYSTEM = Path(__file__).resolve().parent.parent / "00_System"; server.VAULT_JOB_ROOT = root / "runtime" / "jobs"; server.HOME_CHAT_STORE = server.ChatStore(root); server.PLUGIN_ACTIVITY_STREAM = activity
-                httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler); threading.Thread(target=httpd.serve_forever, daemon=True).start(); base = f"http://127.0.0.1:{httpd.server_port}"
+                httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler); threading.Thread(target=httpd.serve_forever, daemon=True).start(); base = f"http://localhost:{httpd.server_port}"
                 def request(path, payload=None):
                     data = None if payload is None else json.dumps(payload).encode("utf-8")
                     request_obj = urllib.request.Request(base + path, data=data, headers={"Content-Type": "application/json"} if data else {})

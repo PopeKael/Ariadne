@@ -30,6 +30,33 @@ class EvidenceFirstTests(unittest.TestCase):
         self.assertFalse(result.use_vault)
         self.assertFalse(result.external_search)
 
+    def test_casual_known_person_reference_is_quiet_context_not_verification(self):
+        classification = classify_request("I bet Chanya would have a view on this.")
+        self.assertTrue(classification["personal_context"])
+        self.assertFalse(classification["personal_fact_verification"])
+        self.assertFalse(classification["named_or_obscure"])
+        self.assertFalse(classification["verification_required"])
+
+        decision = decide(
+            "I bet Chanya would have a view on this.",
+            planner_result={"semantic": {"needs_personal_history": True, "confidence": 0.95}},
+            vault_mode="auto", vault_available=True, search_available=True,
+        )
+        self.assertTrue(decision.use_vault)
+        self.assertTrue(decision.quiet_personal_context)
+        self.assertFalse(decision.external_search)
+
+    def test_personal_fact_check_is_vault_gated_without_live_search(self):
+        decision = decide(
+            "Has Chanya actually seen this?",
+            planner_result={"semantic": {"needs_personal_history": True, "confidence": 0.95}},
+            vault_mode="auto", vault_available=True, search_available=True,
+        )
+        self.assertTrue(decision.verification_required)
+        self.assertTrue(decision.personal_fact_verification)
+        self.assertFalse(decision.quiet_personal_context)
+        self.assertFalse(decision.external_search)
+
     def test_vault_and_attachment_evidence_precede_external_search_when_adequate(self):
         decision = decide(
             "What is the Hornsby Water Clock?",
@@ -98,6 +125,80 @@ class EvidenceFirstTests(unittest.TestCase):
                 server.home_adaptive_context_for_query = original_adaptive
         self.assertIn("couldn't verify", result["answer"])
         self.assertEqual(result["sources"], [])
+
+    def test_casual_personal_context_does_not_trigger_search_or_hard_fallback(self):
+        class PersonalMcp:
+            def __init__(self):
+                self.search_context = []
+                self.chat_calls = []
+
+            def identity_system_prefix(self):
+                return "IDENTITY", {"id": "ariadne", "version": "1.1.0", "scope": "user"}
+
+            def retrieve_evidence(self, arguments):
+                self.search_context.append(arguments)
+                return {
+                    "results": [{
+                        "chunk_id": "person-1#chunk-0",
+                        "document_id": "person-1",
+                        "title": "Chanya relationship context",
+                        "source_path": "People/Chanya.md",
+                        "path": "People/Chanya.md",
+                        "citation": {"title": "Chanya relationship context", "path": "People/Chanya.md"},
+                        "citation_text": "Chanya relationship context - People/Chanya.md",
+                        "combined_score": 0.91,
+                        "content": "Chanya is Warren's long-term partner.",
+                    }],
+                    "candidate_count": 1,
+                    "selected_count": 1,
+                    "match_count": 1,
+                    "telemetry": {},
+                }
+
+            def ollama_chat(self, messages, **kwargs):
+                self.chat_calls.append(messages)
+                return "That sounds like exactly the sort of thing Chanya might have an opinion about."
+
+        class SearchMustNotRun:
+            def route(self):
+                return object()
+
+            def search(self, query, **kwargs):
+                raise AssertionError("Casual personal context must not launch live search.")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_mcp = server._home_mcp
+            original_planner = server.home_planner_request
+            original_search = server.SEARCH_PROVIDER_REGISTRY
+            original_adaptive = server.home_adaptive_context_for_query
+            original_event = server.record_home_event
+            fake = PersonalMcp()
+            server.HOME_CHAT_STORE = ChatStore(Path(temporary))
+            server._home_mcp = lambda: fake
+            server.home_planner_request = lambda *args, **kwargs: {
+                "plan": {"use_vault": True, "tools": [], "needs_current_information": False},
+                "semantic": {"needs_personal_history": True, "needs_current_information": False, "confidence": 0.95},
+                "world_state": {}, "fallback": False, "telemetry": {},
+            }
+            server.SEARCH_PROVIDER_REGISTRY = SearchMustNotRun()
+            server.home_adaptive_context_for_query = lambda *args, **kwargs: {}
+            server.record_home_event = lambda *args, **kwargs: None
+            try:
+                chat = server.HOME_CHAT_STORE.create()
+                result = server.home_chat_payload("I bet Chanya would have a view on this.", [], "auto", chat["chat_id"])
+            finally:
+                server.HOME_CHAT_STORE = original_store
+                server._home_mcp = original_mcp
+                server.home_planner_request = original_planner
+                server.SEARCH_PROVIDER_REGISTRY = original_search
+                server.home_adaptive_context_for_query = original_adaptive
+                server.record_home_event = original_event
+
+        self.assertNotIn("couldn't verify", result["answer"])
+        self.assertTrue(result["retrieval"]["evidence_policy"]["quiet_personal_context"])
+        self.assertFalse(result["retrieval"]["evidence_policy"]["external_search"])
+        self.assertIn("quiet personal/contextual-memory", fake.chat_calls[0][0]["content"])
 
     def test_interest_profile_is_not_injected_for_unrelated_query(self):
         with patch.object(server, "home_adaptive_context", return_value={

@@ -46,7 +46,7 @@ The Synology hosts the always-on web presentation and, later, carefully limited 
 
 1. Observe before acting.
 2. Every action has a named target, a reason, a result, and an audit record.
-3. Profiles are explicit: General, Gaming, Interactive AI, Rendering, and Development.
+3. News deployment profiles are explicit: RUN uses the Hera production Signal/Discovery endpoints; DEV uses the isolated localhost Docker stack and is session-only. Gaming and renderer profiles remain separate workload concerns.
 4. No service silently downloads large data to a default user folder.
 5. Public code contains structure and examples; private configuration contains reality.
 6. The system remains useful if Synology, Docker, WSL, or the browser is unavailable.

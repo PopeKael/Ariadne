@@ -56,7 +56,7 @@ class HomeServerPersistenceTests(unittest.TestCase):
 
     def post(self, port, path, payload):
         request = urllib.request.Request(
-            f"http://127.0.0.1:{port}{path}",
+            f"http://localhost:{port}{path}",
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
@@ -67,7 +67,7 @@ class HomeServerPersistenceTests(unittest.TestCase):
             return json.loads(response.read().decode("utf-8"))
 
     def get(self, port, path):
-        request = urllib.request.Request(f"http://127.0.0.1:{port}{path}", method="GET")
+        request = urllib.request.Request(f"http://localhost:{port}{path}", method="GET")
         with urllib.request.urlopen(request, timeout=5) as response:
             return json.loads(response.read().decode("utf-8"))
 

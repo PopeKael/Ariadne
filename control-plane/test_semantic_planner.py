@@ -78,7 +78,7 @@ class SemanticPlannerTests(unittest.TestCase):
         result = plan_request(
             "Let's chat about this.",
             self.context([{"filename": "article.md", "title": "Article", "size_bytes": 100}]),
-            endpoint="http://127.0.0.1:11434",
+        endpoint="http://localhost:11434",
             model="qwen3:0.6b",
             request_fn=request,
             status_fn=status,
@@ -108,7 +108,7 @@ class SemanticPlannerTests(unittest.TestCase):
         result = plan_request(
             "What is the capital of Thailand?",
             self.context(),
-            endpoint="http://127.0.0.1:11434",
+        endpoint="http://localhost:11434",
             request_fn=request,
             status_fn=lambda url, timeout: {},
         )
@@ -125,7 +125,7 @@ class SemanticPlannerTests(unittest.TestCase):
         result = plan_request(
             "Is this information still current?",
             self.context(),
-            endpoint="http://127.0.0.1:11434",
+        endpoint="http://localhost:11434",
             request_fn=lambda url, body, timeout: {"message": {"content": json.dumps(plan)}},
             status_fn=lambda url, timeout: {},
         )

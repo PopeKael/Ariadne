@@ -64,7 +64,9 @@ class ShutdownLifecycleTests(unittest.TestCase):
             server, "release_workloads"
         ) as release, patch.object(
             server, "stop_docker_desktop_safely", return_value={"ok": True, "message": "test"}
-        ) as stop_docker, patch.object(server, "run_readonly") as run_readonly:
+        ) as stop_docker, patch.object(server, "run_readonly") as run_readonly, patch.object(
+            server, "_send_avatar_event_with_retry", return_value=True
+        ) as avatar_event:
             server.shutdown_all_workloads(stop_server=False)
 
         self.assertEqual(terminate.call_count, 2)
@@ -78,7 +80,8 @@ class ShutdownLifecycleTests(unittest.TestCase):
         release.assert_called_once_with(force=True)
         run_readonly.assert_called_once_with(["wsl.exe", "--terminate", "Ubuntu"], timeout=30.0)
         self.assertTrue(server.SHUTDOWN_REQUESTED)
-        self.assertEqual(server.ACTIVE_PROFILE, "General")
+        self.assertEqual(server.ACTIVE_PROFILE, "RUN")
+        avatar_event.assert_called_once()
 
     def test_shutdown_is_idempotent(self):
         process = FakeProcess()

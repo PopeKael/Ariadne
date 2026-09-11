@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from threading import Lock
 from pathlib import Path
 from typing import Any
 
@@ -25,9 +26,24 @@ LEGACY_SOURCE_CATEGORIES = {
 class SignalServiceClient:
     def __init__(self, base_url: str | None = None, *, timeout: float | None = None, diagnostics_path: str | Path | None = None):
         self.base_url = (base_url or os.environ.get("ARIADNE_SIGNAL_SERVICE_URL", "http://192.168.1.200:8788")).rstrip("/")
-        self.timeout = max(0.1, float(timeout if timeout is not None else os.environ.get("ARIADNE_SIGNAL_SERVICE_TIMEOUT", "0.5")))
+        # Signal intake and briefing rebuilds can briefly take a few seconds
+        # on the NAS. Keep the deadline bounded, but do not fail normal LAN
+        # refresh contention at the previous 500ms threshold.
+        self.timeout = max(0.1, float(timeout if timeout is not None else os.environ.get("ARIADNE_SIGNAL_SERVICE_TIMEOUT", "5.0")))
         path = diagnostics_path or os.environ.get("ARIADNE_SIGNAL_SERVICE_EVENTS_PATH") or Path(__file__).resolve().parent / "runtime" / "signal-service-events.jsonl"
         self._diagnostics = LibrarianEventStream(Path(path))
+        self._briefing_cache_lock = Lock()
+        self._last_successful_briefing: dict[str, Any] | None = None
+
+    def clear_cache(self) -> None:
+        """Forget the last briefing before an environment switch.
+
+        RUN and DEV use separate client instances, but a DEV re-entry must
+        still force a fresh read from the DEV store rather than showing data
+        retained from the previous DEV session.
+        """
+        with self._briefing_cache_lock:
+            self._last_successful_briefing = None
 
     def _get(self, path: str) -> dict[str, Any]:
         if not self.base_url.startswith(("http://", "https://")):
@@ -65,10 +81,33 @@ class SignalServiceClient:
             return {"ok": False, "state": "offline", "message": f"Signal Service unavailable: {str(exc)[:180]}"}
 
     def briefing(self, limit: int = 6) -> dict[str, Any]:
+        bounded_limit = max(1, min(int(limit), 100))
         result = self._get(f"/v1/briefing?limit={max(1, min(int(limit), 100))}")
-        if not isinstance(result.get("signals"), list):
-            result["signals"] = []
-        return result
+        raw_signals = result.get("signals")
+        signals = raw_signals if isinstance(raw_signals, list) else []
+        result["signals"] = signals
+        if result.get("ok", True) and isinstance(raw_signals, list):
+            with self._briefing_cache_lock:
+                self._last_successful_briefing = {**result, "signals": list(signals)}
+            return {**result, "signals": list(signals[:bounded_limit])}
+
+        with self._briefing_cache_lock:
+            cached = self._last_successful_briefing
+        if cached is None:
+            return result
+
+        # Keep transport/status truth visible to the caller while retaining
+        # the last valid data set.  In particular, keep cached generated_at
+        # so the UI does not imply that a failed poll produced fresh data.
+        fallback = {
+            **cached,
+            "ok": False,
+            "state": result.get("state") or "attention",
+            "message": result.get("message") or "Signal Service refresh failed; showing the last successful briefing.",
+            "stale": True,
+            "signals": list(cached.get("signals", [])),
+        }
+        return {**fallback, "signals": fallback["signals"][:bounded_limit]}
 
     def feedback(self, signal_id: str, value: str) -> dict[str, Any]:
         request = urllib.request.Request(

@@ -28,7 +28,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
             try:
                 port = httpd.server_address[1]
                 start_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/session/start",
+                    f"http://localhost:{port}/api/session/start",
                     data=b"{}",
                     headers={"Content-Type": "application/json"},
                     method="POST",
@@ -36,7 +36,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                 with urllib.request.urlopen(start_request, timeout=5) as response:
                     started = json.loads(response.read().decode("utf-8"))
                 chat_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/home/chat",
+                    f"http://localhost:{port}/api/home/chat",
                     data=json.dumps({
                         "session_id": started["session_id"],
                         "chat_id": started["chat_id"],
@@ -92,7 +92,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
             try:
                 port = httpd.server_address[1]
                 start_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/session/start",
+                    f"http://localhost:{port}/api/session/start",
                     data=b"{}",
                     headers={"Content-Type": "application/json"},
                     method="POST",
@@ -100,7 +100,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                 with urllib.request.urlopen(start_request, timeout=5) as response:
                     started = json.loads(response.read().decode("utf-8"))
                 promote_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/home/signals/promote",
+                    f"http://localhost:{port}/api/home/signals/promote",
                     data=json.dumps({"session_id": started["session_id"], "signal_id": signal["signal_id"]}).encode("utf-8"),
                     headers={"Content-Type": "application/json"},
                     method="POST",
@@ -149,7 +149,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
             try:
                 port = httpd.server_address[1]
                 start_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/session/start",
+                    f"http://localhost:{port}/api/session/start",
                     data=b"{}",
                     headers={"Content-Type": "application/json"},
                     method="POST",
@@ -157,7 +157,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                 with urllib.request.urlopen(start_request, timeout=5) as response:
                     started = json.loads(response.read().decode("utf-8"))
                 promote_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/home/signals/promote",
+                    f"http://localhost:{port}/api/home/signals/promote",
                     data=json.dumps({"session_id": started["session_id"], "signal_id": signal["signal_id"]}).encode("utf-8"),
                     headers={"Content-Type": "application/json"},
                     method="POST",
@@ -205,13 +205,13 @@ class HomeSignalIntegrationTests(unittest.TestCase):
             try:
                 port = httpd.server_address[1]
                 start_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/session/start", data=b"{}",
+                    f"http://localhost:{port}/api/session/start", data=b"{}",
                     headers={"Content-Type": "application/json"}, method="POST",
                 )
                 with urllib.request.urlopen(start_request, timeout=5) as response:
                     started = json.loads(response.read().decode("utf-8"))
                 promote_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/home/signals/promote",
+                    f"http://localhost:{port}/api/home/signals/promote",
                     data=json.dumps({"session_id": started["session_id"], "signal_id": signal["signal_id"], "mode": "add"}).encode("utf-8"),
                     headers={"Content-Type": "application/json"}, method="POST",
                 )
@@ -252,14 +252,14 @@ class HomeSignalIntegrationTests(unittest.TestCase):
             try:
                 port = httpd.server_address[1]
                 start_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/session/start",
+                    f"http://localhost:{port}/api/session/start",
                     data=json.dumps({"chat_id": chat["chat_id"]}).encode("utf-8"),
                     headers={"Content-Type": "application/json"}, method="POST",
                 )
                 with urllib.request.urlopen(start_request, timeout=5) as response:
                     started_session = json.loads(response.read().decode("utf-8"))
                 feedback_request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/api/home/feedback",
+                    f"http://localhost:{port}/api/home/feedback",
                     data=json.dumps({
                         "session_id": started_session["session_id"], "chat_id": chat["chat_id"],
                         "message_id": assistant["message_id"], "active_source_signal_ids": ["signal-1234567890abcdef"],
@@ -281,7 +281,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
 
     def test_today_renders_cached_signal_with_source_url(self):
         fake_client = Mock()
-        fake_client.briefing.return_value = {"ok": True, "stale": True, "signals": [{"signal_id": "signal-1", "title": "A signal", "summary": "A concise summary with enough context for the card.", "source_name": "Example", "category": "AI Watch", "watchlist_matches": [{"topic_id": "watch-1", "topic": "A signal"}], "published_at": "2026-09-07T12:34:00+07:00", "url": "https://example.test/story", "image_url": "https://example.test/image.jpg", "feedback": {"value": "useful", "timestamp": "2026-09-07T12:35:00+07:00"}}]}
+        fake_client.briefing.return_value = {"ok": True, "stale": True, "signals": [{"signal_id": "signal-1", "title": "A signal", "summary": "A concise summary with enough context for the card.", "source_name": "Example", "category": "AI Watch", "watchlist_matches": [{"topic_id": "watch-1", "topic": "A signal"}], "published_at": "2026-09-07T12:34:00+07:00", "url": "https://example.test/story", "image_url": "https://example.test/image.jpg", "provenance": {"discovery": {"story_id": "story-1", "article_count": 3, "source_count": 2, "source_names": ["Example", "Another Example"], "rank_score": 0.8123, "discovery_category": "Technology", "first_seen_at": "2026-09-07T12:30:00+07:00", "last_seen_at": "2026-09-07T12:35:00+07:00"}}, "feedback": {"value": "useful", "timestamp": "2026-09-07T12:35:00+07:00"}}]}
         with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client):
             result = server.home_today_payload({"services": []})
         self.assertEqual(result[0]["label"], "A signal")
@@ -294,6 +294,9 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         self.assertEqual(result[0]["category"], "AI Watch")
         self.assertEqual(result[0]["watchlist_matches"][0]["topic"], "A signal")
         self.assertEqual(result[0]["feedback"]["value"], "useful")
+        self.assertEqual(result[0]["provenance"]["discovery"]["source_count"], 2)
+        self.assertEqual(result[0]["provenance"]["discovery"]["rank_score"], 0.8123)
+        self.assertEqual(result[0]["provenance"]["discovery"]["first_seen_at"], "2026-09-07T12:30:00+07:00")
         self.assertTrue(result[0]["detail"].startswith("Cached · Example"))
 
     def test_home_requests_discover_sized_briefing(self):

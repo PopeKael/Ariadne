@@ -9,7 +9,7 @@ const steps = {
   model: document.querySelector("#step-model"),
   ready: document.querySelector("#step-ready"),
 };
-let openWebUIUrl = "http://127.0.0.1:3000/";
+let openWebUIUrl = "http://localhost:3000/";
 let startedAt = 0;
 let sessionId = null;
 let sessionHeartbeat = null;

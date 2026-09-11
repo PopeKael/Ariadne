@@ -83,7 +83,7 @@ def credential_state(provider: Provider) -> str:
 def _default_providers() -> list[Provider]:
     google_model = os.environ.get("SIGNAL_SERVICE_GOOGLE_EMBEDDING_MODEL", "gemini-embedding-001")
     google_key = os.environ.get("SIGNAL_SERVICE_GOOGLE_CREDENTIAL_REFERENCE", "GOOGLE_API_KEY")
-    ollama_url = os.environ.get("SIGNAL_SERVICE_OLLAMA_URL", "http://127.0.0.1:11434")
+    ollama_url = os.environ.get("SIGNAL_SERVICE_OLLAMA_URL", "http://localhost:11434")
     ollama_model = os.environ.get("SIGNAL_SERVICE_OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
     return [
         Provider(

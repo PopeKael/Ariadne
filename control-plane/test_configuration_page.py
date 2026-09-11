@@ -76,7 +76,7 @@ class ConfigurationPageTests(unittest.TestCase):
         try:
             httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
             threading.Thread(target=httpd.serve_forever, daemon=True).start()
-            base = f"http://127.0.0.1:{httpd.server_port}"
+            base = f"http://localhost:{httpd.server_port}"
 
             def get(path: str):
                 with urllib.request.urlopen(base + path, timeout=5) as response:
@@ -175,7 +175,7 @@ class ConfigurationPageTests(unittest.TestCase):
             httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
             threading.Thread(target=httpd.serve_forever, daemon=True).start()
             request = urllib.request.Request(
-                f"http://127.0.0.1:{httpd.server_port}/api/signals/interests",
+                f"http://localhost:{httpd.server_port}/api/signals/interests",
                 data=json.dumps({"name": interest["name"], "description": interest["description"]}).encode("utf-8"),
                 headers={"Content-Type": "application/json"},
                 method="POST",

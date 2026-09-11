@@ -48,7 +48,7 @@ class DiscoveryTests(unittest.TestCase):
     def test_engine_refresh_persists_stories_and_reports_signal_push_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             source = SourceDefinition("source-test", "Test Feed", "https://example.test/feed.xml", "Technology")
-            with patch.dict("os.environ", {"DISCOVERY_SERVICE_SIGNAL_SERVICE_URL": "http://127.0.0.1:9", "DISCOVERY_SERVICE_REFRESH_SECONDS": "900"}, clear=False), patch("discovery_service.engine.fetch_feed", return_value=FetchResult([{"url": "https://example.test/story", "title": "A useful technology story", "summary": "A short report.", "published_at": "2026-09-10T06:00:00Z", "source_id": "source-test", "source_name": "Test Feed", "source_url": "https://example.test/feed.xml", "category": "Technology"}])):
+            with patch.dict("os.environ", {"DISCOVERY_SERVICE_SIGNAL_SERVICE_URL": "http://localhost:9", "DISCOVERY_SERVICE_REFRESH_SECONDS": "900"}, clear=False), patch("discovery_service.engine.fetch_feed", return_value=FetchResult([{"url": "https://example.test/story", "title": "A useful technology story", "summary": "A short report.", "published_at": "2026-09-10T06:00:00Z", "source_id": "source-test", "source_name": "Test Feed", "source_url": "https://example.test/feed.xml", "category": "Technology"}])):
                 engine = DiscoveryEngine(str(Path(directory) / "discovery.sqlite3"), sources=[source])
                 try:
                     result = engine.refresh()
@@ -74,7 +74,7 @@ class DiscoveryTests(unittest.TestCase):
                 return json.dumps(self.payload).encode("utf-8")
 
         stories = [
-            {"story_id": f"story-{index}", "title": f"Story {index}", "summary": "A story.", "url": f"https://example.test/story-{index}", "published_at": "2026-09-10T06:00:00+00:00", "article_count": 1, "source_count": 1, "source_names": ["Example"], "source_domains": ["example.test"], "evidence": [], "rank_score": 1.0 - index / 100, "category": "Technology"}
+            {"story_id": f"story-{index}", "title": f"Story {index}", "summary": "A story.", "url": f"https://example.test/story-{index}", "published_at": "2026-09-10T06:00:00+00:00", "first_seen_at": "2026-09-10T06:00:00+00:00", "last_seen_at": "2026-09-10T06:00:00+00:00", "article_count": 1, "source_count": 1, "source_names": ["Example"], "source_domains": ["example.test"], "evidence": [], "rank_score": 1.0 - index / 100, "category": "Technology"}
             for index in range(3)
         ]
         requests = []
@@ -100,6 +100,8 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result["attempts"], 3)
         self.assertEqual([item["url"] for item in requests[0]["items"]], [item["url"] for item in requests[1]["items"]])
         self.assertEqual(requests[0]["items"][0]["provenance"]["discovery"]["story_id"], "story-0")
+        self.assertEqual(requests[0]["items"][0]["provenance"]["discovery"]["first_seen_at"], "2026-09-10T06:00:00+00:00")
+        self.assertEqual(requests[0]["items"][0]["provenance"]["discovery"]["last_seen_at"], "2026-09-10T06:00:00+00:00")
 
     def test_source_file_is_supported_for_large_catalogues(self):
         with tempfile.TemporaryDirectory() as directory:

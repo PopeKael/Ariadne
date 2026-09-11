@@ -23,7 +23,7 @@ from typing import Any, Callable
 # chunks without the provenance required for citations.
 INDEX_VERSION = 3
 DEFAULT_MODEL = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")
-DEFAULT_OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434")
+DEFAULT_OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434")
 
 
 def index_path(root: Path) -> Path:

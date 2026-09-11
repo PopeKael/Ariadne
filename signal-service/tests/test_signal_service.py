@@ -237,7 +237,7 @@ class SignalServiceTests(unittest.TestCase):
         httpd = SignalHTTPServer(("127.0.0.1", 0), self.service)
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
-        base = f"http://127.0.0.1:{httpd.server_port}"
+        base = f"http://localhost:{httpd.server_port}"
         try:
             with urlopen(base + "/v1/health", timeout=2) as response:
                 health = json.loads(response.read())

@@ -243,9 +243,15 @@ function render(data) {
   document.querySelector("#service-state").textContent = online ? "Online" : "Unavailable";
   document.querySelector("#service-pill").textContent = online ? "Online" : "Offline";
   document.querySelector("#service-pill").classList.toggle("online", online);
-  document.querySelector("#profile").textContent = data.profile;
+  const deployment = data.deployment || {};
+  document.querySelector("#profile").textContent = deployment.display || data.profile || "RUN · HERA";
   const profileDetail = document.querySelector(".top-profile .small");
-  if (profileDetail) profileDetail.textContent = data.profile_detail || "Read-only foundation";
+  if (profileDetail) profileDetail.textContent = data.profile_detail || "RUN · HERA · production news";
+  const transition = document.querySelector("#profile-transition-status");
+  if (transition) {
+    transition.textContent = deployment.transition_state === "ready" ? (deployment.display || "RUN · HERA") : (deployment.transition_state || "Transitioning").toUpperCase();
+    transition.title = deployment.transition_detail || "";
+  }
   renderInteractiveAI(data.interactive_ai || {});
   renderGauge("memory", data.memory);
   renderGauge("gpu", data.gpu, "GPU not detected");
@@ -553,32 +559,55 @@ async function launchWan2GP(action) {
   }
 }
 async function activateProfile(profile) {
+  const status = document.querySelector("#profile-transition-status");
+  document.querySelectorAll(".profile-option").forEach((button) => { button.disabled = true; });
+  if (status) status.textContent = profile === "DEV" ? "STARTING DEV · LOCAL" : "VERIFYING RUN · HERA";
   try {
     const result = await postJson("/api/profile", {profile});
-    setProfileMode(profile);
+    setProfileMode(result.mode || profile);
     renderInteractiveAI(result.interactive_ai || {});
+    if (status) status.textContent = result.message || (result.mode === "DEV" ? "DEV · LOCAL" : "RUN · HERA");
     await refresh();
   } catch (error) {
-    const progress = document.querySelector("#wan2gp-progress");
-    if (progress) progress.textContent = error.message || "The Ariadne profile transition needs attention.";
+    if (status) status.textContent = error.message || "The Ariadne profile transition needs attention.";
+  } finally {
+    document.querySelectorAll(".profile-option").forEach((button) => { button.disabled = false; });
+  }
+}
+
+async function activateGamingProfile(button) {
+  document.querySelectorAll(".profile-option").forEach((item) => { item.disabled = true; });
+  const status = document.querySelector("#profile-transition-status");
+  if (status) status.textContent = "SHUTTING DOWN FOR GAMING";
+  try {
+    // The tray Exit action uses this same supervisor endpoint. Do not add a
+    // browser-specific cleanup path here.
+    await postJson("/api/system/shutdown", {});
+    button.querySelector(".planned, .selected")?.replaceChildren(document.createTextNode("Requested"));
+    if (status) status.textContent = "SHUTDOWN REQUESTED · RUN · HERA NEXT START";
+  } catch (error) {
+    document.querySelectorAll(".profile-option").forEach((item) => { item.disabled = false; });
+    if (status) status.textContent = error.message || "The Ariadne shutdown needs attention.";
   }
 }
 
 function setProfileMode(profile) {
   const interactive = profile === "Interactive AI";
+  const deploymentMode = profile === "DEV" || profile === "Interactive AI" ? "DEV" : "RUN";
   document.body.classList.toggle("interactive-ai-mode", interactive);
   if (interactive) history.replaceState(null, "", "#interactive-ai");
   else history.replaceState(null, "", window.location.pathname);
   window.scrollTo(0, 0);
   document.querySelectorAll("[data-profile]").forEach((button) => {
-    if (button.classList.contains("profile-option")) button.querySelector(".planned, .selected")?.replaceChildren(document.createTextNode(interactive && button.dataset.profile === "Interactive AI" ? "Current" : button.dataset.profile === "General" ? "Current" : "Planned"));
+    if (button.classList.contains("profile-option")) button.querySelector(".planned, .selected")?.replaceChildren(document.createTextNode(button.dataset.profile === deploymentMode ? "Current" : "Switch"));
   });
 }
 
 function setupProfileControls() {
   document.querySelectorAll("[data-profile]").forEach((button) => button.addEventListener("click", () => {
     const profile = button.dataset.profile;
-    if (profile === "Interactive AI" || profile === "General") activateProfile(profile);
+    if (profile === "DEV" || profile === "RUN") activateProfile(profile);
+    if (profile === "GAMING") activateGamingProfile(button);
   }));
   document.querySelector("#ubuntu-session-button")?.addEventListener("click", () => activateProfile("Interactive AI"));
   document.querySelector("#wan2gp-launch-button")?.addEventListener("click", (event) => launchWan2GP(event.currentTarget.dataset.action || "start"));

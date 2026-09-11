@@ -114,7 +114,7 @@ startup paths.
 1. Build the release executable.
 2. Run one host and confirm the tray icon appears; a second host exits because
    of the `Local\AriadneHost` mutex.
-3. Confirm `http://127.0.0.1:8765/` and `/api/status` work.
+3. Confirm `http://localhost:8765/` and `/api/status` work.
 4. Use the tray menu to open Home, hide/show the avatar, restart the core, and
    exit. The host should remain alive when Python is unavailable or crashes.
 5. Open `/configuration/avatar`, validate all sixteen states, save a test
