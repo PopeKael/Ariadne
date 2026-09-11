@@ -1,0 +1,29 @@
+services:
+  signal:
+    container_name: ariadne-signal-dev
+    restart: "no"
+    ports:
+      - "127.0.0.1:18788:8788"
+    environment:
+      ARIADNE_ENVIRONMENT: dev
+      ARIADNE_INSTANCE: local-dev-signal
+    volumes:
+      - type: bind
+        source: ./runtime/discovery-signal-dev/signal
+        target: /data
+
+  discovery:
+    container_name: ariadne-discovery-dev
+    restart: "no"
+    ports:
+      - "127.0.0.1:18789:8789"
+    environment:
+      ARIADNE_ENVIRONMENT: dev
+      ARIADNE_INSTANCE: local-dev-discovery
+      # This is intentionally the Compose service name. DEV Discovery cannot
+      # send candidates to Hera or to any other Signal Service.
+      DISCOVERY_SERVICE_SIGNAL_SERVICE_URL: http://signal:8788
+    volumes:
+      - type: bind
+        source: ./runtime/discovery-signal-dev/discovery
+        target: /data

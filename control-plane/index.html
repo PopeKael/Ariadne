@@ -61,10 +61,10 @@
           <div id="wsl-list" class="state-list"><div class="loading">Reading distribution state…</div></div>
         </article>
         <article class="panel status-card">
-          <div class="card-head"><span>Docker</span><span class="pill" id="docker-pill">Checking</span></div>
+          <div class="card-head"><span>Local services</span><span class="pill" id="docker-pill">Checking</span></div>
           <strong id="docker-metric">—</strong>
-          <p>Containers known to Docker on this host.</p>
-          <div class="resource-toolbar"><span>Drag to sort · rename · start/stop</span><button type="button" class="resource-reset" data-reset-resources="docker">Reset</button></div>
+          <p>Optional tools stay optional; DEV services are local-only.</p>
+          <div class="resource-toolbar"><span>Start/stop Ariadne local services</span></div>
           <div id="docker-list" class="state-list"><div class="loading">Reading container state…</div></div>
         </article>
       </section>
@@ -163,5 +163,6 @@
     <footer>Private · Local · Under your control <span>•</span> No data leaves this computer</footer>
   </div>
   <script src="/app.js"></script>
+  <script>document.getElementById('wan2gp-open-button')?.setAttribute('href', 'http://localhost:8766/');</script>
 </body>
 </html>

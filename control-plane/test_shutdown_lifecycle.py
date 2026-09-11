@@ -62,7 +62,9 @@ class ShutdownLifecycleTests(unittest.TestCase):
             server, "_terminate_process", side_effect=lambda process: process.terminate()
         ) as terminate, patch.object(server, "_unload_ollama_models") as unload, patch.object(
             server, "release_workloads"
-        ) as release, patch.object(server, "run_readonly") as run_readonly:
+        ) as release, patch.object(
+            server, "stop_docker_desktop_safely", return_value={"ok": True, "message": "test"}
+        ) as stop_docker, patch.object(server, "run_readonly") as run_readonly:
             server.shutdown_all_workloads(stop_server=False)
 
         self.assertEqual(terminate.call_count, 2)
@@ -85,7 +87,9 @@ class ShutdownLifecycleTests(unittest.TestCase):
 
         with patch.object(
             server, "_terminate_process", side_effect=lambda process: process.terminate()
-        ), patch.object(server, "_unload_ollama_models"), patch.object(server, "release_workloads"):
+        ), patch.object(server, "_unload_ollama_models"), patch.object(server, "release_workloads"), patch.object(
+            server, "stop_docker_desktop_safely", return_value={"ok": True, "message": "test"}
+        ):
             server.shutdown_all_workloads(stop_server=False)
             server.shutdown_all_workloads(stop_server=False)
 

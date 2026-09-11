@@ -50,7 +50,7 @@
 .launch-status.degraded{color:var(--yellow);background:rgba(240,198,110,.13)}
 .launch-status.critical{color:#ff9ba9;background:rgba(228,79,103,.12)}
 .launch-status.unknown{color:var(--muted);background:#18243c}
-.state-pill.healthy{color:var(--green);background:rgba(54,142,95,.15)}.state-pill.unavailable{color:#ff9ba9;background:rgba(228,79,103,.12)}.state-pill.disabled{color:var(--yellow);background:rgba(240,198,110,.13)}
+.state-pill.healthy,.state-pill.running{color:var(--green);background:rgba(54,142,95,.15)}.state-pill.unavailable,.state-pill.error{color:#ff9ba9;background:rgba(228,79,103,.12)}.state-pill.disabled,.state-pill.starting,.state-pill.stopping{color:var(--yellow);background:rgba(240,198,110,.13)}.state-pill.stopped{color:var(--muted);background:#18243c}
 .plugin-summary{padding:0 20px 14px}.plugin-summary-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(52,73,112,.5);color:var(--text);text-decoration:none}.plugin-summary-row:hover .state-name{color:var(--cyan)}.plugin-summary-icon{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(104,216,219,.15);color:var(--cyan);flex:none}.plugin-summary-more{display:block;padding:10px 0 2px;color:var(--cyan);font-size:11px;text-decoration:none}.plugin-summary-more:hover{text-decoration:underline}
 .vault-icon{background:rgba(190,133,255,.15);color:#d8b5ff}
 .ariadne-control-icon{background:rgba(104,216,219,.15);color:var(--cyan)}

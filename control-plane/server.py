@@ -72,7 +72,7 @@ PORT = int(os.environ.get("ARIADNE_PORT", "8765"))
 LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
 DOCKER_DESKTOP_PATH = Path(r"C:\Program Files\Docker\Docker\Docker Desktop.exe")
 DOCKER_PATH = Path(r"C:\Program Files\Docker\Docker\resources\bin\docker.exe")
-OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 FINAL_AVATAR_DIALOGUE = "Here's your answer."
@@ -104,8 +104,27 @@ CORE_INTERACTION_STREAM = CoreInteractionStream(CORE_INTERACTIONS_PATH)
 PLUGIN_ACTIVITY_PATH = Path(os.environ.get("ARIADNE_PLUGIN_ACTIVITY_PATH", str(ROOT / "runtime" / "plugin-activity.jsonl")))
 PLUGIN_ACTIVITY_STREAM = PluginActivityStream(PLUGIN_ACTIVITY_PATH)
 OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "adaptive")
-OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://127.0.0.1:3000/")
+OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://localhost:3000/")
 OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
+PORTAINER_CONTAINER = "portainer"
+DEV_SIGNAL_CONTAINER = "ariadne-signal-dev"
+DEV_DISCOVERY_CONTAINER = "ariadne-discovery-dev"
+DEV_COMPOSE_PROJECT = "ariadne-discovery-signal-dev"
+DEV_COMPOSE_FILES = (PROJECT_ROOT / "compose.yaml", PROJECT_ROOT / "compose.local.yaml")
+LOCAL_DOCKER_CONTAINER_ORDER = (
+    DEV_DISCOVERY_CONTAINER,
+    DEV_SIGNAL_CONTAINER,
+    OPEN_WEBUI_CONTAINER,
+    PORTAINER_CONTAINER,
+)
+LOCAL_SERVICE_DEFINITIONS = (
+    {"id": "docker", "label": "Docker Desktop", "kind": "desktop", "optional": False},
+    {"id": "portainer", "label": "Portainer", "kind": "container", "container": PORTAINER_CONTAINER, "optional": True},
+    {"id": "openwebui", "label": "Open WebUI", "kind": "container", "container": OPEN_WEBUI_CONTAINER, "optional": True},
+    {"id": "discovery-dev", "label": "Discovery DEV", "kind": "compose", "container": DEV_DISCOVERY_CONTAINER, "compose_service": "discovery", "optional": False},
+    {"id": "signal-dev", "label": "Signal DEV", "kind": "compose", "container": DEV_SIGNAL_CONTAINER, "compose_service": "signal", "optional": False},
+)
+MANAGED_LOCAL_DOCKER_CONTAINERS = frozenset(LOCAL_DOCKER_CONTAINER_ORDER)
 SIGNAL_SERVICE_CLIENT = SignalServiceClient()
 SEARCH_PROVIDER_REGISTRY = SearchProviderRegistry()
 HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
@@ -394,6 +413,281 @@ def run_action(command: list[str], timeout: float = 60.0) -> dict[str, object]:
         return {"ok": completed.returncode == 0, "detail": output}
     except (OSError, subprocess.SubprocessError) as exc:
         return {"ok": False, "detail": str(exc)}
+
+
+def _docker_unavailable(output: str) -> bool:
+    normalized = output.strip().lower()
+    return normalized.startswith("unavailable:") or any(
+        marker in normalized
+        for marker in (
+            "failed to connect to the docker api",
+            "cannot connect to the docker daemon",
+            "is the docker daemon running",
+            "cannot find the file specified",
+            "permission denied while trying to connect to the docker api",
+            "error during connect",
+        )
+    )
+
+
+def _docker_host_runtime_active() -> bool:
+    """Check host-side Docker/WSL ownership without using the Docker API."""
+    process_list = run_readonly(
+        ["tasklist.exe", "/FI", "IMAGENAME eq Docker Desktop.exe", "/NH"]
+    ).lower()
+    backend_list = run_readonly(
+        ["tasklist.exe", "/FI", "IMAGENAME eq com.docker.backend.exe", "/NH"]
+    ).lower()
+    if "docker desktop.exe" in process_list or "com.docker.backend.exe" in backend_list:
+        return True
+    running_wsl = run_readonly(["wsl.exe", "--list", "--running"]).lower()
+    return "docker-desktop" in running_wsl
+
+
+def docker_desktop_state() -> str:
+    """Return Docker Desktop's host-level state without changing anything."""
+    if not DOCKER_PATH.exists():
+        return "Error"
+    if not _docker_host_runtime_active():
+        return "Stopped"
+    raw = run_readonly([str(DOCKER_PATH), "desktop", "status"])
+    match = re.search(r"(?im)^\s*status\s+(running|stopped|starting|stopping)\s*$", raw)
+    if match:
+        return match.group(1).capitalize()
+    normalized = raw.lower()
+    if "running" in normalized:
+        return "Running"
+    if "stopped" in normalized:
+        return "Stopped"
+    if "starting" in normalized:
+        return "Starting"
+    if "stopping" in normalized:
+        return "Stopping"
+    if not _docker_host_runtime_active():
+        return "Stopped"
+    return "Error"
+
+
+def _docker_container_rows() -> tuple[list[dict[str, str]], str | None]:
+    if not DOCKER_PATH.exists():
+        return [], "Docker CLI was not found."
+    raw = run_readonly([str(DOCKER_PATH), "ps", "-a", "--format", "{{json .}}"])
+    if _docker_unavailable(raw):
+        return [], raw or "Docker Desktop is unavailable."
+    rows: list[dict[str, str]] = []
+    for line in raw.splitlines():
+        try:
+            value = json.loads(line)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if isinstance(value, dict):
+            rows.append({str(key): str(item) for key, item in value.items()})
+    return rows, None
+
+
+def _container_lifecycle_state(row: dict[str, str] | None) -> str:
+    if not row:
+        return "Stopped"
+    state = row.get("State", "").lower()
+    status = row.get("Status", "").lower()
+    if state == "running" and "unhealthy" in status:
+        return "Error"
+    if state == "running" and "health: starting" in status:
+        return "Starting"
+    if state == "running":
+        return "Running"
+    if state in {"created", "restarting", "paused"}:
+        return "Starting" if state in {"created", "restarting"} else "Error"
+    if state in {"dead", "removing"}:
+        return "Error"
+    return "Stopped"
+
+
+def local_service_statuses(docker: dict[str, object] | None = None) -> list[dict[str, object]]:
+    """Describe the named local services Ariadne may control.
+
+    This allow-list is deliberately local-only. Hera container names are not
+    included, so status and lifecycle operations cannot target production.
+    """
+    if docker is not None:
+        desktop_state = str(docker.get("desktop_state") or docker_desktop_state())
+        if isinstance(docker.get("containers"), list):
+            rows = [
+                {
+                    "Names": str(item.get("name", "")),
+                    "State": str(item.get("state", "")),
+                    "Status": str(item.get("status", "")),
+                }
+                for item in docker.get("containers", [])
+                if isinstance(item, dict)
+            ]
+            error = None if docker.get("available") else str(docker.get("detail") or "Docker Desktop is unavailable.")
+        else:
+            rows, error = _docker_container_rows()
+    else:
+        desktop_state = docker_desktop_state()
+        rows, error = _docker_container_rows()
+    by_name = {row.get("Names", ""): row for row in rows if row.get("Names")}
+    engine_ready = bool(docker and docker.get("available")) if docker is not None else error is None and desktop_state == "Running"
+    services: list[dict[str, object]] = []
+    for definition in LOCAL_SERVICE_DEFINITIONS:
+        service = dict(definition)
+        if service["kind"] == "desktop":
+            state = desktop_state
+            detail = "Docker engine is available." if engine_ready else "Docker Desktop is not ready."
+        elif desktop_state in {"Stopped", "Stopping"} or not engine_ready:
+            state = "Starting" if desktop_state == "Starting" else "Stopped" if desktop_state == "Stopped" else "Error"
+            detail = "Docker Desktop is stopped." if state == "Stopped" else "Docker Desktop is unavailable."
+        else:
+            row = by_name.get(str(service["container"]))
+            state = _container_lifecycle_state(row)
+            if row is None:
+                detail = "Not created yet."
+            elif state == "Running":
+                detail = row.get("Status", "Running")
+            elif state == "Error":
+                detail = row.get("Status", "Container needs attention.")
+            else:
+                detail = "Container is stopped."
+        service.update(
+            {
+                "state": state,
+                "action": "stop" if state == "Running" else "start",
+                "detail": detail,
+            }
+        )
+        services.append(service)
+    return services
+
+
+def _dev_compose_command(*arguments: str) -> list[str]:
+    command = [str(DOCKER_PATH), "compose", "-p", DEV_COMPOSE_PROJECT]
+    for compose_file in DEV_COMPOSE_FILES:
+        command.extend(("-f", str(compose_file)))
+    command.extend(arguments)
+    return command
+
+
+def _wait_for_docker(timeout: float = 45.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if docker_desktop_state() == "Running":
+            docker = docker_status()
+            if docker.get("available"):
+                return True
+        time.sleep(1)
+    return False
+
+
+def start_docker_desktop() -> dict[str, object]:
+    current = docker_desktop_state()
+    if current == "Running" and docker_status().get("available"):
+        return {"ok": True, "message": "Docker Desktop is already running."}
+    result = run_action([str(DOCKER_PATH), "desktop", "start"], timeout=60.0)
+    if not result["ok"]:
+        launch_detail = launch_docker_desktop()
+        if not launch_detail:
+            return {"ok": False, "message": result["detail"] or "Docker Desktop could not be started."}
+    if not _wait_for_docker():
+        return {"ok": False, "message": "Docker Desktop did not become ready within 45 seconds."}
+    return {"ok": True, "message": "Docker Desktop is running."}
+
+
+def _stop_managed_container(name: str) -> dict[str, object]:
+    rows, error = _docker_container_rows()
+    if error:
+        return {"ok": False, "name": name, "message": error}
+    row = next((item for item in rows if item.get("Names") == name), None)
+    if row is None or _container_lifecycle_state(row) == "Stopped":
+        return {"ok": True, "name": name, "message": f"{name} is already stopped."}
+    result = run_action([str(DOCKER_PATH), "stop", "--time", "30", name], timeout=40.0)
+    if not result["ok"]:
+        return {"ok": False, "name": name, "message": result["detail"] or f"Could not stop {name}."}
+    after, after_error = _docker_container_rows()
+    if after_error:
+        return {"ok": False, "name": name, "message": f"{name} stop could not be verified: {after_error}"}
+    stopped = next((item for item in after if item.get("Names") == name), None)
+    if stopped and _container_lifecycle_state(stopped) != "Stopped":
+        return {"ok": False, "name": name, "message": f"{name} did not confirm stopped."}
+    return {"ok": True, "name": name, "message": f"{name} stopped and verified."}
+
+
+def stop_docker_desktop_safely() -> dict[str, object]:
+    """Stop Ariadne-owned local containers, then Docker only if safe.
+
+    Any running container outside the explicit local allow-list prevents the
+    Docker Desktop stop. This protects user workloads and production-shaped
+    containers from an implicit shutdown.
+    """
+    desktop_state = docker_desktop_state()
+    if desktop_state == "Stopped":
+        return {"ok": True, "state": "Stopped", "message": "Docker Desktop was already stopped.", "unrelated": []}
+    if desktop_state not in {"Running", "Starting", "Stopping"}:
+        return {"ok": False, "state": "Error", "message": "Docker Desktop state could not be verified.", "unrelated": []}
+
+    rows, error = _docker_container_rows()
+    if error:
+        return {"ok": False, "state": desktop_state, "message": error, "unrelated": []}
+    running = {row.get("Names") for row in rows if row.get("State") == "running"}
+    for name in LOCAL_DOCKER_CONTAINER_ORDER:
+        if name in running:
+            result = _stop_managed_container(name)
+            if not result["ok"]:
+                return {"ok": False, "state": "Running", "message": str(result["message"]), "unrelated": []}
+
+    after, after_error = _docker_container_rows()
+    if after_error:
+        return {"ok": False, "state": "Running", "message": after_error, "unrelated": []}
+    unrelated = sorted(
+        row.get("Names", "")
+        for row in after
+        if row.get("State") == "running" and row.get("Names") not in MANAGED_LOCAL_DOCKER_CONTAINERS
+    )
+    if unrelated:
+        message = "Docker Desktop left running; unrelated containers remain: " + ", ".join(unrelated)
+        print(f"[shutdown] {message}", flush=True)
+        return {"ok": False, "state": "Running", "message": message, "unrelated": unrelated}
+
+    result = run_action([str(DOCKER_PATH), "desktop", "stop"], timeout=60.0)
+    if not result["ok"]:
+        return {"ok": False, "state": "Running", "message": result["detail"] or "Docker Desktop stop failed.", "unrelated": []}
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        if not _docker_host_runtime_active() or docker_desktop_state() == "Stopped":
+            return {"ok": True, "state": "Stopped", "message": "Docker Desktop stopped and verified.", "unrelated": []}
+        time.sleep(1)
+    return {"ok": False, "state": "Error", "message": "Docker Desktop stop was requested but not verified.", "unrelated": []}
+
+
+def local_service_action(service_id: str, action: str) -> dict[str, object]:
+    definition = next((item for item in LOCAL_SERVICE_DEFINITIONS if item["id"] == service_id), None)
+    if definition is None or action not in {"start", "stop"}:
+        return {"ok": False, "message": "Unknown local service action."}
+    if service_id == "docker":
+        result = start_docker_desktop() if action == "start" else stop_docker_desktop_safely()
+        result["services"] = local_service_statuses()
+        return result
+    if action == "start":
+        docker_result = start_docker_desktop()
+        if not docker_result["ok"]:
+            docker_result["services"] = local_service_statuses()
+            return docker_result
+        if definition["kind"] == "compose":
+            result = run_action(
+                _dev_compose_command("up", "-d", "--build", str(definition["compose_service"])),
+                timeout=300.0,
+            )
+        else:
+            result = run_action([str(DOCKER_PATH), "start", str(definition["container"])], timeout=45.0)
+        if not result["ok"]:
+            response = {"ok": False, "message": result["detail"] or f"Could not start {definition['label']}."}
+        else:
+            response = {"ok": True, "message": f"{definition['label']} start requested."}
+    else:
+        stopped = _stop_managed_container(str(definition["container"]))
+        response = {"ok": bool(stopped["ok"]), "message": str(stopped["message"])}
+    response["services"] = local_service_statuses()
+    return response
 
 
 def drive_status(letter: str) -> dict[str, object]:
@@ -929,7 +1223,7 @@ def lmstudio_running() -> bool:
 
 
 def lmstudio_status() -> dict[str, object]:
-    available = lmstudio_running() or probe_http("http://127.0.0.1:1234/v1/models")
+    available = lmstudio_running() or probe_http("http://localhost:1234/v1/models")
     return {
         "available": available,
         "state": "online" if available else "offline",
@@ -959,7 +1253,7 @@ def wan2gp_status(*, ignore_transition: bool = False) -> dict[str, object]:
             "gpu": transition,
         }
     try:
-        renderer = json_http("http://127.0.0.1:8766/api/status")
+        renderer = json_http("http://localhost:8766/api/status")
         if renderer.get("online"):
             gpu_ready = bool(renderer.get("device")) and float(renderer.get("vram_total") or 0) > 0
             if not gpu_ready:
@@ -1050,7 +1344,7 @@ def _start_wan2gp_backend() -> dict[str, object]:
         renderer = None
         for _ in range(40):
             try:
-                renderer = json_http("http://127.0.0.1:8766/api/status")
+                renderer = json_http("http://localhost:8766/api/status")
                 break
             except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
                 time.sleep(0.5)
@@ -1062,7 +1356,7 @@ def _start_wan2gp_backend() -> dict[str, object]:
         if renderer.get("online"):
             return {"ok": True, "wan2gp": {"state": "online", "detail": "Local Music Video Renderer · GPU backend ready · Ubuntu 24.04"}}
         try:
-            response = post_json("http://127.0.0.1:8766/api/start", {}, timeout=20.0)
+            response = post_json("http://localhost:8766/api/start", {}, timeout=20.0)
         except (TimeoutError, socket.timeout) as exc:
             # The renderer may continue booting after its synchronous start
             # endpoint exceeds the HTTP client timeout.  Treat this as a
@@ -1218,9 +1512,9 @@ def _stop_wan2gp_backend() -> dict[str, object]:
     global WAN2GP_PROCESS
     with PROFILE_LOCK:
         try:
-            renderer = json_http("http://127.0.0.1:8766/api/status")
+            renderer = json_http("http://localhost:8766/api/status")
             if renderer.get("online"):
-                post_json("http://127.0.0.1:8766/api/stop", {})
+                post_json("http://localhost:8766/api/stop", {})
         except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
             pass
         process = WAN2GP_PROCESS
@@ -1316,7 +1610,7 @@ def stop_interactive_session() -> None:
 
 def renderer_is_busy() -> bool:
     try:
-        renderer = json_http("http://127.0.0.1:8766/api/status")
+        renderer = json_http("http://localhost:8766/api/status")
     except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
         return False
     clip = renderer.get("clip") if isinstance(renderer, dict) else None
@@ -1494,6 +1788,11 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
 
     _unload_ollama_models()
     release_workloads(force=True)
+    docker_report = stop_docker_desktop_safely()
+    print(
+        f"[shutdown] local Docker cleanup: {docker_report.get('message', 'no report')}",
+        flush=True,
+    )
     ACTIVE_PROFILE = "General"
     IDLE_SHUTDOWN_DONE = True
 
@@ -1901,18 +2200,12 @@ def wsl_environment_action(name: str, action: str) -> dict[str, object]:
 
     if name == "docker-desktop":
         if action == "start":
-            launch_detail = launch_docker_desktop()
-            deadline = time.monotonic() + 45
-            while time.monotonic() < deadline:
-                docker = docker_status()
-                if docker.get("available"):
-                    return {"ok": True, "message": "Docker Desktop is running.", "docker": docker}
-                time.sleep(1)
-            return {"ok": False, "message": f"{launch_detail} Docker engine is not ready yet.", "docker": docker_status()}
-        result = run_action(["taskkill.exe", "/IM", "Docker Desktop.exe", "/T", "/F"], timeout=20.0)
-        if not result["ok"]:
-            return {"ok": False, "message": f"Docker Desktop stop failed: {result['detail'] or 'unknown error'}"}
-        return {"ok": True, "message": "Docker Desktop stopped.", "docker": docker_status()}
+            result = start_docker_desktop()
+            result["docker"] = docker_status()
+            return result
+        result = stop_docker_desktop_safely()
+        result["docker"] = docker_status()
+        return result
 
     if action == "start":
         existing = INTERACTIVE_PROCESS if name == VIDEO_RENDERER_DISTRO else WSL_SESSION_PROCESSES.get(name)
@@ -1953,38 +2246,40 @@ def wsl_environment_action(name: str, action: str) -> dict[str, object]:
 
 
 def docker_status() -> dict[str, object]:
-    raw = run_readonly(
-        [
-            str(DOCKER_PATH),
-            "ps",
-            "-a",
-            "--format",
-            "{{.Names}}|{{.Status}}|{{.Image}}",
-        ]
-    )
-    normalized = raw.strip().lower()
-    docker_unavailable_markers = (
-        "failed to connect to the docker api",
-        "cannot connect to the docker daemon",
-        "is the docker daemon running",
-        "cannot find the file specified",
-        "permission denied while trying to connect to the docker api",
-        "unavailable:",
-    )
-    if any(marker in normalized for marker in docker_unavailable_markers):
+    desktop_state = docker_desktop_state()
+    rows, error = _docker_container_rows()
+    if error:
         return {
             "available": False,
-            "state": "offline",
+            "state": "offline" if desktop_state == "Stopped" else "error",
+            "desktop_state": desktop_state,
             "containers": [],
-            "detail": "Docker Desktop is not started.",
+            "unmanaged_running": [],
+            "detail": "Docker Desktop is not started." if desktop_state == "Stopped" else error,
         }
-    containers = []
-    for line in raw.splitlines():
-        name, _, remainder = line.partition("|")
-        status, _, image = remainder.partition("|")
-        if name and status and image:
-            containers.append({"name": name, "status": status, "image": image})
-    return {"available": True, "state": "online", "containers": containers}
+    containers = [
+        {
+            "name": row.get("Names", ""),
+            "status": row.get("Status", ""),
+            "image": row.get("Image", ""),
+            "state": row.get("State", ""),
+        }
+        for row in rows
+        if row.get("Names")
+    ]
+    unmanaged_running = sorted(
+        row.get("Names", "")
+        for row in rows
+        if row.get("State") == "running" and row.get("Names") not in MANAGED_LOCAL_DOCKER_CONTAINERS
+    )
+    return {
+        "available": desktop_state == "Running",
+        "state": "online" if desktop_state == "Running" else "offline",
+        "desktop_state": desktop_state,
+        "containers": containers,
+        "unmanaged_running": unmanaged_running,
+        "detail": "Docker Desktop is running." if desktop_state == "Running" else "Docker Desktop is not ready.",
+    }
 
 def _clean_home_event_text(value: object, limit: int = 420) -> str:
     text = " ".join(str(value or "").replace("\r", " ").replace("\n", " ").split())
@@ -3898,6 +4193,7 @@ def status_payload() -> dict[str, object]:
         "drives": [drive_status(letter) for letter in ("C", "D", "E", "F", "G")],
         "wsl": wsl,
         "docker": docker,
+        "local_services": local_service_statuses(docker),
         "controls_enabled": True,
         "note": "Knowledge Vault controls run inside an active Ariadne session; workers are bounded and cleaned up when the session ends.",
     }
@@ -4241,6 +4537,15 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/docker/stop":
                 self.send_json(wsl_environment_action("docker-desktop", "stop"))
+                return
+            if path == "/api/local-services/action":
+                service_id = body.get("service")
+                action = body.get("action")
+                if not isinstance(service_id, str) or not isinstance(action, str):
+                    self.send_json({"ok": False, "message": "A local service and action are required."}, 400)
+                    return
+                result = local_service_action(service_id, action)
+                self.send_json(result, 200 if result.get("ok") else 409)
                 return
             if path == "/api/openwebui/prepare":
                 model = body.get("model")

@@ -146,35 +146,34 @@ function renderWsl(distributions) {
   renderResourceCards("wsl", distributions, root);
 }
 
-function renderDocker(docker) {
+function renderLocalServices(services, docker) {
   const root = document.querySelector("#docker-list");
-  const containers = docker.containers || [];
-  const stopped = !docker.available || docker.state === "offline" || docker.state === "stopped";
-  const action = stopped ? "start" : "stop";
-  const label = stopped ? "Start Docker Desktop" : "Stop Docker Desktop";
-  root.innerHTML = `<div class="docker-control"><button type="button" class="resource-action" data-docker-action="${action}">${label}</button><span class="state-empty">${stopped ? "Docker Desktop is not started." : "Docker Desktop is running."}</span></div><div class="docker-container-list"></div>`;
-  const containerRoot = root.querySelector(".docker-container-list");
-  if (stopped) {
-    containerRoot.innerHTML = `<div class="state-empty">Start Docker Desktop to manage its containers.</div>`;
-  } else if (!containers.length) {
-    containerRoot.innerHTML = `<div class="state-empty">Docker is available; no containers listed.</div>`;
-  } else {
-    renderResourceCards("docker", containers, containerRoot);
+  if (!services.length) {
+    root.innerHTML = `<div class="state-empty">No Ariadne local services reported.</div>`;
+    return;
   }
-  root.querySelector("[data-docker-action]")?.addEventListener("click", async (event) => {
+  root.innerHTML = services.map((service) => {
+    const state = String(service.state || "Error");
+    const normalized = state.toLowerCase();
+    const action = state === "Running" ? "stop" : "start";
+    const actionLabel = state === "Starting" || state === "Stopping" ? `${state}...` : action === "start" ? "Start" : "Stop";
+    const optional = service.optional ? " · optional" : "";
+    return `<article class="resource-card" data-local-service="${esc(service.id)}"><span class="state-icon">▣</span><span class="state-copy"><span class="state-name">${esc(service.label)}</span><span class="state-meta">${esc(service.detail || "")}${optional}</span></span><button type="button" class="resource-action" data-local-service-action="${action}" data-local-service-id="${esc(service.id)}"${normalized === "starting" || normalized === "stopping" ? " disabled" : ""}>${actionLabel}</button><span class="state-pill ${normalized}">${esc(state)}</span></article>`;
+  }).join("");
+  root.querySelectorAll("[data-local-service-action]").forEach((button) => button.addEventListener("click", async (event) => {
     const button = event.currentTarget;
-    const actionName = button.dataset.dockerAction;
+    const actionName = button.dataset.localServiceAction;
+    const serviceId = button.dataset.localServiceId;
     button.disabled = true;
-    button.textContent = actionName === "start" ? "Starting Docker Desktop..." : "Stopping Docker Desktop...";
+    button.textContent = actionName === "start" ? "Starting..." : "Stopping...";
     try {
-      await postJson(`/api/docker/${actionName}`, {});
+      await postJson("/api/local-services/action", {service: serviceId, action: actionName});
       await refresh();
     } catch (error) {
-      button.disabled = false;
-      button.textContent = actionName === "start" ? "Start Docker Desktop" : "Stop Docker Desktop";
       window.alert(error.message);
+      await refresh();
     }
-  });
+  }));
 }
 
 function setupResourceControls() {
@@ -260,7 +259,7 @@ function render(data) {
   const dockerStopped = !docker.available || docker.state === "offline" || docker.state === "stopped";
   document.querySelector("#docker-metric").textContent = dockerStopped ? "Not started" : `${containers.length} container${containers.length === 1 ? "" : "s"}`;
   document.querySelector("#docker-pill").textContent = docker.available ? "Detected" : "Quiet";
-  renderDocker(docker);
+  renderLocalServices(data.local_services || [], docker);
   renderDrives(data.drives || []);
   document.querySelector("#last-update").textContent = `Updated ${new Date(data.timestamp).toLocaleTimeString()}`;
 }
@@ -539,9 +538,9 @@ async function launchWan2GP(action) {
     if (action === "start") {
       await waitForWan2GP();
       if (rendererWindow && !rendererWindow.closed) {
-        rendererWindow.location.href = "http://127.0.0.1:8766/";
+        rendererWindow.location.href = "http://localhost:8766/";
       } else {
-        window.location.href = "http://127.0.0.1:8766/";
+        window.location.href = "http://localhost:8766/";
       }
     }
     await refresh();

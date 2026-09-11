@@ -92,8 +92,8 @@ const BUBBLE_CORNER_RADIUS: u32 = 6;
 // Pixels remain alpha-bearing so the layered overlay keeps its transparency.
 const BUBBLE_BACKGROUND_BGRA: [u8; 4] = [59, 48, 19, 220];
 const MAX_SOURCE_DIMENSION: u32 = 4096;
-const DASHBOARD_URL: &str = "http://127.0.0.1:8765/";
-const DASHBOARD_URL_W: PCWSTR = w!("http://127.0.0.1:8765/");
+const DASHBOARD_URL: &str = "http://localhost:8765/";
+const DASHBOARD_URL_W: PCWSTR = w!("http://localhost:8765/");
 const NIN_SELECT_EVENT: u32 = 0x0400;
 const NIN_KEYSELECT_EVENT: u32 = 0x0401;
 
@@ -2463,6 +2463,9 @@ fn run() -> Result<(), String> {
                     }
                     ID_EXIT => {
                         tray_log_line("tray menu Exit Ariadne selected");
+                        avatar.set_state("offline");
+                        tray_log_line("shutdown state shown; waiting for orderly workload cleanup");
+                        thread::sleep(Duration::from_millis(750));
                         PostQuitMessage(0)
                     }
                     _ => {}
