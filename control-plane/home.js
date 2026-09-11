@@ -203,6 +203,32 @@ function inferSignalCategory(item) {
   return "Main News Feed";
 }
 
+function positionSignalDetails(anchor, popover) {
+  if (!anchor.isConnected) return false;
+  const anchorRect = anchor.getBoundingClientRect();
+  if (!anchorRect.width || !anchorRect.height) return false;
+  const viewport = window.visualViewport || {};
+  const viewportWidth = Number(viewport.width) || window.innerWidth;
+  const viewportHeight = Number(viewport.height) || window.innerHeight;
+  const popoverRect = popover.getBoundingClientRect();
+  const positioner = window.calculateSignalPopoverPosition;
+  if (typeof positioner !== "function") return false;
+  const position = positioner(
+    anchorRect,
+    {width: popoverRect.width, height: popoverRect.height},
+    {width: viewportWidth, height: viewportHeight},
+    {margin: 12, gap: 8},
+  );
+  popover.style.width = `${position.width}px`;
+  popover.style.maxHeight = `${position.maxHeight}px`;
+  popover.style.left = `${position.left}px`;
+  popover.style.top = `${position.top}px`;
+  popover.style.right = "auto";
+  popover.style.bottom = "auto";
+  popover.style.transform = "none";
+  return true;
+}
+
 function renderSignalCard(item) {
   const card = el("article", "signal-card " + (item.tone || "quiet"));
   card.dataset.signalId = item.signal_id || "";
@@ -210,39 +236,100 @@ function renderSignalCard(item) {
   const body = el("div", "signal-card-body");
   const title = el("h3", "signal-card-title", item.label || "Signal");
   const summary = el("p", "signal-summary", item.summary || item.detail || "");
-  const meta = el("div", "signal-meta");
-  meta.append(el("span", "signal-source", item.source || "Ariadne"));
   const discovery = item.provenance && typeof item.provenance === "object" ? item.provenance.discovery : null;
   const sourceCount = Number(discovery && discovery.source_count || 0);
-  if (Number.isFinite(sourceCount) && sourceCount > 0) {
-    meta.append(el("span", "signal-meta-separator", "·"), el("span", "signal-corroboration", `${sourceCount} independent source${sourceCount === 1 ? "" : "s"}`));
-  }
-  const published = item.published_at ? new Date(item.published_at) : null;
-  if (published && !Number.isNaN(published.getTime())) {
-    const time = el("time", "signal-published", published.toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}));
-    time.dateTime = item.published_at;
-    meta.append(el("span", "signal-meta-separator", "·"), time);
-  }
   const watchlistTopics = Array.isArray(item.watchlist_matches)
     ? item.watchlist_matches.map(match => typeof match === "string" ? match : match && match.topic).filter(Boolean)
     : [];
-  if (watchlistTopics.length) {
-    meta.append(el("span", "signal-meta-separator", "·"), el("span", "signal-watchlist-match", `Watching: ${watchlistTopics.join(", ")}`));
-  }
   const semanticMatches = Array.isArray(item.semantic_matches) ? item.semantic_matches.filter(match => match && match.interest) : [];
-  if (semanticMatches.length) {
-    const why = el("div", "signal-why");
-    why.append(el("strong", "", "Why this appeared"));
-    why.append(el("span", "", semanticMatches.slice(0, 2).map(match => `${match.interest} · semantic ${Number(match.semantic_score || 0).toFixed(2)}`).join(" · ")));
-    body.append(why);
-  }
-  if (item.why_appeared && !semanticMatches.length) {
-    const why = el("div", "signal-why");
-    why.append(el("strong", "", "Why this appeared"), el("span", "", item.why_appeared));
-    body.append(why);
-  }
-  if (item.stale) meta.append(el("span", "signal-cached", "Cached"));
-  body.append(title, summary, meta);
+  const sourceNames = Array.isArray(discovery && discovery.source_names)
+    ? discovery.source_names.filter(Boolean)
+    : [];
+  const rankScore = Number(discovery && discovery.rank_score != null ? discovery.rank_score : item.rank_score);
+  const category = item.category || (discovery && discovery.discovery_category) || "";
+  const published = item.published_at ? new Date(item.published_at) : null;
+  const collected = item.collected_at || (discovery && discovery.first_seen_at);
+  const lastSeen = discovery && discovery.last_seen_at;
+  const formatDate = value => {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime())
+      ? date.toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"})
+      : "";
+  };
+  const details = el("div", "signal-details-popover");
+  details.hidden = true;
+  details.setAttribute("role", "tooltip");
+  const addDetail = (label, value, className = "") => {
+    if (!value) return;
+    const row = el("div", "signal-detail-row" + (className ? " " + className : ""));
+    row.append(el("strong", "", label), el("span", "", value));
+    details.append(row);
+  };
+  const why = semanticMatches.length
+    ? semanticMatches.slice(0, 2).map(match => `${match.interest} · semantic ${Number(match.semantic_score || 0).toFixed(2)}`).join(" · ")
+    : item.why_appeared;
+  addDetail("Why this appeared", why);
+  if (Number.isFinite(rankScore)) addDetail("Rank score", rankScore.toFixed(3));
+  addDetail("Original source", sourceNames.join(", ") || item.source || "Ariadne Discovery Engine");
+  if (Number.isFinite(sourceCount) && sourceCount > 0) addDetail("Coverage", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
+  if (watchlistTopics.length) addDetail("Watchlist", watchlistTopics.join(", "), "signal-watchlist-match");
+  if (formatDate(collected)) addDetail("Collected", formatDate(collected));
+  if (formatDate(published)) addDetail("Published", formatDate(published));
+  if (formatDate(lastSeen)) addDetail("Last seen", formatDate(lastSeen));
+  if (category) addDetail("Discovery category", category);
+  addDetail("Cache status", item.stale ? "Cached" : "Current");
+  if (item.content_status || item.article_status) addDetail("Content status", item.content_status || item.article_status);
+  const info = el("div", "signal-info");
+  const infoButton = el("button", "signal-info-button", "i");
+  infoButton.type = "button";
+  infoButton.setAttribute("aria-label", "Show signal details");
+  infoButton.setAttribute("aria-expanded", "false");
+  let hideDetailsTimer = null;
+  const repositionDetails = () => {
+    if (!details.hidden) positionSignalDetails(infoButton, details);
+  };
+  const showDetails = () => {
+    if (hideDetailsTimer) window.clearTimeout(hideDetailsTimer);
+    if (details.parentElement !== document.body) document.body.append(details);
+    details.classList.add("signal-details-floating", "signal-details-positioning");
+    details.hidden = false;
+    if (!positionSignalDetails(infoButton, details)) {
+      details.hidden = true;
+      details.classList.remove("signal-details-floating", "signal-details-positioning");
+      if (details.parentElement !== info) info.append(details);
+      return;
+    }
+    details.classList.remove("signal-details-positioning");
+    infoButton.setAttribute("aria-expanded", "true");
+    window.addEventListener("resize", repositionDetails);
+    window.addEventListener("scroll", repositionDetails, true);
+  };
+  const scheduleHideDetails = () => {
+    if (hideDetailsTimer) window.clearTimeout(hideDetailsTimer);
+    hideDetailsTimer = window.setTimeout(() => {
+      window.removeEventListener("resize", repositionDetails);
+      window.removeEventListener("scroll", repositionDetails, true);
+      details.hidden = true;
+      details.classList.remove("signal-details-floating", "signal-details-positioning");
+      details.style.removeProperty("width");
+      details.style.removeProperty("max-height");
+      details.style.removeProperty("left");
+      details.style.removeProperty("top");
+      details.style.removeProperty("right");
+      details.style.removeProperty("bottom");
+      details.style.removeProperty("transform");
+      if (details.parentElement !== info) info.append(details);
+      infoButton.setAttribute("aria-expanded", "false");
+    }, 160);
+  };
+  info.addEventListener("mouseenter", showDetails);
+  info.addEventListener("mouseleave", scheduleHideDetails);
+  details.addEventListener("mouseenter", showDetails);
+  details.addEventListener("mouseleave", scheduleHideDetails);
+  infoButton.addEventListener("focus", showDetails);
+  infoButton.addEventListener("blur", scheduleHideDetails);
+  info.append(infoButton, details);
+  body.append(title, summary);
   const fallback = () => el("div", "signal-image signal-image-placeholder", "✦");
   const imageUrl = item.image_url && /^https?:\/\//i.test(item.image_url) ? item.image_url : "";
   if (imageUrl) {
@@ -256,7 +343,8 @@ function renderSignalCard(item) {
   } else card.append(fallback());
   card.append(body);
   if (validUrl) {
-    const sourceLink = el("a", "signal-source-link", "Read original source ↗");
+    const sourceLabel = item.source && item.source !== "Ariadne Discovery Engine" ? item.source : "Original source";
+    const sourceLink = el("a", "signal-source-link", `${sourceLabel} ↗`);
     sourceLink.href = item.url;
     sourceLink.target = "_blank";
     sourceLink.rel = "noopener noreferrer";
@@ -291,7 +379,7 @@ function renderSignalCard(item) {
     if (thinkButton.disabled) promotionStatus.textContent = "Reading source article…";
     thinkButton.addEventListener("click", () => promoteSignalToVault(item.signal_id, thinkButton, promotionStatus));
     promotion.append(thinkButton, promotionStatus);
-    actions.append(feedback, promotion);
+    actions.append(feedback, info, promotion);
     card.append(actions);
   }
   return card;

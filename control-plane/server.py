@@ -4072,6 +4072,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/home.js":
             self.send_asset("home.js", "text/javascript; charset=utf-8")
             return
+        if path == "/signal-popover-position.js":
+            self.send_asset("signal-popover-position.js", "text/javascript; charset=utf-8")
+            return
         if path == "/configuration.css":
             self.send_asset("configuration.css", "text/css; charset=utf-8")
             return
