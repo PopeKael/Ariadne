@@ -125,12 +125,12 @@ function renderResourceCards(kind, items, root) {
   const icon = kind === "docker" ? "▣" : "◉";
   root.innerHTML = ordered.map((item) => {
     const key = resourceKey(kind, item);
-    const meta = kind === "docker" ? (item.image || "Image not reported") : `WSL ${item.version || ""}`;
+    const meta = kind === "docker" ? (item.image || "Image not reported") : (item.detail || `WSL ${item.version || ""}`);
     const state = String(item.state || item.status || "").toLowerCase();
-    const action = kind === "wsl" ? (state === "running" ? "stop" : "start") : "";
+    const action = kind === "wsl" ? (state === "running" ? "stop" : state === "stopped" ? "start" : "") : "";
     const actionLabel = state === "starting" ? "Starting..." : action === "stop" ? "Stop" : "Start";
     const actionMarkup = kind === "wsl"
-      ? `<button type="button" class="resource-action" data-resource-action="${action}" data-resource-name="${esc(item.name)}"${state === "starting" ? " disabled" : ""}>${actionLabel}</button>`
+      ? (action ? `<button type="button" class="resource-action" data-resource-action="${action}" data-resource-name="${esc(item.name)}"${state === "starting" ? " disabled" : ""}>${actionLabel}</button>` : "")
       : "";
     return `<article class="resource-card" draggable="true" data-resource-key="${esc(key)}"><span class="resource-drag" title="Drag to sort" aria-hidden="true">⋮⋮</span><span class="state-icon">${icon}</span><span class="state-copy"><span class="state-name">${esc(resourceLabel(kind, item))}</span><span class="state-meta">${esc(meta)}</span></span>${actionMarkup}<button type="button" class="resource-rename" data-resource-rename="${esc(key)}">Rename</button><span class="state-pill">${esc(item.state || item.status || "Unknown")}</span></article>`;
   }).join("");
@@ -258,7 +258,8 @@ function render(data) {
   renderHostCapabilities(data.host_capabilities);
   renderPluginSummary(data.plugins);
   const distributions = data.wsl || [];
-  document.querySelector("#wsl-pill").textContent = distributions.length ? "Detected" : "Quiet";
+  const wslState = String(distributions[0]?.state || "").toLowerCase();
+  document.querySelector("#wsl-pill").textContent = wslState === "checking" ? "Checking" : wslState === "unavailable" ? "Unavailable" : distributions.length ? "Detected" : "Quiet";
   renderWsl(distributions);
   const docker = data.docker || {available:false, containers:[]};
   const containers = docker.containers || [];
@@ -715,7 +716,11 @@ function setupLaunchActions() {
     }
   });
 }
+let refreshInFlight = false;
+
 async function refresh() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
   try {
     const response = await fetch("/api/status", {cache: "no-store"});
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -725,6 +730,8 @@ async function refresh() {
     document.querySelector("#service-pill").textContent = "Offline";
     document.querySelector("#service-pill").classList.remove("online");
     document.querySelector("#hero-copy").textContent = "The Ariadne local service is not responding.";
+  } finally {
+    refreshInFlight = false;
   }
 }
 

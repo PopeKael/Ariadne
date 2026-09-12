@@ -17,7 +17,7 @@ use std::ptr::null_mut;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{mpsc::Receiver, mpsc::TryRecvError, Arc, Mutex, OnceLock};
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use windows::core::{w, GUID, PCWSTR};
 use windows::Win32::Foundation::{
@@ -330,6 +330,35 @@ fn request_core_shutdown() -> bool {
         && response.contains("AriadneLocal/")
 }
 
+fn core_shutdown_status() -> Option<(String, String)> {
+    let address = ("127.0.0.1", 8765)
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut addrs| addrs.next())?;
+    let mut stream = TcpStream::connect_timeout(&address, Duration::from_millis(250)).ok()?;
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(750)));
+    let _ = stream.set_write_timeout(Some(Duration::from_millis(750)));
+    stream
+        .write_all(
+            b"GET /api/system/shutdown/status HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n",
+        )
+        .ok()?;
+    let mut response = String::new();
+    stream.read_to_string(&mut response).ok()?;
+    if !(response.starts_with("HTTP/1.0 200") || response.starts_with("HTTP/1.1 200")) {
+        return None;
+    }
+    let body = response.split_once("\r\n\r\n")?.1;
+    let payload: serde_json::Value = serde_json::from_str(body.trim()).ok()?;
+    let state = payload.get("state")?.as_str()?.to_owned();
+    let message = payload
+        .get("message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("")
+        .to_owned();
+    Some((state, message))
+}
+
 fn spawn_core(
     project_root: &Path,
     ui: UiQueue,
@@ -408,28 +437,61 @@ fn spawn_core(
         let _ = wait_tx.send(());
     });
     let readiness_ui = ui.clone();
+    let readiness_stop = Arc::new(AtomicBool::new(false));
+    let readiness_stop_thread = readiness_stop.clone();
     thread::spawn(move || {
-        for _ in 0..60 {
-            if health_check() {
-                log_line("core available");
-                readiness_ui.push(UiEvent::CoreAvailable);
-                return;
+        let mut available = false;
+        let mut first_check = true;
+        let mut failed_checks = 0u8;
+        loop {
+            if readiness_stop_thread.load(Ordering::Relaxed) {
+                break;
             }
-            thread::sleep(Duration::from_millis(500));
+            if health_check() {
+                failed_checks = 0;
+                if !available {
+                    log_line("core available");
+                    available = true;
+                }
+                // Re-announce readiness so a delayed/stale IPC state event
+                // cannot leave the avatar offline after the core recovered.
+                readiness_ui.push(UiEvent::CoreAvailable);
+                first_check = false;
+                thread::sleep(Duration::from_secs(5));
+                continue;
+            }
+            failed_checks = failed_checks.saturating_add(1);
+            if available && failed_checks >= 3 {
+                log_line("core became unavailable");
+                readiness_ui.push(UiEvent::CoreUnavailable(
+                    "Ariadne core health check is no longer responding.".into(),
+                ));
+                available = false;
+                failed_checks = 0;
+            } else if !available && first_check {
+                log_line("core unavailable during startup; readiness monitor will continue");
+                readiness_ui.push(UiEvent::CoreUnavailable(
+                    "Python launched but /api/status is not ready yet.".into(),
+                ));
+                first_check = false;
+            }
+            thread::sleep(Duration::from_secs(1));
         }
-        log_line("core unavailable after launch health window");
-        readiness_ui.push(UiEvent::CoreUnavailable(
-            "Python launched but /api/status did not become ready.".into(),
-        ));
     });
     ui.push(UiEvent::CoreLaunched(command_text));
-    Some(ProcessState { child, job, wait_rx })
+    Some(ProcessState {
+        child,
+        job,
+        wait_rx,
+        readiness_stop,
+    })
 }
 
 struct ProcessState {
     child: Arc<Mutex<Child>>,
     job: windows::Win32::Foundation::HANDLE,
     wait_rx: std::sync::mpsc::Receiver<()>,
+    readiness_stop: Arc<AtomicBool>,
 }
 
 impl Drop for ProcessState {
@@ -506,9 +568,28 @@ impl CoreSupervisor {
 }
 
 fn terminate_core(process: &ProcessState) {
+    process.readiness_stop.store(true, Ordering::Relaxed);
     if request_core_shutdown() {
         log_line("Python core graceful shutdown requested");
-        for _ in 0..700 {
+        let deadline = Instant::now() + Duration::from_secs(180);
+        let mut completion_seen = false;
+        let mut failure_seen = false;
+        while Instant::now() < deadline {
+            if let Some((state, message)) = core_shutdown_status() {
+                match state.as_str() {
+                    "complete" => {
+                        log_line(format!("Python core shutdown complete: {}", message));
+                        completion_seen = true;
+                        break;
+                    }
+                    "failed" => {
+                        log_line(format!("Python core shutdown reported failure: {}", message));
+                        failure_seen = true;
+                        break;
+                    }
+                    _ => {}
+                }
+            }
             let exited = process
                 .child
                 .lock()
@@ -517,12 +598,52 @@ fn terminate_core(process: &ProcessState) {
                 .flatten()
                 .is_some();
             if exited {
-                log_line("Python core exited after graceful shutdown request");
+                log_line(if completion_seen {
+                    "Python core exited after positive shutdown completion"
+                } else {
+                    "Python core exited before positive shutdown completion"
+                });
                 return;
             }
-            thread::sleep(Duration::from_millis(50));
+            thread::sleep(Duration::from_millis(250));
         }
-        log_line("Python core graceful shutdown timed out; terminating lifecycle job");
+        if completion_seen {
+            let exit_deadline = Instant::now() + Duration::from_secs(30);
+            while Instant::now() < exit_deadline {
+                let exited = process
+                    .child
+                    .lock()
+                    .ok()
+                    .and_then(|mut child| child.try_wait().ok())
+                    .flatten()
+                    .is_some();
+                if exited {
+                    log_line("Python core exited after positive shutdown completion");
+                    return;
+                }
+                thread::sleep(Duration::from_millis(250));
+            }
+        } else if failure_seen {
+            log_line("Python core shutdown did not complete; allowing a short exit window before fallback termination");
+            let exit_deadline = Instant::now() + Duration::from_secs(10);
+            while Instant::now() < exit_deadline {
+                let exited = process
+                    .child
+                    .lock()
+                    .ok()
+                    .and_then(|mut child| child.try_wait().ok())
+                    .flatten()
+                    .is_some();
+                if exited {
+                    log_line("Python core exited after reporting shutdown failure");
+                    return;
+                }
+                thread::sleep(Duration::from_millis(250));
+            }
+        } else {
+            log_line("Python core shutdown completion timed out after 180 seconds");
+        }
+        log_line("Python core graceful shutdown fallback: terminating lifecycle job");
     }
     unsafe {
         match TerminateJobObject(process.job, 1) {
@@ -2316,7 +2437,16 @@ fn process_events(
                 avatar.set_state("loading_model");
                 log_line(format!("core launch recorded: {}", command));
             }
-            UiEvent::CoreAvailable => avatar.set_state("idle"),
+            UiEvent::CoreAvailable => {
+                let prior_state = avatar.state.clone();
+                if matches!(prior_state.as_str(), "offline" | "loading_model") {
+                    log_line(format!(
+                        "core-ready avatar reconciliation: {} -> idle",
+                        prior_state
+                    ));
+                    avatar.set_state("idle");
+                }
+            }
             UiEvent::CoreUnavailable(reason) => {
                 log_line(format!("core unavailable: {}", reason));
                 avatar.set_state("offline");
@@ -2475,10 +2605,14 @@ fn run() -> Result<(), String> {
             DispatchMessageW(&message);
         }
         process_events(&queue, &mut avatar, &supervisor, message_hwnd);
+        // Stop the Python core before joining the IPC receiver. Python owns
+        // the other end of the named pipe and may otherwise keep a blocking
+        // read alive long enough to prevent the host from reaching orderly
+        // shutdown completion.
+        supervisor.stop();
         stop_pipe.store(true, Ordering::Release);
         wake_pipe_receiver();
         let _ = pipe_thread.join();
-        supervisor.stop();
         tray_remove(&tray);
         let _ = DestroyWindow(avatar.hwnd);
         let _ = DestroyWindow(message_hwnd);

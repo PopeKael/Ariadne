@@ -34,6 +34,7 @@ class ShutdownLifecycleTests(unittest.TestCase):
         self.old_idle_shutdown_done = server.IDLE_SHUTDOWN_DONE
         self.old_profile = server.ACTIVE_PROFILE
         self.old_http_server = server.HTTP_SERVER
+        self.old_shutdown_status = server.SHUTDOWN_STATUS
         server.SESSIONS = {}
         server.JOBS = {}
         server.WSL_SESSION_PROCESSES = {}
@@ -41,6 +42,13 @@ class ShutdownLifecycleTests(unittest.TestCase):
         server.IDLE_SHUTDOWN_DONE = False
         server.ACTIVE_PROFILE = "Interactive AI"
         server.HTTP_SERVER = None
+        server.SHUTDOWN_STATUS = {
+            "state": "running",
+            "message": "Ariadne is running.",
+            "started_at": None,
+            "completed_at": None,
+            "docker": None,
+        }
 
     def tearDown(self):
         server.SESSIONS = self.old_sessions
@@ -50,6 +58,7 @@ class ShutdownLifecycleTests(unittest.TestCase):
         server.IDLE_SHUTDOWN_DONE = self.old_idle_shutdown_done
         server.ACTIVE_PROFILE = self.old_profile
         server.HTTP_SERVER = self.old_http_server
+        server.SHUTDOWN_STATUS = self.old_shutdown_status
 
     def test_shutdown_stops_tracked_jobs_and_managed_wsl_helpers(self):
         plugin = FakeProcess()
@@ -80,6 +89,7 @@ class ShutdownLifecycleTests(unittest.TestCase):
         release.assert_called_once_with(force=True)
         run_readonly.assert_called_once_with(["wsl.exe", "--terminate", "Ubuntu"], timeout=30.0)
         self.assertTrue(server.SHUTDOWN_REQUESTED)
+        self.assertEqual(server.shutdown_status_payload()["state"], "complete")
         self.assertEqual(server.ACTIVE_PROFILE, "RUN")
         avatar_event.assert_called_once()
 

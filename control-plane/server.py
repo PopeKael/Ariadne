@@ -23,6 +23,7 @@ import urllib.request
 import importlib.util
 import mimetypes
 import re
+import stat
 import tempfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -72,6 +73,8 @@ PORT = int(os.environ.get("ARIADNE_PORT", "8765"))
 LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
 DOCKER_DESKTOP_PATH = Path(r"C:\Program Files\Docker\Docker\Docker Desktop.exe")
 DOCKER_PATH = Path(r"C:\Program Files\Docker\Docker\resources\bin\docker.exe")
+DOCKER_RUNTIME_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "Docker" / "run"
+DOCKER_SECRETS_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "docker-secrets-engine"
 OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
@@ -198,6 +201,21 @@ LIFECYCLE_THREAD: threading.Thread | None = None
 HTTP_SERVER: ThreadingHTTPServer | None = None
 SHUTDOWN_LOCK = threading.Lock()
 SHUTDOWN_REQUESTED = False
+SHUTDOWN_STATUS_LOCK = threading.Lock()
+SHUTDOWN_STATUS: dict[str, object] = {
+    "state": "running",
+    "message": "Ariadne is running.",
+    "started_at": None,
+    "completed_at": None,
+    "docker": None,
+}
+SHUTDOWN_SERVER_STOP_SCHEDULED = False
+STATUS_CACHE_LOCK = threading.Lock()
+STATUS_CACHE: dict[str, object] | None = None
+STATUS_CACHE_UPDATED_AT = 0.0
+STATUS_REFRESH_IN_FLIGHT = False
+RESOURCE_STATUS_CACHE: dict[str, object] | None = None
+RESOURCE_STATUS_REFRESH_IN_FLIGHT = False
 MODEL_ACTIVITY_LOCK = threading.RLock()
 MODEL_IN_FLIGHT: dict[str, int] = {}
 MODEL_LAST_USED: dict[str, float] = {}
@@ -818,10 +836,112 @@ def _wait_for_docker(timeout: float = 45.0) -> bool:
     return False
 
 
+def _set_shutdown_status(state: str, message: str, *, docker: dict[str, object] | None = None) -> None:
+    global SHUTDOWN_STATUS
+    now = datetime.now(timezone.utc).isoformat()
+    with SHUTDOWN_STATUS_LOCK:
+        SHUTDOWN_STATUS = {
+            "state": state,
+            "message": message,
+            "started_at": SHUTDOWN_STATUS.get("started_at") or now,
+            "completed_at": now if state in {"complete", "failed"} else None,
+            "docker": docker,
+        }
+
+
+def shutdown_status_payload() -> dict[str, object]:
+    with SHUTDOWN_STATUS_LOCK:
+        return dict(SHUTDOWN_STATUS)
+
+
+def _schedule_http_server_shutdown() -> None:
+    """Leave a short window for the host to observe terminal shutdown state."""
+    global SHUTDOWN_SERVER_STOP_SCHEDULED
+    with SHUTDOWN_STATUS_LOCK:
+        if SHUTDOWN_SERVER_STOP_SCHEDULED:
+            return
+        SHUTDOWN_SERVER_STOP_SCHEDULED = True
+
+    def stop_server_later() -> None:
+        time.sleep(5)
+        httpd = HTTP_SERVER
+        if httpd is not None:
+            # HTTPServer.shutdown() must run outside serve_forever's thread.
+            httpd.shutdown()
+
+    threading.Thread(
+        target=stop_server_later,
+        name="ariadne-shutdown-server",
+        daemon=True,
+    ).start()
+
+
+def _is_reparse_point(path: Path) -> bool:
+    try:
+        attributes = int(getattr(path.stat(follow_symlinks=False), "st_file_attributes", 0))
+    except OSError:
+        try:
+            get_attributes = ctypes.windll.kernel32.GetFileAttributesW
+            get_attributes.argtypes = [ctypes.c_wchar_p]
+            get_attributes.restype = ctypes.c_uint32
+            attributes = int(get_attributes(str(path)))
+            if attributes == 0xFFFFFFFF:
+                return False
+        except (AttributeError, OSError):
+            return False
+    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
+
+
+def _rename_stale_docker_runtime_dir(directory: Path, allowed_entries: set[str]) -> str | None:
+    """Preserve and replace a runtime directory containing only stale sockets."""
+    if not directory.is_dir():
+        return None
+    try:
+        entries = list(directory.iterdir())
+    except OSError as exc:
+        print(f"[docker] could not inspect {directory}: {exc}", flush=True)
+        return None
+    if not entries or any(
+        entry.name not in allowed_entries or not _is_reparse_point(entry)
+        for entry in entries
+    ):
+        return None
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = directory.with_name(f"{directory.name}.stale-{stamp}")
+    suffix = 1
+    while backup.exists():
+        backup = directory.with_name(f"{directory.name}.stale-{stamp}-{suffix}")
+        suffix += 1
+    try:
+        directory.rename(backup)
+    except OSError as exc:
+        print(f"[docker] could not preserve stale runtime directory {directory}: {exc}", flush=True)
+        return None
+    return str(backup)
+
+
+def recover_stale_docker_runtime() -> list[str]:
+    """Recover Docker's known Windows AF_UNIX shutdown residue without data loss."""
+    recovered: list[str] = []
+    run_backup = _rename_stale_docker_runtime_dir(
+        DOCKER_RUNTIME_DIR,
+        {"dockerEthernetVfkit", "dockerInference", "sailor-ingest.sock", "userAnalyticsOtlpHttp.sock"},
+    )
+    if run_backup:
+        recovered.append(run_backup)
+    secrets_backup = _rename_stale_docker_runtime_dir(DOCKER_SECRETS_DIR, {"engine.sock"})
+    if secrets_backup:
+        recovered.append(secrets_backup)
+    if recovered:
+        print("[docker] preserved stale runtime directories: " + ", ".join(recovered), flush=True)
+    return recovered
+
+
 def start_docker_desktop() -> dict[str, object]:
     current = docker_desktop_state()
     if current == "Running" and docker_status().get("available"):
         return {"ok": True, "message": "Docker Desktop is already running."}
+    recover_stale_docker_runtime()
     result = run_action([str(DOCKER_PATH), "desktop", "start"], timeout=60.0)
     if not result["ok"]:
         launch_detail = launch_docker_desktop()
@@ -1991,59 +2111,77 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
         if SHUTDOWN_REQUESTED:
             return
         SHUTDOWN_REQUESTED = True
+        _set_shutdown_status("requested", "Ariadne shutdown cleanup is in progress.")
 
-    # Tray Exit already presents this state before calling the supervisor;
-    # keeping it here makes the existing shutdown endpoint identical for the
-    # Gaming profile action without creating another lifecycle path.
-    _send_avatar_event_with_retry(lambda: emit_state("offline"))
+    docker_report: dict[str, object] | None = None
+    try:
+        # Tray Exit already presents this state before calling the supervisor;
+        # keeping it here makes the existing shutdown endpoint identical for the
+        # Gaming profile action without creating another lifecycle path.
+        _send_avatar_event_with_retry(lambda: emit_state("offline"))
 
-    with SESSION_LOCK:
-        sessions = list(SESSIONS.values())
-        job_ids = {
-            job_id
-            for session in sessions
-            for job_id in session.get("jobs", set())
-        }
-        jobs = [JOBS.get(job_id) for job_id in job_ids]
-        SESSIONS.clear()
-    for job in jobs:
-        if not isinstance(job, dict):
-            continue
-        _terminate_process(job.get("process"))
-        presenter = job.get("activity_presenter")
         with SESSION_LOCK:
-            job["state"] = "cancelled"
-            job["message"] = "Cancelled when Ariadne shut down."
-        if isinstance(presenter, CoreActivityPresenter):
-            presenter.cancelled("Ariadne shut down; active work was cancelled.")
+            sessions = list(SESSIONS.values())
+            job_ids = {
+                job_id
+                for session in sessions
+                for job_id in session.get("jobs", set())
+            }
+            jobs = [JOBS.get(job_id) for job_id in job_ids]
+            SESSIONS.clear()
+        for job in jobs:
+            if not isinstance(job, dict):
+                continue
+            _terminate_process(job.get("process"))
+            presenter = job.get("activity_presenter")
+            with SESSION_LOCK:
+                job["state"] = "cancelled"
+                job["message"] = "Cancelled when Ariadne shut down."
+            if isinstance(presenter, CoreActivityPresenter):
+                presenter.cancelled("Ariadne shut down; active work was cancelled.")
 
-    # Environment actions can create a long-lived WSL sleep process without a
-    # browser job. Keep those handles in the existing map and stop only the
-    # environments Ariadne itself started.
-    with PROFILE_LOCK:
-        managed_wsl = list(WSL_SESSION_PROCESSES.items())
-        WSL_SESSION_PROCESSES.clear()
-    for name, process in managed_wsl:
-        _terminate_process(process)
-        run_readonly(["wsl.exe", "--terminate", name], timeout=30.0)
+        # Environment actions can create a long-lived WSL sleep process without a
+        # browser job. Keep those handles in the existing map and stop only the
+        # environments Ariadne itself started.
+        with PROFILE_LOCK:
+            managed_wsl = list(WSL_SESSION_PROCESSES.items())
+            WSL_SESSION_PROCESSES.clear()
+        for name, process in managed_wsl:
+            _terminate_process(process)
+            run_readonly(["wsl.exe", "--terminate", name], timeout=30.0)
 
-    _unload_ollama_models()
-    release_workloads(force=True)
-    docker_report = stop_docker_desktop_safely()
-    print(
-        f"[shutdown] local Docker cleanup: {docker_report.get('message', 'no report')}",
-        flush=True,
-    )
-    ACTIVE_PROFILE = "RUN"
-    ACTIVE_DEPLOYMENT_MODE = "RUN"
-    SIGNAL_SERVICE_CLIENT = SIGNAL_SERVICE_CLIENTS["RUN"]
-    IDLE_SHUTDOWN_DONE = True
+        _unload_ollama_models()
+        release_workloads(force=True)
+        docker_report = stop_docker_desktop_safely()
+        print(
+            f"[shutdown] local Docker cleanup: {docker_report.get('message', 'no report')}",
+            flush=True,
+        )
+        ACTIVE_PROFILE = "RUN"
+        ACTIVE_DEPLOYMENT_MODE = "RUN"
+        SIGNAL_SERVICE_CLIENT = SIGNAL_SERVICE_CLIENTS["RUN"]
+        IDLE_SHUTDOWN_DONE = True
 
-    if stop_server:
-        httpd = HTTP_SERVER
-        if httpd is not None:
-            # HTTPServer.shutdown() must run outside serve_forever's thread.
-            httpd.shutdown()
+        if docker_report.get("ok") or docker_report.get("unrelated"):
+            _set_shutdown_status(
+                "complete",
+                "Ariadne workloads stopped; Docker Desktop was left running because unrelated containers remain."
+                if docker_report.get("unrelated")
+                else "Ariadne workloads and Docker Desktop stopped and verified.",
+                docker=docker_report,
+            )
+        else:
+            _set_shutdown_status(
+                "failed",
+                str(docker_report.get("message") or "Docker Desktop shutdown could not be verified."),
+                docker=docker_report,
+            )
+    except Exception as exc:
+        print(f"[shutdown] cleanup failed: {exc}", flush=True)
+        _set_shutdown_status("failed", f"Ariadne shutdown cleanup failed: {exc}", docker=docker_report)
+    finally:
+        if stop_server:
+            _schedule_http_server_shutdown()
 
 
 def _close_session(session_id: str) -> bool:
@@ -2431,6 +2569,23 @@ def parse_wsl(raw: str) -> list[dict[str, str]]:
                     "version": parts[-1],
                 }
             )
+    if entries:
+        return entries
+    normalized = raw.casefold()
+    if "access is denied" in normalized or "e_accessdenied" in normalized:
+        return [{
+            "name": "WSL",
+            "state": "unavailable",
+            "version": "",
+            "detail": "WSL enumeration was denied by Windows; no distribution state was returned.",
+        }]
+    if raw.strip():
+        return [{
+            "name": "WSL",
+            "state": "unavailable",
+            "version": "",
+            "detail": "WSL returned no parseable distribution state.",
+        }]
     return entries
 
 
@@ -4427,7 +4582,45 @@ def home_activity_state_payload(chat_id: str) -> dict[str, object]:
     return {"ok": True, "activity": HOME_ACTIVITY_STREAM.snapshot(chat_id).as_dict()}
 
 
-def status_payload() -> dict[str, object]:
+def _status_skeleton() -> dict[str, object]:
+    """Return an immediate status view while optional telemetry is collected."""
+    deployment = deployment_status()
+    return {
+        "service": "online",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "host": os.environ.get("COMPUTERNAME", "Windows host"),
+        "profile": ACTIVE_PROFILE,
+        "profile_detail": deployment["display"] + " · " + ("Hera production" if ACTIVE_PROFILE == "RUN" else "Docker local services"),
+        "deployment": deployment,
+        "interactive_ai": {
+            "ubuntu": {"state": "unknown", "detail": "Telemetry is still loading."},
+            "wan2gp": {"state": "unknown", "detail": "Telemetry is still loading."},
+            "gpu": gpu_owner_status(),
+        },
+        "memory": {"available": False, "detail": "Telemetry is still loading."},
+        "gpu": {"available": False, "detail": "Telemetry is still loading."},
+        "gpu_owner": gpu_owner_status(),
+        "model_memory": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
+        "host_capabilities": {
+            "ollama": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
+            "openwebui": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
+            "lmstudio": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
+        },
+        "plugins": {"plugins": []},
+        "vault": {"state": "unknown", "detail": "Telemetry is still loading."},
+        "vault_root": str(VAULT_ROOT),
+        "vault_root_source": VAULT_ROOT_SOURCE,
+        "vault_counts": {},
+        "drives": [],
+        "wsl": [],
+        "docker": {"available": False, "state": "unknown", "desktop_state": "Unknown", "containers": [], "unmanaged_running": [], "detail": "Telemetry is still loading."},
+        "local_services": [],
+        "controls_enabled": True,
+        "note": "Optional host telemetry is loading in the background.",
+    }
+
+
+def _build_status_payload() -> dict[str, object]:
     global LAST_BROWSER_HEARTBEAT
     LAST_BROWSER_HEARTBEAT = time.monotonic()
     wsl_raw = run_readonly(["wsl.exe", "--list", "--verbose"])
@@ -4463,6 +4656,34 @@ def status_payload() -> dict[str, object]:
         "controls_enabled": True,
         "note": "Knowledge Vault controls run inside an active Ariadne session; workers are bounded and cleaned up when the session ends.",
     }
+
+
+def _refresh_status_cache() -> None:
+    global STATUS_CACHE, STATUS_CACHE_UPDATED_AT, STATUS_REFRESH_IN_FLIGHT
+    try:
+        payload = _build_status_payload()
+        with STATUS_CACHE_LOCK:
+            STATUS_CACHE = payload
+            STATUS_CACHE_UPDATED_AT = time.monotonic()
+    finally:
+        with STATUS_CACHE_LOCK:
+            STATUS_REFRESH_IN_FLIGHT = False
+
+
+def status_payload() -> dict[str, object]:
+    """Serve the latest complete snapshot while refreshing telemetry in background."""
+    global LAST_BROWSER_HEARTBEAT, STATUS_REFRESH_IN_FLIGHT
+    LAST_BROWSER_HEARTBEAT = time.monotonic()
+    with STATUS_CACHE_LOCK:
+        cached = STATUS_CACHE
+        cache_age = time.monotonic() - STATUS_CACHE_UPDATED_AT
+        refresh_needed = cached is None or cache_age >= 5.0
+        if refresh_needed and not STATUS_REFRESH_IN_FLIGHT:
+            STATUS_REFRESH_IN_FLIGHT = True
+            threading.Thread(target=_refresh_status_cache, name="ariadne-status-refresh", daemon=True).start()
+    if cached is not None:
+        return dict(cached)
+    return _status_skeleton()
 
 
 class AriadneHandler(BaseHTTPRequestHandler):
@@ -4593,6 +4814,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/status":
             self.send_json(status_payload())
+            return
+        if path == "/api/system/shutdown/status":
+            self.send_json(shutdown_status_payload())
             return
         if path == "/api/vault/jobs/" or path.startswith("/api/vault/jobs/"):
             job_id = path.rsplit("/", 1)[-1]
