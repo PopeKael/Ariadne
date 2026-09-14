@@ -3576,6 +3576,33 @@ def _is_source_article_document(document: dict[str, object]) -> bool:
     return bool(_source_article_signal_id(document))
 
 
+def recover_home_chat_with_article_context() -> str | None:
+    """Recover the newest active article chat when browser storage is absent.
+
+    ``localhost`` and ``127.0.0.1`` have separate localStorage namespaces.
+    After a restart this can lose the browser's chat id even though the
+    server-side article context is still present.  Only an active chat with a
+    real source-article document is eligible; otherwise normal session start
+    creates a fresh chat.
+    """
+    candidates: list[tuple[float, str]] = []
+    try:
+        for context_path in DOCUMENT_WORK_ROOT.glob("*.json"):
+            if not re.fullmatch(r"[0-9a-f]{32}", context_path.stem):
+                continue
+            chat_id = context_path.stem
+            chat = HOME_CHAT_STORE.get(chat_id)
+            if not chat or chat.get("status") != "active":
+                continue
+            documents = list_documents(DOCUMENT_WORK_ROOT, chat_id)
+            if not any(_is_source_article_document(item) for item in documents):
+                continue
+            candidates.append((context_path.stat().st_mtime, chat_id))
+    except (OSError, ValueError, TypeError):
+        return None
+    return max(candidates)[1] if candidates else None
+
+
 def _loading_source_article_documents(chat_id: str) -> list[dict[str, object]]:
     """Return article context that is attached but not ready for retrieval."""
     loading: list[dict[str, object]] = []
@@ -4240,6 +4267,9 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     selected_tools = {str(item) for item in tool_ids if isinstance(item, str)} if isinstance(tool_ids, list) else set()
     request_started = time.perf_counter()
     request_id = uuid.uuid4().hex
+    turn_id: str | None = None
+    assistant_message_id: str | None = None
+    record_home_event("request_started", f"{query[:300]} · chat_id={chat_id} · request_id={request_id}")
     safe_history = HOME_CHAT_STORE.model_history(chat_id, limit=8)
     attachment_summaries = list_documents(DOCUMENT_WORK_ROOT, chat_id)
     active_source_signal_ids = _active_source_signal_ids(attachment_summaries)
@@ -4554,11 +4584,12 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
             "identity_kernel": response_identity,
         }
     except Exception as exc:
-        HOME_CHAT_STORE.interrupt_turn(chat_id, turn_id, str(exc))
-        CORE_INTERACTION_STREAM.emit(
-            "response_interrupted", conversation_id=chat_id, turn_id=turn_id, response_id=turn_id,
-            data={"error": str(exc)[:420]},
-        )
+        if turn_id:
+            HOME_CHAT_STORE.interrupt_turn(chat_id, turn_id, str(exc))
+            CORE_INTERACTION_STREAM.emit(
+                "response_interrupted", conversation_id=chat_id, turn_id=turn_id, response_id=turn_id,
+                data={"error": str(exc)[:420]},
+            )
         if document_activity:
             document_activity.failed(f"Document analysis failed: {str(exc)[:420]}")
         publish_home_activity(chat_id, "error", "The Home response could not be completed.")
@@ -5059,8 +5090,14 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/session/start":
                 expire_home_chats()
+                requested_chat_id = body.get("chat_id")
+                recovered_context_chat = None
+                if not isinstance(requested_chat_id, str) or not requested_chat_id.strip():
+                    recovered_context_chat = recover_home_chat_with_article_context()
+                    if recovered_context_chat:
+                        requested_chat_id = recovered_context_chat
                 chat, resumed = HOME_CHAT_STORE.get_or_create(
-                    body.get("chat_id"), home_identity_kernel_metadata()
+                    requested_chat_id, home_identity_kernel_metadata()
                 )
                 session_id = uuid.uuid4().hex
                 global IDLE_SHUTDOWN_DONE
@@ -5071,6 +5108,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
                         "chat_id": chat["chat_id"], "processing": False,
                     }
                 lifecycle = "chat_resumed" if resumed else "chat_started"
+                if recovered_context_chat and resumed:
+                    record_home_event("chat_context_recovered", f"Restored article context for chat {chat['chat_id']} after browser-origin storage loss.")
                 record_home_event(lifecycle, f"{chat.get('title') or 'Ariadne Home chat'} ({chat['chat_id']})")
                 CORE_INTERACTION_STREAM.emit(
                     "conversation_attached", conversation_id=chat["chat_id"],
@@ -5441,6 +5480,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
                         self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids))
                 except RuntimeError as exc:
                     self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
+                except Exception as exc:
+                    self.send_json({"ok": False, "message": f"Home request failed: {str(exc)[:420]}"}, 500)
                 finally:
                     with SESSION_LOCK:
                         if session_id in SESSIONS:

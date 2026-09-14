@@ -111,6 +111,7 @@ class HomeServerPersistenceTests(unittest.TestCase):
                 journal = server.HOME_EVENTS_PATH.read_text(encoding="utf-8")
                 self.assertIn("chat_started", journal)
                 self.assertIn("chat_resumed", journal)
+                self.assertIn("request_started", journal)
                 self.assertIn("chat_closed", journal)
                 self.assertIn("chat_archived", journal)
             finally:
@@ -173,6 +174,39 @@ class HomeServerPersistenceTests(unittest.TestCase):
                 server._home_mcp = original_mcp
                 server.HOME_EVENTS_PATH = original_events_path
 
+    def test_session_start_recovers_article_context_without_browser_chat_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_documents_root = server.DOCUMENT_WORK_ROOT
+            original_events_path = server.HOME_EVENTS_PATH
+            store = ChatStore(Path(temporary))
+            chat = store.create()
+            server.HOME_CHAT_STORE = store
+            server.DOCUMENT_WORK_ROOT = Path(temporary) / "document_contexts"
+            server.HOME_EVENTS_PATH = Path(temporary) / "Journal" / "Ariadne Home Events.md"
+            server.attach_document(
+                server.DOCUMENT_WORK_ROOT,
+                chat["chat_id"],
+                "signal-context__signal-recursive.md",
+                "---\ntype: source-article\nsignal_id: signal-recursive\ntitle: AI recursive self-improvement\narticle_status: ready\n---\n# AI recursive self-improvement\n",
+            )
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            try:
+                started = self.post(httpd.server_address[1], "/api/session/start", {"surface": "home"})
+                self.assertEqual(started["chat_id"], chat["chat_id"])
+                self.assertTrue(started["resumed"])
+                self.assertEqual(started["documents"][0]["metadata"]["signal_id"], "signal-recursive")
+                journal = server.HOME_EVENTS_PATH.read_text(encoding="utf-8")
+                self.assertIn("chat_context_recovered", journal)
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                server.HOME_CHAT_STORE = original_store
+                server.DOCUMENT_WORK_ROOT = original_documents_root
+                server.HOME_EVENTS_PATH = original_events_path
+
     def test_backend_ignores_browser_history_and_persists_success(self):
         with tempfile.TemporaryDirectory() as temporary:
             original_store = server.HOME_CHAT_STORE
@@ -227,6 +261,42 @@ class HomeServerPersistenceTests(unittest.TestCase):
             self.assertEqual(record["messages"][0]["content"], "Keep this user turn")
             self.assertEqual(record["messages"][0]["state"], "complete")
             self.assertEqual(record["messages"][1]["state"], "interrupted")
+
+    def test_http_returns_json_for_pre_turn_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_events_path = server.HOME_EVENTS_PATH
+            original_payload = server.home_chat_payload
+            server.HOME_CHAT_STORE = ChatStore(Path(temporary))
+            server.HOME_EVENTS_PATH = Path(temporary) / "Journal" / "Ariadne Home Events.md"
+            server.home_chat_payload = lambda *args, **kwargs: (_ for _ in ()).throw(ValueError("pre-turn failure"))
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            try:
+                port = httpd.server_address[1]
+                started = self.post(port, "/api/session/start", {"surface": "home"})
+                request = urllib.request.Request(
+                    f"http://localhost:{port}/api/home/chat",
+                    data=json.dumps({
+                        "session_id": started["session_id"],
+                        "chat_id": started["chat_id"],
+                        "message": "This must return an error.",
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with self.assertRaises(urllib.error.HTTPError) as raised:
+                    urllib.request.urlopen(request, timeout=5)
+                payload = json.loads(raised.exception.read().decode("utf-8"))
+                self.assertEqual(raised.exception.code, 500)
+                self.assertEqual(payload["message"], "Home request failed: pre-turn failure")
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                server.HOME_CHAT_STORE = original_store
+                server.HOME_EVENTS_PATH = original_events_path
+                server.home_chat_payload = original_payload
 
 
 if __name__ == "__main__":

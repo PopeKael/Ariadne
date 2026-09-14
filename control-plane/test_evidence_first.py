@@ -30,6 +30,28 @@ class EvidenceFirstTests(unittest.TestCase):
         self.assertFalse(result.use_vault)
         self.assertFalse(result.external_search)
 
+    def test_unattached_story_reference_does_not_fall_back_to_unrelated_vault(self):
+        result = decide(
+            "Lets break down this story",
+            planner_result={
+                "plan": {"intent": "analyze_story", "use_vault": False, "tools": []},
+                "semantic": {
+                    "intent": "analyze_story",
+                    "needs_personal_history": False,
+                    "needs_current_information": False,
+                    "needs_attachment": False,
+                    "ambiguity": "high",
+                    "confidence": 0.95,
+                },
+            },
+            vault_mode="auto", vault_available=True, search_available=True,
+        )
+        self.assertFalse(result.use_vault)
+        self.assertFalse(result.external_search)
+        self.assertTrue(result.verification_required)
+        self.assertEqual(result.reason_codes, ("missing_attachment_context",))
+        self.assertIn("attached", result.failure_message)
+
     def test_casual_known_person_reference_is_quiet_context_not_verification(self):
         classification = classify_request("I bet Chanya would have a view on this.")
         self.assertTrue(classification["personal_context"])

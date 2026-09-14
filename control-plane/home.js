@@ -1,4 +1,5 @@
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map()};
+const HOME_REQUEST_TIMEOUT_MS = 240000;
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map()};
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -12,9 +13,13 @@ async function getJson(url) {
   if (!response.ok) throw new Error(data.message || ("HTTP " + response.status));
   return data;
 }
-async function postJson(url, payload) {
-  const response = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)});
-  const data = await response.json();
+async function postJson(url, payload, options = {}) {
+  const response = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload), signal: options.signal});
+  const raw = await response.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch (_) {
+    throw new Error(response.ok ? "The local service returned an invalid response." : ("HTTP " + response.status));
+  }
   if (!response.ok) throw new Error(data.message || ("HTTP " + response.status));
   return data;
 }
@@ -1218,6 +1223,9 @@ async function ask(event) {
   submit.disabled = true;
   setContextMutationState(true);
   beginRequestStatus(status);
+  const controller = new AbortController();
+  state.requestAbortController = controller;
+  state.requestTimeout = window.setTimeout(() => controller.abort(), HOME_REQUEST_TIMEOUT_MS);
   try {
     const result = await postJson("/api/home/chat", {
       session_id: state.sessionId,
@@ -1226,7 +1234,7 @@ async function ask(event) {
       history: history,
       vault_mode: document.querySelector("#knowledge-mode").value,
       tool_ids: Array.from(state.selectedToolIds)
-    });
+    }, {signal: controller.signal});
     result.timing = result.timing || fallbackTiming(result.answer);
     status.textContent = "Answering…";
     state.messages.push({role: "assistant", content: result.answer});
@@ -1239,9 +1247,16 @@ async function ask(event) {
     loadHome();
     loadRecentChats();
   } catch (error) {
-    addMessage("assistant", "I could not complete that locally: " + error.message);
-    status.textContent = "Error: the local request failed.";
+    const timedOut = error && error.name === "AbortError";
+    const message = timedOut
+      ? "The local Home request exceeded 4 minutes without returning an answer. Check the chat before retrying."
+      : "I could not complete that locally: " + error.message;
+    addMessage("assistant", message);
+    status.textContent = timedOut ? "Timed out: no answer was returned." : "Error: the local request failed.";
   } finally {
+    if (state.requestTimeout) window.clearTimeout(state.requestTimeout);
+    state.requestTimeout = null;
+    state.requestAbortController = null;
     endRequestStatus();
     submit.disabled = false;
     setContextMutationState(false);

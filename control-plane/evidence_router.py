@@ -34,6 +34,8 @@ GENERIC_NAMED_WORDS = frozenset({
     "what", "where", "when", "which", "who", "is", "are", "was", "were", "did", "does", "do",
     "how", "the", "this", "that", "still", "there", "and", "or", "it", "work", "works",
 })
+STORY_CONTEXT_WORDS = frozenset({"article", "story", "document", "paper", "passage", "source"})
+CONTEXT_REFERENCE_WORDS = frozenset({"this", "that", "the", "it", "above", "attached"})
 
 
 @dataclass(frozen=True)
@@ -143,9 +145,13 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
         if enabled:
             reasons.append(code)
 
+    # Planner ambiguity is a safety signal, not evidence authorization.  An
+    # underspecified conversational request must not turn into an arbitrary
+    # Vault search; the caller either supplies the missing attachment/context
+    # or receives a clear request for it.
     verification_required = bool(reasons) and (
         factual or explicit or named or current or planner_current or precise
-        or conflict or planner_low_confidence or planner_ambiguous or personal_fact_verification
+        or conflict or planner_low_confidence or personal_fact_verification
     )
     return {
         "current_information": current or planner_current,
@@ -173,6 +179,32 @@ def decide(
 ) -> EvidenceDecision:
     classification = classify_request(query, planner_result)
     semantic = planner_result.get("semantic") if isinstance(planner_result, dict) and isinstance(planner_result.get("semantic"), dict) else {}
+    query_words = set(_words(query))
+    references_missing_context = (
+        not attachments_present
+        and bool(query_words.intersection(STORY_CONTEXT_WORDS))
+        and bool(query_words.intersection(CONTEXT_REFERENCE_WORDS))
+    )
+    planner_intent = str(semantic.get("intent") or "").casefold()
+    references_missing_context = references_missing_context or (
+        not attachments_present
+        and planner_intent == "analyze_story"
+        and str(semantic.get("ambiguity") or "").casefold() == "high"
+    )
+    if references_missing_context:
+        return EvidenceDecision(
+            use_vault=False,
+            external_search=False,
+            verification_required=True,
+            current_information=False,
+            explicit_verification=False,
+            named_or_obscure=False,
+            personal_context=False,
+            personal_fact_verification=False,
+            quiet_personal_context=False,
+            reason_codes=("missing_attachment_context",),
+            failure_message="I don't have the referenced story attached to this Home chat. Please select the article again and retry.",
+        )
     personal = bool(classification["personal_context"])
     personal = personal or bool(re.search(r"\b(my|our|we|wazza|warren|chanya|ariadne|vault|prior|remember|discussed)\b", query.casefold()))
     mode = vault_mode if vault_mode in {"auto", "always", "never"} else "auto"
