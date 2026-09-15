@@ -240,17 +240,47 @@ function renderPluginSummary(registry) {
 }
 function render(data) {
   const online = data.service === "online";
-  document.querySelector("#service-state").textContent = online ? "Online" : "Unavailable";
-  document.querySelector("#service-pill").textContent = online ? "Online" : "Offline";
-  document.querySelector("#service-pill").classList.toggle("online", online);
+  const rustHost = data.rust_host || {};
+  const hostOnline = rustHost.state === "online";
+  const serviceState = online && hostOnline ? "Online" : online ? "Core online · Rust host unavailable" : "Unavailable";
+  const servicePill = document.querySelector("#service-pill");
+  document.querySelector("#service-state").textContent = serviceState;
+  if (servicePill) {
+    servicePill.textContent = online && hostOnline ? "Online" : online ? "Host offline" : "Offline";
+    servicePill.classList.toggle("online", online && hostOnline);
+    servicePill.classList.toggle("warning", online && !hostOnline);
+  }
+  const serviceDetail = document.querySelector("#service-detail");
+  if (serviceDetail) serviceDetail.textContent = rustHost.detail || "Ariadne Rust host · localhost";
   const deployment = data.deployment || {};
   document.querySelector("#profile").textContent = deployment.display || data.profile || "RUN · HERA";
   const profileDetail = document.querySelector(".top-profile .small");
   if (profileDetail) profileDetail.textContent = data.profile_detail || "RUN · HERA · production news";
+  syncProfileSelection(deployment.mode || data.profile || "RUN");
   const transition = document.querySelector("#profile-transition-status");
   if (transition) {
-    transition.textContent = deployment.transition_state === "ready" ? (deployment.display || "RUN · HERA") : (deployment.transition_state || "Transitioning").toUpperCase();
+    const transitionState = deployment.transition_state || "ready";
+    const transitionDetail = deployment.transition_detail || "";
+    transition.textContent = transitionState === "ready"
+      ? (deployment.display || "RUN · HERA")
+      : transitionState === "starting"
+        ? transitionDetail.toUpperCase() || "SWITCHING PROFILE"
+        : `${transitionState.toUpperCase()}: ${transitionDetail || "PROFILE SWITCH NEEDS ATTENTION"}`;
     transition.title = deployment.transition_detail || "";
+    transition.classList.toggle("starting", transitionState === "starting");
+    transition.classList.toggle("error", transitionState === "error");
+    transition.classList.toggle("ready", transitionState === "ready");
+  }
+  const heroCopy = document.querySelector("#hero-copy");
+  if (heroCopy) {
+    const transitionState = deployment.transition_state || "ready";
+    heroCopy.textContent = transitionState === "starting"
+      ? `${deployment.transition_detail || "Profile transition in progress."} Current profile remains ${deployment.display || data.profile || "RUN · HERA"} until verification completes.`
+      : transitionState === "error"
+        ? `${deployment.transition_detail || "Profile transition failed."} Current profile remains ${deployment.display || data.profile || "RUN · HERA"}.`
+        : hostOnline
+          ? "Ariadne is ready. The current profile and local host state are verified."
+          : "Ariadne Core is online, but the Rust host is not accepting avatar events.";
   }
   renderInteractiveAI(data.interactive_ai || {});
   renderGauge("memory", data.memory);
@@ -562,7 +592,7 @@ async function launchWan2GP(action) {
 async function activateProfile(profile) {
   const status = document.querySelector("#profile-transition-status");
   document.querySelectorAll(".profile-option").forEach((button) => { button.disabled = true; });
-  if (status) status.textContent = profile === "DEV" ? "STARTING DEV · LOCAL" : "VERIFYING RUN · HERA";
+  if (status) status.textContent = profile === "DEV" ? "SWITCHING TO DEV · LOCAL · STARTING" : "SWITCHING TO RUN · HERA · VERIFYING";
   try {
     const result = await postJson("/api/profile", {profile});
     setProfileMode(result.mode || profile);
@@ -571,6 +601,7 @@ async function activateProfile(profile) {
     await refresh();
   } catch (error) {
     if (status) status.textContent = error.message || "The Ariadne profile transition needs attention.";
+    await refresh();
   } finally {
     document.querySelectorAll(".profile-option").forEach((button) => { button.disabled = false; });
   }
@@ -592,16 +623,28 @@ async function activateGamingProfile(button) {
   }
 }
 
+function syncProfileSelection(profile) {
+  const deploymentMode = profile === "DEV" || profile === "Interactive AI" ? "DEV" : "RUN";
+  document.querySelectorAll(".profile-option").forEach((button) => {
+    if (!["RUN", "DEV"].includes(button.dataset.profile)) return;
+    const active = button.dataset.profile === deploymentMode;
+    const indicator = button.querySelector(".planned, .selected");
+    if (indicator) {
+      indicator.classList.toggle("selected", active);
+      indicator.classList.toggle("planned", !active);
+      indicator.textContent = active ? "Current" : "Switch";
+    }
+    button.setAttribute("aria-current", active ? "true" : "false");
+  });
+}
+
 function setProfileMode(profile) {
   const interactive = profile === "Interactive AI";
-  const deploymentMode = profile === "DEV" || profile === "Interactive AI" ? "DEV" : "RUN";
   document.body.classList.toggle("interactive-ai-mode", interactive);
   if (interactive) history.replaceState(null, "", "#interactive-ai");
   else history.replaceState(null, "", window.location.pathname);
   window.scrollTo(0, 0);
-  document.querySelectorAll("[data-profile]").forEach((button) => {
-    if (button.classList.contains("profile-option")) button.querySelector(".planned, .selected")?.replaceChildren(document.createTextNode(button.dataset.profile === deploymentMode ? "Current" : "Switch"));
-  });
+  syncProfileSelection(profile);
 }
 
 function setupProfileControls() {

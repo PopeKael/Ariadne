@@ -92,6 +92,28 @@ def emit_say(text: str) -> bool:
     return emit("say", text=text[:500])
 
 
+def host_status() -> dict[str, object]:
+    """Report whether the resident Rust host is listening for avatar events."""
+    if os.name != "nt":
+        return {"available": False, "state": "offline", "detail": "Rust host IPC is Windows-only."}
+    try:
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.WaitNamedPipeW.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32]
+        kernel32.WaitNamedPipeW.restype = ctypes.c_bool
+        available = bool(kernel32.WaitNamedPipeW(PIPE_NAME, 100))
+    except (OSError, AttributeError):
+        available = False
+    return {
+        "available": available,
+        "state": "online" if available else "offline",
+        "detail": (
+            "Rust host named pipe is listening; avatar events can be delivered."
+            if available
+            else "Rust host named pipe is not listening; avatar events cannot be delivered."
+        ),
+    }
+
+
 def show() -> bool:
     return emit("show")
 
@@ -108,5 +130,5 @@ def move(x: int, y: int) -> bool:
 
 __all__ = [
     "AVATAR_STATES", "CANONICAL_AVATAR_STATES", "PIPE_NAME", "emit", "emit_state",
-    "emit_say", "reload_avatar", "clear_status", "show", "hide", "move",
+    "emit_say", "host_status", "reload_avatar", "clear_status", "show", "hide", "move",
 ]

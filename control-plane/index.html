@@ -49,7 +49,7 @@
         <div class="top-service-copy">
           <span class="label">SERVICE STATUS</span>
           <strong id="service-state">Connecting…</strong>
-          <span class="small">Ariadne host · localhost</span>
+          <span class="small" id="service-detail">Ariadne Rust host · localhost</span>
         </div>
         <span class="pill online" id="service-pill">Online</span>
       </div>
@@ -115,7 +115,7 @@
       </section>
 
       <section class="panel">
-        <div class="section-head"><div><h2>Operating profiles</h2><p>Choose where Ariadne reads Discovery and Signal data. DEV is local and session-only.</p></div><span class="badge muted-badge" id="profile-transition-status">RUN · HERA</span></div>
+        <div class="section-head"><div><h2>Operating profiles</h2><p>Choose where Ariadne reads Discovery and Signal data. DEV is local and session-only.</p></div><span class="badge muted-badge" id="profile-transition-status" aria-live="polite" title="">RUN · HERA</span></div>
         <div class="profile-list">
           <button type="button" class="profile-option" data-profile="RUN"><span class="profile-icon">⌂</span><span><strong>RUN · Hera</strong><small>Production Discovery + Signal on Hera</small></span><span class="selected">Current</span></button>
           <button type="button" class="profile-option" data-profile="DEV"><span class="profile-icon">◉</span><span><strong>DEV · Local</strong><small>Docker Discovery + Signal on localhost</small></span><span class="planned">Switch</span></button>

@@ -48,7 +48,7 @@ from ariadne_config import (
     save_storage,
 )
 from inference import InferenceRegistry
-from avatar_events import clear_status, emit, emit_say, emit_state
+from avatar_events import clear_status, emit, emit_say, emit_state, host_status
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
     fallback_interpretation,
@@ -149,9 +149,12 @@ DEPLOYMENT_MODE_CONFIG = {
 # Deliberately process-owned: DEV is never persisted. Every Ariadne process
 # starts in RUN and shutdown restores RUN before the resident host exits.
 DEPLOYMENT_MODE_LOCK = threading.RLock()
+DEPLOYMENT_TRANSITION_LOCK = threading.Lock()
 DEPLOYMENT_TRANSITION_STATE = "ready"
 DEPLOYMENT_TRANSITION_DETAIL = "RUN · HERA is active."
 ACTIVE_DEPLOYMENT_MODE = "RUN"
+DEV_REFRESH_THREAD: threading.Thread | None = None
+DEV_REFRESH_LOCK = threading.Lock()
 SIGNAL_SERVICE_CLIENTS = {
     mode: SignalServiceClient(
         str(config["signal_url"]),
@@ -741,12 +744,83 @@ def _activate_deployment_mode(mode: str) -> None:
         SIGNAL_SERVICE_CLIENT = client
 
 
-def _refresh_dev_data() -> dict[str, object]:
+def _wait_for_dev_refresh(timeout: float = 240.0) -> dict[str, object]:
     config = DEPLOYMENT_MODE_CONFIG["DEV"]
-    result = post_json(f"{config['discovery_url']}/v1/refresh", {}, timeout=240.0)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            health = json_http(f"{config['discovery_url']}/v1/health", timeout=4.0)
+        except (OSError, urllib.error.URLError, TimeoutError, ValueError, TypeError, json.JSONDecodeError):
+            health = {}
+        if isinstance(health, dict) and not health.get("refresh_running"):
+            completed = health.get("last_refresh")
+            if isinstance(completed, dict) and completed:
+                return completed
+            return {"ok": False, "message": "Discovery refresh stopped without a completion record."}
+        time.sleep(2)
+    return {"ok": True, "running": True, "message": "Discovery refresh is still running."}
+
+
+def _refresh_dev_data(*, wait_for_completion: bool = True, timeout: float = 240.0) -> dict[str, object]:
+    config = DEPLOYMENT_MODE_CONFIG["DEV"]
+    refresh_url = f"{config['discovery_url']}/v1/refresh"
+    result = post_json(refresh_url, {}, timeout=240.0)
+    if result.get("running"):
+        # Discovery starts its own long-running refresh thread during startup.
+        # Healthy DEV services are usable before that refresh finishes, so the
+        # profile switch may activate DEV while a background completion monitor
+        # reports the data-readiness stage separately.
+        if not wait_for_completion:
+            return {**result, "ok": True, "message": "Discovery refresh is still running."}
+        result = _wait_for_dev_refresh(timeout)
     if not result.get("ok"):
-        raise RuntimeError(str(result.get("message") or result.get("error") or "DEV Discovery refresh failed."))
+        detail = str(result.get("message") or result.get("error") or "").strip()
+        if not detail:
+            failures = result.get("failures") if isinstance(result.get("failures"), list) else []
+            detail = (
+                f"attempted_sources={result.get('attempted_sources', 0)}, "
+                f"successful_sources={result.get('successful_sources', 0)}, "
+                f"story_count={result.get('story_count', 0)}"
+            )
+            if failures:
+                detail += f"; first failure={json.dumps(failures[0], ensure_ascii=False)[:360]}"
+        raise RuntimeError(f"DEV Discovery refresh failed: {detail}")
     return result
+
+
+def _finish_dev_refresh_background() -> None:
+    try:
+        result = _wait_for_dev_refresh(timeout=900.0)
+        if not result.get("ok"):
+            raise RuntimeError(str(result.get("message") or "DEV Discovery refresh failed."))
+        with DEPLOYMENT_MODE_LOCK:
+            if ACTIVE_DEPLOYMENT_MODE != "DEV":
+                return
+        detail = f"DEV · LOCAL is active; DEV data refreshed ({result.get('accepted_articles', result.get('story_count', 0))} items reported)."
+        _set_deployment_transition("ready", detail)
+        _send_avatar_event_async(lambda: emit_state("success"))
+        _send_avatar_event_async(lambda: emit_say(detail))
+    except Exception as exc:
+        with DEPLOYMENT_MODE_LOCK:
+            if ACTIVE_DEPLOYMENT_MODE != "DEV":
+                return
+        detail = f"DEV Discovery refresh failed: {exc}"
+        _set_deployment_transition("error", detail)
+        _send_avatar_event_async(lambda: emit_state("warning"))
+        _send_avatar_event_async(lambda: emit_say(detail[:300]))
+
+
+def _start_dev_refresh_background() -> None:
+    global DEV_REFRESH_THREAD
+    with DEV_REFRESH_LOCK:
+        if DEV_REFRESH_THREAD is not None and DEV_REFRESH_THREAD.is_alive():
+            return
+        DEV_REFRESH_THREAD = threading.Thread(
+            target=_finish_dev_refresh_background,
+            name="ariadne-dev-refresh",
+            daemon=True,
+        )
+        DEV_REFRESH_THREAD.start()
 
 
 def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[str, object]:
@@ -756,26 +830,42 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
     if normalized not in DEPLOYMENT_MODE_CONFIG:
         raise ValueError("Unknown Ariadne deployment mode.")
     target = DEPLOYMENT_MODE_CONFIG[normalized]
-    with DEPLOYMENT_MODE_LOCK:
-        current = ACTIVE_DEPLOYMENT_MODE
-        if current == normalized:
-            return {"ok": True, "profile": normalized, "mode": normalized, "deployment": deployment_status(), "message": f"{target['display']} is already active."}
-
-    _set_deployment_transition("starting", f"Preparing {target['display']}…")
-    _announce_deployment_transition(f"Switching Ariadne to {target['display']}.")
+    background_refresh = False
     try:
+        acquired = DEPLOYMENT_TRANSITION_LOCK.acquire(blocking=False)
+        if not acquired:
+            current_status = deployment_status()
+            return {
+                "ok": False,
+                "profile": current_status["mode"],
+                "mode": current_status["mode"],
+                "deployment": current_status,
+                "message": f"A profile switch is already in progress: {current_status['transition_detail']}",
+            }
+        with DEPLOYMENT_MODE_LOCK:
+            current = ACTIVE_DEPLOYMENT_MODE
+            if current == normalized:
+                return {"ok": True, "profile": normalized, "mode": normalized, "deployment": deployment_status(), "message": f"{target['display']} is already active."}
+
+        _set_deployment_transition("starting", f"Starting {target['display']}…")
+        _announce_deployment_transition(f"Switching Ariadne to {target['display']}.")
         if normalized == "DEV":
+            _set_deployment_transition("starting", "Starting Docker Desktop for DEV · LOCAL…")
             docker_result = start_docker_desktop()
             if not docker_result.get("ok"):
                 raise RuntimeError(str(docker_result.get("message") or "Docker Desktop could not be started."))
             _set_dev_build_sha()
+            _set_deployment_transition("starting", "Starting DEV Signal and Discovery services…")
             compose_result = run_action(_dev_compose_command("up", "-d", "--build"), timeout=300.0)
             if not compose_result["ok"]:
                 raise RuntimeError(str(compose_result.get("detail") or "The DEV Compose stack could not be started."))
+            _set_deployment_transition("starting", "Waiting for DEV Signal and Discovery health checks…")
             healthy, evidence = _wait_for_deployment_health("DEV")
             if not healthy:
                 raise RuntimeError(f"DEV health identity was not verified: {json.dumps(evidence, ensure_ascii=False)[:600]}")
-            refresh = _refresh_dev_data()
+            _set_deployment_transition("starting", "Refreshing DEV Discovery data…")
+            refresh = _refresh_dev_data(wait_for_completion=False)
+            _set_deployment_transition("starting", "Refreshing DEV Signal briefing…")
             dev_briefing = SIGNAL_SERVICE_CLIENTS["DEV"].briefing(limit=100)
             if not dev_briefing.get("ok"):
                 raise RuntimeError(str(dev_briefing.get("message") or "DEV Signal briefing could not be refreshed."))
@@ -786,11 +876,19 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
                     cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
-            detail = f"{target['display']} is active; DEV data refreshed ({refresh.get('accepted_articles', refresh.get('story_count', 0))} items reported)."
+            if refresh.get("running"):
+                background_refresh = True
+                _set_deployment_transition("starting", "DEV Signal and Discovery are healthy; Discovery refresh continues in the background…")
+                _start_dev_refresh_background()
+                detail = "DEV · LOCAL is active; Discovery refresh continues in the background."
+            else:
+                detail = f"{target['display']} is active; DEV data refreshed ({refresh.get('accepted_articles', refresh.get('story_count', 0))} items reported)."
         else:
+            _set_deployment_transition("starting", "Waiting for Hera Signal and Discovery health checks…")
             healthy, evidence = _wait_for_deployment_health("RUN")
             if not healthy:
                 raise RuntimeError(f"Hera health identity was not verified: {json.dumps(evidence, ensure_ascii=False)[:600]}")
+            _set_deployment_transition("starting", "Refreshing Hera Signal briefing…")
             run_briefing = SIGNAL_SERVICE_CLIENTS["RUN"].briefing(limit=100)
             if not run_briefing.get("ok"):
                 raise RuntimeError(str(run_briefing.get("message") or "Hera Signal briefing could not be refreshed."))
@@ -800,9 +898,12 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
                 _set_deployment_transition("error", str(cleanup["message"]))
                 return {"ok": False, "profile": "RUN", "mode": "RUN", "deployment": deployment_status(), "message": "Hera is active, but DEV stack cleanup needs attention: " + str(cleanup["message"])}
             detail = "RUN · HERA is active; production data verified and DEV stack stopped."
-        _set_deployment_transition("ready", detail)
-        _send_avatar_event_async(lambda: emit_state("success"))
-        _send_avatar_event_async(lambda: emit_say(detail))
+        if not background_refresh:
+            _set_deployment_transition("ready", detail)
+            _send_avatar_event_async(lambda: emit_state("success"))
+            _send_avatar_event_async(lambda: emit_say(detail))
+        else:
+            _send_avatar_event_async(lambda: emit_say(detail))
         return {"ok": True, "profile": normalized, "mode": normalized, "deployment": deployment_status(), "message": detail}
     except Exception as exc:
         if normalized == "DEV":
@@ -811,6 +912,9 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
         _send_avatar_event_async(lambda: emit_state("warning"))
         _send_avatar_event_async(lambda: emit_say(str(exc)[:300]))
         return {"ok": False, "profile": current, "mode": current, "deployment": deployment_status(), "message": str(exc)}
+    finally:
+        if 'acquired' in locals() and acquired:
+            DEPLOYMENT_TRANSITION_LOCK.release()
 
 
 def reset_deployment_mode_for_shutdown() -> None:
@@ -823,6 +927,8 @@ def reset_deployment_mode_for_shutdown() -> None:
         SIGNAL_SERVICE_CLIENT.clear_cache()
     _set_deployment_transition("ready", "RUN · HERA is the next startup mode.")
     _stop_dev_stack()
+    _send_avatar_event_async(lambda: emit_state("idle"))
+    _send_avatar_event_async(lambda: emit_say("RUN · HERA is active; DEV services are stopped."))
 
 
 def _wait_for_docker(timeout: float = 45.0) -> bool:
@@ -4620,6 +4726,7 @@ def _status_skeleton() -> dict[str, object]:
         "service": "online",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "host": os.environ.get("COMPUTERNAME", "Windows host"),
+        "rust_host": host_status(),
         "profile": ACTIVE_PROFILE,
         "profile_detail": deployment["display"] + " · " + ("Hera production" if ACTIVE_PROFILE == "RUN" else "Docker local services"),
         "deployment": deployment,
@@ -4662,6 +4769,7 @@ def _build_status_payload() -> dict[str, object]:
         "service": "online",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "host": os.environ.get("COMPUTERNAME", "Windows host"),
+        "rust_host": host_status(),
         "profile": ACTIVE_PROFILE,
         "profile_detail": deployment_status()["display"] + " · " + ("Hera production" if ACTIVE_PROFILE == "RUN" else "Docker local services"),
         "deployment": deployment_status(),

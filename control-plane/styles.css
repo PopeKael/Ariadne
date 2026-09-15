@@ -126,3 +126,7 @@
 .home-back:hover { background:#1a4b61; color:#eef4ff; }
 @media(max-width:520px){ .home-back { display:inline-block; margin:16px 0 0; } }
 .vault-job-monitor{margin:0 20px 18px;border:1px solid rgba(104,216,219,.32);border-radius:9px;background:rgba(2,9,22,.72);overflow:hidden}.vault-job-monitor-head{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(52,73,112,.45);color:var(--text);font-size:12px}.vault-job-monitor-head span{color:var(--cyan);font-size:11px}.vault-job-monitor pre{max-height:230px;overflow:auto;margin:0;padding:12px;color:#b8c9df;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}
+.pill.warning{color:var(--yellow);background:rgba(240,198,110,.13)}
+.muted-badge.starting{color:var(--yellow);background:rgba(240,198,110,.13)}
+.muted-badge.error{color:#ff9ba9;background:rgba(228,79,103,.12)}
+.muted-badge.ready{color:var(--green);background:rgba(54,142,95,.15)}
