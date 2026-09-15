@@ -47,7 +47,7 @@ from ariadne_config import (
     save_avatar,
     save_storage,
 )
-from inference import InferenceRegistry
+from inference import InferenceRegistry, default_providers
 from avatar_events import clear_status, emit, emit_say, emit_state, host_status
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
@@ -222,6 +222,7 @@ RESOURCE_STATUS_REFRESH_IN_FLIGHT = False
 MODEL_ACTIVITY_LOCK = threading.RLock()
 MODEL_IN_FLIGHT: dict[str, int] = {}
 MODEL_LAST_USED: dict[str, float] = {}
+MODEL_SWITCH_LOCK = threading.Lock()
 GPU_ARBITRATION_LOCK = threading.RLock()
 GPU_OWNER = "NONE"
 GPU_AI_ADMISSIONS = 0
@@ -1416,9 +1417,11 @@ def ensure_ai_gpu_access() -> None:
 @contextmanager
 def ai_gpu_admission():
     """Reserve AI ownership across a complete Ariadne request, including retrieval."""
-    global GPU_AI_ADMISSIONS
-    ensure_ai_gpu_access()
+    global GPU_AI_ADMISSIONS, GPU_OWNER
     with GPU_ARBITRATION_LOCK:
+        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+            raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {GPU_TRANSITION_DETAIL}")
+        GPU_OWNER = "AI"
         GPU_AI_ADMISSIONS += 1
     try:
         yield
@@ -1647,6 +1650,163 @@ def preload_ollama_model(model: str | None = None) -> dict[str, object]:
         return {"ok": True, "model": selected_model, "detail": detail, "response": response}
     except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
         return {"ok": False, "model": selected_model, "detail": f"Model preload failed: {exc}"}
+
+
+def model_control_payload() -> dict[str, object]:
+    """Return the globally selected model and the real local Ollama catalogue."""
+    catalog = ollama_catalog()
+    route = INFERENCE_REGISTRY.route("home_chat")
+    return {
+        "ok": bool(catalog.get("available")),
+        "active_model": HOME_CHAT_MODEL,
+        "planner_model": PLANNER_MODEL,
+        "provider_id": route.provider_id if route else None,
+        "provider_type": route.provider_type if route else None,
+        "location": route.location if route else None,
+        "models": catalog.get("models", []),
+        "loaded": catalog.get("loaded", []),
+        "loaded_details": catalog.get("loaded_details", []),
+        "gpu_owner": gpu_owner_status(),
+        "in_flight": ai_gpu_work_in_flight(),
+        "detail": catalog.get("detail", "Installed Ollama models are available to Ariadne."),
+    }
+
+
+def ollama_model_capabilities(model: str) -> tuple[str, ...]:
+    """Read Ollama's declared roles without retaining its large model metadata response."""
+    try:
+        payload = post_json(f"{OLLAMA_URL}/api/show", {"model": model}, timeout=8.0)
+    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
+        return ()
+    values = payload.get("capabilities") if isinstance(payload, dict) else []
+    return tuple(str(value).strip().casefold() for value in values if str(value).strip()) if isinstance(values, list) else ()
+
+
+def _inference_configuration_for_model(model: str) -> dict[str, object]:
+    """Preserve the provider registry while updating Ariadne's ordinary local routes."""
+    providers = []
+    seen: set[str] = set()
+    for provider in INFERENCE_REGISTRY.providers:
+        item = provider.as_dict()
+        if provider.provider_id in {"ollama-desktop", "ollama-planner"}:
+            item["model_id"] = model
+        providers.append(item)
+        seen.add(provider.provider_id)
+    for provider in default_providers():
+        if provider.provider_id in {"ollama-desktop", "ollama-planner"} and provider.provider_id not in seen:
+            item = provider.as_dict()
+            item["model_id"] = model
+            providers.append(item)
+    routes = dict(INFERENCE_REGISTRY.routes)
+    routes.update({"home_chat": "ollama-desktop", "planner": "ollama-planner"})
+    return {"providers": providers, "routes": routes}
+
+
+def switch_active_model(model: object) -> tuple[dict[str, object], int]:
+    """Safely make an installed Ollama model Ariadne's global chat/planner model."""
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL
+    global GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
+
+    requested = str(model or "").strip() if isinstance(model, str) else ""
+    if not requested:
+        return {"ok": False, "message": "Choose an installed Ollama model."}, 400
+
+    if not MODEL_SWITCH_LOCK.acquire(blocking=False):
+        return {"ok": False, "message": "Ariadne is already switching models."}, 409
+
+    previous_owner = GPU_OWNER
+    previous_model = HOME_CHAT_MODEL
+    previous_inference = {
+        "providers": [provider.as_dict() for provider in INFERENCE_REGISTRY.providers],
+        "routes": dict(INFERENCE_REGISTRY.routes),
+    }
+    configuration_persisted = False
+    succeeded = False
+    operation_id = uuid.uuid4().hex
+    try:
+        catalog = ollama_catalog()
+        if not catalog.get("available"):
+            return {"ok": False, "message": "Ollama is unavailable; the active model was not changed."}, 503
+        installed = {
+            str(item.get("name") or "")
+            for item in catalog.get("models", [])
+            if isinstance(item, dict) and item.get("name")
+        }
+        if requested not in installed:
+            return {"ok": False, "message": f"{requested} is not installed in the configured Ollama library."}, 400
+        capabilities = ollama_model_capabilities(requested)
+        if capabilities and "completion" not in capabilities:
+            return {"ok": False, "message": f"{requested} is not a conversation model; Ollama reports {', '.join(capabilities)} capability."}, 400
+        if requested == HOME_CHAT_MODEL and requested == PLANNER_MODEL:
+            return {**model_control_payload(), "ok": True, "message": f"{requested} is already Ariadne's active model."}, 200
+
+        with GPU_ARBITRATION_LOCK:
+            if GPU_OWNER == "RENDERER":
+                return {"ok": False, "message": "Stop the video renderer before switching Ariadne's model."}, 409
+            if GPU_TRANSITION_STATE != "IDLE":
+                return {"ok": False, "message": f"GPU transition {GPU_TRANSITION_STATE} is still active."}, 409
+            if GPU_AI_ADMISSIONS:
+                return {"ok": False, "message": "Finish the active Ariadne response before switching models."}, 409
+            with MODEL_ACTIVITY_LOCK:
+                if any(count > 0 for count in MODEL_IN_FLIGHT.values()):
+                    return {"ok": False, "message": "A local model is still processing; try again when it finishes."}, 409
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "SWITCHING_MODEL"
+            GPU_TRANSITION_DETAIL = f"Loading {requested} for Ariadne."
+            GPU_TRANSITION_OPERATION = operation_id
+            GPU_TRANSITION_STARTED_AT = time.monotonic()
+
+        loaded = {str(name) for name in catalog.get("loaded", [])}
+        for old_model in {HOME_CHAT_MODEL, PLANNER_MODEL}:
+            if old_model and old_model != requested and old_model in loaded:
+                unload_ollama_model(old_model)
+
+        preload = preload_ollama_model(requested)
+        if not preload.get("ok"):
+            if previous_model and previous_model != requested:
+                preload_ollama_model(previous_model)
+            return {"ok": False, "message": str(preload.get("detail") or "The selected model could not be loaded.")}, 503
+
+        saved = save_configuration(inference=_inference_configuration_for_model(requested))
+        configuration_persisted = True
+        apply_runtime_configuration()
+        if HOME_CHAT_MODEL != requested or PLANNER_MODEL != requested:
+            raise RuntimeError("The persisted inference routes did not activate the requested model.")
+        with MODEL_ACTIVITY_LOCK:
+            MODEL_LAST_USED[requested] = time.monotonic()
+        succeeded = True
+        return {
+            **model_control_payload(),
+            "ok": True,
+            "message": f"Ariadne is now using {requested} for conversation and planning.",
+            "persistence": {
+                "verified": True,
+                "revision": configuration_snapshot().get("revision"),
+                "updated_at": saved.get("updated_at") if isinstance(saved, dict) else None,
+            },
+        }, 200
+    except (OSError, RuntimeError, ValueError) as exc:
+        rollback_detail = ""
+        if configuration_persisted:
+            try:
+                save_configuration(inference=previous_inference)
+                apply_runtime_configuration()
+                rollback_detail = " The previous inference routes were restored."
+            except (OSError, RuntimeError, ValueError) as rollback_error:
+                rollback_detail = f" Configuration rollback also needs attention: {rollback_error}"
+        return {"ok": False, "message": f"The model switch was not completed: {exc}.{rollback_detail}"}, 500
+    finally:
+        with GPU_ARBITRATION_LOCK:
+            if GPU_TRANSITION_OPERATION == operation_id:
+                GPU_OWNER = "AI" if succeeded else previous_owner
+                GPU_TRANSITION_STATE = "IDLE"
+                GPU_TRANSITION_DETAIL = (
+                    f"{requested} is active for Ariadne."
+                    if succeeded else "GPU is available; the previous Ariadne model remains selected."
+                )
+                GPU_TRANSITION_OPERATION = None
+                GPU_TRANSITION_STARTED_AT = None
+        MODEL_SWITCH_LOCK.release()
 
 
 def launch_openwebui(model: str | None = None) -> dict[str, object]:
@@ -4951,6 +5111,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 "detail": catalog.get("detail", "Ollama is ready."),
             })
             return
+        if path == "/api/model-control":
+            self.send_json(model_control_payload())
+            return
         if path == "/api/status":
             self.send_json(status_payload())
             return
@@ -4984,6 +5147,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/plugins":
             self.send_asset("plugins.html", "text/html; charset=utf-8")
+            return
+        if path == "/create":
+            self.send_asset("create.html", "text/html; charset=utf-8")
+            return
+        if path == "/workshop":
+            self.send_asset("workshop.html", "text/html; charset=utf-8")
             return
         if path == "/configuration/avatar":
             self.send_asset("configuration-avatar.html", "text/html; charset=utf-8")
@@ -5023,6 +5192,18 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/page-shell.css":
             self.send_asset("page-shell.css", "text/css; charset=utf-8")
+            return
+        if path == "/page-shell.js":
+            self.send_asset("page-shell.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/workspace.css":
+            self.send_asset("workspace.css", "text/css; charset=utf-8")
+            return
+        if path == "/create.js":
+            self.send_asset("create.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/workshop.js":
+            self.send_asset("workshop.js", "text/javascript; charset=utf-8")
             return
         if path in {"/", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
@@ -5182,6 +5363,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "detail": "Model name must be text."}, 400)
                     return
                 self.send_json(launch_openwebui(model))
+                return
+            if path == "/api/model-control/select":
+                result, status = switch_active_model(body.get("model"))
+                self.send_json(result, status)
                 return
             if path == "/api/profile":
                 profile = body.get("profile")

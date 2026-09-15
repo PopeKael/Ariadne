@@ -9,11 +9,11 @@
   <link rel="stylesheet" href="/page-shell.css">
 </head>
 <body class="ariadne-page">
+  <a href="/" aria-label="Ariadne Home" class="sr-only">Ariadne Home</a>
   <div class="home-shell">
     <header class="home-header">
-      <a class="brand" href="/" aria-label="Ariadne Home"><span class="brand-mark">◈</span><span><strong>Ariadne</strong><small>Home · local intelligence</small></span></a>
       <div class="header-copy"><span class="eyebrow">ARIADNE HOME</span><h1>Good to see you, Warren.</h1><p>Your local assistant, vault, and daily starting point.</p></div>
-      <div class="header-actions"><div id="header-health" class="header-health" aria-label="Local service health" aria-live="polite"><span class="header-health-loading">Checking...</span></div><div class="header-meta"><span id="health-updated" class="quiet header-updated">Checking...</span><span id="deployment-mode-badge" class="local-badge"><i></i> RUN · HERA</span><span class="local-badge"><i></i> LOCAL ONLY</span><a class="text-button" href="/configuration" aria-label="Open Ariadne Configuration">⚙ Setup</a><a class="text-button" href="/plugins" aria-label="Open Ariadne Plugins">◇ Plugins</a><a class="text-button" href="/system-details">System Details</a></div></div>
+      <div class="header-actions"><div id="header-health" class="header-health" aria-label="Local service health" aria-live="polite"><span class="header-health-loading">Checking...</span></div><div class="header-meta"><span id="health-updated" class="quiet header-updated">Checking...</span><span id="deployment-mode-badge" class="local-badge"><i></i> RUN · HERA</span><span class="local-badge"><i></i> LOCAL ONLY</span></div></div>
     </header>
     <main>
       <section class="home-layout">
@@ -53,6 +53,7 @@
       <section class="home-footer-note"><span class="shield">✓</span><span><strong>Private by design.</strong> Ariadne Home stays on this computer. Use the Windows tray menu to restart or stop Ariadne.</span><a href="/system-details">Open the detailed console →</a></section>
     </main>
   </div>
+  <script src="/page-shell.js"></script>
   <script src="/signal-popover-position.js"></script>
   <script src="/home.js"></script>
 </body>
