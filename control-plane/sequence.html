@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" class="ariadne-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sequence Projects · Ariadne</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/page-shell.css">
+</head>
+<body class="ariadne-page sequence-page">
+  <div class="workspace-shell">
+    <header class="sequence-header">
+      <div>
+        <span class="workspace-kicker">SEQUENCE PROJECTS</span>
+        <h1>Project workspace</h1>
+        <p>Start with a project, then connect music, prompts, images and video in one orderly production record.</p>
+      </div>
+      <div class="card-actions"><a class="ws-button" href="/create">← Back to Create</a><a class="ws-button" href="/music">Open Music Studio</a><a class="ws-button primary" href="/image">Open Image Studio</a></div>
+    </header>
+
+    <main class="workspace-main">
+      <section class="sequence-dashboard" aria-label="Sequence project manager">
+        <article class="sequence-panel sequence-create-panel">
+          <span class="workspace-kicker">01 · NEW PROJECT</span>
+          <h2>Start a production project</h2>
+          <p>Create the local folder structure now. Music, lyrics, images and video are added when you are ready.</p>
+          <div class="sequence-form">
+            <label class="field-label" for="sequence-project-name">Project name</label>
+            <input id="sequence-project-name" class="ws-input" type="text" maxlength="120" placeholder="e.g. Bangkok After Rain">
+            <div class="card-actions"><button id="sequence-project-create" class="ws-button primary" type="button">Create project</button></div>
+            <span id="sequence-feedback" class="card-feedback" role="status">Loading production projects…</span>
+          </div>
+        </article>
+
+        <article class="sequence-panel">
+          <span class="workspace-kicker">02 · PROJECT LOCATION</span>
+          <h2>Where it lives</h2>
+          <p>Every project keeps its own candidate media, accepted media and editor hand-off material here.</p>
+          <p id="sequence-root">Reading configured production location…</p>
+          <p class="field-hint">Each generated PNG carries a matching JSON file with its prompt and settings.</p>
+        </article>
+        <article class="sequence-panel">
+          <span class="workspace-kicker">03 · WORKFLOW STATUS</span>
+          <h2>What comes next</h2>
+          <div class="sequence-steps">
+            <div><strong>Song</strong><span>Music Studio creates candidate WAVs with exact JSON provenance</span></div>
+            <div><strong>Visuals</strong><span>Image Studio is ready for project candidates</span></div>
+            <div><strong>Finish</strong><span>Video generation and editor hand-off to connect</span></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="sequence-active">
+        <article class="sequence-panel">
+          <span class="workspace-kicker">ACTIVE PROJECTS</span>
+          <h2>Projects in progress</h2>
+          <div id="sequence-projects" class="storage-grid"><div class="storage-item"><span>Loading</span><strong>Reading project manifests…</strong></div></div>
+        </article>
+      </section>
+    </main>
+    <footer class="workspace-footer">Private · Local · Provider-independent by design</footer>
+  </div>
+  <script src="/page-shell.js"></script><script src="/sequence.js"></script>
+</body>
+</html>

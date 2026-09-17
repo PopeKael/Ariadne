@@ -19,6 +19,7 @@ import threading
 import time
 import uuid
 import urllib.error
+import urllib.parse
 import urllib.request
 import importlib.util
 import mimetypes
@@ -61,6 +62,8 @@ from search_providers import SearchProviderRegistry
 from plugin_activity import PluginActivityStream
 from plugin_execution import PluginExecutionError, build_plugin_command
 from plugin_registry import PLUGIN_REGISTRY
+from production_projects import ASSET_SCHEMA, ProductionProjectStore, utc_now
+from music_engine import AudioCppMiniMaxEngine, MusicRequest
 from plugins.cleanup.cleanup import PLUGIN_CAPABILITY, effective_configuration, normalize_configuration
 from signal_service_client import SignalServiceClient
 from source_article import promote_signal
@@ -180,7 +183,47 @@ VIDEO_RENDERER_DISTRO = "Ubuntu-24.04"
 VIDEO_RENDERER_ROOT = "/root/lmv-comfyui"
 VIDEO_RENDERER_PYTHON = "/root/lmv-rocm-venv/bin/python"
 VIDEO_RENDERER_APP = "/home/warren/projects/local-music-video-renderer/app.py"
+VIDEO_RENDERER_URL = os.environ.get("ARIADNE_VIDEO_RENDERER_URL", "http://127.0.0.1:8766").rstrip("/")
 WAN2GP_LOG = ROOT / "runtime" / "linux-renderer.log"
+IMAGE_ENGINE_ROOT = Path(os.environ.get("ARIADNE_IMAGE_ENGINE_ROOT", r"C:\Users\Warren\ComfyUI-Installs\ComfyUI\ComfyUI"))
+IMAGE_ENGINE_PYTHON = Path(os.environ.get("ARIADNE_IMAGE_ENGINE_PYTHON", str(IMAGE_ENGINE_ROOT / ".venv" / "Scripts" / "python.exe")))
+IMAGE_ENGINE_URL = os.environ.get("ARIADNE_IMAGE_ENGINE_URL", "http://127.0.0.1:8188").rstrip("/")
+IMAGE_ENGINE_PORT = int(os.environ.get("ARIADNE_IMAGE_ENGINE_PORT", "8188"))
+IMAGE_ENGINE_LOG = ROOT / "runtime" / "image-engine.log"
+IMAGE_MODEL_ROOT = Path(os.environ.get("ARIADNE_IMAGE_MODEL_ROOT", r"C:\Users\Warren\ComfyUI-Shared\models\checkpoints"))
+IMAGE_OUTPUT_ROOT = Path(os.environ.get("ARIADNE_IMAGE_OUTPUT_ROOT", r"C:\Users\Warren\ComfyUI-Shared\output"))
+IMAGE_OUTPUT_PREFIX = "Ariadne"
+MUSIC_OUTPUT_ROOT = Path(os.environ.get("ARIADNE_MUSIC_ROOT", r"D:\Downloads\Music"))
+SUNO_MUSIC_URL = os.environ.get("ARIADNE_SUNO_URL", "https://suno.com/").strip() or "https://suno.com/"
+AUDIOCPP_RUNTIME_ROOT = Path(os.environ.get("ARIADNE_AUDIOCPP_ROOT", str(ROOT / "runtime" / "external" / "audio-cpp-v0.8.0-vulkan")))
+LOCAL_MUSIC_ENGINE = AudioCppMiniMaxEngine(AUDIOCPP_RUNTIME_ROOT)
+MUSIC_GENERATION_TIMEOUT_SECONDS = max(60, int(os.environ.get("ARIADNE_MUSIC_GENERATION_TIMEOUT_SECONDS", "900")))
+MUSIC_MINIMUM_FREE_GB = float(os.environ.get("ARIADNE_MUSIC_MINIMUM_FREE_GB", "6"))
+SEQUENCE_PROJECTS = ProductionProjectStore()
+IMAGE_SIZE_OPTIONS = {
+    "768x768": {"label": "768 × 768", "width": 768, "height": 768, "orientation": "square"},
+    "1024x1024": {"label": "1024 × 1024", "width": 1024, "height": 1024, "orientation": "square"},
+    "720x1280": {"label": "720 × 1280", "width": 720, "height": 1280, "orientation": "portrait"},
+    "1080x1920": {"label": "1080 × 1920", "width": 1080, "height": 1920, "orientation": "portrait"},
+    "1280x720": {"label": "1280 × 720", "width": 1280, "height": 720, "orientation": "landscape"},
+    "1920x1080": {"label": "1920 × 1080", "width": 1920, "height": 1080, "orientation": "landscape"},
+}
+IMAGE_MODELS = {
+    "sdxl-base-1.0": {
+        "name": "SDXL Base 1.0",
+        "filename": "sd_xl_base_1.0.safetensors",
+        "family": "SDXL",
+        "detail": "General-purpose prompt-to-image baseline.",
+        "license": "OpenRAIL++",
+    },
+    "pony-v6-xl": {
+        "name": "Pony Diffusion V6 XL",
+        "filename": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors",
+        "family": "SDXL fine-tune",
+        "detail": "Stylised character and illustration checkpoint.",
+        "license": "Fair AI Public License 1.0 SD",
+    },
+}
 SESSION_TTL_SECONDS = max(30, int(os.environ.get("ARIADNE_SESSION_TTL_SECONDS", "90")))
 JOB_TIMEOUT_SECONDS = max(30, int(os.environ.get("ARIADNE_JOB_TIMEOUT_SECONDS", "300")))
 VAULT_ACTION_TIMEOUT_SECONDS = {
@@ -198,6 +241,16 @@ PROFILE_LOCK = threading.RLock()
 ACTIVE_PROFILE = "RUN"
 INTERACTIVE_PROCESS: subprocess.Popen | None = None
 WAN2GP_PROCESS: subprocess.Popen | None = None
+IMAGE_ENGINE_PROCESS: subprocess.Popen | None = None
+IMAGE_GENERATION_LOCK = threading.Lock()
+IMAGE_GENERATION_ACTIVE = False
+MUSIC_GENERATION_LOCK = threading.Lock()
+MUSIC_GENERATION_ACTIVE = False
+MUSIC_JOBS_LOCK = threading.RLock()
+MUSIC_JOBS: dict[str, dict[str, object]] = {}
+MUSIC_FLOW_CHUNK_SECONDS = 4.2
+MUSIC_DEFAULT_FLOW_MS = 11_300.0
+MUSIC_DEFAULT_VOCODER_MS = 490.0
 BROWSER_HEARTBEAT_TIMEOUT_SECONDS = 20
 LAST_BROWSER_HEARTBEAT = time.monotonic()
 LIFECYCLE_THREAD: threading.Thread | None = None
@@ -1858,11 +1911,14 @@ def lmstudio_status() -> dict[str, object]:
 
 def interactive_ai_status() -> dict[str, object]:
     wan2gp = wan2gp_status()
+    wan2gp["url"] = f"{VIDEO_RENDERER_URL}/"
+    image = image_engine_status()
     process_running = INTERACTIVE_PROCESS is not None and INTERACTIVE_PROCESS.poll() is None
     wsl_running = any(item.get("name") == "Ubuntu-24.04" and item.get("state") == "Running" for item in parse_wsl(run_readonly(["wsl.exe", "--list", "--verbose"])))
     return {
         "ubuntu": {"state": "online" if (process_running or wsl_running) else "offline", "detail": "Ubuntu 24.04 Linux Environment · WSL 2 · ROCm"},
         "wan2gp": wan2gp,
+        "image": image,
         "gpu": gpu_owner_status(),
     }
 
@@ -1878,7 +1934,7 @@ def wan2gp_status(*, ignore_transition: bool = False) -> dict[str, object]:
             "gpu": transition,
         }
     try:
-        renderer = json_http("http://localhost:8766/api/status")
+        renderer = json_http(f"{VIDEO_RENDERER_URL}/api/status")
         if renderer.get("online"):
             gpu_ready = bool(renderer.get("device")) and float(renderer.get("vram_total") or 0) > 0
             if not gpu_ready:
@@ -1921,6 +1977,783 @@ def wan2gp_status(*, ignore_transition: bool = False) -> dict[str, object]:
     if RENDERER_LIFECYCLE_STATE == "ERROR" and RENDERER_LIFECYCLE_ERROR:
         return {"state": "error", "lifecycle_state": "ERROR", "detail": RENDERER_LIFECYCLE_ERROR, "gpu": transition}
     return {"state": "offline", "lifecycle_state": "STOPPED", "detail": "Linux video renderer is stopped - port 8766 is not listening", "gpu": transition}
+
+
+def image_model_path(model_id: str) -> Path | None:
+    model = IMAGE_MODELS.get(str(model_id or "").strip())
+    if not isinstance(model, dict):
+        return None
+    return IMAGE_MODEL_ROOT / str(model["filename"])
+
+
+def image_models_payload() -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for model_id, model in IMAGE_MODELS.items():
+        path = image_model_path(model_id)
+        size = path.stat().st_size if path and path.is_file() else 0
+        rows.append({
+            "id": model_id,
+            "name": model["name"],
+            "filename": model["filename"],
+            "family": model["family"],
+            "detail": model["detail"],
+            "license": model["license"],
+            "installed": bool(path and path.is_file()),
+            "size": size,
+        })
+    return rows
+
+
+def image_sizes_payload() -> list[dict[str, object]]:
+    return [{"id": size_id, **details} for size_id, details in IMAGE_SIZE_OPTIONS.items()]
+
+
+def music_provider_status() -> dict[str, object]:
+    """Advertise local and browser providers without hiding their boundaries."""
+    local = LOCAL_MUSIC_ENGINE.status()
+    available = bool(local["available"])
+    mp3_ready = bool(local.get("mp3_encoder"))
+    launchable = available and mp3_ready
+    return {
+        "output_root": str(music_storage_root()),
+        "default_provider": "ariadne-local",
+        "providers": [
+            {
+                "id": "ariadne-local",
+                "label": LOCAL_MUSIC_ENGINE.display_name,
+                "state": "ready" if launchable else "provider_required",
+                "runtime": local["runtime"] if available else "LOCAL RUNTIME NOT INSTALLED",
+                "gpu": "Vulkan · shared GPU on demand · 10.43 GB bench peak",
+                "launchable": launchable,
+                "launch_url": "/music",
+                "detail": (
+                    "MiniMax Music 3 Q4 is installed. Each render is a candidate until you explicitly accept it. "
+                    "The 20-second Vulkan bench peaked at 10.43 GB dedicated VRAM; Ariadne will refuse a run when less than 6 GB is free."
+                    if launchable else ("The local audio.cpp MiniMax runtime is not installed." if not available else "FFmpeg is required to create the 192 kbps MP3 share copy.")
+                ),
+            },
+            {
+                "id": "suno-web",
+                "label": "Suno (browser fallback)",
+                "state": "ready",
+                "runtime": "BROWSER SESSION",
+                "gpu": "None",
+                "launchable": True,
+                "launch_url": SUNO_MUSIC_URL,
+                "detail": "Suno opens in your browser and does not reserve Ariadne's local GPU.",
+            },
+        ],
+        "local": local,
+    }
+
+
+def lyric_duration_plan(lyrics: str, style: str) -> dict[str, object]:
+    """Choose a transparent full-lyric target; it is not a timing guarantee."""
+    singable = re.sub(r"\[[^\]]*\]", " ", lyrics)
+    words = re.findall(r"[\w']+", singable, flags=re.UNICODE)
+    match = re.search(r"\b(\d{2,3})(?:\s*[-–]\s*(\d{2,3}))?\s*bpm\b", style, flags=re.IGNORECASE)
+    if match:
+        low = int(match.group(1))
+        high = int(match.group(2) or low)
+        bpm = round((low + high) / 2)
+        bpm_source = "style brief"
+    else:
+        bpm = 120
+        bpm_source = "120 BPM fallback"
+    # About 1.55 sung words per beat leaves room for instrumental bars,
+    # repetitions, and a compact intro/outro. It is deliberately visible in
+    # provenance so it can be refined after real comparison tests.
+    seconds = int(round(len(words) / max(1.0, (bpm / 60) * 1.55) + 14))
+    target = max(30, min(300, seconds))
+    return {"mode": "full_lyrics", "word_count": len(words), "bpm": bpm, "bpm_source": bpm_source, "target_seconds": target, "capped": target != seconds}
+
+
+def choose_music_title(title: object, style: str, lyrics: str) -> tuple[str, str]:
+    """Return a usable display title and whether it was supplied or inferred."""
+    supplied = re.sub(r"\s+", " ", str(title or "")).strip()
+    if supplied:
+        return supplied[:160].rstrip(), "user"
+    for line in lyrics.splitlines():
+        candidate = re.sub(r"\[[^\]]*\]", "", line)
+        candidate = re.sub(r"\s+", " ", candidate).strip(" -–—\t")
+        if not candidate:
+            continue
+        words = candidate.split()
+        if len(words) > 8:
+            candidate = " ".join(words[:8])
+        return candidate[:80].rstrip(" .!?"), "lyrics"
+    descriptors = re.sub(r"\b\d{2,3}(?:\s*[-–]\s*\d{2,3})?\s*bpm\b", "", style, flags=re.IGNORECASE)
+    words = re.findall(r"[\w']+", descriptors, flags=re.UNICODE)
+    if words:
+        return f"{' '.join(words[:3]).title()} Session", "style"
+    return "Local Song Session", "generated"
+
+
+def music_filename_stem(title: str, job_id: str) -> str:
+    """Keep the chosen title visible while retaining collision-safe filenames."""
+    safe = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", title)
+    safe = re.sub(r"\s+", " ", safe).strip().rstrip(".")
+    safe = safe[:96].rstrip(" .") or "Local Song Session"
+    return f"{safe} - {job_id[:8]}"
+
+
+def music_provenance(*, request: MusicRequest, title: str, title_source: str, job_id: str, runtime: dict[str, object], duration_plan: dict[str, object]) -> dict[str, object]:
+    return {
+        "title": title,
+        "title_source": title_source,
+        "engine": {"id": "audio.cpp", "name": "audio.cpp", "workflow": "ariadne.text-to-song/v1"},
+        "model": {"id": "minimax_music3_q4_0", "name": "MiniMax Music 3 Q4", "family": LOCAL_MUSIC_ENGINE.family},
+        "style": request.style,
+        "lyrics": request.lyrics,
+        "settings": {
+            "duration_seconds": request.duration_seconds,
+            "duration_plan": duration_plan,
+            "seed": request.seed,
+            "num_inference_steps": request.inference_steps,
+            "backend": LOCAL_MUSIC_ENGINE.backend,
+            "mem_saver": True,
+            "rvq_depth_decoder": "q8_0",
+        },
+        "runtime": runtime,
+        "source_job_id": job_id,
+    }
+
+
+def music_storage_root() -> Path:
+    """Resolve the saved Music location at use time, with an env-safe fallback."""
+    try:
+        configured = configuration_snapshot().get("storage", {}).get("music")
+        if configured:
+            return Path(str(configured)).expanduser()
+    except (KeyError, TypeError, ValueError, OSError):
+        pass
+    return MUSIC_OUTPUT_ROOT
+
+
+def music_candidate_root() -> Path:
+    return music_storage_root() / "Candidates"
+
+
+def wav_duration_seconds(path: Path) -> float | None:
+    """Read enough RIFF metadata to report duration without a media dependency."""
+    try:
+        with path.open("rb") as handle:
+            if handle.read(4) != b"RIFF":
+                return None
+            handle.seek(12)
+            byte_rate: int | None = None
+            data_size: int | None = None
+            while handle.tell() + 8 <= path.stat().st_size:
+                chunk = handle.read(4)
+                size = int.from_bytes(handle.read(4), "little")
+                if chunk == b"fmt ":
+                    payload = handle.read(size)
+                    if len(payload) >= 12:
+                        byte_rate = int.from_bytes(payload[8:12], "little")
+                elif chunk == b"data":
+                    data_size = size
+                    break
+                else:
+                    handle.seek(size, 1)
+                if size % 2:
+                    handle.seek(1, 1)
+            return round(data_size / byte_rate, 3) if byte_rate and data_size is not None else None
+    except OSError:
+        return None
+
+
+def record_standalone_music_candidate(music_path: Path, provenance: dict[str, object], mp3_path: Path | None = None) -> dict[str, object]:
+    """Keep a one-off render under Music/Candidates until the user accepts it."""
+    candidate_root = music_candidate_root().resolve()
+    resolved_music = music_path.resolve()
+    try:
+        resolved_music.relative_to(candidate_root)
+    except ValueError as exc:
+        raise ValueError("Standalone music candidate must be inside the Music candidates folder.") from exc
+    if not resolved_music.is_file() or resolved_music.suffix.casefold() != ".wav":
+        raise FileNotFoundError(resolved_music)
+    resolved_mp3 = mp3_path.resolve() if mp3_path else None
+    if resolved_mp3 is not None:
+        try:
+            resolved_mp3.relative_to(candidate_root)
+        except ValueError as exc:
+            raise ValueError("Standalone music MP3 companion must be inside the Music candidates folder.") from exc
+        if not resolved_mp3.is_file() or resolved_mp3.suffix.casefold() != ".mp3":
+            raise FileNotFoundError(resolved_mp3)
+    asset = {
+        "schema": ASSET_SCHEMA,
+        "asset_id": f"music-{uuid.uuid4().hex[:12]}",
+        "type": "music",
+        "status": "candidate",
+        "project_id": None,
+        "created_at": utc_now(),
+        "files": {"media": resolved_music.name, "metadata": resolved_music.with_suffix(".json").name},
+        "provenance": provenance,
+    }
+    if resolved_mp3 is not None:
+        asset["files"]["mp3"] = resolved_mp3.name
+    sidecar = resolved_music.with_suffix(".json")
+    temporary = sidecar.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(asset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(sidecar)
+    return asset
+
+
+def standalone_music_asset(asset_id: object) -> tuple[dict[str, object], Path, Path, Path | None]:
+    normalized = str(asset_id or "").strip()
+    if not re.fullmatch(r"music-[a-f0-9]{12}", normalized):
+        raise ValueError("Invalid music candidate identifier.")
+    root = music_candidate_root().resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(normalized)
+    for sidecar in root.glob("*.json"):
+        try:
+            asset = json.loads(sidecar.read_text(encoding="utf-8"))
+        except (OSError, TypeError, json.JSONDecodeError):
+            continue
+        if not isinstance(asset, dict) or asset.get("asset_id") != normalized or asset.get("status") != "candidate":
+            continue
+        files = asset.get("files") if isinstance(asset.get("files"), dict) else {}
+        media_name = str(files.get("media") or "")
+        metadata_name = str(files.get("metadata") or "")
+        if Path(media_name).name != media_name or Path(metadata_name).name != metadata_name:
+            raise ValueError("Standalone music candidate paths are invalid.")
+        media = (root / media_name).resolve()
+        metadata = (root / metadata_name).resolve()
+        mp3_name = str(files.get("mp3") or "")
+        mp3 = (root / mp3_name).resolve() if mp3_name else None
+        if Path(mp3_name).name != mp3_name:
+            raise ValueError("Standalone music MP3 path is invalid.")
+        if media.parent != root or metadata.parent != root or (mp3 is not None and mp3.parent != root) or not media.is_file() or not metadata.is_file() or (mp3 is not None and not mp3.is_file()):
+            raise FileNotFoundError(normalized)
+        return asset, media, metadata, mp3
+    raise FileNotFoundError(normalized)
+
+
+def accept_standalone_music(asset_id: object) -> dict[str, object]:
+    asset, source_media, source_metadata, source_mp3 = standalone_music_asset(asset_id)
+    output_root = music_storage_root()
+    output_root.mkdir(parents=True, exist_ok=True)
+    target_media = output_root / source_media.name
+    target_metadata = output_root / source_metadata.name
+    target_mp3 = output_root / source_mp3.name if source_mp3 is not None else None
+    if target_media.exists() or target_metadata.exists() or (target_mp3 is not None and target_mp3.exists()):
+        raise FileExistsError("An accepted copy of this song already exists.")
+    shutil.move(str(source_media), str(target_media))
+    if source_mp3 is not None:
+        try:
+            shutil.move(str(source_mp3), str(target_mp3))
+        except Exception:
+            shutil.move(str(target_media), str(source_media))
+            raise
+    try:
+        shutil.move(str(source_metadata), str(target_metadata))
+    except Exception:
+        if target_mp3 is not None and target_mp3.exists():
+            shutil.move(str(target_mp3), str(source_mp3))
+        shutil.move(str(target_media), str(source_media))
+        raise
+    asset["status"] = "accepted"
+    asset["accepted_at"] = utc_now()
+    asset["files"] = {"media": target_media.name, "metadata": target_metadata.name}
+    if target_mp3 is not None:
+        asset["files"]["mp3"] = target_mp3.name
+    temporary = target_metadata.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(asset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(target_metadata)
+    return asset
+
+
+def format_duration_seconds(value: int | float) -> str:
+    seconds = max(0, int(round(float(value))))
+    return f"{seconds // 60}m {seconds % 60:02d}s" if seconds >= 60 else f"{seconds}s"
+
+
+def _music_timing_values(log_text: str, phase: str) -> list[float]:
+    return [float(value) for value in re.findall(rf"minimax_music3\.{re.escape(phase)}\.total_ms\s+([0-9.]+)", log_text)]
+
+
+def _music_progress_from_log(log_text: str, target_seconds: object, elapsed_seconds: int) -> dict[str, object]:
+    """Turn audio.cpp's repeated timing records into a count-based estimate."""
+    target = max(30.0, float(target_seconds or 30))
+    expected_flow = max(4, round(target / MUSIC_FLOW_CHUNK_SECONDS))
+    flow_values = _music_timing_values(log_text, "flow")
+    vocoder_values = _music_timing_values(log_text, "vocoder")
+    ar_values = _music_timing_values(log_text, "ar")
+    flow_count = len(flow_values)
+    vocoder_count = len(vocoder_values)
+    expected_ar = max(20.0, target - 6.0)
+    flow_ms = sum(flow_values) / len(flow_values) if flow_values else MUSIC_DEFAULT_FLOW_MS
+    vocoder_ms = sum(vocoder_values) / len(vocoder_values) if vocoder_values else MUSIC_DEFAULT_VOCODER_MS
+    if "session.wall_ms" in log_text:
+        return {"progress": 100, "stage": "Finalising the audio candidate", "flow_count": flow_count, "flow_total": expected_flow, "remaining_seconds": 0, "estimated_total_seconds": elapsed_seconds}
+    if vocoder_count:
+        progress = 95 + round(4 * min(1.0, vocoder_count / expected_flow))
+        stage = f"Building the playable audio preview · {vocoder_count}/{expected_flow} chunks"
+        remaining = max(0.0, (expected_flow - vocoder_count) * vocoder_ms / 1000) + 4
+    elif flow_count:
+        progress = 25 + round(70 * min(1.0, flow_count / expected_flow))
+        stage = f"Rendering the musical layers · {flow_count}/{expected_flow} chunks"
+        remaining = max(0.0, (expected_flow - flow_count) * (flow_ms + vocoder_ms) / 1000) + 4
+    elif ar_values:
+        progress = 25
+        stage = "Preparing the musical layers"
+        remaining = max(0.0, expected_flow * (flow_ms + vocoder_ms) / 1000) + 4
+    elif "runtime.model" in log_text:
+        progress = 12
+        stage = "Loading the MiniMax model"
+        remaining = expected_ar + expected_flow * (flow_ms + vocoder_ms) / 1000 + 4
+    else:
+        progress = max(4, min(11, round(4 + 7 * elapsed_seconds / max(1.0, expected_ar))))
+        stage = "Starting audio.cpp"
+        remaining = expected_ar + expected_flow * (flow_ms + vocoder_ms) / 1000 + 4
+    return {
+        "progress": progress,
+        "stage": stage,
+        "flow_count": flow_count,
+        "flow_total": expected_flow,
+        "remaining_seconds": round(remaining),
+        "estimated_total_seconds": elapsed_seconds + round(remaining),
+    }
+
+
+def _music_job_snapshot(job_id: str) -> dict[str, object] | None:
+    with MUSIC_JOBS_LOCK:
+        job = MUSIC_JOBS.get(job_id)
+        if job is None:
+            return None
+        snapshot = dict(job)
+    state = str(snapshot.get("state") or "queued")
+    started = float(snapshot.get("started_monotonic") or snapshot.get("created_monotonic") or time.monotonic())
+    finished = float(snapshot.get("finished_monotonic") or time.monotonic()) if state in {"succeeded", "failed"} else time.monotonic()
+    elapsed = max(0, int(finished - started))
+    payload: dict[str, object] = {
+        "ok": True,
+        "job_id": job_id,
+        "state": state,
+        "elapsed_seconds": elapsed,
+        "target_seconds": snapshot.get("target_seconds"),
+    }
+    if state in {"queued", "running"}:
+        log_path = snapshot.get("log_path")
+        log_text = ""
+        if log_path:
+            try:
+                with Path(str(log_path)).open("rb") as handle:
+                    handle.seek(0, os.SEEK_END)
+                    handle.seek(max(0, handle.tell() - 1_000_000))
+                    log_text = handle.read().decode("utf-8", errors="replace")
+            except OSError:
+                pass
+        estimate = _music_progress_from_log(log_text, snapshot.get("target_seconds"), elapsed) if state == "running" else {"progress": 0, "stage": "Waiting for the shared GPU", "flow_count": 0, "flow_total": 0, "remaining_seconds": None, "estimated_total_seconds": None}
+        payload.update({"progress_is_estimate": True, **estimate, "message": f"{estimate['stage']} · elapsed {format_duration_seconds(elapsed)}" + (f" · about {format_duration_seconds(estimate['remaining_seconds'])} remaining" if estimate.get("remaining_seconds") is not None else "")})
+    elif state == "succeeded":
+        payload.update({"progress": 100, "progress_is_estimate": False, "stage": "Complete", "result": snapshot.get("result")})
+    else:
+        payload.update({"progress": 0, "progress_is_estimate": False, "stage": "Generation failed", "result": snapshot.get("result")})
+    return payload
+
+
+def _run_music_job(job_id: str, body: dict[str, object]) -> None:
+    with MUSIC_JOBS_LOCK:
+        job = MUSIC_JOBS.get(job_id)
+        if job is None:
+            return
+        job["state"] = "running"
+        job["started_monotonic"] = time.monotonic()
+    try:
+        result, status = generate_music(body, progress_job_id=job_id)
+        state = "succeeded" if status == 200 and result.get("ok") else "failed"
+    except Exception as exc:  # keep the browser job contract alive on an unexpected backend failure
+        result, status, state = {"ok": False, "message": f"Music generation failed unexpectedly: {exc}"}, 500, "failed"
+    with MUSIC_JOBS_LOCK:
+        job = MUSIC_JOBS.get(job_id)
+        if job is not None:
+            job.update({"state": state, "result": result, "status": status, "finished_monotonic": time.monotonic()})
+
+
+def start_music_job(body: dict[str, object]) -> tuple[dict[str, object], int]:
+    duration_mode = str(body.get("duration_mode") or "full_lyrics").strip().lower()
+    lyrics = str(body.get("lyrics") or "").strip()
+    style = str(body.get("style") or "").strip()
+    plan = lyric_duration_plan(lyrics, style) if duration_mode == "full_lyrics" and lyrics else {"mode": duration_mode, "target_seconds": 30}
+    with MUSIC_JOBS_LOCK:
+        cutoff = time.monotonic() - 3600
+        for old_job_id, old_job in list(MUSIC_JOBS.items()):
+            if str(old_job.get("state")) in {"succeeded", "failed"} and float(old_job.get("finished_monotonic") or 0) < cutoff:
+                MUSIC_JOBS.pop(old_job_id, None)
+        if any(str(item.get("state")) in {"queued", "running"} for item in MUSIC_JOBS.values()):
+            return {"ok": False, "message": "Ariadne is already generating a song."}, 409
+        job_id = uuid.uuid4().hex
+        MUSIC_JOBS[job_id] = {
+            "state": "queued",
+            "created_monotonic": time.monotonic(),
+            "target_seconds": plan.get("target_seconds"),
+        }
+        threading.Thread(target=_run_music_job, args=(job_id, dict(body)), name="ariadne-music-generation", daemon=True).start()
+    return {"ok": True, "job_id": job_id, "state": "queued", "duration_plan": plan}, 202
+
+
+def generate_music(body: dict[str, object], *, progress_job_id: str | None = None) -> tuple[dict[str, object], int]:
+    global MUSIC_GENERATION_ACTIVE
+    if not MUSIC_GENERATION_LOCK.acquire(blocking=False):
+        return {"ok": False, "message": "Ariadne is already generating a song."}, 409
+    try:
+        lyrics = str(body.get("lyrics") or "").strip()
+        style = str(body.get("style") or "").strip()
+        title, title_source = choose_music_title(body.get("title"), style, lyrics)
+        project_id = str(body.get("project_id") or "").strip()
+        if not lyrics or not style:
+            return {"ok": False, "message": "Enter both lyrics and a style brief first."}, 400
+        if len(lyrics) > 12_000 or len(style) > 2_000:
+            return {"ok": False, "message": "Lyrics or style brief is too long."}, 400
+        if len(str(body.get("title") or "").strip()) > 160:
+            return {"ok": False, "message": "Song titles must be 160 characters or fewer."}, 400
+        duration_mode = str(body.get("duration_mode") or "full_lyrics").strip().lower()
+        duration_plan = lyric_duration_plan(lyrics, style) if duration_mode == "full_lyrics" else {"mode": "short_test", "target_seconds": 30}
+        try:
+            duration = float(duration_plan["target_seconds"]) if duration_mode == "full_lyrics" else float(body.get("duration_seconds") or 30)
+            seed = int(body.get("seed")) if str(body.get("seed") or "").strip() else int.from_bytes(os.urandom(4), "big")
+            steps = int(body.get("inference_steps") or 30)
+        except (TypeError, ValueError):
+            return {"ok": False, "message": "Duration, seed and inference steps must be numeric."}, 400
+        if duration_mode not in {"full_lyrics", "short_test"}:
+            return {"ok": False, "message": "Choose full lyric target or the 30-second short test."}, 400
+        if not 30 <= duration <= 300 or not 1 <= steps <= 60:
+            return {"ok": False, "message": "Music targets must be 30–300 seconds and use 1–60 inference steps."}, 400
+        if project_id:
+            try:
+                SEQUENCE_PROJECTS.project(project_id)
+            except FileNotFoundError:
+                return {"ok": False, "message": "The selected production project no longer exists."}, 404
+            except ValueError as exc:
+                return {"ok": False, "message": str(exc)}, 400
+        runtime = LOCAL_MUSIC_ENGINE.status()
+        if not runtime["available"]:
+            return {"ok": False, "message": "The local MiniMax audio.cpp runtime is not installed.", "runtime": runtime}, 409
+        video = wan2gp_status(ignore_transition=True)
+        if str(video.get("state") or "") in {"online", "starting"}:
+            return {"ok": False, "message": "Stop the video renderer before generating music."}, 409
+        gpu = gpu_status()
+        if gpu.get("available") and float(gpu.get("free_gb") or 0) < MUSIC_MINIMUM_FREE_GB:
+            return {"ok": False, "message": f"Music needs at least {MUSIC_MINIMUM_FREE_GB:g} GB free VRAM; Ariadne currently sees {gpu.get('free_gb')} GB.", "gpu": gpu}, 409
+        request = MusicRequest(lyrics=lyrics, style=style, duration_seconds=duration, seed=seed, inference_steps=steps)
+        job_id = uuid.uuid4().hex
+        candidate_root = SEQUENCE_PROJECTS.music_candidate_directory(project_id) if project_id else music_candidate_root()
+        output = candidate_root / f"{music_filename_stem(title, job_id)}.wav"
+        log_path = candidate_root / f"ariadne-music-{job_id}.log"
+        if progress_job_id:
+            with MUSIC_JOBS_LOCK:
+                progress_job = MUSIC_JOBS.get(progress_job_id)
+                if progress_job is not None:
+                    progress_job.update({"log_path": str(log_path), "output_path": str(output), "target_seconds": duration})
+        MUSIC_GENERATION_ACTIVE = True
+        announce_media_lifecycle("Music", "BUSY", "Generating a local MiniMax song candidate.")
+        with ai_gpu_admission():
+            try:
+                completed = LOCAL_MUSIC_ENGINE.generate(request, output, log_path, MUSIC_GENERATION_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired:
+                return {"ok": False, "message": "The music render exceeded its time limit; the candidate was not promoted."}, 504
+        if completed.returncode != 0 or not output.is_file() or output.stat().st_size < 44:
+            detail = (completed.stderr or completed.stdout or "audio.cpp did not write a WAV output").strip()
+            return {"ok": False, "message": f"MiniMax generation failed: {detail[-600:]}"}, 502
+        mp3_output = output.with_suffix(".mp3")
+        try:
+            mp3_completed = LOCAL_MUSIC_ENGINE.convert_to_mp3(output, mp3_output, MUSIC_GENERATION_TIMEOUT_SECONDS)
+        except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
+            return {"ok": False, "message": f"The WAV rendered, but Ariadne could not create its 192 kbps MP3 share copy: {exc}"}, 502
+        if mp3_completed.returncode != 0 or not mp3_output.is_file() or mp3_output.stat().st_size == 0:
+            detail = (mp3_completed.stderr or mp3_completed.stdout or "FFmpeg did not write an MP3 output").strip()
+            return {"ok": False, "message": f"The WAV rendered, but MP3 conversion failed: {detail[-600:]}"}, 502
+        duration_plan["target_seconds"] = duration
+        provenance = music_provenance(request=request, title=title, title_source=title_source, job_id=job_id, runtime=runtime, duration_plan=duration_plan)
+        provenance["outputs"] = {"wav": output.name, "mp3": mp3_output.name, "mp3_bitrate": "192 kbps", "mp3_encoder": "libmp3lame"}
+        try:
+            asset = SEQUENCE_PROJECTS.record_music_candidate(project_id, output, provenance, mp3_output) if project_id else record_standalone_music_candidate(output, provenance, mp3_output)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            return {"ok": False, "message": f"The song rendered, but Ariadne could not save its JSON provenance: {exc}"}, 500
+        duration_actual = wav_duration_seconds(output)
+        return {
+            "ok": True,
+            "message": "Song rendered as a project candidate. Review it, then explicitly accept it into the project music folder." if project_id else "Song rendered as a standalone candidate in D:\\Downloads\\Music\\Candidates. Review it, then explicitly accept it into D:\\Downloads\\Music.",
+            "job_id": job_id,
+            "project": project_id or None,
+            "duration_plan": duration_plan,
+            "asset": asset,
+            "music": {"title": title, "title_source": title_source, "filename": output.name, "url": f"/api/sequence/projects/{urllib.parse.quote(project_id)}/assets/{urllib.parse.quote(str(asset['asset_id']))}/content" if project_id else f"/api/music/candidates/{urllib.parse.quote(str(asset['asset_id']))}/content", "mp3_filename": mp3_output.name, "mp3_url": f"/api/sequence/projects/{urllib.parse.quote(project_id)}/assets/{urllib.parse.quote(str(asset['asset_id']))}/content?format=mp3" if project_id else f"/api/music/candidates/{urllib.parse.quote(str(asset['asset_id']))}/content?format=mp3", "path": str(output), "mp3_path": str(mp3_output), "duration_seconds": duration_actual, "mp3_bitrate": "192 kbps"},
+        }, 200
+    finally:
+        MUSIC_GENERATION_ACTIVE = False
+        MUSIC_GENERATION_LOCK.release()
+        announce_media_lifecycle("Music", "READY", "Local music generation is idle.")
+
+
+def image_engine_status() -> dict[str, object]:
+    global IMAGE_ENGINE_PROCESS
+    process = IMAGE_ENGINE_PROCESS
+    if process is not None and process.poll() is not None:
+        IMAGE_ENGINE_PROCESS = None
+        process = None
+    models = image_models_payload()
+    try:
+        system = json_http(f"{IMAGE_ENGINE_URL}/system_stats")
+        busy = IMAGE_GENERATION_ACTIVE
+        return {
+            "state": "online",
+            "lifecycle_state": "BUSY" if busy else "READY",
+            "detail": "ComfyUI image engine · GPU backend ready" if not busy else "ComfyUI is rendering an image.",
+            "engine": "ComfyUI",
+            "url": f"{IMAGE_ENGINE_URL}/",
+            "system": system,
+            "models": models,
+            "sizes": image_sizes_payload(),
+            "gpu": gpu_owner_status(),
+        }
+    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
+        if process is not None and process.poll() is None:
+            return {
+                "state": "starting",
+                "lifecycle_state": "STARTING_BACKEND",
+                "detail": "ComfyUI image engine is starting.",
+                "engine": "ComfyUI",
+                "url": f"{IMAGE_ENGINE_URL}/",
+                "models": models,
+                "sizes": image_sizes_payload(),
+                "gpu": gpu_owner_status(),
+            }
+        return {
+            "state": "offline",
+            "lifecycle_state": "STOPPED",
+            "detail": "ComfyUI image engine is stopped - port 8188 is not listening",
+            "engine": "ComfyUI",
+            "url": f"{IMAGE_ENGINE_URL}/",
+            "models": models,
+            "sizes": image_sizes_payload(),
+            "gpu": gpu_owner_status(),
+        }
+
+
+def announce_media_lifecycle(capability: str, lifecycle_state: str, detail: str) -> None:
+    """Publish media lifecycle changes through the existing Rust-host IPC path."""
+    state = str(lifecycle_state or "").upper()
+    avatar_state = {
+        "STARTING_WSL": "working",
+        "WAITING_FOR_HEALTH": "working",
+        "STARTING_BACKEND": "working",
+        "BUSY": "working",
+        "STOPPING_RENDERER": "working",
+        "READY": "success",
+        "STOPPED": "idle",
+        "ERROR": "warning",
+    }.get(state, "working")
+    message = f"{capability} process: {detail}"
+    _send_avatar_event_async(lambda: emit_state(avatar_state))
+    _send_avatar_event_async(lambda: emit_say(message[:500]))
+
+
+def start_image_engine() -> dict[str, object]:
+    global IMAGE_ENGINE_PROCESS
+    current = image_engine_status()
+    if current["state"] in {"online", "starting"}:
+        return {"ok": True, "image": current}
+    video = wan2gp_status(ignore_transition=True)
+    if str(video.get("state") or "") in {"online", "starting"}:
+        return {"ok": False, "message": "Stop the video renderer before starting the image process.", "image": current}
+    with GPU_ARBITRATION_LOCK:
+        if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER == "RENDERER":
+            return {"ok": False, "message": GPU_TRANSITION_DETAIL, "image": current}
+    if not IMAGE_ENGINE_ROOT.is_dir() or not IMAGE_ENGINE_PYTHON.is_file():
+        announce_media_lifecycle("Image", "ERROR", f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}")
+        return {
+            "ok": False,
+            "message": f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}",
+            "image": {**current, "state": "error", "lifecycle_state": "ERROR"},
+        }
+    try:
+        IMAGE_ENGINE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        log_handle = IMAGE_ENGINE_LOG.open("a", encoding="utf-8")
+        IMAGE_ENGINE_PROCESS = subprocess.Popen(
+            [str(IMAGE_ENGINE_PYTHON), "main.py", "--listen", "127.0.0.1", "--port", str(IMAGE_ENGINE_PORT)],
+            cwd=str(IMAGE_ENGINE_ROOT),
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        log_handle.close()
+    except OSError as exc:
+        IMAGE_ENGINE_PROCESS = None
+        announce_media_lifecycle("Image", "ERROR", f"Could not start ComfyUI: {exc}")
+        return {"ok": False, "message": f"Could not start ComfyUI: {exc}", "image": {**current, "state": "error", "lifecycle_state": "ERROR"}}
+    status = image_engine_status()
+    announce_media_lifecycle("Image", str(status.get("lifecycle_state") or "STARTING_BACKEND"), str(status.get("detail") or "ComfyUI image process is starting."))
+    return {"ok": True, "message": "ComfyUI image process is starting.", "image": status}
+
+
+def stop_image_engine() -> dict[str, object]:
+    global IMAGE_ENGINE_PROCESS
+    if IMAGE_GENERATION_ACTIVE:
+        return {"ok": False, "message": "An image is still rendering; wait for it to finish before stopping the process.", "image": image_engine_status()}
+    process = IMAGE_ENGINE_PROCESS
+    if process is not None:
+        _terminate_process(process)
+        IMAGE_ENGINE_PROCESS = None
+    status = image_engine_status()
+    announce_media_lifecycle("Image", str(status.get("lifecycle_state") or "STOPPED"), str(status.get("detail") or "ComfyUI image process stopped."))
+    return {"ok": True, "message": "ComfyUI image process stopped.", "image": status}
+
+
+def image_prompt_workflow(model_filename: str, prompt: str, negative_prompt: str, width: int, height: int, seed: int) -> dict[str, object]:
+    return {
+        "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": model_filename}},
+        "5": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["4", 1]}},
+        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": negative_prompt, "clip": ["4", 1]}},
+        "3": {"class_type": "KSampler", "inputs": {"seed": seed, "steps": 24, "cfg": 7.0, "sampler_name": "euler", "scheduler": "normal", "denoise": 1.0, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+        "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": IMAGE_OUTPUT_PREFIX, "images": ["8", 0]}},
+    }
+
+
+def _comfy_output_bytes(image: dict[str, object]) -> bytes:
+    query = urllib.parse.urlencode({
+        "filename": str(image.get("filename") or ""),
+        "subfolder": str(image.get("subfolder") or ""),
+        "type": str(image.get("type") or "output"),
+    })
+    request = urllib.request.Request(f"{IMAGE_ENGINE_URL}/view?{query}", headers={"Accept": "image/png"})
+    with urllib.request.urlopen(request, timeout=30.0) as response:
+        return response.read()
+
+
+def image_provenance(*, prompt: str, negative_prompt: str, model_id: str, model: dict[str, object], width: int, height: int, seed: int, job_id: str) -> dict[str, object]:
+    """Keep the exact portable image-generation inputs beside every PNG."""
+    return {
+        "engine": {"id": "comfyui", "name": "ComfyUI", "workflow": "ariadne.text-to-image/v1"},
+        "model": {"id": model_id, "name": model.get("name"), "filename": model.get("filename"), "family": model.get("family")},
+        "prompt": prompt,
+        "negative_prompt": negative_prompt,
+        "settings": {"seed": seed, "width": width, "height": height, "steps": 24, "cfg": 7.0, "sampler": "euler", "scheduler": "normal", "batch_size": 1},
+        "source_job_id": job_id,
+    }
+
+
+def write_unassigned_image_sidecar(image_path: Path, provenance: dict[str, object]) -> dict[str, object]:
+    """Persist provenance even when a render is not attached to a project yet."""
+    asset = {
+        "schema": ASSET_SCHEMA,
+        "asset_id": f"image-{uuid.uuid4().hex[:12]}",
+        "type": "image",
+        "status": "unassigned",
+        "project_id": None,
+        "created_at": utc_now(),
+        "files": {"media": image_path.name, "metadata": image_path.with_suffix(".json").name},
+        "provenance": provenance,
+    }
+    sidecar = image_path.with_suffix(".json")
+    temporary = sidecar.with_suffix(sidecar.suffix + ".tmp")
+    temporary.write_text(json.dumps(asset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(sidecar)
+    return asset
+
+
+def generate_image(body: dict[str, object]) -> tuple[dict[str, object], int]:
+    global IMAGE_GENERATION_ACTIVE
+    if not IMAGE_GENERATION_LOCK.acquire(blocking=False):
+        return {"ok": False, "message": "Ariadne is already rendering an image."}, 409
+    try:
+        prompt = str(body.get("prompt") or "").strip()
+        model_id = str(body.get("model") or "sdxl-base-1.0").strip()
+        project_id = str(body.get("project_id") or "").strip()
+        negative_prompt = str(body.get("negative_prompt") or "").strip()
+        if not prompt:
+            return {"ok": False, "message": "Enter an image prompt first."}, 400
+        if len(prompt) > 4000 or len(negative_prompt) > 2000:
+            return {"ok": False, "message": "The prompt is too long."}, 400
+        model = IMAGE_MODELS.get(model_id)
+        path = image_model_path(model_id)
+        if not isinstance(model, dict) or path is None:
+            return {"ok": False, "message": "Choose a recognised image model."}, 400
+        if not path.is_file():
+            return {"ok": False, "message": f"{model['name']} is not installed yet."}, 409
+        try:
+            width = int(body.get("width") or 768)
+            height = int(body.get("height") or 768)
+            seed = int(body.get("seed")) if str(body.get("seed") or "").strip() else int.from_bytes(os.urandom(4), "big")
+        except (TypeError, ValueError):
+            return {"ok": False, "message": "Width, height and seed must be numeric."}, 400
+        if f"{width}x{height}" not in IMAGE_SIZE_OPTIONS:
+            return {"ok": False, "message": "Choose one of the six supported image sizes."}, 400
+        project = None
+        if project_id:
+            try:
+                project = SEQUENCE_PROJECTS.project(project_id)
+            except FileNotFoundError:
+                return {"ok": False, "message": "The selected production project no longer exists."}, 404
+            except ValueError as exc:
+                return {"ok": False, "message": str(exc)}, 400
+        current = image_engine_status()
+        if current["state"] != "online":
+            return {"ok": False, "message": "Start the image process before generating.", "image": current}, 409
+        video = wan2gp_status(ignore_transition=True)
+        if str(video.get("state") or "") in {"online", "starting"}:
+            return {"ok": False, "message": "Stop the video renderer before generating an image."}, 409
+        IMAGE_GENERATION_ACTIVE = True
+        with ai_gpu_admission():
+            queued = post_json(f"{IMAGE_ENGINE_URL}/prompt", {"prompt": image_prompt_workflow(str(model["filename"]), prompt, negative_prompt, width, height, seed)}, timeout=30.0)
+            prompt_id = str(queued.get("prompt_id") or "")
+            if not prompt_id:
+                return {"ok": False, "message": "ComfyUI did not accept the image workflow."}, 502
+            deadline = time.monotonic() + 300.0
+            result: dict[str, object] | None = None
+            while time.monotonic() < deadline:
+                try:
+                    history = json_http(f"{IMAGE_ENGINE_URL}/history/{urllib.parse.quote(prompt_id)}", timeout=10.0)
+                except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
+                    history = {}
+                candidate = history.get(prompt_id) if isinstance(history, dict) else None
+                if isinstance(candidate, dict):
+                    status = candidate.get("status") if isinstance(candidate.get("status"), dict) else {}
+                    if status.get("status_str") == "error" or status.get("completed") is False and status.get("messages"):
+                        return {"ok": False, "message": "ComfyUI reported an image rendering error.", "job_id": prompt_id}, 502
+                    outputs = candidate.get("outputs") if isinstance(candidate.get("outputs"), dict) else {}
+                    images = [item for node in outputs.values() if isinstance(node, dict) for item in (node.get("images") or []) if isinstance(item, dict)]
+                    if images:
+                        result = images[0]
+                        break
+                time.sleep(1.0)
+            if result is None:
+                return {"ok": False, "message": "The image render timed out before producing an output.", "job_id": prompt_id}, 504
+            try:
+                payload = _comfy_output_bytes(result)
+                storage = configuration_snapshot()["storage"]
+                target_root = SEQUENCE_PROJECTS.image_candidate_directory(project_id) if project else Path(str(storage["images"]))
+                target_root.mkdir(parents=True, exist_ok=True)
+                target = target_root / f"ariadne-{prompt_id}.png"
+                target.write_bytes(payload)
+            except (KeyError, OSError, TypeError, ValueError, urllib.error.URLError) as exc:
+                return {"ok": False, "message": f"The image rendered, but Ariadne could not save the output: {exc}", "job_id": prompt_id}, 500
+            provenance = image_provenance(prompt=prompt, negative_prompt=negative_prompt, model_id=model_id, model=model, width=width, height=height, seed=seed, job_id=prompt_id)
+            try:
+                asset = SEQUENCE_PROJECTS.record_image_candidate(project_id, target, provenance) if project else write_unassigned_image_sidecar(target, provenance)
+            except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                return {"ok": False, "message": f"The image rendered, but Ariadne could not save its JSON provenance: {exc}", "job_id": prompt_id}, 500
+            output_url = (
+                f"/api/sequence/projects/{urllib.parse.quote(project_id)}/assets/{urllib.parse.quote(str(asset['asset_id']))}/content"
+                if project else f"/api/image/output?filename={urllib.parse.quote(target.name)}"
+            )
+            return {
+                "ok": True,
+                "message": "Image rendered as a project candidate with its JSON provenance." if project else "Image rendered with a JSON provenance sidecar in the configured Images folder.",
+                "job_id": prompt_id,
+                "model": model["name"],
+                "seed": seed,
+                "project": project_id or None,
+                "asset": asset,
+                "image": {"filename": target.name, "url": output_url, "path": str(target), "width": width, "height": height},
+            }, 200
+    finally:
+        IMAGE_GENERATION_ACTIVE = False
+        IMAGE_GENERATION_LOCK.release()
 
 
 def release_ollama_for_renderer(operation_id: str) -> dict[str, object]:
@@ -1969,7 +2802,7 @@ def _start_wan2gp_backend() -> dict[str, object]:
         renderer = None
         for _ in range(40):
             try:
-                renderer = json_http("http://localhost:8766/api/status")
+                renderer = json_http(f"{VIDEO_RENDERER_URL}/api/status")
                 break
             except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
                 time.sleep(0.5)
@@ -1981,7 +2814,7 @@ def _start_wan2gp_backend() -> dict[str, object]:
         if renderer.get("online"):
             return {"ok": True, "wan2gp": {"state": "online", "detail": "Local Music Video Renderer · GPU backend ready · Ubuntu 24.04"}}
         try:
-            response = post_json("http://localhost:8766/api/start", {}, timeout=20.0)
+            response = post_json(f"{VIDEO_RENDERER_URL}/api/start", {}, timeout=20.0)
         except (TimeoutError, socket.timeout) as exc:
             # The renderer may continue booting after its synchronous start
             # endpoint exceeds the HTTP client timeout.  Treat this as a
@@ -2089,6 +2922,7 @@ def _renderer_start_worker(operation_id: str) -> None:
                     RENDERER_LIFECYCLE_STATE = status.get("lifecycle_state", "READY")
                     RENDERER_LIFECYCLE_ERROR = None
                 log_renderer_lifecycle("start_complete", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), final=status)
+                announce_media_lifecycle("Video", str(status.get("lifecycle_state") or "READY"), str(status.get("detail") or "Video renderer is ready."))
                 return
             if status.get("state") == "error":
                 raise RuntimeError(str(status.get("detail") or "Renderer health check failed."))
@@ -2104,6 +2938,7 @@ def _renderer_start_worker(operation_id: str) -> None:
             RENDERER_LIFECYCLE_STATE = "ERROR"
             RENDERER_LIFECYCLE_ERROR = str(exc)
         log_renderer_lifecycle("start_failed", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), error=str(exc))
+        announce_media_lifecycle("Video", "ERROR", f"Video renderer startup failed: {exc}")
 
 
 def start_wan2gp() -> dict[str, object]:
@@ -2131,15 +2966,16 @@ def start_wan2gp() -> dict[str, object]:
         log_renderer_lifecycle("start_requested", operation_id=operation_id, prior=current)
         RENDERER_START_THREAD = threading.Thread(target=_renderer_start_worker, args=(operation_id,), daemon=True, name="ariadne-renderer-start")
         RENDERER_START_THREAD.start()
+        announce_media_lifecycle("Video", "STARTING_WSL", "Preparing the video renderer and shared GPU.")
         return {"ok": True, "operation_id": operation_id, "wan2gp": wan2gp_status()}
 
 def _stop_wan2gp_backend() -> dict[str, object]:
     global WAN2GP_PROCESS
     with PROFILE_LOCK:
         try:
-            renderer = json_http("http://localhost:8766/api/status")
+            renderer = json_http(f"{VIDEO_RENDERER_URL}/api/status")
             if renderer.get("online"):
-                post_json("http://localhost:8766/api/stop", {})
+                post_json(f"{VIDEO_RENDERER_URL}/api/stop", {})
         except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
             pass
         process = WAN2GP_PROCESS
@@ -2179,6 +3015,7 @@ def _renderer_stop_worker(operation_id: str) -> None:
                     RENDERER_LIFECYCLE_STATE = "STOPPED"
                     RENDERER_LIFECYCLE_ERROR = None
                 log_renderer_lifecycle("stop_complete", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), final=status, vram_before=vram_before, vram_after=vram_after)
+                announce_media_lifecycle("Video", str(status.get("lifecycle_state") or "STOPPED"), str(status.get("detail") or "Video renderer is stopped."))
                 return
             time.sleep(RENDERER_POLL_INTERVAL_SECONDS)
         raise TimeoutError("Renderer did not confirm shutdown within 30 seconds.")
@@ -2192,6 +3029,7 @@ def _renderer_stop_worker(operation_id: str) -> None:
             RENDERER_LIFECYCLE_STATE = "ERROR"
             RENDERER_LIFECYCLE_ERROR = str(exc)
         log_renderer_lifecycle("stop_failed", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), error=str(exc))
+        announce_media_lifecycle("Video", "ERROR", f"Video renderer shutdown failed: {exc}")
 
 
 def stop_wan2gp(*, wait: bool = False) -> dict[str, object]:
@@ -2212,6 +3050,7 @@ def stop_wan2gp(*, wait: bool = False) -> dict[str, object]:
             log_renderer_lifecycle("stop_requested", operation_id=operation_id)
             RENDERER_STOP_THREAD = threading.Thread(target=_renderer_stop_worker, args=(operation_id,), daemon=True, name="ariadne-renderer-stop")
             RENDERER_STOP_THREAD.start()
+            announce_media_lifecycle("Video", "STOPPING_RENDERER", "Stopping the renderer and releasing the shared GPU.")
             result = {"ok": True, "operation_id": operation_id, "wan2gp": wan2gp_status()}
     if wait and RENDERER_STOP_THREAD is not None:
         RENDERER_STOP_THREAD.join(timeout=35)
@@ -2235,7 +3074,7 @@ def stop_interactive_session() -> None:
 
 def renderer_is_busy() -> bool:
     try:
-        renderer = json_http("http://localhost:8766/api/status")
+        renderer = json_http(f"{VIDEO_RENDERER_URL}/api/status")
     except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
         return False
     clip = renderer.get("clip") if isinstance(renderer, dict) else None
@@ -2372,7 +3211,7 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
     The Rust host retains its Job Object termination fallback if this cleanup
     cannot complete.
     """
-    global ACTIVE_PROFILE, ACTIVE_DEPLOYMENT_MODE, SIGNAL_SERVICE_CLIENT, IDLE_SHUTDOWN_DONE, SHUTDOWN_REQUESTED
+    global ACTIVE_PROFILE, ACTIVE_DEPLOYMENT_MODE, SIGNAL_SERVICE_CLIENT, IDLE_SHUTDOWN_DONE, SHUTDOWN_REQUESTED, IMAGE_ENGINE_PROCESS
     with SHUTDOWN_LOCK:
         if SHUTDOWN_REQUESTED:
             return
@@ -2416,6 +3255,8 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
             _terminate_process(process)
             run_readonly(["wsl.exe", "--terminate", name], timeout=30.0)
 
+        _terminate_process(IMAGE_ENGINE_PROCESS)
+        IMAGE_ENGINE_PROCESS = None
         _unload_ollama_models()
         release_workloads(force=True)
         docker_report = stop_docker_desktop_safely()
@@ -4893,6 +5734,7 @@ def _status_skeleton() -> dict[str, object]:
         "interactive_ai": {
             "ubuntu": {"state": "unknown", "detail": "Telemetry is still loading."},
             "wan2gp": {"state": "unknown", "detail": "Telemetry is still loading."},
+            "image": {"state": "unknown", "detail": "Telemetry is still loading."},
             "gpu": gpu_owner_status(),
         },
         "memory": {"available": False, "detail": "Telemetry is still loading."},
@@ -4998,6 +5840,50 @@ class AriadneHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(payload)
+
+    def send_audio_file(self, path: Path) -> None:
+        """Serve WAV candidates with byte ranges so browser players can seek."""
+        size = path.stat().st_size
+        start, end, status = 0, size - 1, 200
+        range_header = self.headers.get("Range", "").strip()
+        if range_header.startswith("bytes="):
+            try:
+                first = range_header.removeprefix("bytes=").split(",", 1)[0]
+                raw_start, raw_end = first.split("-", 1)
+                if raw_start:
+                    start = int(raw_start)
+                    end = int(raw_end) if raw_end else end
+                elif raw_end:
+                    start = max(0, size - int(raw_end))
+                else:
+                    raise ValueError("Empty range")
+                if start < 0 or start >= size or end < start:
+                    raise ValueError("Range outside file")
+                end = min(end, size - 1)
+                status = 206
+            except (ValueError, OverflowError):
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.end_headers()
+                return
+        length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", "audio/mpeg" if path.suffix.casefold() == ".mp3" else "audio/wav")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(length))
+        if status == 206:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        with path.open("rb") as handle:
+            handle.seek(start)
+            remaining = length
+            while remaining:
+                block = handle.read(min(64 * 1024, remaining))
+                if not block:
+                    break
+                self.wfile.write(block)
+                remaining -= len(block)
 
     def send_asset(self, filename: str, content_type: str) -> None:
         try:
@@ -5114,6 +6000,87 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/model-control":
             self.send_json(model_control_payload())
             return
+        if path == "/api/image/status":
+            self.send_json(image_engine_status())
+            return
+        if path == "/api/music/provider/status":
+            self.send_json(music_provider_status())
+            return
+        music_job_status_match = re.fullmatch(r"/api/music/generation/([a-f0-9]{32})", path)
+        if music_job_status_match:
+            payload = _music_job_snapshot(music_job_status_match.group(1))
+            if payload is None:
+                self.send_json({"ok": False, "message": "Music generation job not found."}, 404)
+            else:
+                self.send_json(payload)
+            return
+        standalone_music_match = re.fullmatch(r"/api/music/candidates/(music-[a-f0-9]{12})/content", path)
+        if standalone_music_match:
+            try:
+                _asset, media, _metadata, mp3 = standalone_music_asset(standalone_music_match.group(1))
+                requested_format = parse_qs(urlparse(self.path).query).get("format", ["wav"])[0].casefold()
+                selected = mp3 if requested_format == "mp3" else media
+                if selected is None:
+                    raise FileNotFoundError("MP3 companion is unavailable")
+                self.send_audio_file(selected)
+            except (FileNotFoundError, OSError, ValueError, TypeError):
+                self.send_bytes(b"Standalone music candidate is unavailable.", "text/plain; charset=utf-8", 404)
+            return
+        if path == "/api/sequence/projects":
+            self.send_json({"ok": True, "root": str(SEQUENCE_PROJECTS.root), "projects": SEQUENCE_PROJECTS.projects()})
+            return
+        sequence_music_asset_match = re.fullmatch(r"/api/sequence/projects/([^/]+)/assets/(music-[a-f0-9]{12})/content", path)
+        if sequence_music_asset_match:
+            project_id, asset_id = (unquote(sequence_music_asset_match.group(1)), sequence_music_asset_match.group(2))
+            try:
+                asset = SEQUENCE_PROJECTS.music_asset(project_id, asset_id)
+                project_root = SEQUENCE_PROJECTS.project_directory(project_id).resolve()
+                files = asset.get("files") if isinstance(asset.get("files"), dict) else {}
+                requested_format = parse_qs(urlparse(self.path).query).get("format", ["wav"])[0].casefold()
+                candidate = (project_root / str(files.get("mp3" if requested_format == "mp3" else "media") or "")).resolve()
+                candidate.relative_to(project_root)
+                if not candidate.is_file() or candidate.suffix.casefold() not in {".wav", ".mp3"}:
+                    raise FileNotFoundError(asset_id)
+                self.send_audio_file(candidate)
+            except (FileNotFoundError, OSError, ValueError, TypeError):
+                self.send_bytes(b"Project music output is unavailable.", "text/plain; charset=utf-8", 404)
+            return
+        sequence_asset_match = re.fullmatch(r"/api/sequence/projects/([^/]+)/assets/(image-[a-f0-9]{12})/content", path)
+        if sequence_asset_match:
+            project_id, asset_id = (unquote(sequence_asset_match.group(1)), sequence_asset_match.group(2))
+            try:
+                asset = SEQUENCE_PROJECTS.image_asset(project_id, asset_id)
+                project_root = SEQUENCE_PROJECTS.project_directory(project_id).resolve()
+                files = asset.get("files") if isinstance(asset.get("files"), dict) else {}
+                candidate = (project_root / str(files.get("media") or "")).resolve()
+                candidate.relative_to(project_root)
+                if not candidate.is_file() or candidate.suffix.casefold() != ".png":
+                    raise FileNotFoundError(asset_id)
+                self.send_bytes(candidate.read_bytes(), "image/png")
+            except (FileNotFoundError, OSError, ValueError, TypeError):
+                self.send_bytes(b"Project image output is unavailable.", "text/plain; charset=utf-8", 404)
+            return
+        sequence_project_match = re.fullmatch(r"/api/sequence/projects/([^/]+)", path)
+        if sequence_project_match:
+            try:
+                self.send_json({"ok": True, "project": SEQUENCE_PROJECTS.project(unquote(sequence_project_match.group(1)))})
+            except FileNotFoundError:
+                self.send_json({"ok": False, "message": "Production project not found."}, 404)
+            except ValueError as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
+            return
+        if path == "/api/image/output":
+            filename = parse_qs(parsed.query).get("filename", [""])[0]
+            try:
+                root = Path(str(configuration_snapshot()["storage"]["images"])).resolve()
+                candidate = (root / filename).resolve()
+                candidate.relative_to(root)
+                if not candidate.is_file() or candidate.suffix.casefold() != ".png":
+                    raise FileNotFoundError(filename)
+                self.send_bytes(candidate.read_bytes(), "image/png")
+            except (FileNotFoundError, OSError, ValueError, KeyError, TypeError):
+                self.send_bytes(b"Image output is unavailable.", "text/plain; charset=utf-8", 404)
+            return
         if path == "/api/status":
             self.send_json(status_payload())
             return
@@ -5150,6 +6117,15 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/create":
             self.send_asset("create.html", "text/html; charset=utf-8")
+            return
+        if path == "/image":
+            self.send_asset("image.html", "text/html; charset=utf-8")
+            return
+        if path == "/music":
+            self.send_asset("music.html", "text/html; charset=utf-8")
+            return
+        if path == "/sequence":
+            self.send_asset("sequence.html", "text/html; charset=utf-8")
             return
         if path == "/workshop":
             self.send_asset("workshop.html", "text/html; charset=utf-8")
@@ -5201,6 +6177,15 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/create.js":
             self.send_asset("create.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/image.js":
+            self.send_asset("image.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/music.js":
+            self.send_asset("music.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/sequence.js":
+            self.send_asset("sequence.js", "text/javascript; charset=utf-8")
             return
         if path == "/workshop.js":
             self.send_asset("workshop.js", "text/javascript; charset=utf-8")
@@ -5380,6 +6365,67 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/wan2gp/stop":
                 self.send_json(stop_wan2gp())
+                return
+            if path == "/api/image/start":
+                result = start_image_engine()
+                self.send_json(result, 200 if result.get("ok") else 409)
+                return
+            if path == "/api/image/stop":
+                result = stop_image_engine()
+                self.send_json(result, 200 if result.get("ok") else 409)
+                return
+            if path == "/api/image/generate":
+                result, status = generate_image(body)
+                self.send_json(result, status)
+                return
+            if path == "/api/music/generate":
+                result, status = start_music_job(body)
+                self.send_json(result, status)
+                return
+            accept_standalone_music_match = re.fullmatch(r"/api/music/candidates/(music-[a-f0-9]{12})/accept", path)
+            if accept_standalone_music_match:
+                try:
+                    asset = accept_standalone_music(accept_standalone_music_match.group(1))
+                    self.send_json({"ok": True, "asset": asset, "message": "Music accepted into D:\\Downloads\\Music."})
+                except FileNotFoundError:
+                    self.send_json({"ok": False, "message": "Standalone music candidate not found."}, 404)
+                except (ValueError, FileExistsError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                except OSError as exc:
+                    self.send_json({"ok": False, "message": f"Could not accept the music: {exc}"}, 500)
+                return
+            if path == "/api/sequence/projects":
+                try:
+                    project = SEQUENCE_PROJECTS.create(str(body.get("name") or ""))
+                    self.send_json({"ok": True, "project": project}, 201)
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                except OSError as exc:
+                    self.send_json({"ok": False, "message": f"Could not create the production project: {exc}"}, 500)
+                return
+            accept_image_match = re.fullmatch(r"/api/sequence/projects/([^/]+)/assets/(image-[a-f0-9]{12})/accept", path)
+            if accept_image_match:
+                try:
+                    asset = SEQUENCE_PROJECTS.accept_image(unquote(accept_image_match.group(1)), accept_image_match.group(2))
+                    self.send_json({"ok": True, "asset": asset, "message": "Image accepted into this production project."})
+                except FileNotFoundError:
+                    self.send_json({"ok": False, "message": "Production project or image candidate not found."}, 404)
+                except (ValueError, FileExistsError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                except OSError as exc:
+                    self.send_json({"ok": False, "message": f"Could not accept the image: {exc}"}, 500)
+                return
+            accept_music_match = re.fullmatch(r"/api/sequence/projects/([^/]+)/assets/(music-[a-f0-9]{12})/accept", path)
+            if accept_music_match:
+                try:
+                    asset = SEQUENCE_PROJECTS.accept_music(unquote(accept_music_match.group(1)), accept_music_match.group(2))
+                    self.send_json({"ok": True, "asset": asset, "message": "Music accepted into this production project."})
+                except FileNotFoundError:
+                    self.send_json({"ok": False, "message": "Production project or music candidate not found."}, 404)
+                except (ValueError, FileExistsError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                except OSError as exc:
+                    self.send_json({"ok": False, "message": f"Could not accept the music: {exc}"}, 500)
                 return
             if path == "/api/session/start":
                 expire_home_chats()

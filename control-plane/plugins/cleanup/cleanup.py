@@ -17,6 +17,7 @@ COLLISION_POLICIES = {"skip"}
 EXTENSION_RE = re.compile(r"^\.[A-Za-z0-9][A-Za-z0-9._+-]*$")
 DEFAULT_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".svg", ".heic", ".avif"]
 DEFAULT_VIDEO_EXTENSIONS = [".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm", ".wmv", ".flv", ".mpeg", ".mpg"]
+DEFAULT_MUSIC_EXTENSIONS = [".wav", ".mp3", ".flac", ".m4a", ".aac", ".ogg", ".opus"]
 
 
 def default_configuration(storage: dict[str, object]) -> dict[str, object]:
@@ -33,10 +34,14 @@ def default_configuration(storage: dict[str, object]) -> dict[str, object]:
             # image away from the screenshot destination.
             {"name": "Screenshot", "extensions": DEFAULT_IMAGE_EXTENSIONS.copy(), "patterns": ["screenshot"], "destination": str(source / "screenshots"), "enabled": True},
             {"name": "Image", "extensions": DEFAULT_IMAGE_EXTENSIONS.copy(), "destination": str(storage["images"]), "enabled": True},
+            {"name": "Music", "extensions": DEFAULT_MUSIC_EXTENSIONS.copy(), "destination": str(storage["music"]), "enabled": True},
             {"name": "Video", "extensions": DEFAULT_VIDEO_EXTENSIONS.copy(), "destination": str(storage["videos"]), "enabled": True},
         ],
         "recurse": False,
-        "exclusions": [],
+        # Ariadne-managed working and project folders are reference points,
+        # not loose downloads. Cleanup must never re-file their candidates or
+        # accepted media if recursion is enabled later.
+        "exclusions": ["Music\\Candidates", "Music\\Ariadne Projects"],
         "confirmation_required": True,
         "collision_policy": "skip",
         "unmatched_policy": "leave_in_place",

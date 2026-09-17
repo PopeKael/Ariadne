@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" class="ariadne-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Music Studio · Ariadne</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/page-shell.css">
+</head>
+<body class="ariadne-page music-page">
+  <div class="workspace-shell">
+    <main class="workspace-main">
+      <div class="studio-toolbar"><a class="ws-button" href="/create">← Back to Create</a><span class="lane-note">Candidate first · acceptance is always manual</span></div>
+      <section class="production-grid" aria-label="Music generation workspace">
+        <article class="production-card music-studio-card">
+          <div class="card-visual"><span class="card-glyph">♫</span><span id="music-state" class="card-status">Checking runtime</span></div>
+          <div class="card-body">
+            <div class="capability-heading"><div><h3>Local Song Generator</h3><p>Write or paste your lyrics and style brief, then generate a local song candidate. Ariadne only moves it into the accepted music set when you choose it.</p></div><span class="capability-badge">AUDIO.CPP</span></div>
+            <div class="music-workspace">
+              <div class="music-controls">
+                <div class="capability-list music-status-list"><div class="capability-row"><span>Engine</span><strong id="music-engine">Checking…</strong></div><div class="capability-row"><span>GPU policy</span><strong id="music-gpu">Checking…</strong></div><div class="capability-row"><span>Output</span><strong id="music-output">Reading music folder…</strong></div></div>
+                <label class="field-label" for="music-project">Production project <span>(optional)</span></label>
+                <select id="music-project" class="ws-select"><option value="">Standalone song · save under D:\Downloads\Music</option></select>
+                <span class="field-hint">Standalone candidates wait in <strong>D:\Downloads\Music\Candidates</strong>; accepted songs move into <strong>D:\Downloads\Music</strong>. A project keeps the song with its video workflow instead. <a href="/sequence">Create or manage projects</a></span>
+                <label class="field-label" for="music-title">Song title</label>
+                <input id="music-title" class="ws-input" type="text" maxlength="160" placeholder="Optional · e.g. One-Way Ticket Out">
+                <span class="field-hint">This becomes the WAV, MP3 and JSON filename. Leave it blank and Ariadne will choose a title from the song.</span>
+                <label class="field-label" for="music-style">Style brief</label>
+                <textarea id="music-style" class="ws-textarea" rows="3" placeholder="e.g. English pop-rock, warm lead vocal, clean electric guitar, gentle drums, polished studio mix, 100 BPM."></textarea>
+                <label class="field-label" for="music-lyrics">Lyrics</label>
+                <textarea id="music-lyrics" class="ws-textarea music-lyrics" rows="8" placeholder="[Verse]\nWrite or paste lyrics here…\n\n[Chorus]\n…"></textarea>
+                <div class="music-options"><div><label class="field-label" for="music-duration-mode">Song length</label><select id="music-duration-mode" class="ws-select"><option value="full_lyrics">Full lyric target · automatic</option><option value="short_test">30-second short test</option></select><span id="music-duration-plan" class="field-hint">Paste lyrics to estimate the full-song target.</span></div><div><label class="field-label" for="music-steps">Quality steps</label><select id="music-steps" class="ws-select"><option value="30">30 · standard</option><option value="16">16 · quick test</option><option value="40">40 · slower</option></select></div><div><label class="field-label" for="music-seed">Seed <span>(optional)</span></label><input id="music-seed" class="ws-input" type="number" placeholder="Random"></div></div>
+                <div class="card-actions music-actions"><button id="music-generate" class="ws-button primary" type="button">Generate candidate</button></div>
+              </div>
+              <div class="music-preview" aria-live="polite"><div id="music-progress" class="music-progress" hidden><div class="music-progress-heading"><strong id="music-progress-stage">Preparing song generation</strong><span id="music-progress-value">0%</span></div><div class="music-progress-track" role="progressbar" aria-label="Music generation progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="music-progress-fill"></span></div><div id="music-progress-message" class="field-hint">Waiting for the shared GPU…</div></div><div id="music-preview-empty" class="image-preview-empty"><span class="preview-mark">♫</span><strong>Your song candidate will appear here</strong><span>WAV output · exact JSON provenance · manual acceptance</span></div><audio id="music-preview-audio" controls preload="metadata" hidden></audio><div id="music-preview-meta" class="image-preview-meta" hidden></div><div id="music-downloads" class="music-downloads" hidden><a id="music-wav-download" class="ws-button" download>WAV master</a><a id="music-mp3-download" class="ws-button" download>MP3 share copy · 192 kbps</a></div><button id="music-accept" class="ws-button primary" type="button" hidden>Accept music into project</button></div>
+            </div>
+            <span id="music-feedback" class="card-feedback" role="status">Checking the local MiniMax runtime…</span>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+  <script src="/page-shell.js"></script><script src="/music.js"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@ class CleanupPluginTests(unittest.TestCase):
         (vault / "00_System").mkdir(parents=True, exist_ok=True)
         return {
             "knowledge_vault": str(vault), "documents": str(root / "Docs"),
-            "images": str(root / "Images"), "videos": str(root / "Videos"),
+            "images": str(root / "Images"), "music": str(root / "Music"), "videos": str(root / "Videos"),
             "screenshots": str(root / "Screenshots"), "intake_root": str(root / "Downloads"),
         }
 
@@ -33,7 +33,8 @@ class CleanupPluginTests(unittest.TestCase):
         config["filing_classes"][0]["destination"] = str(root / "Inbox")
         config["filing_classes"][2]["destination"] = str(root / "Screenshots")
         config["filing_classes"][3]["destination"] = str(root / "Images")
-        config["filing_classes"][4]["destination"] = str(root / "Videos")
+        config["filing_classes"][4]["destination"] = str(root / "Music")
+        config["filing_classes"][5]["destination"] = str(root / "Videos")
         return normalize_configuration(config, storage)
 
     def run_organiser(self, root: Path, config: dict[str, object], action: str) -> subprocess.CompletedProcess[str]:
@@ -61,6 +62,8 @@ class CleanupPluginTests(unittest.TestCase):
             default = normalize_configuration(default_configuration(storage), storage)
             self.assertEqual(default["sources"], [{"path": str((root / "Downloads").resolve()), "enabled": True}])
             self.assertEqual(default["filing_classes"][0]["destination"], str((root / "Vault" / "Inbox").resolve()))
+            self.assertEqual(default["filing_classes"][4]["destination"], str((root / "Music").resolve()))
+            self.assertIn("Music\\Candidates", default["exclusions"])
             legacy = {"enabled": True, "source_folder": str(root / "Downloads"), "rules": [{"category": "Markdown", "extensions": [".md"], "destination": str(root / "Inbox"), "patterns": []}, {"category": "Screenshot", "extensions": [], "destination": str(root / "Screenshots"), "patterns": ["screenshot"]}], "recurse": False, "exclusions": [], "confirmation_required": True, "collision_policy": "skip"}
             migrated = normalize_configuration(legacy, storage)
             self.assertEqual(migrated["sources"][0]["path"], str((root / "Downloads").resolve()))

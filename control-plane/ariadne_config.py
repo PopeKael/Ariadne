@@ -39,6 +39,7 @@ DEFAULT_STORAGE = {
     "knowledge_vault": r"D:\Downloads\KnowledgeVault",
     "documents": r"D:\Downloads\Docs",
     "images": r"D:\Downloads\Images",
+    "music": r"D:\Downloads\Music",
     "videos": r"D:\Downloads\Videos",
     "screenshots": r"D:\Downloads\Screenshots",
     "intake_root": r"D:\Downloads",
@@ -56,6 +57,7 @@ STORAGE_ENVIRONMENT = {
     "knowledge_vault": "ARIADNE_VAULT_ROOT",
     "documents": "ARIADNE_DOCUMENTS_ROOT",
     "images": "ARIADNE_IMAGES_ROOT",
+    "music": "ARIADNE_MUSIC_ROOT",
     "videos": "ARIADNE_VIDEOS_ROOT",
     "screenshots": "ARIADNE_SCREENSHOTS_ROOT",
     "intake_root": "ARIADNE_INTAKE_ROOT",
@@ -64,6 +66,7 @@ STORAGE_LABELS = {
     "knowledge_vault": "Knowledge Vault",
     "documents": "Documents",
     "images": "Images",
+    "music": "Music",
     "videos": "Videos",
     "screenshots": "Screenshots",
     "intake_root": "Raw Documents / Intake Root",
@@ -268,7 +271,14 @@ def save_configuration(
         for key, value in current_storage.items()
     }
     current_avatar, _ = effective_avatar(target)
-    selected_storage = storage if storage is not None else current_storage
+    requested_storage = storage if storage is not None else current_storage
+    # New storage locations must not invalidate a saved configuration created
+    # by an earlier Ariadne version. Missing keys retain their current/default
+    # location until the user chooses to change them.
+    selected_storage = {
+        key: requested_storage.get(key, current_storage[key]) if isinstance(requested_storage, dict) else current_storage[key]
+        for key in DEFAULT_STORAGE
+    }
     selected_avatar = dict(avatar) if avatar is not None else dict(current_avatar)
     current_plugins = current.get("plugins", {})
     if not isinstance(current_plugins, dict):

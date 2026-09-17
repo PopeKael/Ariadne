@@ -1,4 +1,4 @@
-const STORAGE_KEYS = ["knowledge_vault", "documents", "images", "videos", "screenshots", "intake_root"];
+const STORAGE_KEYS = ["knowledge_vault", "documents", "images", "music", "videos", "screenshots", "intake_root"];
 const requestedPluginId = new URLSearchParams(window.location.search).get("plugin")?.trim().toLowerCase() || "";
 let dirty = false;
 let currentAvatar = null;

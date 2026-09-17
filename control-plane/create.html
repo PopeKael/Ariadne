@@ -1,17 +1,58 @@
 <!doctype html>
 <html lang="en" class="ariadne-page">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Create · Ariadne</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/workspace.css"><link rel="stylesheet" href="/page-shell.css"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create · Ariadne</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/page-shell.css">
+</head>
 <body class="ariadne-page create-page">
   <div class="workspace-shell">
-    <header class="workspace-hero"><div><span class="workspace-kicker">PRODUCTION WORKSPACE</span><h1>Create with the machine you own.</h1><p>Image, video and transcription belong in one deliberate workspace. Ariadne coordinates the runtime; each capability remains independently replaceable.</p></div><aside class="workspace-hero-aside"><strong>Production lane</strong><br>Only usable, configured capabilities become active here. Experiments live in Workshop.</aside></header>
     <main class="workspace-main">
-      <div class="lane-heading"><div><span class="workspace-kicker">MEDIA CAPABILITIES</span><h2>Choose the work, not the plumbing</h2></div><span class="lane-note">Runtime ownership remains visible in the global bar.</span></div>
+      <div class="lane-heading">
+        <div><span class="workspace-kicker">MEDIA CAPABILITIES</span><h2>Choose the work, not the plumbing</h2></div>
+        <span class="lane-note">Runtime ownership remains visible in the global bar.</span>
+      </div>
+
       <section class="production-grid" aria-label="Create capabilities">
-        <article class="production-card image-card"><div class="card-visual"><span class="card-glyph">◇</span><span class="card-status">Provider required</span></div><div class="card-body"><h3>Image</h3><p>Generate, refine and organise still imagery when an image provider is connected.</p><div class="capability-list"><div class="capability-row"><span>Provider</span><strong>Not configured</strong></div><div class="capability-row"><span>Output location</span><strong id="image-output">Reading setup…</strong></div></div><div class="card-actions"><a class="ws-button" href="/configuration">Configure storage</a><a class="ws-button" href="/plugins">Find capability</a></div><span class="card-feedback">No placeholder generator is being presented as real.</span></div></article>
-        <article class="production-card video-card"><div class="card-visual"><span class="card-glyph">▷</span><span id="video-state" class="card-status">Checking runtime</span></div><div class="card-body"><h3>Video</h3><p>Launch the existing local music-video renderer through Ariadne's shared GPU handoff.</p><div class="capability-list"><div class="capability-row"><span>Runtime</span><strong id="video-runtime">Checking WSL…</strong></div><div class="capability-row"><span>GPU ownership</span><strong id="video-gpu">Checking…</strong></div><div class="capability-row"><span>Output location</span><strong id="video-output">Reading setup…</strong></div></div><div class="card-actions"><button id="video-start" class="ws-button primary" type="button">Start renderer</button><button id="video-stop" class="ws-button" type="button">Stop</button><a id="video-open" class="ws-button" href="http://localhost:8766/" target="_blank" rel="noopener">Open workspace</a></div><span id="video-feedback" class="card-feedback" role="status">Reading the renderer lifecycle…</span></div></article>
-        <article class="production-card transcript-card"><div class="card-visual"><span class="card-glyph">≋</span><span class="card-status">Provider required</span></div><div class="card-body"><h3>Transcription</h3><p>Turn recorded speech into editable text when a transcription engine is installed.</p><div class="capability-list"><div class="capability-row"><span>Provider</span><strong>Not configured</strong></div><div class="capability-row"><span>Input location</span><strong id="transcript-input">Reading setup…</strong></div></div><div class="card-actions"><a class="ws-button" href="/configuration">Configure storage</a><a class="ws-button" href="/plugins">Find capability</a></div><span class="card-feedback">Provider and workflow remain explicit rather than simulated.</span></div></article>
+        <article class="production-card music-card">
+          <div class="card-visual"><span class="card-glyph">♫</span><span id="music-state" class="card-status">Checking provider</span></div>
+          <div class="card-body">
+            <div class="capability-heading"><div><h3>Music Engine</h3><p>Bring approved lyrics and style into Ariadne, then choose the song-generation provider underneath.</p></div><span class="capability-badge">SONG CREATION</span></div>
+            <label class="field-label" for="music-provider-select">Song-generation provider</label><select id="music-provider-select" class="ws-select"><option value="suno-web">Loading providers…</option></select>
+            <div class="capability-list"><div class="capability-row"><span>Selected provider</span><strong id="music-provider">Checking…</strong></div><div class="capability-row"><span>Runtime</span><strong id="music-runtime">Checking…</strong></div><div class="capability-row"><span>GPU ownership</span><strong id="music-gpu">Checking…</strong></div><div class="capability-row"><span>Accepted music</span><strong id="music-output">Reading music folder…</strong></div></div>
+            <div class="card-actions"><button id="music-start" class="ws-button primary" type="button">Start music session</button><a class="ws-button" href="/sequence">Open projects</a></div>
+            <span id="music-feedback" class="card-feedback" role="status">The local engine slot is ready for a bench-tested audio backend; Suno remains selectable meanwhile.</span>
+          </div>
+        </article>
+
+        <article class="production-card image-card">
+          <div class="card-visual"><span class="card-glyph">◇</span><span id="image-state" class="card-status">Checking runtime</span></div>
+          <div class="card-body">
+            <div class="capability-heading"><div><h3>Image</h3><p>Launch the Ariadne image workspace through the managed ComfyUI subprocess, model residency and GPU handoff.</p></div><span class="capability-badge">TEXT TO IMAGE</span></div>
+            <div class="capability-list"><div class="capability-row"><span>Engine</span><strong id="image-engine">Checking ComfyUI…</strong></div><div class="capability-row"><span>Lifecycle</span><strong id="image-lifecycle">Checking…</strong></div><div class="capability-row"><span>GPU ownership</span><strong id="image-gpu">Checking…</strong></div><div class="capability-row"><span>Output location</span><strong id="image-output">Reading setup…</strong></div></div>
+            <div class="card-actions"><button id="image-start" class="ws-button primary" type="button">Start process</button><button id="image-stop" class="ws-button" type="button">Stop process</button><a id="image-open" class="ws-button" href="/image" target="_blank" rel="noopener" hidden>Open workspace</a></div>
+            <span id="image-feedback" class="card-feedback" role="status">Reading the image process lifecycle…</span>
+          </div>
+        </article>
+
+        <article class="production-card video-card">
+          <div class="card-visual"><span class="card-glyph">▷</span><span id="video-state" class="card-status">Checking runtime</span></div>
+          <div class="card-body"><h3>Video</h3><p>Launch the existing local music-video renderer through Ariadne's shared GPU handoff.</p><div class="capability-list"><div class="capability-row"><span>Runtime</span><strong id="video-runtime">Checking WSL…</strong></div><div class="capability-row"><span>Lifecycle</span><strong id="video-lifecycle">Checking…</strong></div><div class="capability-row"><span>GPU ownership</span><strong id="video-gpu">Checking…</strong></div><div class="capability-row"><span>Output location</span><strong id="video-output">Reading setup…</strong></div></div><div class="card-actions"><button id="video-start" class="ws-button primary" type="button">Start process</button><button id="video-stop" class="ws-button" type="button">Stop process</button><a id="video-open" class="ws-button" href="http://127.0.0.1:8766/" target="_blank" rel="noopener">Open workspace</a></div><span id="video-feedback" class="card-feedback" role="status">Reading the renderer lifecycle…</span></div>
+        </article>
+
+        <article class="production-card transcript-card">
+          <div class="card-visual"><span class="card-glyph">≋</span><span class="card-status">Provider required</span></div>
+          <div class="card-body"><h3>Transcription</h3><p>Turn recorded speech into editable text when a transcription engine is installed.</p><div class="capability-list"><div class="capability-row"><span>Provider</span><strong>Not configured</strong></div><div class="capability-row"><span>Lifecycle</span><strong>Provider required</strong></div><div class="capability-row"><span>Input location</span><strong id="transcript-input">Reading setup…</strong></div></div><div class="card-actions"><button class="ws-button" type="button" disabled>Start process</button><button class="ws-button" type="button" disabled>Stop process</button><button class="ws-button" type="button" disabled>Open workspace</button></div><div class="card-actions launcher-secondary-actions"><a class="ws-button" href="/configuration">Configure storage</a><a class="ws-button" href="/plugins">Find capability</a></div><span class="card-feedback">Provider and workflow remain explicit rather than simulated.</span></div>
+        </article>
       </section>
-      <section class="workflow-band"><article class="workflow-panel"><span class="workspace-kicker">PRODUCTION PATHS</span><h2>Configured media locations</h2><p>These are the current Ariadne storage boundaries, not browser upload folders.</p><div id="create-storage" class="storage-grid"><div class="storage-item"><span>Loading</span><strong>Reading configuration…</strong></div></div></article><article class="workflow-panel boundary-note"><span class="workspace-kicker">CLEAR BOUNDARY</span><h2>Workshop is separate</h2><p><strong>Open WebUI, LM Studio and model experiments</strong> remain available without crowding everyday production work.</p><div class="card-actions" style="margin-top:18px"><a class="ws-button" href="/workshop">Open Workshop</a></div></article></section>
-    </main><footer class="workspace-footer">Private · Local · Provider-independent by design</footer>
-  </div><script src="/page-shell.js"></script><script src="/create.js"></script>
-</body></html>
+
+      <section class="workflow-band"><article class="workflow-panel"><span class="workspace-kicker">PRODUCTION PATHS</span><h2>Configured media locations</h2><p>These are the current Ariadne storage boundaries, not browser upload folders.</p><div id="create-storage" class="storage-grid"><div class="storage-item"><span>Loading</span><strong>Reading configuration…</strong></div></div><div class="card-actions" style="margin-top:18px"><a class="ws-button" href="/sequence">Open sequence projects</a></div></article><article class="workflow-panel boundary-note"><span class="workspace-kicker">CLEAR BOUNDARY</span><h2>Workshop is separate</h2><p><strong>Open WebUI, LM Studio and model experiments</strong> remain available without crowding everyday production work.</p><div class="card-actions" style="margin-top:18px"><a class="ws-button" href="/workshop">Open Workshop</a></div></article></section>
+    </main>
+    <footer class="workspace-footer">Private · Local · Provider-independent by design</footer>
+  </div>
+  <script src="/page-shell.js"></script><script src="/create.js"></script>
+</body>
+</html>
