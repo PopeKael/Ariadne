@@ -155,8 +155,8 @@ function renderLocalServices(services, docker) {
   root.innerHTML = services.map((service) => {
     const state = String(service.state || "Error");
     const normalized = state.toLowerCase();
-    const action = state === "Running" ? "stop" : "start";
-    const actionLabel = state === "Starting" || state === "Stopping" ? `${state}...` : action === "start" ? "Start" : "Stop";
+    const action = service.action || (state === "Running" ? "stop" : "start");
+    const actionLabel = state === "Starting" || state === "Stopping" ? `${state}...` : service.action_label || (action === "start" ? "Start" : "Stop");
     const optional = service.optional ? " · optional" : "";
     return `<article class="resource-card" data-local-service="${esc(service.id)}"><span class="state-icon">▣</span><span class="state-copy"><span class="state-name">${esc(service.label)}</span><span class="state-meta">${esc(service.detail || "")}${optional}</span></span><button type="button" class="resource-action" data-local-service-action="${action}" data-local-service-id="${esc(service.id)}"${normalized === "starting" || normalized === "stopping" ? " disabled" : ""}>${actionLabel}</button><span class="state-pill ${normalized}">${esc(state)}</span></article>`;
   }).join("");

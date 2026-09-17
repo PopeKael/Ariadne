@@ -112,6 +112,10 @@ PLUGIN_ACTIVITY_STREAM = PluginActivityStream(PLUGIN_ACTIVITY_PATH)
 OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "adaptive")
 OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://localhost:3000/")
 OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
+GODS_EYE_VIEW_ROOT = Path(os.environ.get("ARIADNE_GODS_EYE_VIEW_ROOT", r"F:\AI\GodsEyeView"))
+GODS_EYE_VIEW_URL = os.environ.get("ARIADNE_GODS_EYE_VIEW_URL", "http://localhost:4173/").rstrip("/")
+GODS_EYE_VIEW_PORT = int(os.environ.get("ARIADNE_GODS_EYE_VIEW_PORT", "4173"))
+GODS_EYE_VIEW_READY_TIMEOUT_SECONDS = max(5.0, float(os.environ.get("ARIADNE_GODS_EYE_VIEW_READY_TIMEOUT", "20")))
 PORTAINER_CONTAINER = "portainer"
 DEV_SIGNAL_CONTAINER = "ariadne-signal-dev"
 DEV_DISCOVERY_CONTAINER = "ariadne-discovery-dev"
@@ -129,6 +133,7 @@ LOCAL_SERVICE_DEFINITIONS = (
     {"id": "openwebui", "label": "Open WebUI", "kind": "container", "container": OPEN_WEBUI_CONTAINER, "optional": True},
     {"id": "discovery-dev", "label": "Discovery DEV", "kind": "compose", "container": DEV_DISCOVERY_CONTAINER, "compose_service": "discovery", "optional": False},
     {"id": "signal-dev", "label": "Signal DEV", "kind": "compose", "container": DEV_SIGNAL_CONTAINER, "compose_service": "signal", "optional": False},
+    {"id": "gods-eye-view", "label": "God's Eye View", "kind": "process", "optional": True},
 )
 MANAGED_LOCAL_DOCKER_CONTAINERS = frozenset(LOCAL_DOCKER_CONTAINER_ORDER)
 DEPLOYMENT_MODE_CONFIG = {
@@ -242,6 +247,8 @@ ACTIVE_PROFILE = "RUN"
 INTERACTIVE_PROCESS: subprocess.Popen | None = None
 WAN2GP_PROCESS: subprocess.Popen | None = None
 IMAGE_ENGINE_PROCESS: subprocess.Popen | None = None
+GODS_EYE_VIEW_PROCESS: subprocess.Popen | None = None
+GODS_EYE_VIEW_LOCK = threading.RLock()
 IMAGE_GENERATION_LOCK = threading.Lock()
 IMAGE_GENERATION_ACTIVE = False
 MUSIC_GENERATION_LOCK = threading.Lock()
@@ -609,6 +616,161 @@ def _container_lifecycle_state(row: dict[str, str] | None) -> str:
     return "Stopped"
 
 
+def _gods_eye_view_probe() -> bool:
+    """Confirm that the configured God’s Eye View HTTP endpoint is serving."""
+    try:
+        request = urllib.request.Request(
+            f"{GODS_EYE_VIEW_URL}/",
+            headers={"User-Agent": "Ariadne local-service-check"},
+        )
+        with urllib.request.urlopen(request, timeout=1.5) as response:
+            return 200 <= int(response.status) < 500
+    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+        return False
+
+
+def _gods_eye_view_process_alive() -> subprocess.Popen | None:
+    global GODS_EYE_VIEW_PROCESS
+    process = GODS_EYE_VIEW_PROCESS
+    if process is not None and process.poll() is not None:
+        GODS_EYE_VIEW_PROCESS = None
+        process = None
+    return process
+
+
+def gods_eye_view_status() -> dict[str, object]:
+    """Return process ownership and HTTP readiness for God’s Eye View."""
+    with GODS_EYE_VIEW_LOCK:
+        process = _gods_eye_view_process_alive()
+        serving = _gods_eye_view_probe()
+    if process is not None:
+        if serving:
+            return {
+                "state": "Running",
+                "detail": f"Serving on localhost:{GODS_EYE_VIEW_PORT} · Ariadne-managed",
+                "managed": True,
+                "action": "stop",
+                "action_label": "Stop",
+            }
+        return {
+            "state": "Starting",
+            "detail": f"Process running; waiting for localhost:{GODS_EYE_VIEW_PORT}.",
+            "managed": True,
+            "action": "stop",
+            "action_label": "Stop",
+        }
+    if serving:
+        return {
+            "state": "Running",
+            "detail": f"Port {GODS_EYE_VIEW_PORT} is responding · process started outside Ariadne.",
+            "managed": False,
+            "action": "start",
+            "action_label": "Use existing",
+        }
+    if not GODS_EYE_VIEW_ROOT.is_dir() or not (GODS_EYE_VIEW_ROOT / "package.json").is_file():
+        return {
+            "state": "Error",
+            "detail": f"Install not found at {GODS_EYE_VIEW_ROOT}.",
+            "managed": True,
+            "action": "start",
+            "action_label": "Start",
+        }
+    return {
+        "state": "Stopped",
+        "detail": f"Not serving on localhost:{GODS_EYE_VIEW_PORT}.",
+        "managed": True,
+        "action": "start",
+        "action_label": "Start",
+    }
+
+
+def _node_command() -> str | None:
+    return shutil.which("node.exe") or shutil.which("node")
+
+
+def _start_gods_eye_view() -> dict[str, object]:
+    global GODS_EYE_VIEW_PROCESS
+    with GODS_EYE_VIEW_LOCK:
+        process = _gods_eye_view_process_alive()
+        if process is not None:
+            return {"ok": True, "message": "God's Eye View is already starting."}
+        if _gods_eye_view_probe():
+            return {
+                "ok": False,
+                "message": f"Port {GODS_EYE_VIEW_PORT} is already responding, but Ariadne did not start that process.",
+            }
+        if not GODS_EYE_VIEW_ROOT.is_dir() or not (GODS_EYE_VIEW_ROOT / "package.json").is_file():
+            return {"ok": False, "message": f"God's Eye View was not found at {GODS_EYE_VIEW_ROOT}."}
+        node = _node_command()
+        vite_entry = GODS_EYE_VIEW_ROOT / "node_modules" / "vite" / "bin" / "vite.js"
+        if node is None:
+            return {"ok": False, "message": "Node.js was not found on PATH."}
+        if not vite_entry.is_file():
+            return {"ok": False, "message": f"Vite was not found at {vite_entry}."}
+        try:
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            GODS_EYE_VIEW_PROCESS = subprocess.Popen(
+                [node, str(vite_entry), "--host", "localhost", "--port", str(GODS_EYE_VIEW_PORT), "--configLoader", "runner"],
+                cwd=GODS_EYE_VIEW_ROOT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=os.environ.copy(),
+                creationflags=creationflags,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            GODS_EYE_VIEW_PROCESS = None
+            return {"ok": False, "message": f"Could not start God's Eye View: {exc}"}
+
+        deadline = time.monotonic() + GODS_EYE_VIEW_READY_TIMEOUT_SECONDS
+        while time.monotonic() < deadline:
+            if GODS_EYE_VIEW_PROCESS.poll() is not None:
+                code = GODS_EYE_VIEW_PROCESS.returncode
+                GODS_EYE_VIEW_PROCESS = None
+                return {"ok": False, "message": f"God's Eye View stopped during startup (exit code {code})."}
+            if _gods_eye_view_probe():
+                return {"ok": True, "message": f"God's Eye View is serving on localhost:{GODS_EYE_VIEW_PORT}."}
+            time.sleep(0.25)
+        return {"ok": False, "message": f"God's Eye View started but did not become ready on localhost:{GODS_EYE_VIEW_PORT}."}
+
+
+def _terminate_process_tree(process: object) -> None:
+    if process is None or getattr(process, "poll", lambda: 0)() is not None:
+        return
+    pid = getattr(process, "pid", None)
+    if os.name == "nt" and pid:
+        run_action(["taskkill.exe", "/PID", str(pid), "/T", "/F"], timeout=15.0)
+    _terminate_process(process)
+
+
+def _stop_gods_eye_view() -> dict[str, object]:
+    global GODS_EYE_VIEW_PROCESS
+    with GODS_EYE_VIEW_LOCK:
+        process = _gods_eye_view_process_alive()
+        if process is None:
+            if _gods_eye_view_probe():
+                return {
+                    "ok": False,
+                    "message": f"God's Eye View is responding on port {GODS_EYE_VIEW_PORT}, but Ariadne does not own that process.",
+                }
+            return {"ok": True, "message": "God's Eye View is already stopped."}
+        GODS_EYE_VIEW_PROCESS = None
+        _terminate_process_tree(process)
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            if not _gods_eye_view_probe():
+                return {"ok": True, "message": "God's Eye View stopped and port is clear."}
+            time.sleep(0.25)
+        return {"ok": False, "message": f"God's Eye View process stopped, but port {GODS_EYE_VIEW_PORT} is still responding."}
+
+
+def gods_eye_view_action(action: str) -> dict[str, object]:
+    if action == "start":
+        return _start_gods_eye_view()
+    if action == "stop":
+        return _stop_gods_eye_view()
+    return {"ok": False, "message": "Unknown God's Eye View action."}
+
+
 def local_service_statuses(docker: dict[str, object] | None = None) -> list[dict[str, object]]:
     """Describe the named local services Ariadne may control.
 
@@ -641,6 +803,11 @@ def local_service_statuses(docker: dict[str, object] | None = None) -> list[dict
         if service["kind"] == "desktop":
             state = desktop_state
             detail = "Docker engine is available." if engine_ready else "Docker Desktop is not ready."
+        elif service["kind"] == "process":
+            process_status = gods_eye_view_status()
+            service.update(process_status)
+            services.append(service)
+            continue
         elif desktop_state in {"Stopped", "Stopping"} or not engine_ready:
             state = "Starting" if desktop_state == "Starting" else "Stopped" if desktop_state == "Stopped" else "Error"
             detail = "Docker Desktop is stopped." if state == "Stopped" else "Docker Desktop is unavailable."
@@ -1182,6 +1349,10 @@ def local_service_action(service_id: str, action: str) -> dict[str, object]:
     definition = next((item for item in LOCAL_SERVICE_DEFINITIONS if item["id"] == service_id), None)
     if definition is None or action not in {"start", "stop"}:
         return {"ok": False, "message": "Unknown local service action."}
+    if service_id == "gods-eye-view":
+        result = gods_eye_view_action(action)
+        result["services"] = local_service_statuses()
+        return result
     if service_id == "docker":
         result = start_docker_desktop() if action == "start" else stop_docker_desktop_safely()
         result["services"] = local_service_statuses()
@@ -3255,7 +3426,13 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
             _terminate_process(process)
             run_readonly(["wsl.exe", "--terminate", name], timeout=30.0)
 
-        _terminate_process(IMAGE_ENGINE_PROCESS)
+        gods_eye_report = _stop_gods_eye_view()
+        print(
+            f"[shutdown] God's Eye View cleanup: {gods_eye_report.get('message', 'no report')}",
+            flush=True,
+        )
+        if IMAGE_ENGINE_PROCESS is not None:
+            _terminate_process(IMAGE_ENGINE_PROCESS)
         IMAGE_ENGINE_PROCESS = None
         _unload_ollama_models()
         release_workloads(force=True)
@@ -5896,6 +6073,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
     def send_json(self, payload: dict[str, object], status: int = 200) -> None:
         self.send_bytes(json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8", status)
 
+    def send_redirect(self, location: str, status: int = 302) -> None:
+        self.send_response(status)
+        self.send_header("Location", location)
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
     def read_json(self) -> dict[str, object]:
         length = int(self.headers.get("Content-Length", "0"))
         if length < 0 or length > 8_000_000:
@@ -5985,6 +6168,13 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/launch/openwebui":
             self.send_json(launch_openwebui())
+            return
+        if path == "/launch/gods-eye-view":
+            result = _start_gods_eye_view()
+            if result.get("ok") or _gods_eye_view_probe():
+                self.send_redirect(f"{GODS_EYE_VIEW_URL}/")
+            else:
+                self.send_json(result, 409)
             return
         if path == "/api/openwebui/models":
             catalog = ollama_catalog()
