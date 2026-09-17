@@ -258,6 +258,31 @@ MUSIC_JOBS: dict[str, dict[str, object]] = {}
 MUSIC_FLOW_CHUNK_SECONDS = 4.2
 MUSIC_DEFAULT_FLOW_MS = 11_300.0
 MUSIC_DEFAULT_VOCODER_MS = 490.0
+MUSIC_MAX_REQUEST_SECONDS = 300
+MUSIC_MAX_GENERATION_SECONDS = 360
+MUSIC_MIN_REQUEST_SECONDS = 30
+MINIMAX_LYRIC_TAGS = {
+    "intro": "Intro",
+    "verse": "Verse",
+    "pre-chorus": "Pre-Chorus",
+    "chorus": "Chorus",
+    "post-chorus": "Post-Chorus",
+    "bridge": "Bridge",
+    "instrumental": "Instrumental",
+    "solo": "Solo",
+    "outro": "Outro",
+}
+MINIMAX_LYRIC_TAG_ALIASES = {
+    "pre chorus": "pre-chorus",
+    "post chorus": "post-chorus",
+    "instrumental break": "instrumental",
+    "guitar solo": "solo",
+    "instrumental solo": "solo",
+    "final chorus": "chorus",
+    "last chorus": "chorus",
+    "music": "instrumental",
+    "hook": "chorus",
+}
 BROWSER_HEARTBEAT_TIMEOUT_SECONDS = 20
 LAST_BROWSER_HEARTBEAT = time.monotonic()
 LIFECYCLE_THREAD: threading.Thread | None = None
@@ -2218,10 +2243,111 @@ def music_provider_status() -> dict[str, object]:
     }
 
 
-def lyric_duration_plan(lyrics: str, style: str) -> dict[str, object]:
-    """Choose a transparent full-lyric target; it is not a timing guarantee."""
-    singable = re.sub(r"\[[^\]]*\]", " ", lyrics)
-    words = re.findall(r"[\w']+", singable, flags=re.UNICODE)
+def _normalise_tag_name(value: str) -> tuple[str | None, str]:
+    folded = re.sub(r"\s+", " ", value.strip().casefold().replace("_", " "))
+    folded = re.sub(r"\s*[-–—]\s*", "-", folded)
+    folded = re.sub(r"\s+\d+$", "", folded)
+    canonical_key = MINIMAX_LYRIC_TAG_ALIASES.get(folded, folded)
+    return MINIMAX_LYRIC_TAGS.get(canonical_key), folded
+
+
+def normalize_minimax_lyrics(lyrics: str) -> dict[str, object]:
+    """Validate tags and move known tags onto their own lines without changing words."""
+    original = str(lyrics or "")
+    issues: list[dict[str, str]] = []
+    output: list[str] = []
+    tag_count = 0
+    section_count = 0
+    content_parts: list[str] = []
+    original_content_parts: list[str] = []
+    tag_pattern = re.compile(r"\[([^\[\]]+)\]")
+    for raw_line in original.splitlines():
+        cursor = 0
+        line_tags: list[str] = []
+        for match in tag_pattern.finditer(raw_line):
+            text_before = raw_line[cursor:match.start()]
+            if text_before:
+                output.append(text_before.rstrip() if line_tags else text_before)
+                original_content_parts.append(text_before)
+                content_parts.append(text_before)
+            canonical, folded = _normalise_tag_name(match.group(1))
+            if canonical is None:
+                issues.append({"severity": "error", "message": f"Unknown MiniMax section tag [{match.group(1).strip()}]."})
+                output.append(match.group(0))
+                line_tags.append(match.group(0))
+            else:
+                tag_count += 1
+                section_count += 1
+                if canonical != f"[{match.group(1).strip()}]":
+                    issues.append({"severity": "warning", "message": f"Normalized [{match.group(1).strip()}] to [{canonical}]."})
+                line_tags.append(f"[{canonical}]")
+            cursor = match.end()
+        tail = raw_line[cursor:]
+        if tail:
+            original_content_parts.append(tail)
+            content_parts.append(tail)
+        if line_tags:
+            # Replace any tags emitted inline above with a clean tag-first block.
+            while output and output[-1] in line_tags:
+                output.pop()
+            output.extend(line_tags)
+            if tail:
+                output.append(tail.lstrip() if tail[:1].isspace() else tail)
+                if any(not item.startswith("[") for item in line_tags):
+                    issues.append({"severity": "error", "message": "A section tag could not be separated cleanly from lyric text."})
+            elif len(line_tags) > 1:
+                issues.append({"severity": "warning", "message": "Multiple section tags were placed on separate lines."})
+        elif raw_line:
+            output.append(raw_line)
+    # The comparison deliberately ignores whitespace introduced by moving tags;
+    # lyric words and punctuation remain untouched.
+    original_content = re.sub(r"\s+", " ", "".join(original_content_parts)).strip()
+    normalized_content = re.sub(r"\s+", " ", "".join(content_parts)).strip()
+    if original_content != normalized_content:
+        issues.append({"severity": "error", "message": "Lyric content changed during normalization; generation is blocked."})
+    normalized = "\n".join(output).strip()
+    if not normalized:
+        issues.append({"severity": "error", "message": "Enter lyrics before checking them."})
+    elif not tag_count:
+        issues.append({"severity": "warning", "message": "No MiniMax section tags found; structure-aware duration estimation is limited."})
+    return {
+        "valid": not any(item["severity"] == "error" for item in issues),
+        "original_lyrics": original,
+        "normalized_lyrics": normalized,
+        "issues": issues,
+        "tag_count": tag_count,
+        "section_count": section_count,
+    }
+
+
+def _music_words_and_sections(lyrics: str) -> tuple[list[str], list[dict[str, object]]]:
+    sections: list[dict[str, object]] = []
+    current: dict[str, object] | None = None
+    for line in str(lyrics or "").splitlines():
+        match = re.fullmatch(r"\s*\[([^\[\]]+)\]\s*", line)
+        if match:
+            canonical, _ = _normalise_tag_name(match.group(1))
+            current = {"tag": canonical or match.group(1).strip(), "text": []}
+            sections.append(current)
+            continue
+        if current is None:
+            current = {"tag": "untagged", "text": []}
+            sections.append(current)
+        current["text"].append(line)
+    words = re.findall(r"[\w']+", re.sub(r"\[[^\]]*\]", " ", lyrics), flags=re.UNICODE)
+    return words, sections
+
+
+def _music_headroom(seconds: int, *, auto: bool) -> int:
+    # MiniMax duration_sec is an AR budget, so reserve room for its final
+    # acoustic frames and section transitions. Keep the addition visible.
+    percentage = 0.18 if auto else 0.12
+    return max(12, min(30, int(round(seconds * percentage))))
+
+
+def lyric_duration_plan(lyrics: str, style: str, mode: str = "auto", custom_seconds: object = None) -> dict[str, object]:
+    """Estimate audible length, then add a separate MiniMax generation budget."""
+    words, sections = _music_words_and_sections(lyrics)
     match = re.search(r"\b(\d{2,3})(?:\s*[-–]\s*(\d{2,3}))?\s*bpm\b", style, flags=re.IGNORECASE)
     if match:
         low = int(match.group(1))
@@ -2231,12 +2357,110 @@ def lyric_duration_plan(lyrics: str, style: str) -> dict[str, object]:
     else:
         bpm = 120
         bpm_source = "120 BPM fallback"
-    # About 1.55 sung words per beat leaves room for instrumental bars,
-    # repetitions, and a compact intro/outro. It is deliberately visible in
-    # provenance so it can be refined after real comparison tests.
-    seconds = int(round(len(words) / max(1.0, (bpm / 60) * 1.55) + 14))
-    target = max(30, min(300, seconds))
-    return {"mode": "full_lyrics", "word_count": len(words), "bpm": bpm, "bpm_source": bpm_source, "target_seconds": target, "capped": target != seconds}
+    normalized_mode = str(mode or "auto").strip().lower()
+    if normalized_mode == "custom":
+        try:
+            requested = int(round(float(custom_seconds)))
+        except (TypeError, ValueError):
+            requested = 0
+        if not MUSIC_MIN_REQUEST_SECONDS <= requested <= MUSIC_MAX_REQUEST_SECONDS:
+            raise ValueError("Custom song length must be between 0:30 and 5:00.")
+        estimate_source = "custom duration"
+        estimated = requested
+    elif normalized_mode in {"180", "240", "300"}:
+        requested = int(normalized_mode)
+        estimate_source = "explicit duration"
+        estimated = requested
+    elif normalized_mode == "auto":
+        section_count = max(1, len(sections))
+        instrumental_count = sum(1 for item in sections if str(item.get("tag", "")).casefold() in {"instrumental", "solo"})
+        # Start from sung-word density, then account for section entrances,
+        # breathing/turnarounds, and instrumental passages.
+        words_per_second = max(1.45, min(2.45, 1.95 * (bpm / 120)))
+        sung_seconds = len(words) / words_per_second
+        structural_seconds = 6 + (section_count * 3) + (instrumental_count * 7)
+        estimated = int(round(sung_seconds + structural_seconds))
+        requested = max(MUSIC_MIN_REQUEST_SECONDS, min(MUSIC_MAX_REQUEST_SECONDS, estimated))
+        estimate_source = "sung-word density + tagged song structure"
+    else:
+        raise ValueError("Choose Auto, 3:00, 4:00, 5:00, or Custom for song length.")
+    headroom = _music_headroom(requested, auto=normalized_mode == "auto")
+    generation_seconds = min(MUSIC_MAX_GENERATION_SECONDS, requested + headroom)
+    return {
+        "mode": normalized_mode,
+        "word_count": len(words),
+        "section_count": len(sections),
+        "bpm": bpm,
+        "bpm_source": bpm_source,
+        "estimate_source": estimate_source,
+        "estimated_song_seconds": estimated,
+        "target_seconds": requested,
+        "generation_seconds": generation_seconds,
+        "generation_headroom_seconds": generation_seconds - requested,
+        "capped": requested != estimated if normalized_mode == "auto" else False,
+    }
+
+
+def enhance_music_caption(body: dict[str, object]) -> tuple[dict[str, object], int]:
+    """Use Ariadne's configured local LLM to prepare an editable Music 3 caption."""
+    style = str(body.get("style") or "").strip()
+    lyrics = str(body.get("lyrics") or "").strip()
+    if not style or not lyrics:
+        return {"ok": False, "message": "Enter a style brief and lyrics before enhancing for MiniMax."}, 400
+    if len(style) > 2_000 or len(lyrics) > 12_000:
+        return {"ok": False, "message": "Lyrics or style brief is too long."}, 400
+    lyric_check = normalize_minimax_lyrics(lyrics)
+    if not lyric_check["valid"]:
+        return {"ok": False, "message": "Check and correct the lyric tags before enhancing the caption.", "lyrics": lyric_check}, 400
+    _words, sections = _music_words_and_sections(str(lyric_check["normalized_lyrics"]))
+    structure = " → ".join(str(item.get("tag") or "untagged") for item in sections) or "untagged lyrics"
+    section_count_rows = []
+    for item in sections:
+        section_words = re.findall(r"[\w']+", " ".join(item.get("text", [])), flags=re.UNICODE)
+        section_count_rows.append(f"{item.get('tag')}: {len(section_words)} words")
+    section_counts = ", ".join(section_count_rows)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are Ariadne's MiniMax Music 3 caption editor. Convert a short music style brief into an "
+                "editable Structured Caption for MiniMax Music 3. Return only the caption with exactly these headings: "
+                "Global Metadata, Vocal Details, Arrangement. Describe genre, tempo or groove, key only when supplied, "
+                "emotional arc, vocal character, instrumentation, production, and section-by-section arrangement. "
+                "Use the supplied section order and put tags such as [Verse] and [Chorus] inside Arrangement. "
+                "Do not write, quote, paraphrase, or invent lyric lines. Do not add a title, commentary, markdown fences, "
+                "or a reasoning trace. Preserve explicit user constraints and use conservative wording for unspecified details."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Style brief:\n{style}\n\nSong structure:\n{structure}\n\nSection word counts:\n{section_counts or 'not available'}",
+        },
+    ]
+    metrics: dict[str, object] = {}
+    try:
+        with ai_gpu_admission():
+            with model_activity(HOME_CHAT_MODEL):
+                caption = _home_mcp().ollama_chat(
+                    messages,
+                    model=HOME_CHAT_MODEL,
+                    context_tokens=min(HOME_CONTEXT_TOKENS, 8_192),
+                    output_tokens=900,
+                    metrics=metrics,
+                    keep_alive=adaptive_model_keep_alive(),
+                )
+    except (RuntimeError, OSError, urllib.error.URLError, ValueError) as exc:
+        return {"ok": False, "message": f"MiniMax caption enhancement could not use the local LLM: {exc}"}, 503
+    cleaned = re.sub(r"^```(?:text|markdown)?\s*|\s*```$", "", str(caption or "").strip(), flags=re.IGNORECASE | re.MULTILINE).strip()
+    if not cleaned:
+        return {"ok": False, "message": "The local LLM returned an empty MiniMax caption."}, 502
+    return {
+        "ok": True,
+        "original_style": style,
+        "enhanced_caption": cleaned,
+        "lyrics": lyric_check,
+        "preflight": {"model": HOME_CHAT_MODEL, "completed": True, "metrics": metrics},
+    }, 200
 
 
 def choose_music_title(title: object, style: str, lyrics: str) -> tuple[str, str]:
@@ -2268,14 +2492,17 @@ def music_filename_stem(title: str, job_id: str) -> str:
     return f"{safe} - {job_id[:8]}"
 
 
-def music_provenance(*, request: MusicRequest, title: str, title_source: str, job_id: str, runtime: dict[str, object], duration_plan: dict[str, object]) -> dict[str, object]:
+def music_provenance(*, request: MusicRequest, title: str, title_source: str, job_id: str, runtime: dict[str, object], duration_plan: dict[str, object], original_style: str, original_lyrics: str, normalized_lyrics: str, preflight: dict[str, object]) -> dict[str, object]:
     return {
         "title": title,
         "title_source": title_source,
         "engine": {"id": "audio.cpp", "name": "audio.cpp", "workflow": "ariadne.text-to-song/v1"},
         "model": {"id": "minimax_music3_q4_0", "name": "MiniMax Music 3 Q4", "family": LOCAL_MUSIC_ENGINE.family},
-        "style": request.style,
-        "lyrics": request.lyrics,
+        "style": original_style,
+        "lyrics": original_lyrics,
+        "enhanced_caption": request.style,
+        "normalized_lyrics": normalized_lyrics,
+        "preflight": preflight,
         "settings": {
             "duration_seconds": request.duration_seconds,
             "duration_plan": duration_plan,
@@ -2370,34 +2597,40 @@ def record_standalone_music_candidate(music_path: Path, provenance: dict[str, ob
     return asset
 
 
-def standalone_music_asset(asset_id: object) -> tuple[dict[str, object], Path, Path, Path | None]:
+def standalone_music_asset(asset_id: object, *, include_accepted: bool = False) -> tuple[dict[str, object], Path, Path, Path | None]:
     normalized = str(asset_id or "").strip()
     if not re.fullmatch(r"music-[a-f0-9]{12}", normalized):
         raise ValueError("Invalid music candidate identifier.")
-    root = music_candidate_root().resolve()
-    if not root.is_dir():
-        raise FileNotFoundError(normalized)
-    for sidecar in root.glob("*.json"):
-        try:
-            asset = json.loads(sidecar.read_text(encoding="utf-8"))
-        except (OSError, TypeError, json.JSONDecodeError):
+    candidate_root = music_candidate_root().resolve()
+    roots = [(candidate_root, {"candidate"})]
+    if include_accepted:
+        accepted_root = music_storage_root().resolve()
+        if accepted_root != candidate_root:
+            roots.append((accepted_root, {"accepted"}))
+    for root, allowed_statuses in roots:
+        if not root.is_dir():
             continue
-        if not isinstance(asset, dict) or asset.get("asset_id") != normalized or asset.get("status") != "candidate":
-            continue
-        files = asset.get("files") if isinstance(asset.get("files"), dict) else {}
-        media_name = str(files.get("media") or "")
-        metadata_name = str(files.get("metadata") or "")
-        if Path(media_name).name != media_name or Path(metadata_name).name != metadata_name:
-            raise ValueError("Standalone music candidate paths are invalid.")
-        media = (root / media_name).resolve()
-        metadata = (root / metadata_name).resolve()
-        mp3_name = str(files.get("mp3") or "")
-        mp3 = (root / mp3_name).resolve() if mp3_name else None
-        if Path(mp3_name).name != mp3_name:
-            raise ValueError("Standalone music MP3 path is invalid.")
-        if media.parent != root or metadata.parent != root or (mp3 is not None and mp3.parent != root) or not media.is_file() or not metadata.is_file() or (mp3 is not None and not mp3.is_file()):
-            raise FileNotFoundError(normalized)
-        return asset, media, metadata, mp3
+        for sidecar in root.glob("*.json"):
+            try:
+                asset = json.loads(sidecar.read_text(encoding="utf-8"))
+            except (OSError, TypeError, json.JSONDecodeError):
+                continue
+            if not isinstance(asset, dict) or asset.get("asset_id") != normalized or asset.get("status") not in allowed_statuses:
+                continue
+            files = asset.get("files") if isinstance(asset.get("files"), dict) else {}
+            media_name = str(files.get("media") or "")
+            metadata_name = str(files.get("metadata") or "")
+            if Path(media_name).name != media_name or Path(metadata_name).name != metadata_name:
+                raise ValueError("Standalone music asset paths are invalid.")
+            media = (root / media_name).resolve()
+            metadata = (root / metadata_name).resolve()
+            mp3_name = str(files.get("mp3") or "")
+            mp3 = (root / mp3_name).resolve() if mp3_name else None
+            if Path(mp3_name).name != mp3_name:
+                raise ValueError("Standalone music MP3 path is invalid.")
+            if media.parent != root or metadata.parent != root or (mp3 is not None and mp3.parent != root) or not media.is_file() or not metadata.is_file() or (mp3 is not None and not mp3.is_file()):
+                raise FileNotFoundError(normalized)
+            return asset, media, metadata, mp3
     raise FileNotFoundError(normalized)
 
 
@@ -2544,10 +2777,13 @@ def _run_music_job(job_id: str, body: dict[str, object]) -> None:
 
 
 def start_music_job(body: dict[str, object]) -> tuple[dict[str, object], int]:
-    duration_mode = str(body.get("duration_mode") or "full_lyrics").strip().lower()
+    duration_mode = str(body.get("duration_mode") or "auto").strip().lower()
     lyrics = str(body.get("lyrics") or "").strip()
     style = str(body.get("style") or "").strip()
-    plan = lyric_duration_plan(lyrics, style) if duration_mode == "full_lyrics" and lyrics else {"mode": duration_mode, "target_seconds": 30}
+    try:
+        plan = lyric_duration_plan(lyrics, style, duration_mode, body.get("custom_duration_seconds")) if lyrics else {"mode": duration_mode, "target_seconds": 0, "generation_seconds": 0}
+    except ValueError as exc:
+        return {"ok": False, "message": str(exc)}, 400
     with MUSIC_JOBS_LOCK:
         cutoff = time.monotonic() - 3600
         for old_job_id, old_job in list(MUSIC_JOBS.items()):
@@ -2559,7 +2795,7 @@ def start_music_job(body: dict[str, object]) -> tuple[dict[str, object], int]:
         MUSIC_JOBS[job_id] = {
             "state": "queued",
             "created_monotonic": time.monotonic(),
-            "target_seconds": plan.get("target_seconds"),
+            "target_seconds": plan.get("generation_seconds"),
         }
         threading.Thread(target=_run_music_job, args=(job_id, dict(body)), name="ariadne-music-generation", daemon=True).start()
     return {"ok": True, "job_id": job_id, "state": "queued", "duration_plan": plan}, 202
@@ -2570,28 +2806,41 @@ def generate_music(body: dict[str, object], *, progress_job_id: str | None = Non
     if not MUSIC_GENERATION_LOCK.acquire(blocking=False):
         return {"ok": False, "message": "Ariadne is already generating a song."}, 409
     try:
-        lyrics = str(body.get("lyrics") or "").strip()
-        style = str(body.get("style") or "").strip()
-        title, title_source = choose_music_title(body.get("title"), style, lyrics)
+        original_lyrics = str(body.get("lyrics") or "").strip()
+        original_style = str(body.get("style") or "").strip()
+        enhanced_caption = str(body.get("enhanced_caption") or "").strip()
+        caption_preflight = body.get("caption_preflight") if isinstance(body.get("caption_preflight"), dict) else {}
+        lyrics = str(body.get("normalized_lyrics") or "").strip()
+        title, title_source = choose_music_title(body.get("title"), original_style, original_lyrics)
         project_id = str(body.get("project_id") or "").strip()
-        if not lyrics or not style:
+        if not original_lyrics or not original_style:
             return {"ok": False, "message": "Enter both lyrics and a style brief first."}, 400
-        if len(lyrics) > 12_000 or len(style) > 2_000:
+        if not enhanced_caption:
+            return {"ok": False, "message": "Enhance the style for MiniMax and review the caption before generating."}, 400
+        if not caption_preflight.get("completed"):
+            return {"ok": False, "message": "Complete the local LLM MiniMax caption enhancement before generating."}, 400
+        if not lyrics:
+            return {"ok": False, "message": "Check lyrics and review the normalized MiniMax tags before generating."}, 400
+        if len(original_lyrics) > 12_000 or len(original_style) > 2_000 or len(enhanced_caption) > 8_000:
             return {"ok": False, "message": "Lyrics or style brief is too long."}, 400
         if len(str(body.get("title") or "").strip()) > 160:
             return {"ok": False, "message": "Song titles must be 160 characters or fewer."}, 400
-        duration_mode = str(body.get("duration_mode") or "full_lyrics").strip().lower()
-        duration_plan = lyric_duration_plan(lyrics, style) if duration_mode == "full_lyrics" else {"mode": "short_test", "target_seconds": 30}
+        duration_mode = str(body.get("duration_mode") or "auto").strip().lower()
         try:
-            duration = float(duration_plan["target_seconds"]) if duration_mode == "full_lyrics" else float(body.get("duration_seconds") or 30)
+            lyric_check = normalize_minimax_lyrics(original_lyrics)
+            if not lyric_check["valid"]:
+                return {"ok": False, "message": "Lyrics failed MiniMax tag validation.", "lyrics": lyric_check}, 400
+            computed_normalized_lyrics = str(lyric_check["normalized_lyrics"])
+            if computed_normalized_lyrics != lyrics:
+                return {"ok": False, "message": "The normalized lyrics are out of date; run Check lyrics again."}, 409
+            duration_plan = lyric_duration_plan(computed_normalized_lyrics, original_style, duration_mode, body.get("custom_duration_seconds"))
+            duration = float(duration_plan["generation_seconds"])
             seed = int(body.get("seed")) if str(body.get("seed") or "").strip() else int.from_bytes(os.urandom(4), "big")
             steps = int(body.get("inference_steps") or 30)
-        except (TypeError, ValueError):
-            return {"ok": False, "message": "Duration, seed and inference steps must be numeric."}, 400
-        if duration_mode not in {"full_lyrics", "short_test"}:
-            return {"ok": False, "message": "Choose full lyric target or the 30-second short test."}, 400
-        if not 30 <= duration <= 300 or not 1 <= steps <= 60:
-            return {"ok": False, "message": "Music targets must be 30–300 seconds and use 1–60 inference steps."}, 400
+        except (TypeError, ValueError) as exc:
+            return {"ok": False, "message": str(exc) or "Duration, seed and inference steps must be numeric."}, 400
+        if not MUSIC_MIN_REQUEST_SECONDS <= float(duration_plan["target_seconds"]) <= MUSIC_MAX_REQUEST_SECONDS or not MUSIC_MIN_REQUEST_SECONDS <= duration <= MUSIC_MAX_GENERATION_SECONDS or not 1 <= steps <= 60:
+            return {"ok": False, "message": "Music targets must be 0:30–5:00 and use 1–60 inference steps."}, 400
         if project_id:
             try:
                 SEQUENCE_PROJECTS.project(project_id)
@@ -2605,10 +2854,18 @@ def generate_music(body: dict[str, object], *, progress_job_id: str | None = Non
         video = wan2gp_status(ignore_transition=True)
         if str(video.get("state") or "") in {"online", "starting"}:
             return {"ok": False, "message": "Stop the video renderer before generating music."}, 409
+        resource_release = release_idle_ollama_models(force=True)
+        if resource_release.get("protected"):
+            return {"ok": False, "message": "A local LLM is still processing; wait for the MiniMax pre-flight to finish before generating.", "resource_release": resource_release}, 409
         gpu = gpu_status()
         if gpu.get("available") and float(gpu.get("free_gb") or 0) < MUSIC_MINIMUM_FREE_GB:
             return {"ok": False, "message": f"Music needs at least {MUSIC_MINIMUM_FREE_GB:g} GB free VRAM; Ariadne currently sees {gpu.get('free_gb')} GB.", "gpu": gpu}, 409
-        request = MusicRequest(lyrics=lyrics, style=style, duration_seconds=duration, seed=seed, inference_steps=steps)
+        preflight = {
+            "llm": {"model": caption_preflight.get("model") or HOME_CHAT_MODEL, "completed": True, "caption_reviewed": True, "metrics": caption_preflight.get("metrics", {})},
+            "lyrics": {"validated": True, "normalized": True, "tag_count": lyric_check.get("tag_count"), "section_count": lyric_check.get("section_count")},
+            "resource_release": resource_release,
+        }
+        request = MusicRequest(lyrics=lyrics, style=enhanced_caption, duration_seconds=duration, seed=seed, inference_steps=steps)
         job_id = uuid.uuid4().hex
         candidate_root = SEQUENCE_PROJECTS.music_candidate_directory(project_id) if project_id else music_candidate_root()
         output = candidate_root / f"{music_filename_stem(title, job_id)}.wav"
@@ -2636,8 +2893,7 @@ def generate_music(body: dict[str, object], *, progress_job_id: str | None = Non
         if mp3_completed.returncode != 0 or not mp3_output.is_file() or mp3_output.stat().st_size == 0:
             detail = (mp3_completed.stderr or mp3_completed.stdout or "FFmpeg did not write an MP3 output").strip()
             return {"ok": False, "message": f"The WAV rendered, but MP3 conversion failed: {detail[-600:]}"}, 502
-        duration_plan["target_seconds"] = duration
-        provenance = music_provenance(request=request, title=title, title_source=title_source, job_id=job_id, runtime=runtime, duration_plan=duration_plan)
+        provenance = music_provenance(request=request, title=title, title_source=title_source, job_id=job_id, runtime=runtime, duration_plan=duration_plan, original_style=original_style, original_lyrics=original_lyrics, normalized_lyrics=lyrics, preflight=preflight)
         provenance["outputs"] = {"wav": output.name, "mp3": mp3_output.name, "mp3_bitrate": "192 kbps", "mp3_encoder": "libmp3lame"}
         try:
             asset = SEQUENCE_PROJECTS.record_music_candidate(project_id, output, provenance, mp3_output) if project_id else record_standalone_music_candidate(output, provenance, mp3_output)
@@ -6018,7 +6274,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def send_audio_file(self, path: Path) -> None:
+    def send_audio_file(self, path: Path, *, download: bool = False) -> None:
         """Serve WAV candidates with byte ranges so browser players can seek."""
         size = path.stat().st_size
         start, end, status = 0, size - 1, 200
@@ -6050,6 +6306,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(length))
         if status == 206:
             self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        if download:
+            self.send_header("Content-Disposition", f'attachment; filename="{path.name}"')
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         with path.open("rb") as handle:
@@ -6207,12 +6465,13 @@ class AriadneHandler(BaseHTTPRequestHandler):
         standalone_music_match = re.fullmatch(r"/api/music/candidates/(music-[a-f0-9]{12})/content", path)
         if standalone_music_match:
             try:
-                _asset, media, _metadata, mp3 = standalone_music_asset(standalone_music_match.group(1))
-                requested_format = parse_qs(urlparse(self.path).query).get("format", ["wav"])[0].casefold()
+                _asset, media, _metadata, mp3 = standalone_music_asset(standalone_music_match.group(1), include_accepted=True)
+                query = parse_qs(urlparse(self.path).query)
+                requested_format = query.get("format", ["wav"])[0].casefold()
                 selected = mp3 if requested_format == "mp3" else media
                 if selected is None:
                     raise FileNotFoundError("MP3 companion is unavailable")
-                self.send_audio_file(selected)
+                self.send_audio_file(selected, download=bool(query.get("download")))
             except (FileNotFoundError, OSError, ValueError, TypeError):
                 self.send_bytes(b"Standalone music candidate is unavailable.", "text/plain; charset=utf-8", 404)
             return
@@ -6566,6 +6825,13 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/image/generate":
                 result, status = generate_image(body)
+                self.send_json(result, status)
+                return
+            if path == "/api/music/lyrics/check":
+                self.send_json({"ok": True, "lyrics": normalize_minimax_lyrics(str(body.get("lyrics") or ""))})
+                return
+            if path == "/api/music/caption/enhance":
+                result, status = enhance_music_caption(body)
                 self.send_json(result, status)
                 return
             if path == "/api/music/generate":

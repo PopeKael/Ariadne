@@ -7,8 +7,16 @@
   const project = document.querySelector("#music-project");
   const title = document.querySelector("#music-title");
   const style = document.querySelector("#music-style");
+  const caption = document.querySelector("#music-caption");
+  const enhance = document.querySelector("#music-enhance");
+  const captionStatus = document.querySelector("#music-caption-status");
   const lyrics = document.querySelector("#music-lyrics");
+  const checkLyrics = document.querySelector("#music-check-lyrics");
+  const lyricsResult = document.querySelector("#music-lyrics-result");
+  const normalizedLyrics = document.querySelector("#music-normalized-lyrics");
+  const lyricsFeedback = document.querySelector("#music-lyrics-feedback");
   const durationMode = document.querySelector("#music-duration-mode");
+  const customDuration = document.querySelector("#music-custom-duration");
   const durationPlan = document.querySelector("#music-duration-plan");
   const steps = document.querySelector("#music-steps");
   const seed = document.querySelector("#music-seed");
@@ -30,6 +38,8 @@
   let runtime = null;
   let latest = null;
   let pollTimer = null;
+  let lyricsCheck = null;
+  let captionPreflight = null;
 
   function setFeedback(message, kind) { feedback.className = `card-feedback${kind ? ` ${kind}` : ""}`; feedback.textContent = message; }
   function formatSeconds(value) {
@@ -37,18 +47,33 @@
     return seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
   }
   function estimateDuration() {
-    if (durationMode.value === "short_test") return {mode:"short_test", target_seconds:30};
+    const mode = durationMode.value;
     const words = lyrics.value.replace(/\[[^\]]*\]/g, " ").match(/[\w']+/g) || [];
+    if (mode === "custom") {
+      const seconds = Number(customDuration.value || 0);
+      return {mode, word_count:words.length, target_seconds:seconds, generation_seconds:seconds + Math.min(30, Math.max(12, Math.round(seconds * .12))), generation_headroom_seconds:Math.min(30, Math.max(12, Math.round(seconds * .12)))};
+    }
+    if (["180", "240", "300"].includes(mode)) {
+      const seconds = Number(mode);
+      return {mode, word_count:words.length, target_seconds:seconds, generation_seconds:seconds + Math.min(30, Math.max(12, Math.round(seconds * .12))), generation_headroom_seconds:Math.min(30, Math.max(12, Math.round(seconds * .12)))};
+    }
+    const structureLyrics = lyricsCheck && lyricsCheck.normalized_lyrics ? lyricsCheck.normalized_lyrics : lyrics.value;
+    const sections = (structureLyrics.match(/^[ \t]*\[[^\]]+\][ \t]*$/gm) || []).length || (words.length ? 1 : 0);
     const match = style.value.match(/\b(\d{2,3})(?:\s*[-–]\s*(\d{2,3}))?\s*bpm\b/i);
     const bpm = match ? Math.round((Number(match[1]) + Number(match[2] || match[1])) / 2) : 120;
-    const rawSeconds = Math.round(words.length / Math.max(1, (bpm / 60) * 1.55) + 14);
-    return {mode:"full_lyrics", word_count:words.length, bpm, bpm_source:match ? "style brief" : "120 BPM fallback", target_seconds:Math.max(30, Math.min(300, rawSeconds)), capped:rawSeconds < 30 || rawSeconds > 300};
+    const wordsPerSecond = Math.max(1.45, Math.min(2.45, 1.95 * (bpm / 120)));
+    const estimated = Math.round(words.length / wordsPerSecond + 6 + Math.max(1, sections) * 3);
+    const target = Math.max(30, Math.min(300, estimated));
+    const headroom = Math.min(30, Math.max(12, Math.round(target * .18)));
+    return {mode, word_count:words.length, section_count:sections, bpm, bpm_source:match ? "style brief" : "120 BPM fallback", estimated_song_seconds:estimated, target_seconds:target, generation_seconds:Math.min(360, target + headroom), generation_headroom_seconds:headroom};
   }
   function renderDurationPlan() {
     const plan = estimateDuration();
-    if (plan.mode === "short_test") { durationPlan.textContent = "A fixed 30-second candidate for a quick engine check."; return plan; }
-    if (!plan.word_count) { durationPlan.textContent = "Paste lyrics to estimate the full-song target."; return plan; }
-    durationPlan.textContent = `Target about ${formatSeconds(plan.target_seconds)} from ${plan.word_count} lyric words at ${plan.bpm} BPM. This is an estimate, not lyric alignment.`;
+    customDuration.hidden = plan.mode !== "custom";
+    if (plan.mode === "custom" && !plan.target_seconds) { durationPlan.textContent = "Choose a custom length between 0:30 and 5:00."; return plan; }
+    if (!plan.word_count && plan.mode === "auto") { durationPlan.textContent = "Check lyrics to estimate sung-word density and song structure."; return plan; }
+    const source = plan.mode === "auto" ? `${plan.word_count} words across ${plan.section_count || 1} section(s)` : "explicit target";
+    durationPlan.textContent = `Song target ${formatSeconds(plan.target_seconds)} · MiniMax generation budget ${formatSeconds(plan.generation_seconds)} (${plan.generation_headroom_seconds}s headroom) · ${source}.`;
     return plan;
   }
   function renderProgress(payload) {
@@ -82,6 +107,49 @@
     try { const response = await fetch("/api/sequence/projects", {cache:"no-store"}); const payload = await response.json(); if (!response.ok || !payload.ok) throw new Error(); project.replaceChildren(new Option("Standalone song · save under D:\\Downloads\\Music", "")); (payload.projects || []).forEach((item) => project.add(new Option(item.name, item.project_id))); if ([...project.options].some((option) => option.value === wanted)) project.value = wanted; }
     catch (_error) { project.replaceChildren(new Option("Standalone song · projects unavailable", "")); }
   }
+  function renderLyricsCheck(payload) {
+    const result = payload && payload.lyrics ? payload.lyrics : payload;
+    lyricsCheck = result && result.valid ? result : null;
+    lyricsResult.hidden = !result;
+    normalizedLyrics.value = result ? (result.normalized_lyrics || "") : "";
+    const issues = result && Array.isArray(result.issues) ? result.issues : [];
+    lyricsFeedback.textContent = result ? `${result.valid ? "Valid" : "Needs correction"} · ${result.tag_count || 0} tag(s) · ${issues.map((item) => item.message).join(" ") || "No issues found."}` : "";
+    lyricsFeedback.className = `field-hint${result && !result.valid ? " error" : result ? " success" : ""}`;
+    return result;
+  }
+  async function checkLyricsNow() {
+    checkLyrics.disabled = true;
+    setFeedback("Checking MiniMax section tags and preserving lyric text…");
+    try {
+      const response = await fetch("/api/music/lyrics/check", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({lyrics:lyrics.value})});
+      const payload = await response.json(); if (!response.ok || !payload.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+      const result = renderLyricsCheck(payload);
+      setFeedback(result.valid ? "Lyrics checked. The normalized copy is shown below and will be used for generation." : "Lyrics need correction before generation.", result.valid ? "success" : "error");
+      renderDurationPlan();
+    } catch (error) { lyricsCheck = null; renderLyricsCheck(null); setFeedback(error.message, "error"); }
+    finally { checkLyrics.disabled = false; }
+  }
+  async function enhanceCaption() {
+    enhance.disabled = true; enhance.textContent = "Enhancing…";
+    captionStatus.textContent = "Preparing an editable MiniMax caption…";
+    captionStatus.className = "field-hint";
+    setFeedback("The local LLM is preparing an editable MiniMax Structured Caption…");
+    try {
+      const response = await fetch("/api/music/caption/enhance", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({style:style.value, lyrics:lyrics.value})});
+      const payload = await response.json(); if (!response.ok || !payload.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+      caption.value = payload.enhanced_caption || "";
+      captionPreflight = payload.preflight || null;
+      if (payload.lyrics) renderLyricsCheck(payload.lyrics);
+      captionStatus.textContent = "Caption ready — review or edit it before generation.";
+      captionStatus.className = "field-hint success";
+      setFeedback("MiniMax caption ready. Review or edit it before generating.", "success");
+    } catch (error) {
+      captionStatus.textContent = error.message || "Caption enhancement failed.";
+      captionStatus.className = "field-hint error";
+      setFeedback(error.message, "error");
+    }
+    finally { enhance.disabled = false; enhance.textContent = "Enhance for MiniMax"; }
+  }
   async function pollMusicJob(jobId) {
     try {
       const response = await fetch(`/api/music/generation/${encodeURIComponent(jobId)}`, {cache:"no-store"});
@@ -101,7 +169,7 @@
     hideProgress(); empty.hidden = true; downloads.hidden = false;
     audio.src = `${payload.music.url}?t=${Date.now()}`;
     audio.load(); audio.hidden = false; meta.hidden = false;
-    const target = payload.duration_plan && payload.duration_plan.target_seconds ? `target ${formatSeconds(payload.duration_plan.target_seconds)} · ` : "";
+    const target = payload.duration_plan && payload.duration_plan.target_seconds ? `target ${formatSeconds(payload.duration_plan.target_seconds)} · budget ${formatSeconds(payload.duration_plan.generation_seconds || payload.duration_plan.target_seconds)} · ` : "";
     meta.textContent = `${payload.music.title} · ${payload.music.filename} · ${target}${payload.music.duration_seconds || "unknown"} seconds rendered · ${payload.project ? "project candidate" : "standalone candidate"}`;
     wavDownload.href = `${payload.music.url}?download=1`;
     mp3Download.href = `${payload.music.mp3_url}&download=1`;
@@ -112,9 +180,10 @@
     if (pollTimer) { window.clearTimeout(pollTimer); pollTimer = null; }
     generate.disabled = true; accept.disabled = false; accept.hidden = true; downloads.hidden = true; latest = null; audio.hidden = true; meta.hidden = true;
     const plan = renderDurationPlan();
-    setFeedback(`Generating ${plan.mode === "short_test" ? "a 30-second short test" : `the full lyric target (about ${formatSeconds(plan.target_seconds)})`}… Ariadne has reserved the shared GPU until this candidate finishes.`);
-    const body = {project_id: project.value, title: title.value, style: style.value, lyrics: lyrics.value, duration_mode: durationMode.value, inference_steps: Number(steps.value)};
-    if (durationMode.value === "short_test") body.duration_seconds = 30;
+    if (!lyricsCheck || !lyricsCheck.valid || normalizedLyrics.value !== lyricsCheck.normalized_lyrics) { setFeedback("Check lyrics before generating so MiniMax receives validated section tags.", "error"); generate.disabled = false; return; }
+    if (!caption.value.trim() || !captionPreflight || !captionPreflight.completed) { setFeedback("Enhance the style for MiniMax, then review the caption before generating.", "error"); generate.disabled = false; return; }
+    setFeedback(`Generating a ${formatSeconds(plan.target_seconds)} song target with a ${formatSeconds(plan.generation_seconds)} MiniMax budget… Ariadne will release conflicting local LLM GPU memory first.`);
+    const body = {project_id: project.value, title: title.value, style: style.value, enhanced_caption: caption.value, caption_preflight: captionPreflight, lyrics: lyrics.value, normalized_lyrics: normalizedLyrics.value, duration_mode: durationMode.value, custom_duration_seconds: durationMode.value === "custom" ? Number(customDuration.value) : undefined, inference_steps: Number(steps.value)};
     if (seed.value.trim()) body.seed = Number(seed.value);
     try {
       const response = await fetch("/api/music/generate", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
@@ -131,8 +200,11 @@
   audio.addEventListener("error", () => setFeedback("The candidate was saved, but its browser preview could not be loaded. You can still find it in the candidate folder.", "error"));
   project.addEventListener("change", () => localStorage.setItem("ariadne.activeProductionProject", project.value));
   durationMode.addEventListener("change", renderDurationPlan);
-  style.addEventListener("input", renderDurationPlan);
-  lyrics.addEventListener("input", renderDurationPlan);
+  customDuration.addEventListener("input", renderDurationPlan);
+  style.addEventListener("input", () => { captionPreflight = null; renderDurationPlan(); });
+  lyrics.addEventListener("input", () => { lyricsCheck = null; captionPreflight = null; renderLyricsCheck(null); renderDurationPlan(); });
+  enhance.addEventListener("click", enhanceCaption);
+  checkLyrics.addEventListener("click", checkLyricsNow);
   generate.addEventListener("click", generateCandidate); accept.addEventListener("click", acceptCandidate);
   renderDurationPlan(); loadProjects(); loadStatus();
 })();
