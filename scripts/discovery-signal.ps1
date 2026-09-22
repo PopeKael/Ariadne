@@ -1,4 +1,7 @@
 [CmdletBinding()]
+# Manual packaging/deployment utility for Hera and local investigation only.
+# Ariadne's normal Windows runtime never invokes this script and never controls
+# Docker Desktop or local Compose services.
 param(
     [Parameter(Position = 0)]
     [ValidateSet("up", "down", "status", "config", "hera-preflight", "hera-cutover", "hera-rollback")]

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rabbit Hole · Ariadne</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/plugin.css">
+  <link rel="stylesheet" href="/rabbit-hole.css">
+  <link rel="stylesheet" href="/page-shell.css">
+</head>
+<body class="ariadne-page">
+  <div class="rabbit-shell">
+    <header class="rabbit-header">
+      <div><span class="eyebrow">GITHUB EXPLORATION</span><h1>Rabbit Hole</h1><p>Find the projects that make you say, “What the hell is that? Let’s try it.”</p></div>
+      <a class="plugin-action secondary" href="/plugins">Back to Tools</a>
+    </header>
+    <main class="rabbit-main">
+      <section class="rabbit-intro">
+        <div><strong>Read-only discovery</strong><p>Rabbit Hole searches public GitHub metadata for recent, active and unusual open-source projects. It never clones, installs or executes anything.</p></div>
+        <button id="rabbit-explore" class="plugin-action rabbit-primary" type="button">Explore GitHub</button>
+      </section>
+      <p id="rabbit-status" class="rabbit-status" role="status" aria-live="polite">Loading the last completed exploration…</p>
+      <section id="rabbit-results" class="rabbit-results" aria-live="polite"><div class="plugin-empty">No completed exploration yet.</div></section>
+    </main>
+    <footer class="plugin-footer">Public GitHub metadata only <span>•</span> No repository code is touched</footer>
+  </div>
+  <script src="/page-shell.js"></script>
+  <script src="/rabbit-hole.js"></script>
+</body>
+</html>

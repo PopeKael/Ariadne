@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Lab · Ariadne</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/page-shell.css">
+  <link rel="stylesheet" href="/model-lab.css">
+</head>
+<body class="ariadne-page workshop-page model-lab-page">
+  <main class="workspace-shell model-lab-shell">
+    <section class="harness-window" aria-label="Ariadne controlled benchmark harness">
+      <header class="harness-titlebar"><div class="harness-title"><span class="harness-brand">ARIADNE / MODEL LAB</span><strong>CONTROLLED BENCHMARK HARNESS</strong></div><div class="harness-status" aria-live="polite"><span id="lab-runtime-state">Checking Ollama…</span><span id="lab-run-state">READY</span></div></header>
+      <div class="harness-toolbar">
+        <label class="harness-control"><span>MODEL UNDER TEST</span><select id="lab-model-select" class="ws-select"></select></label>
+        <label class="harness-control"><span>BENCHMARK CASE</span><select id="lab-test-case" class="ws-select"></select></label>
+        <div class="harness-control reasoning-control"><span>REASONING MODE <output id="lab-reasoning-value">OFF</output></span><div id="lab-reasoning" class="lab-segmented" role="group" aria-label="Reasoning mode"></div><small id="lab-reasoning-native">Native mapping not loaded</small></div>
+        <div class="harness-toolbar-state" id="lab-classification">Choose a recipe and source material</div>
+      </div>
+      <div class="harness-body benchmark-body">
+        <section class="harness-panel harness-controls" aria-labelledby="harness-controls-heading">
+          <div class="harness-panel-heading"><div><span class="harness-eyebrow">TEST SETUP</span><h1 id="harness-controls-heading">Benchmark recipe</h1></div><div class="harness-actions"><button id="lab-new-run" class="ws-button compact" type="button">New run</button><button id="lab-reset" class="ws-button compact" type="button">Reset test defaults</button></div></div>
+          <div class="lab-recipe-summary"><strong id="lab-case-name">Loading benchmark…</strong><p id="lab-case-description">The selected recipe defines the conditions.</p><div id="lab-case-capabilities" class="lab-capability-pills"></div></div>
+          <div class="lab-source-heading"><div><span class="harness-eyebrow">SOURCE MATERIAL</span><strong id="lab-source-rule">Required source material</strong><small id="lab-source-help">Source files are supplied to the recipe in the order shown.</small></div><label class="ws-button compact harness-add-documents" for="lab-document-input">＋ Add source files<input id="lab-document-input" type="file" accept=".md,.markdown,.txt,.json,.py,.js,.png,.jpg,.jpeg,.webp" multiple></label></div>
+          <div id="lab-dropzone" class="lab-dropzone" tabindex="0"><strong>Drop source files here</strong><span>or use Add source files · supported files remain ordered and visible</span></div>
+          <div id="lab-document-list" class="lab-document-list"><span class="harness-empty-documents">No source material attached.</span></div>
+          <div class="lab-context-card" aria-label="Context intelligence"><div class="lab-context-row"><span>Configured context</span><strong id="lab-context-value">—</strong></div><div class="lab-context-row"><span>Instructions + source estimate</span><strong id="lab-prompt-tokens">—</strong></div><div class="lab-context-row"><span>Requested output</span><strong id="lab-output-value">—</strong></div><div class="lab-context-row"><span>Remaining headroom</span><strong id="lab-headroom">—</strong></div><div id="lab-fit-status" class="lab-fit-status">Select a model and source material.</div></div>
+          <details class="lab-secondary"><summary>Advanced benchmark parameters</summary><div class="harness-parameter-strip lab-advanced-grid"><label class="harness-field"><span>Context</span><input id="lab-context" class="ws-input" type="number" min="1024" step="1"></label><label class="harness-field"><span>Output budget</span><input id="lab-output" class="ws-input" type="number" min="64" step="1"></label><label class="harness-field"><span>Temperature</span><input id="lab-temperature" class="ws-input" type="number" min="0" max="2" step="0.1"></label><label class="harness-field"><span>Top P</span><input id="lab-top-p" class="ws-input" type="number" min="0" max="1" step="0.1"></label><label class="harness-field"><span>Seed</span><input id="lab-seed" class="ws-input" type="number" min="-1" step="1"></label></div></details>
+          <details class="lab-secondary"><summary>Inspect test instructions</summary><pre id="lab-instructions-preview" class="lab-inspect-box"></pre></details>
+          <details class="lab-secondary"><summary>Inspect exact request</summary><pre id="lab-exact-request" class="lab-inspect-box">The assembled request will appear here before execution.</pre></details>
+          <div class="lab-boundary-strip" aria-label="Benchmark boundaries"><span>Web off</span><span>Tools off</span><span>Vault off</span><span>Memory off</span><span>Fresh run</span></div>
+          <div class="harness-composer-actions"><p id="lab-feedback" class="card-feedback" aria-live="polite">Ready for a repeatable benchmark run.</p><button id="lab-run" class="ws-button primary harness-run" type="button">Run benchmark</button></div>
+        </section>
+        <section class="harness-panel harness-output" aria-labelledby="harness-output-heading">
+          <div class="harness-panel-heading"><div><span class="harness-eyebrow">LIVE RUN / RESULT</span><h2 id="harness-output-heading">Model response</h2></div><span id="lab-result-classification" class="harness-result-state">READY</span></div>
+          <div id="lab-live-state" class="lab-live-state">Choose a benchmark and press Run benchmark.</div>
+          <section id="lab-thinking-panel" class="lab-stream-panel thinking-panel" hidden aria-labelledby="lab-thinking-heading"><div class="lab-stream-heading"><strong id="lab-thinking-heading">THINKING</strong><span id="lab-thinking-status">native stream</span></div><pre id="lab-thinking-output" class="lab-stream-output"></pre></section>
+          <section class="lab-stream-panel final-panel" aria-labelledby="lab-final-heading"><div class="lab-stream-heading"><strong id="lab-final-heading">FINAL RESPONSE</strong><span id="lab-final-status">waiting</span></div><pre id="lab-answer" class="lab-stream-output">The final response will appear here.</pre></section>
+          <div id="lab-telemetry" class="lab-telemetry" aria-label="Run telemetry"><div><span>Duration</span><strong>—</strong></div><div><span>Prompt tokens</span><strong>—</strong></div><div><span>Reasoning tokens</span><strong>—</strong></div><div><span>Output tokens</span><strong>—</strong></div><div><span>Tokens / sec</span><strong>—</strong></div></div>
+          <div id="lab-observability" class="lab-observability" aria-label="Live runtime gauges"><div><span>GPU memory</span><strong id="lab-gpu-value">—</strong><small id="lab-gpu-detail">Waiting for native telemetry</small></div><div><span>Model residency</span><strong id="lab-residency-value">—</strong><small id="lab-residency-detail">Waiting for Ollama</small></div><div><span>GPU owner</span><strong id="lab-owner-value">—</strong><small id="lab-owner-detail">No active admission</small></div><div><span>Rust host / avatar</span><strong id="lab-host-value">—</strong><small id="lab-host-detail">Waiting for host status</small></div></div>
+          <div id="lab-activity-log" class="lab-activity-log lab-live-log" aria-live="polite"></div>
+          <div class="lab-export-actions"><button id="lab-copy-response" class="ws-button compact" type="button" disabled>Copy response</button><button id="lab-export-response" class="ws-button compact" type="button" disabled>Export response Markdown</button><button id="lab-export-run" class="ws-button compact" type="button" disabled>Export complete run</button></div>
+          <details class="lab-secondary lab-diagnostics"><summary>Detailed diagnostics</summary><pre id="lab-diagnostics-output" class="lab-inspect-box">No run diagnostics yet.</pre></details>
+        </section>
+      </div>
+      <details class="harness-history"><summary><span>Reviewable history · compare runs</span><span id="lab-history-count">Loading…</span></summary><div id="lab-chart" class="lab-chart"><span>No completed runs yet.</span></div><div class="lab-history-wrap"><table class="lab-history"><thead><tr><th>Run</th><th>Case</th><th>Class</th><th>Model</th><th>Context</th><th>Reasoning</th><th>Duration</th><th>State</th></tr></thead><tbody id="lab-history-body"><tr><td colspan="8">Loading run history…</td></tr></table></div></details>
+      <footer class="harness-statusbar"><span>Native Ollama benchmark</span><span>Docker independent</span><span>Open WebUI retired</span><a href="/workshop">Back to Workshop</a></footer>
+    </section>
+  </main>
+  <script src="/page-shell.js"></script><script src="/model-lab.js"></script>
+</body>
+</html>

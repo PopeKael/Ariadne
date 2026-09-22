@@ -22,12 +22,14 @@ such as:
 
 - physical memory and GPU telemetry;
 - local storage volumes;
-- WSL distributions and Docker state;
-- Ollama, Open WebUI, and LM Studio local runtime availability;
+- WSL distributions and native Windows workload state;
+- Ollama, the native Model Lab experiment harness, and LM Studio local runtime availability;
 - the managed Linux/video renderer lifecycle.
 
 Host detection remains controller-owned because it includes Windows APIs,
-process inspection, GPU arbitration, and safe lifecycle actions.
+process inspection, GPU arbitration, and safe lifecycle actions. Docker is
+intentionally outside that boundary: Ariadne does not poll or mutate Docker
+Desktop, containers, or Docker's WSL distributions.
 
 ## Plugins and integrations
 

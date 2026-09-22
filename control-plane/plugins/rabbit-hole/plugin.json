@@ -1,0 +1,23 @@
+{
+  "manifest_version": "0.1",
+  "plugin_id": "rabbit-hole",
+  "name": "Rabbit Hole",
+  "version": "0.1.0",
+  "description": "Read-only GitHub exploration for unusual, active open-source projects worth trying on the Windows AI workstation.",
+  "author": "Ariadne Core",
+  "plugin_type": "capability",
+  "capabilities": ["github.explore"],
+  "actions": ["explore"],
+  "action_metadata": {"explore": {"schedulable": false, "mutating": false}},
+  "entry_point": "rabbit_hole:explore",
+  "ui": {"available": true, "route": "/rabbit-hole", "label": "Open Rabbit Hole"},
+  "settings": {"available": false, "route": null},
+  "permissions": ["network.request", "filesystem.write"],
+  "dependencies": [],
+  "hardware_requirements": {},
+  "resource_requirements": {"execution": "background", "storage": "bounded last-result cache"},
+  "startup": "on_demand",
+  "enabled": true,
+  "health": {"state": "healthy", "detail": "Read-only public GitHub repository search; no cloning, installation or execution."},
+  "activity": {"supported": true, "transport": "ariadne-core", "progress": true}
+}

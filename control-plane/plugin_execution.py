@@ -41,6 +41,16 @@ def _entry_point(record: PluginRecord) -> Any:
     return adapter
 
 
+def load_plugin_callable(record: PluginRecord) -> Any:
+    """Load a trusted bundled adapter for an in-process background capability.
+
+    Most legacy plugins return a subprocess command through ``build_plugin_command``.
+    A read-only capability such as Rabbit Hole can instead run inside Ariadne's
+    existing worker boundary without gaining permission to launch processes.
+    """
+    return _entry_point(record)
+
+
 def build_plugin_command(record: PluginRecord, action: str, config: dict[str, object], context: dict[str, object]) -> list[str]:
     if not record.manifest:
         raise PluginExecutionError("Plugin manifest is unavailable.")
@@ -52,4 +62,4 @@ def build_plugin_command(record: PluginRecord, action: str, config: dict[str, ob
     return command
 
 
-__all__ = ["PluginExecutionError", "build_plugin_command"]
+__all__ = ["PluginExecutionError", "build_plugin_command", "load_plugin_callable"]

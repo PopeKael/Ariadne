@@ -56,11 +56,11 @@
           <div id="wsl-list" class="state-list"><div class="loading">Reading distribution state…</div></div>
         </article>
         <article class="panel status-card">
-          <div class="card-head"><span>Local services</span><span class="pill" id="docker-pill">Checking</span></div>
-          <strong id="docker-metric">—</strong>
-          <p>Optional tools stay optional; DEV services are local-only.</p>
-          <div class="resource-toolbar"><span>Start/stop Ariadne local services</span></div>
-          <div id="docker-list" class="state-list"><div class="loading">Reading container state…</div></div>
+          <div class="card-head"><span>Native runtime</span><span class="pill" id="native-runtime-pill">Checking</span></div>
+          <strong id="native-runtime-metric">—</strong>
+          <p>Ollama, Vault, and Ariadne host services run natively on Windows.</p>
+          <div class="resource-toolbar"><span>Docker is build/deploy-only and is not managed here.</span></div>
+          <div id="native-runtime-list" class="state-list"><div class="loading">Reading native service state…</div></div>
         </article>
       </section>
 
@@ -77,11 +77,11 @@
           <span class="badge">HOST</span>
         </div>
         <div class="launch-list">
-          <a class="launch-row" id="openwebui-launch" href="/openwebui-loader" target="_blank" rel="noopener">
+          <div class="launch-row">
             <span class="launch-icon ollama-icon">◉</span>
-            <span class="launch-copy"><strong>Open WebUI</strong><small>Local model interface</small></span>
-            <span class="launch-status" id="openwebui-status">Checking</span><span class="launch-arrow">↗</span>
-          </a>
+            <span class="launch-copy"><strong>Ollama / Model Lab</strong><small>Native model control; Model Lab replaces Open WebUI</small></span>
+            <span class="launch-status local" id="ollama-status">Checking</span>
+          </div>
           <a class="launch-row" href="/launch/lmstudio">
             <span class="launch-icon lmstudio-icon">◈</span>
             <span class="launch-copy"><strong>LM Studio</strong><small>Local model runtime</small></span>
@@ -107,7 +107,7 @@
         <div class="section-head"><div><h2>Operating profiles</h2><p>Choose where Ariadne reads Discovery and Signal data. DEV is local and session-only.</p></div><span class="badge muted-badge" id="profile-transition-status" aria-live="polite" title="">RUN · HERA</span></div>
         <div class="profile-list">
           <button type="button" class="profile-option" data-profile="RUN"><span class="profile-icon">⌂</span><span><strong>RUN · Hera</strong><small>Production Discovery + Signal on Hera</small></span><span class="selected">Current</span></button>
-          <button type="button" class="profile-option" data-profile="DEV"><span class="profile-icon">◉</span><span><strong>DEV · Local</strong><small>Docker Discovery + Signal on localhost</small></span><span class="planned">Switch</span></button>
+          <button type="button" class="profile-option" data-profile="DEV"><span class="profile-icon">◉</span><span><strong>DEV · Local</strong><small>Manual local stack unavailable; Docker is not controlled by Ariadne</small></span><span class="planned">Unavailable</span></button>
           <div><span class="profile-icon">◆</span><span><strong>Rendering</strong><small>Reserve GPU for an approved job</small></span><span class="planned">Planned</span></div>
           <button type="button" class="profile-option" data-profile="GAMING"><span class="profile-icon">▣</span><span><strong>Gaming</strong><small>Cleanly stop Ariadne before gaming</small></span><span class="planned">Shutdown</span></button>
         </div>

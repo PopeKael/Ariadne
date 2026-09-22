@@ -22,6 +22,7 @@ class WorkspaceShellTests(unittest.TestCase):
             "sequence.html",
             "plugins.html",
             "workshop.html",
+            "model-lab.html",
             "configuration.html",
             "configuration-avatar.html",
             "index.html",
@@ -38,8 +39,9 @@ class WorkspaceShellTests(unittest.TestCase):
         music = (ROOT / "music.html").read_text(encoding="utf-8")
         sequence = (ROOT / "sequence.html").read_text(encoding="utf-8")
         workshop = (ROOT / "workshop.html").read_text(encoding="utf-8")
+        model_lab = (ROOT / "model-lab.html").read_text(encoding="utf-8")
         plugins = (ROOT / "plugins.html").read_text(encoding="utf-8")
-        for label in ("Home", "Create", "Tools", "Workshop", "Setup", "System"):
+        for label in ("Home", "Create", "Tools", "Workshop", "Model Lab", "Setup", "System"):
             self.assertIn(f'"{label}"', shell)
         self.assertIn("Image", create)
         self.assertIn("Music", create)
@@ -76,7 +78,17 @@ class WorkspaceShellTests(unittest.TestCase):
         self.assertIn('href="http://127.0.0.1:8766/"', create)
         self.assertNotIn('href="http://localhost:8766/"', create)
         self.assertNotIn("http://localhost:8766", (ROOT / "app.js").read_text(encoding="utf-8"))
-        self.assertIn("Open WebUI", workshop)
+        self.assertIn("Model Lab", workshop)
+        self.assertIn("Open Model Lab", workshop)
+        self.assertIn("CONTROLLED BENCHMARK HARNESS", model_lab)
+        self.assertIn('id="lab-model-select"', model_lab)
+        self.assertIn('id="lab-context"', model_lab)
+        self.assertIn('id="lab-run"', model_lab)
+        self.assertIn("Reviewable history", model_lab)
+        model_lab_css = (ROOT / "model-lab.css").read_text(encoding="utf-8")
+        self.assertIn(".benchmark-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)", model_lab_css)
+        self.assertIn("overflow-wrap:anywhere", model_lab_css)
+        self.assertIn("overflow:auto", model_lab_css)
         self.assertIn("LM Studio", workshop)
         self.assertIn("Tools &amp; Plugins", plugins)
 
@@ -91,15 +103,18 @@ class WorkspaceShellTests(unittest.TestCase):
                     return response.status, response.headers["Content-Type"], response.read()
 
             with patch.object(server, "_expire_sessions"):
-                for path in ("/create", "/image", "/music", "/sequence", "/workshop"):
+                for path in ("/create", "/image", "/music", "/sequence", "/workshop", "/model-lab"):
                     status, content_type, body = get(path)
                     self.assertEqual(status, 200)
                     self.assertIn("text/html", content_type)
                     self.assertIn(b"page-shell.js", body)
-                for path in ("/page-shell.js", "/create.js", "/image.js", "/music.js", "/sequence.js", "/workshop.js"):
+                for path in ("/page-shell.js", "/create.js", "/image.js", "/music.js", "/sequence.js", "/workshop.js", "/model-lab.js"):
                     status, content_type, _ = get(path)
                     self.assertEqual(status, 200)
                     self.assertIn("text/javascript", content_type)
+                status, content_type, _ = get("/model-lab.css")
+                self.assertEqual(status, 200)
+                self.assertIn("text/css", content_type)
 
             expected = {"ok": True, "active_model": "test-model", "models": []}
             with patch.object(server, "_expire_sessions"), patch.object(server, "model_control_payload", return_value=expected):
@@ -107,6 +122,13 @@ class WorkspaceShellTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertIn("application/json", content_type)
                 self.assertEqual(json.loads(body), expected)
+
+            status, content_type, body = get("/api/model-lab")
+            self.assertEqual(status, 200)
+            self.assertIn("application/json", content_type)
+            lab = json.loads(body)
+            self.assertEqual(lab["default_profile"], "long-document")
+            self.assertTrue(lab["controls"]["conversation_history"] is False)
 
             status, content_type, body = get("/api/music/provider/status")
             self.assertEqual(status, 200)

@@ -9,18 +9,29 @@ from Git.
 - Host: Windows
 - Runtime: Python standard library, plus Pillow and pystray for the tray companion
 - Network exposure: loopback only; it is not published to the LAN
-- Current capabilities: Ariadne Home, local Qwen chat, cited Vault retrieval, temporary Document Analysis for .md/.txt attachments, episodic activity, drives, WSL registrations, and Docker container metadata
+- Current capabilities: Ariadne Home, native Ollama chat, cited Vault retrieval, temporary Document Analysis for .md/.txt attachments, episodic activity, drives, WSL registrations, and native workload telemetry
 - Tray companion: open, restart, or exit Ariadne without a console window
 - Resident host: the Rust `ariadne-host.exe` owns the tray, supervised Python
   core, avatar overlay, and local IPC. See [`docs/RESIDENT-HOST.md`](docs/RESIDENT-HOST.md).
-- Open WebUI launch: starts Docker Desktop when needed, opens the local UI, and
-  preloads `gpt-oss:20b` into Ollama memory with a five-minute keep-alive.
+- Model Lab: native Ollama benchmark harness with recipe-driven Standard and
+  Adapted runs, a built-in canonical two-document Test 1 fixture, capability negotiation, ordered Markdown source attachments,
+  separate streamed thinking/final output, context-fit checks, append-only run
+  records, exports, and comparison telemetry. Reasoning controls are OFF plus
+  provider-supported native modes; unsupported levels are disabled rather than
+  silently approximated.
+  Open WebUI is retired from Ariadne runtime and Ariadne never starts or
+  manages Docker.
 
 The active Ollama model store is `F:\AI\Models\Ollama`. The previous C: store is kept
 as `C:\Users\Warren\.ollama\models.rollback-20260817` until the new location
-has had normal use. The dashboard launch behaviour can be adjusted with
-`ARIADNE_OPEN_WEBUI_URL`, `ARIADNE_OPEN_WEBUI_CONTAINER`,
-`ARIADNE_CHAT_MODEL`, and `ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE`.
+has had normal use. Native model behaviour can be adjusted with
+`ARIADNE_CHAT_MODEL` and `ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE`.
+
+Docker and Compose files in this repository are manual packaging/deployment
+artifacts for Hera. They are not runtime dependencies, are not started by
+profile changes, and are not stopped by Ariadne shutdown or Gaming actions.
+Local DEV Signal/Discovery is therefore marked unavailable/manual until an
+explicit deployment workflow is designed.
 
 Ariadne treats the browser page as the workload boundary. Closing the last
 active page session, or losing its heartbeat, cancels its local jobs, unloads
@@ -32,6 +43,10 @@ Reference architecture and the public/private boundary are documented in
 `ARIADNE_VAULT_ROOT`; by default it is the configured live store
 `D:\Downloads\KnowledgeVault`. The Ariadne repository is application code,
 not an implicit Vault root.
+
+The Model Lab contract, including the benchmark recipe slots, canonical Test 1
+parameters, source/instruction separation, run states, and acceptance rules, is
+documented in [`docs/MODEL-LAB-BENCHMARK-HARNESS.md`](docs/MODEL-LAB-BENCHMARK-HARNESS.md).
 
 For somebody deploying their own copy, start with
 [`../docs/CLONE-AND-DEPLOY.md`](../docs/CLONE-AND-DEPLOY.md). The legacy Python

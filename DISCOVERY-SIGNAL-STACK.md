@@ -1,4 +1,8 @@
-# Discovery + Signal local workflow
+# Discovery + Signal packaging/deployment workflow
+
+This document describes an explicit manual Docker/Compose workflow only. It is
+not part of Ariadne startup, profile switching, model testing, Gaming, or
+shutdown. Ariadne does not start, stop, probe, recover, or repair Docker.
 
 This repository now has one Compose model with explicit overlays:
 
@@ -11,7 +15,11 @@ This repository now has one Compose model with explicit overlays:
 Ariadne Home remains at [http://localhost:8765/](http://localhost:8765/); this
 workflow does not claim or change that port.
 
-## Everyday local development
+## Manual local DEV investigation
+
+Local DEV is currently unavailable from Ariadne and requires the operator to
+run this script deliberately when Docker is being used as a packaging/build
+tool. Do not add calls to this script to Ariadne runtime code.
 
 From the repository root:
 

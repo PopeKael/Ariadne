@@ -3,12 +3,14 @@ from __future__ import annotations
 import csv
 import base64
 import binascii
+import hashlib
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import ctypes
 import io
 import json
+import math
 import os
 import socket
 import shutil
@@ -60,7 +62,7 @@ from librarian_harness import (
 from evidence_router import decide as decide_evidence, external_search_needed
 from search_providers import SearchProviderRegistry
 from plugin_activity import PluginActivityStream
-from plugin_execution import PluginExecutionError, build_plugin_command
+from plugin_execution import PluginExecutionError, build_plugin_command, load_plugin_callable
 from plugin_registry import PLUGIN_REGISTRY
 from production_projects import ASSET_SCHEMA, ProductionProjectStore, utc_now
 from music_engine import AudioCppMiniMaxEngine, MusicRequest
@@ -74,10 +76,6 @@ PROJECT_ROOT = ROOT.parent
 HOST = os.environ.get("ARIADNE_BIND_ADDRESS", "127.0.0.1")
 PORT = int(os.environ.get("ARIADNE_PORT", "8765"))
 LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
-DOCKER_DESKTOP_PATH = Path(r"C:\Program Files\Docker\Docker\Docker Desktop.exe")
-DOCKER_PATH = Path(r"C:\Program Files\Docker\Docker\resources\bin\docker.exe")
-DOCKER_RUNTIME_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "Docker" / "run"
-DOCKER_SECRETS_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "docker-secrets-engine"
 OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
@@ -111,31 +109,133 @@ PLUGIN_ACTIVITY_PATH = Path(os.environ.get("ARIADNE_PLUGIN_ACTIVITY_PATH", str(R
 PLUGIN_ACTIVITY_STREAM = PluginActivityStream(PLUGIN_ACTIVITY_PATH)
 OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "adaptive")
 OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://localhost:3000/")
-OPEN_WEBUI_CONTAINER = os.environ.get("ARIADNE_OPEN_WEBUI_CONTAINER", "open-webui")
+MODEL_LAB_RUNS_PATH = Path(os.environ.get("ARIADNE_MODEL_LAB_RUNS_PATH", str(ROOT / "runtime" / "model-lab-runs.jsonl")))
+MODEL_LAB_FIXTURE_ROOT = ROOT / "model-lab-fixtures"
+MODEL_LAB_RUN_LOCK = threading.Lock()
+MODEL_LAB_REASONING_LEVELS = ("off", "low", "medium", "high", "max")
+MODEL_LAB_REASONING_ALIASES = {"standard": "off", "reasoning": "low", "deep": "high"}
+MODEL_LAB_YOUTUBE_PACKAGING_INSTRUCTIONS = """Read the supplied canonical source bundle carefully. Use 1. Ten Years in Thailand.md as the transcript and 2. YouTube Package.md as the detailed packaging brief, then create the complete YouTube packaging for Chanya & Wazza – Life in Thailand.
+
+This is authentic everyday suburban Thai life from an Australian who has lived in Thailand long-term with his Thai partner. It is not primarily a tourist, food-review, Top 10 Thailand, or expat-outrage channel. Keep the tone conversational, personal, reflective, grounded, and story-first. Treat the two supplied files as the complete test fixture. Do not invent events or claims not supported by the transcript.
+
+Return these sections:
+
+### TITLE OPTIONS
+Provide 7 natural YouTube title options, each under 100 characters and without emojis. After them, identify the strongest title and briefly explain why.
+
+### DESCRIPTION
+Write a 150–250 word story-first description. Include the real emotional thread, relevant Thailand/retirement context, and the channel's authentic tone. Do not use generic promotional filler. End with:
+💬 Join our Community Discord
+https://discord.gg/PFENZwaqZy
+
+❤️ Support us on Patreon
+https://www.patreon.com/c/chanyawazza
+
+### CHAPTERS
+Create meaningful YouTube chapters in MM:SS format. The first must be 00:00 and chapters should generally be 2–3 minutes apart.
+
+### HASHTAGS
+Provide exactly 10 relevant hashtags on one comma-separated line, each beginning with #.
+
+### YOUTUBE TAGS
+Provide one comma-separated line below 500 characters. Include relevant baseline tags such as thailand, bangkok, chanya and wazza, aussie living in thailand, aussie expat, and warren gerdes.
+
+### THUMBNAIL / SPLASH TEXT
+Provide 3 short, readable options of about 2–5 words each.
+
+### STORY ANALYSIS
+Briefly assess the central story, the hook, the strongest section, and anything that could confuse or weaken the story."""
+MODEL_LAB_TEST_CASES = [
+    {
+        "id": "test-01",
+        "name": "10 Years in Thailand / YouTube Packaging",
+        "label": "Test 1 · 10 Years in Thailand / YouTube Packaging",
+        "description": "Long-document story comprehension, grounding, instruction following, and creative synthesis.",
+        "comparison_key": "youtube-packaging-ten-years-thailand",
+        "required_capabilities": ["text"],
+        "canonical_parameters": {"context_tokens": 16384, "output_tokens": 4096, "temperature": 0.0, "top_p": 0.9, "seed": 42},
+        "benchmark_instructions": MODEL_LAB_YOUTUBE_PACKAGING_INSTRUCTIONS,
+        "source_material": {
+            "type": "markdown",
+            "count": 2,
+            "description": "The canonical transcript and YouTube packaging instruction files are built into Test 1 and restored for each new run.",
+            "default_documents": [
+                {"name": "1. Ten Years in Thailand.md", "fixture": "test-01/1. Ten Years in Thailand.md", "role": "transcript"},
+                {"name": "2. YouTube Package.md", "fixture": "test-01/2. YouTube Package.md", "role": "test instructions"},
+            ],
+        },
+        "scoring": {"dimensions": ["grounding", "instruction_following", "completeness", "creative_synthesis"], "manual_review": True},
+    },
+    *[
+        {
+            "id": f"test-0{index}",
+            "name": f"Unassigned benchmark {index}",
+            "label": f"Test {index} · Unassigned",
+            "description": "Recipe slot reserved for a future repeatable benchmark.",
+            "comparison_key": f"test-{index:02d}-unassigned",
+            "required_capabilities": ["text"],
+            "canonical_parameters": {"context_tokens": 8192, "output_tokens": 1024, "temperature": 0.0, "top_p": 0.9, "seed": 42},
+            "benchmark_instructions": "This benchmark slot is not defined yet.",
+            "source_material": {"type": "markdown", "count": 0, "description": "No source material defined."},
+            "scoring": {"dimensions": [], "manual_review": True},
+        }
+        for index in range(2, 8)
+    ],
+]
+MODEL_LAB_TEST_CASE_IDS = {item["id"] for item in MODEL_LAB_TEST_CASES}
+MODEL_LAB_TEST_CASES_BY_ID = {item["id"]: item for item in MODEL_LAB_TEST_CASES}
+MODEL_LAB_PROFILES = {
+    "long-document": {
+        "label": "Long document · controlled",
+        "context_tokens": 16384,
+        "output_tokens": 4096,
+        "temperature": 0.0,
+        "top_p": 0.9,
+        "seed": 42,
+        "thinking": "off",
+        "reasoning": "off",
+        "prefill": "",
+        "prompt": "Answer the test question using only the supplied prefill. State the evidence you used and say when the prefill does not contain the answer.",
+    },
+    "quick-smoke": {
+        "label": "Quick smoke · deterministic",
+        "context_tokens": 4096,
+        "output_tokens": 512,
+        "temperature": 0.0,
+        "top_p": 0.9,
+        "seed": 42,
+        "thinking": "off",
+        "reasoning": "off",
+        "prefill": "",
+        "prompt": "Reply with a concise answer to the test question.",
+    },
+    "reasoning-on": {
+        "label": "Reasoning comparison · thinking on",
+        "context_tokens": 16384,
+        "output_tokens": 4096,
+        "temperature": 0.0,
+        "top_p": 0.9,
+        "seed": 42,
+        "thinking": "on",
+        "reasoning": "low",
+        "prefill": "",
+        "prompt": "Work through the test question carefully, then give a concise answer with the key reasoning.",
+    },
+}
+MODEL_LAB_DEFAULT_PROFILE = "long-document"
 GODS_EYE_VIEW_ROOT = Path(os.environ.get("ARIADNE_GODS_EYE_VIEW_ROOT", r"F:\AI\GodsEyeView"))
 GODS_EYE_VIEW_URL = os.environ.get("ARIADNE_GODS_EYE_VIEW_URL", "http://localhost:4173/").rstrip("/")
 GODS_EYE_VIEW_PORT = int(os.environ.get("ARIADNE_GODS_EYE_VIEW_PORT", "4173"))
 GODS_EYE_VIEW_READY_TIMEOUT_SECONDS = max(5.0, float(os.environ.get("ARIADNE_GODS_EYE_VIEW_READY_TIMEOUT", "20")))
-PORTAINER_CONTAINER = "portainer"
-DEV_SIGNAL_CONTAINER = "ariadne-signal-dev"
-DEV_DISCOVERY_CONTAINER = "ariadne-discovery-dev"
-DEV_COMPOSE_PROJECT = "ariadne-discovery-signal-dev"
-DEV_COMPOSE_FILES = (PROJECT_ROOT / "compose.yaml", PROJECT_ROOT / "compose.local.yaml")
-LOCAL_DOCKER_CONTAINER_ORDER = (
-    DEV_DISCOVERY_CONTAINER,
-    DEV_SIGNAL_CONTAINER,
-    OPEN_WEBUI_CONTAINER,
-    PORTAINER_CONTAINER,
+DOCKER_RUNTIME_DISABLED_MESSAGE = (
+    "Docker is an explicit build/deploy tool for Hera. Ariadne does not start, stop, "
+    "probe, recover, or manage Docker during normal runtime."
 )
+# This list is intentionally native-only. Docker/Compose definitions remain in
+# the repository as manual packaging/deployment material, not Ariadne services.
 LOCAL_SERVICE_DEFINITIONS = (
-    {"id": "docker", "label": "Docker Desktop", "kind": "desktop", "optional": False},
-    {"id": "portainer", "label": "Portainer", "kind": "container", "container": PORTAINER_CONTAINER, "optional": True},
-    {"id": "openwebui", "label": "Open WebUI", "kind": "container", "container": OPEN_WEBUI_CONTAINER, "optional": True},
-    {"id": "discovery-dev", "label": "Discovery DEV", "kind": "compose", "container": DEV_DISCOVERY_CONTAINER, "compose_service": "discovery", "optional": False},
-    {"id": "signal-dev", "label": "Signal DEV", "kind": "compose", "container": DEV_SIGNAL_CONTAINER, "compose_service": "signal", "optional": False},
     {"id": "gods-eye-view", "label": "God's Eye View", "kind": "process", "optional": True},
 )
-MANAGED_LOCAL_DOCKER_CONTAINERS = frozenset(LOCAL_DOCKER_CONTAINER_ORDER)
 DEPLOYMENT_MODE_CONFIG = {
     "RUN": {
         "display": "RUN · HERA",
@@ -148,6 +248,8 @@ DEPLOYMENT_MODE_CONFIG = {
     "DEV": {
         "display": "DEV · LOCAL",
         "environment": "dev",
+        "available": False,
+        "availability_detail": "Manual local DEV is unavailable from Ariadne; Docker is build/deploy-only.",
         "signal_url": os.environ.get("ARIADNE_DEV_SIGNAL_SERVICE_URL", "http://localhost:18788").rstrip("/"),
         "discovery_url": os.environ.get("ARIADNE_DEV_DISCOVERY_SERVICE_URL", "http://localhost:18789").rstrip("/"),
         "signal_instance": "local-dev-signal",
@@ -178,6 +280,9 @@ DOCUMENT_WORK_ROOT = ROOT / 'runtime' / 'document_contexts'
 SIGNAL_ARTICLE_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="signal-article")
 SIGNAL_ARTICLE_LOCK = threading.RLock()
 SIGNAL_ARTICLE_JOBS: dict[str, dict[str, object]] = {}
+RABBIT_HOLE_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rabbit-hole")
+RABBIT_HOLE_RESULT_PATH = Path(os.environ.get("ARIADNE_RABBIT_HOLE_RESULT_PATH", str(ROOT / "runtime" / "rabbit-hole-result.json")))
+RABBIT_HOLE_FALLBACK_RESULT_PATH = Path(tempfile.gettempdir()) / "Ariadne" / "rabbit-hole-result.json"
 HOME_ACTIVITY_STREAM = ActivityStateStream(emit_avatar_state=emit_state)
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
 VAULT_WORKER_PATH = ROOT / "vault_worker.py"
@@ -295,7 +400,6 @@ SHUTDOWN_STATUS: dict[str, object] = {
     "message": "Ariadne is running.",
     "started_at": None,
     "completed_at": None,
-    "docker": None,
 }
 SHUTDOWN_SERVER_STOP_SCHEDULED = False
 STATUS_CACHE_LOCK = threading.Lock()
@@ -553,94 +657,6 @@ def run_action(command: list[str], timeout: float = 60.0) -> dict[str, object]:
         return {"ok": False, "detail": str(exc)}
 
 
-def _docker_unavailable(output: str) -> bool:
-    normalized = output.strip().lower()
-    return normalized.startswith("unavailable:") or any(
-        marker in normalized
-        for marker in (
-            "failed to connect to the docker api",
-            "cannot connect to the docker daemon",
-            "is the docker daemon running",
-            "cannot find the file specified",
-            "permission denied while trying to connect to the docker api",
-            "error during connect",
-        )
-    )
-
-
-def _docker_host_runtime_active() -> bool:
-    """Check host-side Docker/WSL ownership without using the Docker API."""
-    process_list = run_readonly(
-        ["tasklist.exe", "/FI", "IMAGENAME eq Docker Desktop.exe", "/NH"]
-    ).lower()
-    backend_list = run_readonly(
-        ["tasklist.exe", "/FI", "IMAGENAME eq com.docker.backend.exe", "/NH"]
-    ).lower()
-    if "docker desktop.exe" in process_list or "com.docker.backend.exe" in backend_list:
-        return True
-    running_wsl = run_readonly(["wsl.exe", "--list", "--running"]).lower()
-    return "docker-desktop" in running_wsl
-
-
-def docker_desktop_state() -> str:
-    """Return Docker Desktop's host-level state without changing anything."""
-    if not DOCKER_PATH.exists():
-        return "Error"
-    if not _docker_host_runtime_active():
-        return "Stopped"
-    raw = run_readonly([str(DOCKER_PATH), "desktop", "status"])
-    match = re.search(r"(?im)^\s*status\s+(running|stopped|starting|stopping)\s*$", raw)
-    if match:
-        return match.group(1).capitalize()
-    normalized = raw.lower()
-    if "running" in normalized:
-        return "Running"
-    if "stopped" in normalized:
-        return "Stopped"
-    if "starting" in normalized:
-        return "Starting"
-    if "stopping" in normalized:
-        return "Stopping"
-    if not _docker_host_runtime_active():
-        return "Stopped"
-    return "Error"
-
-
-def _docker_container_rows() -> tuple[list[dict[str, str]], str | None]:
-    if not DOCKER_PATH.exists():
-        return [], "Docker CLI was not found."
-    raw = run_readonly([str(DOCKER_PATH), "ps", "-a", "--format", "{{json .}}"])
-    if _docker_unavailable(raw):
-        return [], raw or "Docker Desktop is unavailable."
-    rows: list[dict[str, str]] = []
-    for line in raw.splitlines():
-        try:
-            value = json.loads(line)
-        except (TypeError, json.JSONDecodeError):
-            continue
-        if isinstance(value, dict):
-            rows.append({str(key): str(item) for key, item in value.items()})
-    return rows, None
-
-
-def _container_lifecycle_state(row: dict[str, str] | None) -> str:
-    if not row:
-        return "Stopped"
-    state = row.get("State", "").lower()
-    status = row.get("Status", "").lower()
-    if state == "running" and "unhealthy" in status:
-        return "Error"
-    if state == "running" and "health: starting" in status:
-        return "Starting"
-    if state == "running":
-        return "Running"
-    if state in {"created", "restarting", "paused"}:
-        return "Starting" if state in {"created", "restarting"} else "Error"
-    if state in {"dead", "removing"}:
-        return "Error"
-    return "Stopped"
-
-
 def _gods_eye_view_probe() -> bool:
     """Confirm that the configured God’s Eye View HTTP endpoint is serving."""
     try:
@@ -796,74 +812,15 @@ def gods_eye_view_action(action: str) -> dict[str, object]:
     return {"ok": False, "message": "Unknown God's Eye View action."}
 
 
-def local_service_statuses(docker: dict[str, object] | None = None) -> list[dict[str, object]]:
-    """Describe the named local services Ariadne may control.
-
-    This allow-list is deliberately local-only. Hera container names are not
-    included, so status and lifecycle operations cannot target production.
-    """
-    if docker is not None:
-        desktop_state = str(docker.get("desktop_state") or docker_desktop_state())
-        if isinstance(docker.get("containers"), list):
-            rows = [
-                {
-                    "Names": str(item.get("name", "")),
-                    "State": str(item.get("state", "")),
-                    "Status": str(item.get("status", "")),
-                }
-                for item in docker.get("containers", [])
-                if isinstance(item, dict)
-            ]
-            error = None if docker.get("available") else str(docker.get("detail") or "Docker Desktop is unavailable.")
-        else:
-            rows, error = _docker_container_rows()
-    else:
-        desktop_state = docker_desktop_state()
-        rows, error = _docker_container_rows()
-    by_name = {row.get("Names", ""): row for row in rows if row.get("Names")}
-    engine_ready = bool(docker and docker.get("available")) if docker is not None else error is None and desktop_state == "Running"
+def local_service_statuses() -> list[dict[str, object]]:
+    """Describe only native services Ariadne may control at runtime."""
     services: list[dict[str, object]] = []
     for definition in LOCAL_SERVICE_DEFINITIONS:
         service = dict(definition)
-        if service["kind"] == "desktop":
-            state = desktop_state
-            detail = "Docker engine is available." if engine_ready else "Docker Desktop is not ready."
-        elif service["kind"] == "process":
-            process_status = gods_eye_view_status()
-            service.update(process_status)
-            services.append(service)
-            continue
-        elif desktop_state in {"Stopped", "Stopping"} or not engine_ready:
-            state = "Starting" if desktop_state == "Starting" else "Stopped" if desktop_state == "Stopped" else "Error"
-            detail = "Docker Desktop is stopped." if state == "Stopped" else "Docker Desktop is unavailable."
-        else:
-            row = by_name.get(str(service["container"]))
-            state = _container_lifecycle_state(row)
-            if row is None:
-                detail = "Not created yet."
-            elif state == "Running":
-                detail = row.get("Status", "Running")
-            elif state == "Error":
-                detail = row.get("Status", "Container needs attention.")
-            else:
-                detail = "Container is stopped."
-        service.update(
-            {
-                "state": state,
-                "action": "stop" if state == "Running" else "start",
-                "detail": detail,
-            }
-        )
+        if service["id"] == "gods-eye-view":
+            service.update(gods_eye_view_status())
         services.append(service)
     return services
-
-
-def _dev_compose_command(*arguments: str) -> list[str]:
-    command = [str(DOCKER_PATH), "compose", "-p", DEV_COMPOSE_PROJECT]
-    for compose_file in DEV_COMPOSE_FILES:
-        command.extend(("-f", str(compose_file)))
-    command.extend(arguments)
-    return command
 
 
 def deployment_status() -> dict[str, object]:
@@ -950,34 +907,6 @@ def _wait_for_deployment_health(mode: str, timeout: float = 120.0) -> tuple[bool
             return True, latest
         time.sleep(2)
     return False, latest
-
-
-def _set_dev_build_sha() -> str:
-    raw = run_readonly(["git", "-C", str(PROJECT_ROOT), "rev-parse", "HEAD"])
-    sha = raw.strip() if raw and not raw.startswith("unavailable:") else "unknown"
-    os.environ["ARIADNE_BUILD_SHA"] = sha
-    return sha
-
-
-def _stop_dev_stack() -> dict[str, object]:
-    """Stop only the DEV Compose services; never remove their containers/data."""
-    if not DOCKER_PATH.exists() or docker_desktop_state() == "Stopped":
-        return {"ok": True, "message": "Docker CLI is unavailable; DEV stack was already stopped or could not be running."}
-    result = run_action(_dev_compose_command("stop"), timeout=90.0)
-    rows, error = _docker_container_rows()
-    if error:
-        return {"ok": False, "message": f"DEV stack stop could not be verified: {error}"}
-    running = sorted(
-        row.get("Names", "")
-        for row in rows
-        if row.get("Names") in {DEV_SIGNAL_CONTAINER, DEV_DISCOVERY_CONTAINER}
-        and row.get("State") == "running"
-    )
-    if running:
-        return {"ok": False, "message": "DEV stack still running: " + ", ".join(running)}
-    if not result["ok"]:
-        return {"ok": False, "message": result.get("detail") or "DEV stack stop failed."}
-    return {"ok": True, "message": "DEV Signal and Discovery are stopped; DEV storage was retained."}
 
 
 def _activate_deployment_mode(mode: str) -> None:
@@ -1090,45 +1019,23 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
             }
         with DEPLOYMENT_MODE_LOCK:
             current = ACTIVE_DEPLOYMENT_MODE
-            if current == normalized:
+            if current == normalized and normalized != "DEV":
                 return {"ok": True, "profile": normalized, "mode": normalized, "deployment": deployment_status(), "message": f"{target['display']} is already active."}
 
         _set_deployment_transition("starting", f"Starting {target['display']}…")
         _announce_deployment_transition(f"Switching Ariadne to {target['display']}.")
         if normalized == "DEV":
-            _set_deployment_transition("starting", "Starting Docker Desktop for DEV · LOCAL…")
-            docker_result = start_docker_desktop()
-            if not docker_result.get("ok"):
-                raise RuntimeError(str(docker_result.get("message") or "Docker Desktop could not be started."))
-            _set_dev_build_sha()
-            _set_deployment_transition("starting", "Starting DEV Signal and Discovery services…")
-            compose_result = run_action(_dev_compose_command("up", "-d", "--build"), timeout=300.0)
-            if not compose_result["ok"]:
-                raise RuntimeError(str(compose_result.get("detail") or "The DEV Compose stack could not be started."))
-            _set_deployment_transition("starting", "Waiting for DEV Signal and Discovery health checks…")
-            healthy, evidence = _wait_for_deployment_health("DEV")
-            if not healthy:
-                raise RuntimeError(f"DEV health identity was not verified: {json.dumps(evidence, ensure_ascii=False)[:600]}")
-            _set_deployment_transition("starting", "Refreshing DEV Discovery data…")
-            refresh = _refresh_dev_data(wait_for_completion=False)
-            _set_deployment_transition("starting", "Refreshing DEV Signal briefing…")
-            dev_briefing = SIGNAL_SERVICE_CLIENTS["DEV"].briefing(limit=100)
-            if not dev_briefing.get("ok"):
-                raise RuntimeError(str(dev_briefing.get("message") or "DEV Signal briefing could not be refreshed."))
-            _activate_deployment_mode("DEV")
-            if legacy_interactive and (INTERACTIVE_PROCESS is None or INTERACTIVE_PROCESS.poll() is not None):
-                INTERACTIVE_PROCESS = subprocess.Popen(
-                    ["wsl.exe", "-d", "Ubuntu-24.04", "--exec", "sleep", "infinity"],
-                    cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                )
-            if refresh.get("running"):
-                background_refresh = True
-                _set_deployment_transition("starting", "DEV Signal and Discovery are healthy; Discovery refresh continues in the background…")
-                _start_dev_refresh_background()
-                detail = "DEV · LOCAL is active; Discovery refresh continues in the background."
-            else:
-                detail = f"{target['display']} is active; DEV data refreshed ({refresh.get('accepted_articles', refresh.get('story_count', 0))} items reported)."
+            detail = str(target.get("availability_detail") or "Local DEV is unavailable from Ariadne.")
+            _set_deployment_transition("error", detail)
+            _send_avatar_event_async(lambda: emit_state("warning"))
+            _send_avatar_event_async(lambda: emit_say(detail))
+            return {
+                "ok": False,
+                "profile": current,
+                "mode": current,
+                "deployment": deployment_status(),
+                "message": detail,
+            }
         else:
             _set_deployment_transition("starting", "Waiting for Hera Signal and Discovery health checks…")
             healthy, evidence = _wait_for_deployment_health("RUN")
@@ -1139,11 +1046,7 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
             if not run_briefing.get("ok"):
                 raise RuntimeError(str(run_briefing.get("message") or "Hera Signal briefing could not be refreshed."))
             _activate_deployment_mode("RUN")
-            cleanup = _stop_dev_stack()
-            if not cleanup["ok"]:
-                _set_deployment_transition("error", str(cleanup["message"]))
-                return {"ok": False, "profile": "RUN", "mode": "RUN", "deployment": deployment_status(), "message": "Hera is active, but DEV stack cleanup needs attention: " + str(cleanup["message"])}
-            detail = "RUN · HERA is active; production data verified and DEV stack stopped."
+            detail = "RUN · HERA is active; production data verified. Docker was not touched."
         if not background_refresh:
             _set_deployment_transition("ready", detail)
             _send_avatar_event_async(lambda: emit_state("success"))
@@ -1152,8 +1055,6 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
             _send_avatar_event_async(lambda: emit_say(detail))
         return {"ok": True, "profile": normalized, "mode": normalized, "deployment": deployment_status(), "message": detail}
     except Exception as exc:
-        if normalized == "DEV":
-            _stop_dev_stack()
         _set_deployment_transition("error", str(exc))
         _send_avatar_event_async(lambda: emit_state("warning"))
         _send_avatar_event_async(lambda: emit_say(str(exc)[:300]))
@@ -1164,31 +1065,19 @@ def set_deployment_mode(mode: str, *, legacy_interactive: bool = False) -> dict[
 
 
 def reset_deployment_mode_for_shutdown() -> None:
-    """Restore the non-persistent startup mode and stop local DEV services."""
+    """Restore the non-persistent startup mode without touching Docker."""
     global ACTIVE_DEPLOYMENT_MODE, ACTIVE_PROFILE, SIGNAL_SERVICE_CLIENT
     with DEPLOYMENT_MODE_LOCK:
         ACTIVE_DEPLOYMENT_MODE = "RUN"
         ACTIVE_PROFILE = "RUN"
         SIGNAL_SERVICE_CLIENT = SIGNAL_SERVICE_CLIENTS["RUN"]
         SIGNAL_SERVICE_CLIENT.clear_cache()
-    _set_deployment_transition("ready", "RUN · HERA is the next startup mode.")
-    _stop_dev_stack()
+    _set_deployment_transition("ready", "RUN · HERA is the next startup mode; Docker was not touched.")
     _send_avatar_event_async(lambda: emit_state("idle"))
-    _send_avatar_event_async(lambda: emit_say("RUN · HERA is active; DEV services are stopped."))
+    _send_avatar_event_async(lambda: emit_say("RUN · HERA is active; Docker was not touched."))
 
 
-def _wait_for_docker(timeout: float = 45.0) -> bool:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if docker_desktop_state() == "Running":
-            docker = docker_status()
-            if docker.get("available"):
-                return True
-        time.sleep(1)
-    return False
-
-
-def _set_shutdown_status(state: str, message: str, *, docker: dict[str, object] | None = None) -> None:
+def _set_shutdown_status(state: str, message: str) -> None:
     global SHUTDOWN_STATUS
     now = datetime.now(timezone.utc).isoformat()
     with SHUTDOWN_STATUS_LOCK:
@@ -1197,7 +1086,6 @@ def _set_shutdown_status(state: str, message: str, *, docker: dict[str, object] 
             "message": message,
             "started_at": SHUTDOWN_STATUS.get("started_at") or now,
             "completed_at": now if state in {"complete", "failed"} else None,
-            "docker": docker,
         }
 
 
@@ -1228,149 +1116,9 @@ def _schedule_http_server_shutdown() -> None:
     ).start()
 
 
-def _is_reparse_point(path: Path) -> bool:
-    try:
-        attributes = int(getattr(path.stat(follow_symlinks=False), "st_file_attributes", 0))
-    except OSError:
-        try:
-            get_attributes = ctypes.windll.kernel32.GetFileAttributesW
-            get_attributes.argtypes = [ctypes.c_wchar_p]
-            get_attributes.restype = ctypes.c_uint32
-            attributes = int(get_attributes(str(path)))
-            if attributes == 0xFFFFFFFF:
-                return False
-        except (AttributeError, OSError):
-            return False
-    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
-
-
-def _rename_stale_docker_runtime_dir(directory: Path, allowed_entries: set[str]) -> str | None:
-    """Preserve and replace a runtime directory containing only stale sockets."""
-    if not directory.is_dir():
-        return None
-    try:
-        entries = list(directory.iterdir())
-    except OSError as exc:
-        print(f"[docker] could not inspect {directory}: {exc}", flush=True)
-        return None
-    if not entries or any(
-        entry.name not in allowed_entries or not _is_reparse_point(entry)
-        for entry in entries
-    ):
-        return None
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup = directory.with_name(f"{directory.name}.stale-{stamp}")
-    suffix = 1
-    while backup.exists():
-        backup = directory.with_name(f"{directory.name}.stale-{stamp}-{suffix}")
-        suffix += 1
-    try:
-        directory.rename(backup)
-    except OSError as exc:
-        print(f"[docker] could not preserve stale runtime directory {directory}: {exc}", flush=True)
-        return None
-    return str(backup)
-
-
-def recover_stale_docker_runtime() -> list[str]:
-    """Recover Docker's known Windows AF_UNIX shutdown residue without data loss."""
-    recovered: list[str] = []
-    run_backup = _rename_stale_docker_runtime_dir(
-        DOCKER_RUNTIME_DIR,
-        {"dockerEthernetVfkit", "dockerInference", "sailor-ingest.sock", "userAnalyticsOtlpHttp.sock"},
-    )
-    if run_backup:
-        recovered.append(run_backup)
-    secrets_backup = _rename_stale_docker_runtime_dir(DOCKER_SECRETS_DIR, {"engine.sock"})
-    if secrets_backup:
-        recovered.append(secrets_backup)
-    if recovered:
-        print("[docker] preserved stale runtime directories: " + ", ".join(recovered), flush=True)
-    return recovered
-
-
-def start_docker_desktop() -> dict[str, object]:
-    current = docker_desktop_state()
-    if current == "Running" and docker_status().get("available"):
-        return {"ok": True, "message": "Docker Desktop is already running."}
-    recover_stale_docker_runtime()
-    result = run_action([str(DOCKER_PATH), "desktop", "start"], timeout=60.0)
-    if not result["ok"]:
-        launch_detail = launch_docker_desktop()
-        if not launch_detail:
-            return {"ok": False, "message": result["detail"] or "Docker Desktop could not be started."}
-    if not _wait_for_docker():
-        return {"ok": False, "message": "Docker Desktop did not become ready within 45 seconds."}
-    return {"ok": True, "message": "Docker Desktop is running."}
-
-
-def _stop_managed_container(name: str) -> dict[str, object]:
-    rows, error = _docker_container_rows()
-    if error:
-        return {"ok": False, "name": name, "message": error}
-    row = next((item for item in rows if item.get("Names") == name), None)
-    if row is None or _container_lifecycle_state(row) == "Stopped":
-        return {"ok": True, "name": name, "message": f"{name} is already stopped."}
-    result = run_action([str(DOCKER_PATH), "stop", "--time", "30", name], timeout=40.0)
-    if not result["ok"]:
-        return {"ok": False, "name": name, "message": result["detail"] or f"Could not stop {name}."}
-    after, after_error = _docker_container_rows()
-    if after_error:
-        return {"ok": False, "name": name, "message": f"{name} stop could not be verified: {after_error}"}
-    stopped = next((item for item in after if item.get("Names") == name), None)
-    if stopped and _container_lifecycle_state(stopped) != "Stopped":
-        return {"ok": False, "name": name, "message": f"{name} did not confirm stopped."}
-    return {"ok": True, "name": name, "message": f"{name} stopped and verified."}
-
-
-def stop_docker_desktop_safely() -> dict[str, object]:
-    """Stop Ariadne-owned local containers, then Docker only if safe.
-
-    Any running container outside the explicit local allow-list prevents the
-    Docker Desktop stop. This protects user workloads and production-shaped
-    containers from an implicit shutdown.
-    """
-    desktop_state = docker_desktop_state()
-    if desktop_state == "Stopped":
-        return {"ok": True, "state": "Stopped", "message": "Docker Desktop was already stopped.", "unrelated": []}
-    if desktop_state not in {"Running", "Starting", "Stopping"}:
-        return {"ok": False, "state": "Error", "message": "Docker Desktop state could not be verified.", "unrelated": []}
-
-    rows, error = _docker_container_rows()
-    if error:
-        return {"ok": False, "state": desktop_state, "message": error, "unrelated": []}
-    running = {row.get("Names") for row in rows if row.get("State") == "running"}
-    for name in LOCAL_DOCKER_CONTAINER_ORDER:
-        if name in running:
-            result = _stop_managed_container(name)
-            if not result["ok"]:
-                return {"ok": False, "state": "Running", "message": str(result["message"]), "unrelated": []}
-
-    after, after_error = _docker_container_rows()
-    if after_error:
-        return {"ok": False, "state": "Running", "message": after_error, "unrelated": []}
-    unrelated = sorted(
-        row.get("Names", "")
-        for row in after
-        if row.get("State") == "running" and row.get("Names") not in MANAGED_LOCAL_DOCKER_CONTAINERS
-    )
-    if unrelated:
-        message = "Docker Desktop left running; unrelated containers remain: " + ", ".join(unrelated)
-        print(f"[shutdown] {message}", flush=True)
-        return {"ok": False, "state": "Running", "message": message, "unrelated": unrelated}
-
-    result = run_action([str(DOCKER_PATH), "desktop", "stop"], timeout=60.0)
-    if not result["ok"]:
-        return {"ok": False, "state": "Running", "message": result["detail"] or "Docker Desktop stop failed.", "unrelated": []}
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
-        if not _docker_host_runtime_active() or docker_desktop_state() == "Stopped":
-            return {"ok": True, "state": "Stopped", "message": "Docker Desktop stopped and verified.", "unrelated": []}
-        time.sleep(1)
-    return {"ok": False, "state": "Error", "message": "Docker Desktop stop was requested but not verified.", "unrelated": []}
-
-
 def local_service_action(service_id: str, action: str) -> dict[str, object]:
+    if service_id in {"docker", "portainer", "openwebui", "discovery-dev", "signal-dev"}:
+        return {"ok": False, "state": "manual_only", "message": DOCKER_RUNTIME_DISABLED_MESSAGE}
     definition = next((item for item in LOCAL_SERVICE_DEFINITIONS if item["id"] == service_id), None)
     if definition is None or action not in {"start", "stop"}:
         return {"ok": False, "message": "Unknown local service action."}
@@ -1378,31 +1126,7 @@ def local_service_action(service_id: str, action: str) -> dict[str, object]:
         result = gods_eye_view_action(action)
         result["services"] = local_service_statuses()
         return result
-    if service_id == "docker":
-        result = start_docker_desktop() if action == "start" else stop_docker_desktop_safely()
-        result["services"] = local_service_statuses()
-        return result
-    if action == "start":
-        docker_result = start_docker_desktop()
-        if not docker_result["ok"]:
-            docker_result["services"] = local_service_statuses()
-            return docker_result
-        if definition["kind"] == "compose":
-            result = run_action(
-                _dev_compose_command("up", "-d", "--build", str(definition["compose_service"])),
-                timeout=300.0,
-            )
-        else:
-            result = run_action([str(DOCKER_PATH), "start", str(definition["container"])], timeout=45.0)
-        if not result["ok"]:
-            response = {"ok": False, "message": result["detail"] or f"Could not start {definition['label']}."}
-        else:
-            response = {"ok": True, "message": f"{definition['label']} start requested."}
-    else:
-        stopped = _stop_managed_container(str(definition["container"]))
-        response = {"ok": bool(stopped["ok"]), "message": str(stopped["message"])}
-    response["services"] = local_service_statuses()
-    return response
+    return {"ok": False, "message": f"{definition['label']} is not available as a native Ariadne service."}
 
 
 def drive_status(letter: str) -> dict[str, object]:
@@ -1845,40 +1569,7 @@ def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, obj
     }
 
 
-def openwebui_status() -> dict[str, object]:
-    available = probe_http(OPEN_WEBUI_URL)
-    return {
-        "available": available,
-        "state": "online" if available else "offline",
-        "detail": "Open WebUI · local browser interface" if available else "Open WebUI is not running",
-    }
-
-
-def launch_docker_desktop() -> str:
-    if not DOCKER_DESKTOP_PATH.exists():
-        return "Docker Desktop launcher was not found."
-    try:
-        subprocess.Popen(
-            [str(DOCKER_DESKTOP_PATH)],
-            cwd=str(DOCKER_DESKTOP_PATH.parent),
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-        return "Docker Desktop launch requested."
-    except OSError as exc:
-        return f"Docker Desktop could not be launched: {exc}"
-
-
-def start_openwebui_container() -> str | None:
-    if not DOCKER_PATH.exists():
-        return None
-    result = run_action([str(DOCKER_PATH), "start", OPEN_WEBUI_CONTAINER], timeout=4.0)
-    if result["ok"]:
-        return f"Container '{OPEN_WEBUI_CONTAINER}' started."
-    detail = str(result.get("detail") or "Docker did not start the container.")
-    return f"Container start not confirmed: {detail}"
-
-
-def preload_ollama_model(model: str | None = None) -> dict[str, object]:
+def preload_ollama_model(model: str | None = None, *, options: dict[str, object] | None = None, thinking: str | None = None) -> dict[str, object]:
     selected_model = (model or OLLAMA_CHAT_MODEL).strip() or OLLAMA_CHAT_MODEL
     keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE
     if OLLAMA_PRELOAD_KEEP_ALIVE.casefold() == "adaptive":
@@ -1890,6 +1581,10 @@ def preload_ollama_model(model: str | None = None) -> dict[str, object]:
         "stream": False,
         "keep_alive": keep_alive,
     }
+    if options:
+        payload["options"] = dict(options)
+    if thinking is not None:
+        payload["think"] = False if thinking == "off" else thinking
     try:
         response = post_json(f"{OLLAMA_URL}/api/generate", payload, timeout=300.0)
         load_duration = response.get("load_duration")
@@ -1919,6 +1614,420 @@ def model_control_payload() -> dict[str, object]:
         "in_flight": ai_gpu_work_in_flight(),
         "detail": catalog.get("detail", "Installed Ollama models are available to Ariadne."),
     }
+
+
+def _model_lab_run_rows(limit: int = 50) -> list[dict[str, object]]:
+    if not MODEL_LAB_RUNS_PATH.is_file():
+        return []
+    rows: list[dict[str, object]] = []
+    try:
+        with MODEL_LAB_RUNS_PATH.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    value = json.loads(line)
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    continue
+                if isinstance(value, dict):
+                    rows.append(value)
+    except OSError:
+        return []
+    return rows[-max(1, min(int(limit), 100)):][::-1]
+
+
+def _record_model_lab_run(record: dict[str, object]) -> None:
+    try:
+        MODEL_LAB_RUNS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with MODEL_LAB_RUN_LOCK, MODEL_LAB_RUNS_PATH.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
+    except OSError:
+        # A failed history write must not hide an otherwise successful local run.
+        pass
+
+
+def model_lab_fixture_documents(test_case_id: str) -> tuple[list[dict[str, object]], str | None]:
+    """Load the canonical local source bundle for a recipe without a file chooser."""
+    test_case = MODEL_LAB_TEST_CASES_BY_ID.get(str(test_case_id).casefold())
+    if not test_case:
+        return [], "The selected benchmark has no canonical source bundle."
+    documents: list[dict[str, object]] = []
+    for order, specification in enumerate(test_case.get("source_material", {}).get("default_documents", []), start=1):
+        relative = Path(str(specification.get("fixture") or ""))
+        path = (MODEL_LAB_FIXTURE_ROOT / relative).resolve()
+        try:
+            path.relative_to(MODEL_LAB_FIXTURE_ROOT.resolve())
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError, ValueError):
+            return [], f"The canonical benchmark source is unavailable: {specification.get('name', relative.name)}."
+        documents.append({
+            "order": order,
+            "name": str(specification.get("name") or path.name),
+            "size": path.stat().st_size,
+            "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            "type": "text/markdown",
+            "type_label": "TEXT",
+            "role": str(specification.get("role") or "source material"),
+            "content": content,
+            "fixture": str(relative).replace("\\", "/"),
+        })
+    return documents, None
+
+
+def model_lab_payload() -> dict[str, object]:
+    return {
+        "ok": True,
+        "default_profile": MODEL_LAB_DEFAULT_PROFILE,
+        "default_test_case": "test-01",
+        "profiles": [
+            {"id": profile_id, **{key: value for key, value in profile.items() if key != "prefill"}}
+            for profile_id, profile in MODEL_LAB_PROFILES.items()
+        ],
+        "controls": {
+            "web": False,
+            "external_tools": False,
+            "memory": False,
+            "vault_retrieval": False,
+            "conversation_history": False,
+            "keep_alive": "5m",
+        },
+        "reasoning_levels": [{"id": level, "label": level.upper()} for level in MODEL_LAB_REASONING_LEVELS],
+        "test_cases": MODEL_LAB_TEST_CASES,
+        "runs": _model_lab_run_rows(),
+    }
+
+
+def _model_lab_numeric(body: dict[str, object], key: str, default: object, minimum: float, maximum: float) -> object:
+    value = body.get(key, default)
+    if isinstance(value, bool):
+        raise ValueError(f"{key} must be numeric.")
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{key} must be numeric.") from None
+    if not minimum <= parsed <= maximum:
+        raise ValueError(f"{key} must be between {minimum:g} and {maximum:g}.")
+    if isinstance(default, int) and parsed.is_integer():
+        return int(parsed)
+    return parsed
+
+
+def ollama_model_capability_details(model: str) -> dict[str, object]:
+    """Negotiate the model boundary without exposing Ollama-specific UI concepts."""
+    try:
+        payload = post_json(f"{OLLAMA_URL}/api/show", {"model": model}, timeout=12.0)
+    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return {"available": False, "detail": str(exc), "capabilities": []}
+    raw_capabilities = payload.get("capabilities") if isinstance(payload, dict) else []
+    capabilities = sorted({str(value).strip().casefold() for value in raw_capabilities if str(value).strip()}) if isinstance(raw_capabilities, list) else []
+    model_info = payload.get("model_info") if isinstance(payload, dict) and isinstance(payload.get("model_info"), dict) else {}
+    context_values = [
+        int(value) for key, value in model_info.items()
+        if str(key).casefold().endswith("context_length") and isinstance(value, (int, float)) and int(value) > 0
+    ]
+    supports_thinking = "thinking" in capabilities
+    return {
+        "available": True,
+        "capabilities": capabilities,
+        "context_max": max(context_values) if context_values else None,
+        "text": "completion" in capabilities or not capabilities,
+        "vision": "vision" in capabilities,
+        "tools": "tools" in capabilities,
+        "structured_output": "structured_output" in capabilities,
+        "reasoning_modes": ["off", "thinking"] if supports_thinking else ["off"],
+        "reasoning_detail": "Ollama exposes boolean `think`; non-off levels map to native thinking." if supports_thinking else "This model does not report Ollama thinking support.",
+        "provider": "ollama",
+    }
+
+
+def _model_lab_context_estimate(instructions: str, source: str, requested_output: int, configured_context: int, capabilities: dict[str, object]) -> dict[str, object]:
+    prompt_tokens = max(1, math.ceil(len(f"{instructions}\n\n{source}") / 4))
+    context_max = capabilities.get("context_max")
+    headroom = configured_context - prompt_tokens
+    return {
+        "configured_context": configured_context,
+        "prompt_source_tokens_estimate": prompt_tokens,
+        "requested_output": requested_output,
+        "remaining_generation_headroom": max(0, headroom),
+        "fits_requested_output": prompt_tokens + requested_output <= configured_context,
+        "fits_model_maximum": context_max is None or configured_context <= int(context_max),
+        "model_context_max": context_max,
+        "status": "Ready" if prompt_tokens + requested_output <= configured_context else "Prompt leaves insufficient generation headroom.",
+    }
+
+
+def _model_lab_prepare(body: dict[str, object]) -> tuple[dict[str, object] | None, tuple[dict[str, object], int] | None]:
+    profile_id = str(body.get("profile") or MODEL_LAB_DEFAULT_PROFILE).strip()
+    profile = MODEL_LAB_PROFILES.get(profile_id)
+    if profile is None:
+        return None, ({"ok": False, "message": "Choose a supported Model Lab profile."}, 400)
+    model = str(body.get("model") or HOME_CHAT_MODEL).strip()
+    test_case_id = str(body.get("test_case_id") or "ad-hoc").strip().casefold()
+    if test_case_id != "ad-hoc" and test_case_id not in MODEL_LAB_TEST_CASE_IDS:
+        return None, ({"ok": False, "message": "Choose one of the seven Model Lab test cases or Ad hoc."}, 400)
+    test_case = MODEL_LAB_TEST_CASES_BY_ID.get(test_case_id)
+    prompt = str(body.get("prompt") or profile["prompt"]).strip()
+    prefill = body.get("prefill", profile["prefill"])
+    if not isinstance(prefill, str):
+        return None, ({"ok": False, "message": "Source material must be text."}, 400)
+    prefill = prefill.strip()
+    instructions = test_case["benchmark_instructions"] if test_case else prompt
+    if len(instructions) > 120_000 or len(prefill) > 120_000:
+        return None, ({"ok": False, "message": "Benchmark instructions and source material are limited to 120,000 characters each."}, 400)
+    try:
+        canonical = test_case["canonical_parameters"] if test_case else profile
+        context_tokens = int(_model_lab_numeric(body, "context_tokens", canonical["context_tokens"], 1_024, 262_144))
+        output_tokens = int(_model_lab_numeric(body, "output_tokens", canonical["output_tokens"], 64, 8_192))
+        temperature = float(_model_lab_numeric(body, "temperature", canonical["temperature"], 0, 2))
+        top_p = float(_model_lab_numeric(body, "top_p", canonical["top_p"], 0, 1))
+        seed = int(_model_lab_numeric(body, "seed", canonical["seed"], -1, 2_147_483_647))
+    except ValueError as exc:
+        return None, ({"ok": False, "message": str(exc)}, 400)
+    reasoning_level = str(body.get("reasoning_level") or body.get("intelligence") or ("low" if profile.get("thinking") == "on" else "off")).strip().casefold()
+    reasoning_level = MODEL_LAB_REASONING_ALIASES.get(reasoning_level, reasoning_level)
+    if reasoning_level not in MODEL_LAB_REASONING_LEVELS:
+        return None, ({"ok": False, "message": "Choose OFF, LOW, MEDIUM, HIGH, or MAX."}, 400)
+    raw_documents = body.get("documents", [])
+    if raw_documents is None:
+        raw_documents = []
+    if not isinstance(raw_documents, list) or len(raw_documents) > 16:
+        return None, ({"ok": False, "message": "Attach no more than 16 source documents per run."}, 400)
+    documents: list[dict[str, object]] = []
+    for item in raw_documents:
+        if not isinstance(item, dict):
+            return None, ({"ok": False, "message": "Attached source metadata is invalid."}, 400)
+        name = str(item.get("name") or "").strip()[:200]
+        if not name or not name.casefold().endswith((".md", ".markdown")):
+            return None, ({"ok": False, "message": "Only supported Markdown source documents can be attached for this recipe."}, 400)
+        try:
+            size = max(0, int(item.get("size") or 0))
+        except (TypeError, ValueError):
+            return None, ({"ok": False, "message": "Attached source size is invalid."}, 400)
+        documents.append({"order": len(documents) + 1, "name": name, "size": size, "sha256": str(item.get("sha256") or "")[:64]})
+    if test_case and test_case["source_material"]["count"] != len(documents):
+        return None, ({"ok": False, "classification": "STANDARD INCOMPATIBLE", "message": f"{test_case['label']} requires exactly {test_case['source_material']['count']} source file(s); received {len(documents)}."}, 409)
+    label = str(body.get("label") or (test_case["name"] if test_case else profile["label"])).strip()[:160]
+    comparison_key = str(body.get("comparison_key") or (test_case["comparison_key"] if test_case else label or profile_id)).strip()[:160]
+    catalog = ollama_catalog()
+    installed = {
+        str(item.get("name") or "")
+        for item in catalog.get("models", [])
+        if isinstance(item, dict) and item.get("name")
+    }
+    if not catalog.get("available"):
+        return None, ({"ok": False, "message": "Ollama is unavailable; the test was not run."}, 503)
+    if model not in installed:
+        return None, ({"ok": False, "message": f"{model} is not installed in the configured Ollama library."}, 400)
+
+    capabilities = ollama_model_capability_details(model)
+    required_capabilities = test_case.get("required_capabilities", []) if test_case else ["text"]
+    missing = [capability for capability in required_capabilities if not capabilities.get(capability, False)]
+    if missing:
+        return None, ({"ok": False, "classification": "STANDARD INCOMPATIBLE", "message": f"{model} cannot satisfy required capability: {', '.join(missing)}.", "capabilities": capabilities}, 409)
+    canonical = test_case["canonical_parameters"] if test_case else profile
+    if capabilities.get("context_max") and context_tokens > int(capabilities["context_max"]):
+        return None, ({"ok": False, "classification": "STANDARD INCOMPATIBLE", "message": f"Required context {context_tokens:,} exceeds {model} runtime maximum {int(capabilities['context_max']):,}.", "capabilities": capabilities}, 409)
+    if reasoning_level != "off" and "thinking" not in capabilities.get("reasoning_modes", []):
+        return None, ({"ok": False, "classification": "STANDARD INCOMPATIBLE", "message": f"{model} does not report a native reasoning/thinking mode for {reasoning_level.upper()}.", "capabilities": capabilities}, 409)
+    native_thinking = reasoning_level != "off"
+    context = _model_lab_context_estimate(instructions, prefill, output_tokens, context_tokens, capabilities)
+    adapted_fields = []
+    if test_case:
+        for key, expected in canonical.items():
+            actual = {"context_tokens": context_tokens, "output_tokens": output_tokens, "temperature": temperature, "top_p": top_p, "seed": seed}.get(key)
+            if actual != expected:
+                adapted_fields.append(key)
+    classification = "ADAPTED" if adapted_fields else "STANDARD"
+
+    run_id = uuid.uuid4().hex
+    started_at = datetime.now(timezone.utc).isoformat()
+    effective = {
+        "context_tokens": context_tokens,
+        "output_tokens": output_tokens,
+        "temperature": temperature,
+        "top_p": top_p,
+        "seed": seed,
+        "reasoning_level": reasoning_level,
+        "native_reasoning_mapping": {"provider": "ollama", "parameter": "think", "value": native_thinking, "mode": "thinking" if native_thinking else "off"},
+        "test_case_id": test_case_id,
+        "thinking": "on" if native_thinking else "off",
+        "web": False,
+        "external_tools": False,
+        "memory": False,
+        "vault_retrieval": False,
+        "conversation_history": False,
+        "document_mode": "attached source documents" if documents else "source text only",
+        "document_count": len(documents),
+        "keep_alive": "5m",
+    }
+    model_prompt = f"TEST INSTRUCTIONS\n{instructions}\n\nSOURCE MATERIAL\n{prefill}" if prefill else f"TEST INSTRUCTIONS\n{instructions}"
+    request_payload = {
+        "model": model,
+        "prompt": model_prompt,
+        "stream": bool(body.get("stream")),
+        "keep_alive": "5m",
+        "think": native_thinking,
+        "options": {
+            "num_ctx": context_tokens,
+            "num_predict": output_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "seed": seed,
+        },
+    }
+    record: dict[str, object] = {
+        "schema": 2,
+        "run_id": run_id,
+        "recorded_at": started_at,
+        "state": "preparing",
+        "run_state": "PREPARING",
+        "classification": classification,
+        "adapted_fields": adapted_fields,
+        "label": label,
+        "comparison_key": comparison_key,
+        "profile": profile_id,
+        "model": model,
+        "test_case_id": test_case_id,
+        "test_case_label": test_case["label"] if test_case else "Ad hoc run",
+        "source_documents": documents,
+        "source_material": prefill,
+        "benchmark_instructions": instructions,
+        "effective": effective,
+        "request": request_payload,
+        "capabilities": capabilities,
+        "context_estimate": context,
+        "provider": "ollama",
+        "runtime": "native Ollama",
+        "reasoning_level": reasoning_level,
+    }
+    presentation = {"rust_host": host_status(), "transitions": []}
+    record["presentation"] = presentation
+    return {
+        "profile_id": profile_id, "model": model, "test_case": test_case, "reasoning_level": reasoning_level,
+        "native_thinking": native_thinking, "request_payload": request_payload, "record": record,
+    }, None
+
+
+def _model_lab_event(on_event: Callable[[dict[str, object]], None] | None, payload: dict[str, object]) -> None:
+    if on_event:
+        try:
+            on_event(payload)
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
+
+
+def _model_lab_avatar_transition(record: dict[str, object], state: str, message: str, on_event: Callable[[dict[str, object]], None] | None) -> None:
+    state_ack = _send_avatar_event_with_retry(lambda: emit_state(state))
+    message_ack = _send_avatar_event_with_retry(lambda: emit_say(message))
+    presentation = record.setdefault("presentation", {})
+    transitions = presentation.setdefault("transitions", [])
+    transitions.append({"state": state, "state_ack": state_ack, "message_ack": message_ack})
+    _model_lab_event(on_event, {"type": "avatar", "state": state, "acknowledged": bool(state_ack), "message_acknowledged": bool(message_ack)})
+
+
+def _ollama_generate_stream(model: str, payload: dict[str, object], timeout: float = 300.0):
+    request = urllib.request.Request(
+        f"{OLLAMA_URL}/api/generate",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Accept": "application/x-ndjson"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        for raw_line in response:
+            line = raw_line.decode("utf-8").strip()
+            if line:
+                yield json.loads(line)
+
+
+def run_model_lab(body: dict[str, object], on_event: Callable[[dict[str, object]], None] | None = None) -> tuple[dict[str, object], int]:
+    prepared, failure = _model_lab_prepare(body)
+    if failure:
+        return failure
+    assert prepared is not None
+    record = prepared["record"]
+    model = prepared["model"]
+    request_payload = prepared["request_payload"]
+    _model_lab_event(on_event, {"type": "run", "run_id": record["run_id"], "classification": record["classification"], "context_estimate": record["context_estimate"]})
+    _model_lab_avatar_transition(record, "working", f"Model Lab is preparing {model}.", on_event)
+    _model_lab_avatar_transition(record, "loading_model", f"Model Lab is loading {model}.", on_event)
+    thinking_chunks: list[str] = []
+    answer_chunks: list[str] = []
+    response: dict[str, object] = {}
+    try:
+        with ai_gpu_admission(), model_activity(model):
+            _model_lab_event(on_event, {"type": "state", "state": "LOADING MODEL"})
+            if request_payload.get("think"):
+                _model_lab_avatar_transition(record, "thinking", "Model Lab is reasoning through the benchmark.", on_event)
+                _model_lab_event(on_event, {"type": "state", "state": "THINKING"})
+            else:
+                _model_lab_avatar_transition(record, "working", "Model Lab is generating the benchmark response.", on_event)
+                _model_lab_event(on_event, {"type": "state", "state": "GENERATING"})
+            if on_event:
+                for chunk in _ollama_generate_stream(model, request_payload, timeout=300.0):
+                    response.update(chunk)
+                    thinking = str(chunk.get("thinking") or "")
+                    answer = str(chunk.get("response") or "")
+                    if thinking:
+                        thinking_chunks.append(thinking)
+                        _model_lab_event(on_event, {"type": "thinking", "delta": thinking})
+                    if answer:
+                        if not answer_chunks:
+                            _model_lab_avatar_transition(record, "working", "Model Lab is writing the final response.", on_event)
+                            _model_lab_event(on_event, {"type": "state", "state": "GENERATING"})
+                        answer_chunks.append(answer)
+                        _model_lab_event(on_event, {"type": "response", "delta": answer})
+            else:
+                request_payload["stream"] = False
+                response = post_json(f"{OLLAMA_URL}/api/generate", request_payload, timeout=300.0)
+        response["thinking"] = "".join(thinking_chunks) if thinking_chunks else str(response.get("thinking") or "")
+        response["response"] = "".join(answer_chunks) if answer_chunks else str(response.get("response") or "")
+        telemetry = {
+            key: response.get(key)
+            for key in (
+                "total_duration", "load_duration", "prompt_eval_count", "prompt_eval_duration",
+                "eval_count", "eval_duration", "done_reason", "done",
+            )
+            if key in response
+        }
+        eval_count = response.get("eval_count")
+        eval_duration = response.get("eval_duration")
+        if isinstance(eval_count, (int, float)) and isinstance(eval_duration, (int, float)) and eval_duration > 0:
+            telemetry["eval_tokens_per_second"] = round(float(eval_count) / (float(eval_duration) / 1_000_000_000), 2)
+        if isinstance(response.get("total_duration"), (int, float)):
+            telemetry["total_duration_ms"] = round(float(response["total_duration"]) / 1_000_000, 1)
+        truncated = str(response.get("done_reason") or "").casefold() in {"length", "context", "context_length"}
+        record.update({
+            "state": "truncated" if truncated else "complete",
+            "run_state": "TRUNCATED" if truncated else "COMPLETED",
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "answer": str(response.get("response") or ""),
+            "thinking_output": str(response.get("thinking") or ""),
+            "telemetry": telemetry,
+        })
+        _model_lab_event(on_event, {"type": "state", "state": "RECORDING"})
+        _model_lab_avatar_transition(record, "working", "Model Lab is recording the benchmark result.", on_event)
+        if truncated:
+            _model_lab_avatar_transition(record, "warning", "Model Lab reached the context or output limit; this is not a successful benchmark.", on_event)
+            _model_lab_event(on_event, {"type": "state", "state": "TRUNCATED"})
+        else:
+            _model_lab_avatar_transition(record, "success", "Model Lab benchmark completed successfully.", on_event)
+            _model_lab_event(on_event, {"type": "state", "state": "COMPLETED"})
+        record["presentation"]["final_avatar_state"] = "warning" if truncated else "success"
+        _record_model_lab_run(record)
+        if not truncated:
+            _model_lab_avatar_transition(record, "idle", "Model Lab is ready for the next run.", on_event)
+        _model_lab_event(on_event, {"type": "complete", "run": record})
+        return {"ok": True, "run": record, "message": "Model Lab run recorded."}, 200
+    except RuntimeError as exc:
+        record.update({"state": "blocked", "run_state": "FAILED", "finished_at": datetime.now(timezone.utc).isoformat(), "error": str(exc), "presentation": record.get("presentation", {})})
+        _model_lab_avatar_transition(record, "error", "Model Lab could not acquire the GPU.", on_event)
+        _record_model_lab_run(record)
+        _model_lab_event(on_event, {"type": "error", "run": record})
+        return {"ok": False, "run": record, "message": str(exc), "gpu": gpu_owner_status()}, 409
+    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        record.update({"state": "error", "run_state": "FAILED", "finished_at": datetime.now(timezone.utc).isoformat(), "error": str(exc)[:800], "presentation": record.get("presentation", {})})
+        _model_lab_avatar_transition(record, "error", "Model Lab could not complete the controlled run.", on_event)
+        _record_model_lab_run(record)
+        _model_lab_event(on_event, {"type": "error", "run": record})
+        return {"ok": False, "run": record, "message": f"Model Lab run failed: {str(exc)[:420]}"}, 502
 
 
 def ollama_model_capabilities(model: str) -> tuple[str, ...]:
@@ -2058,34 +2167,13 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
         MODEL_SWITCH_LOCK.release()
 
 
-def launch_openwebui(model: str | None = None) -> dict[str, object]:
-    details: list[str] = []
-    if not probe_http(OPEN_WEBUI_URL):
-        details.append(launch_docker_desktop())
-        container_detail = None
-        for _ in range(15):
-            container_detail = start_openwebui_container()
-            if container_detail and container_detail.startswith("Container '"):
-                break
-            time.sleep(2)
-        if container_detail:
-            details.append(container_detail)
-    preload = preload_ollama_model(model)
-    openwebui = openwebui_status()
-    ollama = ollama_status()
-    loaded_names = [str(name) for name in ollama.get("loaded", [])]
-    selected_model = str(preload["model"])
-    model_loaded = selected_model in loaded_names
-    if not openwebui["available"]:
-        details.append("Open WebUI is still starting or its container name differs from the configured name.")
+def launch_openwebui(model: str | None = None, profile_id: str | None = None, thinking: str | None = None) -> dict[str, object]:
     return {
-        "ok": bool(preload["ok"]),
+        "ok": False,
+        "ready": False,
+        "state": "retired",
         "url": OPEN_WEBUI_URL,
-        "openwebui": openwebui,
-        "model": preload["model"],
-        "ready": bool(preload["ok"] and openwebui["available"] and model_loaded),
-        "ollama": {"state": "online" if preload["ok"] else "offline", "detail": preload["detail"], "loaded": loaded_names},
-        "detail": " ".join(details) if details else "Open WebUI is ready and the model preload was requested.",
+        "detail": "Open WebUI is retired from Ariadne runtime. Use native Ollama model control; Docker is never started by Ariadne.",
     }
 
 
@@ -3645,7 +3733,6 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
         SHUTDOWN_REQUESTED = True
         _set_shutdown_status("requested", "Ariadne shutdown cleanup is in progress.")
 
-    docker_report: dict[str, object] | None = None
     try:
         # Tray Exit already presents this state before calling the supervisor;
         # keeping it here makes the existing shutdown endpoint identical for the
@@ -3692,33 +3779,18 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
         IMAGE_ENGINE_PROCESS = None
         _unload_ollama_models()
         release_workloads(force=True)
-        docker_report = stop_docker_desktop_safely()
-        print(
-            f"[shutdown] local Docker cleanup: {docker_report.get('message', 'no report')}",
-            flush=True,
-        )
         ACTIVE_PROFILE = "RUN"
         ACTIVE_DEPLOYMENT_MODE = "RUN"
         SIGNAL_SERVICE_CLIENT = SIGNAL_SERVICE_CLIENTS["RUN"]
         IDLE_SHUTDOWN_DONE = True
 
-        if docker_report.get("ok") or docker_report.get("unrelated"):
-            _set_shutdown_status(
-                "complete",
-                "Ariadne workloads stopped; Docker Desktop was left running because unrelated containers remain."
-                if docker_report.get("unrelated")
-                else "Ariadne workloads and Docker Desktop stopped and verified.",
-                docker=docker_report,
-            )
-        else:
-            _set_shutdown_status(
-                "failed",
-                str(docker_report.get("message") or "Docker Desktop shutdown could not be verified."),
-                docker=docker_report,
-            )
+        _set_shutdown_status(
+            "complete",
+            "Ariadne workloads stopped; Docker was not touched.",
+        )
     except Exception as exc:
         print(f"[shutdown] cleanup failed: {exc}", flush=True)
-        _set_shutdown_status("failed", f"Ariadne shutdown cleanup failed: {exc}", docker=docker_report)
+        _set_shutdown_status("failed", f"Ariadne shutdown cleanup failed: {exc}")
     finally:
         if stop_server:
             _schedule_http_server_shutdown()
@@ -3735,6 +3807,9 @@ def _close_session(session_id: str) -> bool:
     for job in jobs:
         if not job:
             continue
+        cancel_event = job.get("cancel_event")
+        if isinstance(cancel_event, threading.Event):
+            cancel_event.set()
         _terminate_process(job.get("process"))
         presenter = job.get("activity_presenter")
         with SESSION_LOCK:
@@ -3970,6 +4045,122 @@ def _active_plugin_job(session_id: str, plugin_id: str) -> str | None:
     return None
 
 
+def _write_rabbit_hole_result(result: dict[str, object]) -> None:
+    """Atomically preserve only the last bounded completed exploration."""
+    payload = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+    last_error: OSError | None = None
+    for path in (RABBIT_HOLE_RESULT_PATH, RABBIT_HOLE_FALLBACK_RESULT_PATH):
+        temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary.write_text(payload, encoding="utf-8")
+            temporary.replace(path)
+            return
+        except OSError as exc:
+            last_error = exc
+        finally:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+    if last_error:
+        raise last_error
+
+
+def rabbit_hole_result_payload() -> dict[str, object]:
+    for path in (RABBIT_HOLE_RESULT_PATH, RABBIT_HOLE_FALLBACK_RESULT_PATH):
+        try:
+            result = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+        if isinstance(result, dict) and isinstance(result.get("results"), list):
+            return {"ok": True, "has_result": True, "result": result}
+    return {"ok": True, "has_result": False, "result": None}
+
+
+def _run_rabbit_hole_job(job_id: str, record: object, session_id: str) -> None:
+    with SESSION_LOCK:
+        job = JOBS.get(job_id)
+        presenter = job.get("activity_presenter") if job else None
+        cancel_event = job.get("cancel_event") if job else None
+    if not job or not isinstance(presenter, CoreActivityPresenter):
+        return
+
+    def report(stage: str, status: str, progress: float | int | None = None) -> None:
+        if isinstance(cancel_event, threading.Event) and cancel_event.is_set():
+            raise RuntimeError("Rabbit Hole exploration was cancelled.")
+        if progress is not None:
+            presenter.progress(progress, status, stage=stage)
+        else:
+            presenter.stage(stage, status)
+        with SESSION_LOCK:
+            current = JOBS.get(job_id)
+            if current and current.get("state") == "running":
+                current["message"] = status
+
+    try:
+        adapter = load_plugin_callable(record)  # type: ignore[arg-type]
+        result = adapter({}, report)
+        if not isinstance(result, dict):
+            raise ValueError("Rabbit Hole returned an invalid result.")
+        with SESSION_LOCK:
+            current = JOBS.get(job_id)
+            cancelled = not current or current.get("state") == "cancelled"
+        if cancelled:
+            return
+        if result.get("ok"):
+            _write_rabbit_hole_result(result)
+        with SESSION_LOCK:
+            current = JOBS.get(job_id)
+            if current and current.get("state") == "running":
+                current.update({
+                    "state": "complete" if result.get("ok") else "error",
+                    "message": result.get("message") or "Rabbit Hole exploration complete.",
+                    "results": result.get("results", []),
+                    "summary": {"candidate_count": len(result.get("results", [])), "warning_count": len(result.get("warnings", []))},
+                })
+        if result.get("ok"):
+            presenter.completed(str(result.get("message") or "Rabbit Hole exploration complete."))
+        else:
+            presenter.warning(str(result.get("message") or "GitHub returned no candidates."), stage="completed")
+    except Exception as exc:
+        cancelled = False
+        with SESSION_LOCK:
+            current = JOBS.get(job_id)
+            cancelled = bool(current and current.get("state") == "cancelled")
+            if current and current.get("state") == "running":
+                current["state"] = "error"
+                current["message"] = f"Rabbit Hole exploration failed: {str(exc)[:300]}"
+        if not cancelled:
+            presenter.failed(f"Rabbit Hole exploration failed: {str(exc)[:300]}")
+
+
+def start_rabbit_hole_action(session_id: str, record: object, *, trigger: str = "manual") -> str:
+    job_id = uuid.uuid4().hex
+    reporter = PLUGIN_ACTIVITY_STREAM.reporter(activity_id=job_id, plugin_id="rabbit-hole", capability_id="github.explore")
+    presenter = CoreActivityPresenter(reporter, completion_state="success")
+    job = {
+        "session_id": session_id,
+        "kind": "plugin_action",
+        "started": time.monotonic(),
+        "state": "running",
+        "message": "Searching GitHub for unusual active projects…",
+        "action": "explore",
+        "trigger": trigger,
+        "plugin_id": "rabbit-hole",
+        "capability_id": "github.explore",
+        "summary": {"candidate_count": 0},
+        "activity_presenter": presenter,
+        "cancel_event": threading.Event(),
+    }
+    with SESSION_LOCK:
+        JOBS[job_id] = job
+        SESSIONS[session_id].setdefault("jobs", set()).add(job_id)
+    presenter.started("Rabbit Hole is opening a read-only GitHub search.", stage="starting")
+    RABBIT_HOLE_EXECUTOR.submit(_run_rabbit_hole_job, job_id, record, session_id)
+    return job_id
+
+
 def run_plugin_action(session_id: str, plugin_id: str, action: str, *, trigger: str = "manual", confirmed: bool = False) -> str:
     """Run one manifest action through Core's shared asynchronous job boundary."""
     if trigger not in {"manual", "scheduled"}:
@@ -3983,6 +4174,10 @@ def run_plugin_action(session_id: str, plugin_id: str, action: str, *, trigger: 
     active_job = _active_plugin_job(session_id, canonical_plugin_id)
     if active_job:
         raise PluginExecutionError(f"Plugin action already running (job {active_job}).")
+    if canonical_plugin_id == "rabbit-hole":
+        if action != "explore":
+            raise PluginExecutionError(f"Plugin does not support action: {action}")
+        return start_rabbit_hole_action(session_id, record, trigger=trigger)
     snapshot = configuration_snapshot()
     raw_plugin_config = snapshot.get("plugins", {}).get(canonical_plugin_id, {})
     if canonical_plugin_id == "cleanup":
@@ -4075,7 +4270,7 @@ def job_payload(job_id: str) -> dict[str, object] | None:
         if isinstance(process, subprocess.Popen) and process.poll() is not None and job.get("state") == "running":
             job["state"] = "error"
             job["message"] = "Worker exited before reporting a result."
-        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "config_runtime_path", "result_runtime_path"}}
+        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "cancel_event", "config_runtime_path", "result_runtime_path"}}
         status_path = job.get("status_path")
         if isinstance(status_path, Path) and status_path.is_file():
             try:
@@ -4131,19 +4326,12 @@ def parse_wsl(raw: str) -> list[dict[str, str]]:
 
 def wsl_environment_action(name: str, action: str) -> dict[str, object]:
     global INTERACTIVE_PROCESS
-    if name not in {"Ubuntu", "Ubuntu-24.04", "docker-desktop"}:
+    if name == "docker-desktop":
+        return {"ok": False, "state": "manual_only", "message": DOCKER_RUNTIME_DISABLED_MESSAGE}
+    if name not in {"Ubuntu", "Ubuntu-24.04"}:
         return {"ok": False, "message": "That WSL environment is not an allowed Ariadne target."}
     if action not in {"start", "stop"}:
         return {"ok": False, "message": "Unknown environment action."}
-
-    if name == "docker-desktop":
-        if action == "start":
-            result = start_docker_desktop()
-            result["docker"] = docker_status()
-            return result
-        result = stop_docker_desktop_safely()
-        result["docker"] = docker_status()
-        return result
 
     if action == "start":
         existing = INTERACTIVE_PROCESS if name == VIDEO_RENDERER_DISTRO else WSL_SESSION_PROCESSES.get(name)
@@ -4182,42 +4370,6 @@ def wsl_environment_action(name: str, action: str) -> dict[str, object]:
         return {"ok": False, "message": f"Could not stop {name}: {result['detail'] or 'unknown error'}"}
     return {"ok": True, "message": f"{name} stopped."}
 
-
-def docker_status() -> dict[str, object]:
-    desktop_state = docker_desktop_state()
-    rows, error = _docker_container_rows()
-    if error:
-        return {
-            "available": False,
-            "state": "offline" if desktop_state == "Stopped" else "error",
-            "desktop_state": desktop_state,
-            "containers": [],
-            "unmanaged_running": [],
-            "detail": "Docker Desktop is not started." if desktop_state == "Stopped" else error,
-        }
-    containers = [
-        {
-            "name": row.get("Names", ""),
-            "status": row.get("Status", ""),
-            "image": row.get("Image", ""),
-            "state": row.get("State", ""),
-        }
-        for row in rows
-        if row.get("Names")
-    ]
-    unmanaged_running = sorted(
-        row.get("Names", "")
-        for row in rows
-        if row.get("State") == "running" and row.get("Names") not in MANAGED_LOCAL_DOCKER_CONTAINERS
-    )
-    return {
-        "available": desktop_state == "Running",
-        "state": "online" if desktop_state == "Running" else "offline",
-        "desktop_state": desktop_state,
-        "containers": containers,
-        "unmanaged_running": unmanaged_running,
-        "detail": "Docker Desktop is running." if desktop_state == "Running" else "Docker Desktop is not ready.",
-    }
 
 def _clean_home_event_text(value: object, limit: int = 420) -> str:
     text = " ".join(str(value or "").replace("\r", " ").replace("\n", " ").split())
@@ -6162,7 +6314,7 @@ def _status_skeleton() -> dict[str, object]:
         "host": os.environ.get("COMPUTERNAME", "Windows host"),
         "rust_host": host_status(),
         "profile": ACTIVE_PROFILE,
-        "profile_detail": deployment["display"] + " · " + ("Hera production" if ACTIVE_PROFILE == "RUN" else "Docker local services"),
+        "profile_detail": deployment["display"] + " · " + ("Hera production" if ACTIVE_PROFILE == "RUN" else "Manual local DEV unavailable"),
         "deployment": deployment,
         "interactive_ai": {
             "ubuntu": {"state": "unknown", "detail": "Telemetry is still loading."},
@@ -6173,11 +6325,12 @@ def _status_skeleton() -> dict[str, object]:
         "memory": {"available": False, "detail": "Telemetry is still loading."},
         "gpu": {"available": False, "detail": "Telemetry is still loading."},
         "gpu_owner": gpu_owner_status(),
+        "ai_gpu": ai_gpu_work_in_flight(),
         "model_memory": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
         "host_capabilities": {
             "ollama": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
-            "openwebui": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
             "lmstudio": {"available": False, "state": "unknown", "detail": "Telemetry is still loading."},
+            "model_lab": {"available": True, "state": "native", "detail": "Native Model Lab is available through Ollama; Docker and Open WebUI are not required."},
         },
         "plugins": {"plugins": []},
         "vault": {"state": "unknown", "detail": "Telemetry is still loading."},
@@ -6186,7 +6339,7 @@ def _status_skeleton() -> dict[str, object]:
         "vault_counts": {},
         "drives": [],
         "wsl": [],
-        "docker": {"available": False, "state": "unknown", "desktop_state": "Unknown", "containers": [], "unmanaged_running": [], "detail": "Telemetry is still loading."},
+        "native_runtime": {"state": "unknown", "detail": "Native Ollama, Vault, and Windows host telemetry is still loading."},
         "local_services": [],
         "controls_enabled": True,
         "note": "Optional host telemetry is loading in the background.",
@@ -6199,23 +6352,24 @@ def _build_status_payload() -> dict[str, object]:
     wsl_raw = run_readonly(["wsl.exe", "--list", "--verbose"])
     wsl = parse_wsl(wsl_raw)
     gpu = gpu_status()
-    docker = docker_status()
+    ollama = ollama_status()
     return {
         "service": "online",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "host": os.environ.get("COMPUTERNAME", "Windows host"),
         "rust_host": host_status(),
         "profile": ACTIVE_PROFILE,
-        "profile_detail": deployment_status()["display"] + " · " + ("Hera production" if ACTIVE_PROFILE == "RUN" else "Docker local services"),
+        "profile_detail": deployment_status()["display"] + " · " + ("Hera production" if ACTIVE_PROFILE == "RUN" else "Manual local DEV unavailable"),
         "deployment": deployment_status(),
         "interactive_ai": interactive_ai_status(),
         "memory": memory_status(),
         "gpu": gpu,
         "gpu_owner": gpu_owner_status(),
+        "ai_gpu": ai_gpu_work_in_flight(),
         "model_memory": model_memory_snapshot(gpu),
         "host_capabilities": {
-            "ollama": ollama_status(),
-            "openwebui": openwebui_status(),
+            "ollama": ollama,
+            "model_lab": {"available": True, "state": "native", "detail": "Native Model Lab is available through Ollama; Docker and Open WebUI are not required."},
             "lmstudio": lmstudio_status(),
         },
         "plugins": PLUGIN_REGISTRY.payload(),
@@ -6225,8 +6379,11 @@ def _build_status_payload() -> dict[str, object]:
         "vault_counts": vault_counts(),
         "drives": [drive_status(letter) for letter in ("C", "D", "E", "F", "G")],
         "wsl": wsl,
-        "docker": docker,
-        "local_services": local_service_statuses(docker),
+        "native_runtime": {
+            "state": "ready" if ollama.get("available") else "degraded",
+            "detail": "Native Ariadne runtime; Docker is not a runtime dependency.",
+        },
+        "local_services": local_service_statuses(),
         "controls_enabled": True,
         "note": "Knowledge Vault controls run inside an active Ariadne session; workers are bounded and cleaned up when the session ends.",
     }
@@ -6357,6 +6514,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/plugins":
             self.send_json(plugin_payload())
             return
+        if path == "/api/rabbit-hole/result":
+            self.send_json(rabbit_hole_result_payload())
+            return
         plugin_match = re.fullmatch(r"/api/plugins/([^/]+)", path)
         if plugin_match:
             detail = plugin_detail_payload(unquote(plugin_match.group(1)))
@@ -6435,15 +6595,22 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json(result, 409)
             return
         if path == "/api/openwebui/models":
-            catalog = ollama_catalog()
-            self.send_json({
-                "ok": bool(catalog["available"]),
-                "default_model": OLLAMA_CHAT_MODEL,
-                "models": catalog.get("models", []),
-                "loaded": catalog.get("loaded", []),
-                "openwebui": openwebui_status(),
-                "detail": catalog.get("detail", "Ollama is ready."),
-            })
+            self.send_json({"ok": False, "state": "retired", "message": "Open WebUI is retired from Ariadne runtime. Use /api/model-control for native Ollama control."}, 410)
+            return
+        if path == "/api/model-lab":
+            self.send_json(model_lab_payload())
+            return
+        if path == "/api/model-lab/fixtures":
+            test_case_id = parse_qs(parsed.query).get("test_case_id", ["test-01"])[0]
+            documents, error = model_lab_fixture_documents(test_case_id)
+            if error:
+                self.send_json({"ok": False, "message": error}, 404)
+            else:
+                self.send_json({"ok": True, "test_case_id": test_case_id, "documents": documents})
+            return
+        if path == "/api/model-lab/capabilities":
+            model = parse_qs(parsed.query).get("model", [HOME_CHAT_MODEL])[0]
+            self.send_json({"ok": True, "model": model, "capabilities": ollama_model_capability_details(model)})
             return
         if path == "/api/model-control":
             self.send_json(model_control_payload())
@@ -6564,6 +6731,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/plugins":
             self.send_asset("plugins.html", "text/html; charset=utf-8")
             return
+        if path == "/rabbit-hole":
+            self.send_asset("rabbit-hole.html", "text/html; charset=utf-8")
+            return
         if path == "/create":
             self.send_asset("create.html", "text/html; charset=utf-8")
             return
@@ -6578,6 +6748,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/workshop":
             self.send_asset("workshop.html", "text/html; charset=utf-8")
+            return
+        if path == "/model-lab":
+            self.send_asset("model-lab.html", "text/html; charset=utf-8")
             return
         if path == "/configuration/avatar":
             self.send_asset("configuration-avatar.html", "text/html; charset=utf-8")
@@ -6615,6 +6788,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/plugin.js":
             self.send_asset("plugin.js", "text/javascript; charset=utf-8")
             return
+        if path == "/rabbit-hole.css":
+            self.send_asset("rabbit-hole.css", "text/css; charset=utf-8")
+            return
+        if path == "/rabbit-hole.js":
+            self.send_asset("rabbit-hole.js", "text/javascript; charset=utf-8")
+            return
         if path == "/page-shell.css":
             self.send_asset("page-shell.css", "text/css; charset=utf-8")
             return
@@ -6623,6 +6802,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/workspace.css":
             self.send_asset("workspace.css", "text/css; charset=utf-8")
+            return
+        if path == "/model-lab.css":
+            self.send_asset("model-lab.css", "text/css; charset=utf-8")
             return
         if path == "/create.js":
             self.send_asset("create.js", "text/javascript; charset=utf-8")
@@ -6638,6 +6820,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/workshop.js":
             self.send_asset("workshop.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/model-lab.js":
+            self.send_asset("model-lab.js", "text/javascript; charset=utf-8")
             return
         if path in {"/", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
@@ -6777,10 +6962,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json(wsl_environment_action(str(body.get("name") or ""), "stop"))
                 return
             if path == "/api/docker/start":
-                self.send_json(wsl_environment_action("docker-desktop", "start"))
+                self.send_json({"ok": False, "state": "manual_only", "message": DOCKER_RUNTIME_DISABLED_MESSAGE}, 410)
                 return
             if path == "/api/docker/stop":
-                self.send_json(wsl_environment_action("docker-desktop", "stop"))
+                self.send_json({"ok": False, "state": "manual_only", "message": DOCKER_RUNTIME_DISABLED_MESSAGE}, 410)
                 return
             if path == "/api/local-services/action":
                 service_id = body.get("service")
@@ -6792,11 +6977,28 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json(result, 200 if result.get("ok") else 409)
                 return
             if path == "/api/openwebui/prepare":
-                model = body.get("model")
-                if model is not None and not isinstance(model, str):
-                    self.send_json({"ok": False, "detail": "Model name must be text."}, 400)
-                    return
-                self.send_json(launch_openwebui(model))
+                self.send_json(launch_openwebui(), 410)
+                return
+            if path == "/api/model-lab/run":
+                result, status = run_model_lab(body)
+                self.send_json(result, status)
+                return
+            if path == "/api/model-lab/stream":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache, no-store")
+                self.send_header("Connection", "close")
+                self.end_headers()
+
+                def write_event(event: dict[str, object]) -> None:
+                    self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode("utf-8"))
+                    self.wfile.flush()
+
+                try:
+                    result, status = run_model_lab({**body, "stream": True}, on_event=write_event)
+                    write_event({"type": "final", "ok": bool(result.get("ok")), "status": status, **result})
+                except (BrokenPipeError, ConnectionResetError, OSError):
+                    pass
                 return
             if path == "/api/model-control/select":
                 result, status = switch_active_model(body.get("model"))

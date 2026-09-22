@@ -22,7 +22,7 @@ const RESOURCE_PREFS_KEY = "ariadne.resource-layout.v1";
 let resourcePreferences = loadResourcePreferences();
 
 function loadResourcePreferences() {
-  const fallback = {orders: {wsl: [], docker: []}, labels: {wsl: {}, docker: {}}};
+  const fallback = {orders: {wsl: []}, labels: {wsl: {}}};
   try {
     const saved = JSON.parse(localStorage.getItem(RESOURCE_PREFS_KEY) || "null");
     return {
@@ -43,7 +43,7 @@ function saveResourcePreferences() {
 }
 
 function resourceKey(kind, item) {
-  return String(item.name || (kind === "docker" ? item.image : "resource"));
+  return String(item.name || "resource");
 }
 
 function resourceLabel(kind, item) {
@@ -122,10 +122,10 @@ function bindResourceInteractions(kind, root, items) {
 function renderResourceCards(kind, items, root) {
   if (root.dataset.dragging === "true") return;
   const ordered = orderedResources(kind, items);
-  const icon = kind === "docker" ? "▣" : "◉";
+  const icon = "◉";
   root.innerHTML = ordered.map((item) => {
     const key = resourceKey(kind, item);
-    const meta = kind === "docker" ? (item.image || "Image not reported") : (item.detail || `WSL ${item.version || ""}`);
+    const meta = item.detail || `WSL ${item.version || ""}`;
     const state = String(item.state || item.status || "").toLowerCase();
     const action = kind === "wsl" ? (state === "running" ? "stop" : state === "stopped" ? "start" : "") : "";
     const actionLabel = state === "starting" ? "Starting..." : action === "stop" ? "Stop" : "Start";
@@ -146,8 +146,8 @@ function renderWsl(distributions) {
   renderResourceCards("wsl", distributions, root);
 }
 
-function renderLocalServices(services, docker) {
-  const root = document.querySelector("#docker-list");
+function renderNativeServices(services) {
+  const root = document.querySelector("#native-runtime-list");
   if (!services.length) {
     root.innerHTML = `<div class="state-empty">No Ariadne local services reported.</div>`;
     return;
@@ -158,7 +158,7 @@ function renderLocalServices(services, docker) {
     const action = service.action || (state === "Running" ? "stop" : "start");
     const actionLabel = state === "Starting" || state === "Stopping" ? `${state}...` : service.action_label || (action === "start" ? "Start" : "Stop");
     const optional = service.optional ? " · optional" : "";
-    return `<article class="resource-card" data-local-service="${esc(service.id)}"><span class="state-icon">▣</span><span class="state-copy"><span class="state-name">${esc(service.label)}</span><span class="state-meta">${esc(service.detail || "")}${optional}</span></span><button type="button" class="resource-action" data-local-service-action="${action}" data-local-service-id="${esc(service.id)}"${normalized === "starting" || normalized === "stopping" ? " disabled" : ""}>${actionLabel}</button><span class="state-pill ${normalized}">${esc(state)}</span></article>`;
+    return `<article class="resource-card" data-local-service="${esc(service.id)}"><span class="state-icon">◉</span><span class="state-copy"><span class="state-name">${esc(service.label)}</span><span class="state-meta">${esc(service.detail || "")}${optional}</span></span><button type="button" class="resource-action" data-local-service-action="${action}" data-local-service-id="${esc(service.id)}"${normalized === "starting" || normalized === "stopping" ? " disabled" : ""}>${actionLabel}</button><span class="state-pill ${normalized}">${esc(state)}</span></article>`;
   }).join("");
   root.querySelectorAll("[data-local-service-action]").forEach((button) => button.addEventListener("click", async (event) => {
     const button = event.currentTarget;
@@ -291,12 +291,11 @@ function render(data) {
   const wslState = String(distributions[0]?.state || "").toLowerCase();
   document.querySelector("#wsl-pill").textContent = wslState === "checking" ? "Checking" : wslState === "unavailable" ? "Unavailable" : distributions.length ? "Detected" : "Quiet";
   renderWsl(distributions);
-  const docker = data.docker || {available:false, containers:[]};
-  const containers = docker.containers || [];
-  const dockerStopped = !docker.available || docker.state === "offline" || docker.state === "stopped";
-  document.querySelector("#docker-metric").textContent = dockerStopped ? "Not started" : `${containers.length} container${containers.length === 1 ? "" : "s"}`;
-  document.querySelector("#docker-pill").textContent = docker.available ? "Detected" : "Quiet";
-  renderLocalServices(data.local_services || [], docker);
+  const nativeRuntime = data.native_runtime || {};
+  const nativeReady = String(nativeRuntime.state || "unknown").toLowerCase() === "ready";
+  document.querySelector("#native-runtime-metric").textContent = nativeReady ? "Operational" : "Checking";
+  document.querySelector("#native-runtime-pill").textContent = nativeReady ? "Native" : "Checking";
+  renderNativeServices(data.local_services || []);
   renderDrives(data.drives || []);
   document.querySelector("#last-update").textContent = `Updated ${new Date(data.timestamp).toLocaleTimeString()}`;
 }
@@ -721,18 +720,6 @@ function setupVaultControls() {
   document.querySelector("#vault-librarian-button")?.addEventListener("click", () => runVaultQuery("answer"));
 }
 function setupLaunchActions() {
-  const openWebUI = document.querySelector("#openwebui-launch");
-  openWebUI?.addEventListener("click", (event) => {
-    event.preventDefault();
-    const status = document.querySelector("#openwebui-status");
-    if (status) {
-      status.classList.remove("offline", "online");
-      status.classList.add("starting");
-      status.textContent = "Preparing";
-    }
-    window.open("/openwebui-loader", "_blank");
-  });
-
   const launch = document.querySelector('a[href="/launch/lmstudio"]');
   if (!launch) return;
   launch.addEventListener("click", async (event) => {
