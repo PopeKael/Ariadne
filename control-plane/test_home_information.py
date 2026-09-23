@@ -69,6 +69,14 @@ class HomeInformationTests(unittest.TestCase):
         self.assertEqual(len(result["forecast"]), 5)
         self.assertEqual(result["forecast"][2]["label"], "Light rain")
 
+    def test_information_payload_exposes_used_location_and_browser_accuracy(self):
+        cache = InformationCache(clock=lambda: 100.0)
+        with patch("home_information.fetch_weather", return_value={"available": True, "provider": "Open-Meteo"}), \
+             patch("home_information.fetch_markets", return_value={"available": True, "cards": [], "oil": []}):
+            result = cache.payload(13.7564, 100.5018, 42.7)
+        self.assertEqual(result["weather"]["location"], {"latitude": 13.756, "longitude": 100.502})
+        self.assertEqual(result["weather"]["accuracy_m"], 42.7)
+
     def test_cache_returns_cached_market_payload(self):
         clock = [100.0]
         cache = InformationCache(clock=lambda: clock[0])

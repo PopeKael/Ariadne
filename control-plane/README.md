@@ -78,8 +78,15 @@ verified configuration save.
 Run it from PowerShell:
 
 ```powershell
+$env:ARIADNE_ALLOW_UNSUPERVISED_CORE = '1'
 py -3 .\control-plane\server.py
 ```
+
+On Windows, use the normal Start-menu shortcut for Ariadne. It starts the
+Rust resident host, which owns the tray, avatar, and supervised Python core.
+The Python entry point refuses an ordinary direct launch unless the explicit
+development override above is set, so the backend cannot silently run without
+the human-visible host.
 
 Then open `http://localhost:8765` in a browser.
 

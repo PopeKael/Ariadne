@@ -68,6 +68,20 @@ class ModelResidencyTests(unittest.TestCase):
         finally:
             server.GPU_OWNER, server.GPU_TRANSITION_STATE, server.GPU_TRANSITION_DETAIL = original_owner
 
+    def test_ai_admission_waits_for_renderer_transition_to_finish(self):
+        original = (server.GPU_OWNER, server.GPU_TRANSITION_STATE, server.GPU_TRANSITION_DETAIL, server.GPU_AI_ADMISSIONS)
+        try:
+            server.GPU_OWNER = "TRANSITION"
+            server.GPU_TRANSITION_STATE = "STOPPING_RENDERER"
+            server.GPU_TRANSITION_DETAIL = "Stopping active renderer work."
+            server.GPU_AI_ADMISSIONS = 0
+            with patch.object(server, "GPU_ADMISSION_WAIT_SECONDS", 1.0), \
+                 patch.object(server.time, "sleep", side_effect=lambda _seconds: setattr(server, "GPU_TRANSITION_STATE", "IDLE")):
+                with server.ai_gpu_admission():
+                    self.assertEqual(server.GPU_OWNER, "AI")
+        finally:
+            server.GPU_OWNER, server.GPU_TRANSITION_STATE, server.GPU_TRANSITION_DETAIL, server.GPU_AI_ADMISSIONS = original
+
 
 if __name__ == "__main__":
     unittest.main()

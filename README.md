@@ -43,8 +43,14 @@ See [CHANGELOG.md](CHANGELOG.md) for notable repository changes.
 Run the interface from the repository root:
 
 ```powershell
+$env:ARIADNE_ALLOW_UNSUPERVISED_CORE = '1'
 py -3 .\control-plane\server.py
 ```
+
+On Windows, the normal user-facing startup is the Rust resident host from
+the Start menu. The Python core refuses an ordinary direct launch unless the
+explicit development override above is set; this prevents a headless backend
+from being mistaken for a running Ariadne session.
 
 Open `http://localhost:8765`. The control plane uses the repository root as
 the default Vault root. Set `ARIADNE_VAULT_ROOT` only for a deliberate

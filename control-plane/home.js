@@ -355,6 +355,9 @@ function renderInformation(payload) {
   const weatherState = document.querySelector("#weather-state");
   const currentRoot = document.querySelector("#weather-current");
   const forecastRoot = document.querySelector("#weather-forecast");
+  const weatherProvenance = document.querySelector("#weather-provenance");
+  const weatherSource = document.querySelector("#weather-source");
+  const weatherMapLink = document.querySelector("#weather-map-link");
   if (weatherState && currentRoot && forecastRoot) {
     currentRoot.replaceChildren();
     forecastRoot.replaceChildren();
@@ -380,6 +383,35 @@ function renderInformation(payload) {
       forecastRoot.hidden = !forecast.length;
     }
   }
+  if (weatherProvenance && weatherSource && weatherMapLink) {
+    const location = weather.location || {};
+    const latitude = Number(location.latitude);
+    const longitude = Number(location.longitude);
+    const accuracy = Number(weather.accuracy_m);
+    const hasLocation = weather.available && Number.isFinite(latitude) && Number.isFinite(longitude);
+    const updatedAt = payload?.updated_at ? new Date(payload.updated_at) : null;
+    const updatedLabel = updatedAt && !Number.isNaN(updatedAt.getTime())
+      ? `Updated ${updatedAt.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}`
+      : "Updated —";
+    const accuracyLabel = Number.isFinite(accuracy) ? `±${Math.round(accuracy)} m` : "accuracy unavailable";
+    const providerLabel = weather.provider ? `${weather.provider}${weather.cached ? " · cached" : ""}` : "Weather provider unavailable";
+    weatherSource.textContent = hasLocation
+      ? `Lat ${latitude.toFixed(3)} · Lon ${longitude.toFixed(3)} · ${accuracyLabel} · ${providerLabel} · ${updatedLabel}`
+      : "";
+    weatherProvenance.hidden = !hasLocation;
+    weatherMapLink.hidden = !hasLocation;
+    if (hasLocation) {
+      const mapUrl = new URL("https://www.openstreetmap.org/");
+      const lat = latitude.toFixed(3);
+      const lon = longitude.toFixed(3);
+      mapUrl.searchParams.set("mlat", lat);
+      mapUrl.searchParams.set("mlon", lon);
+      mapUrl.hash = `map=12/${lat}/${lon}`;
+      weatherMapLink.href = mapUrl.toString();
+    } else {
+      weatherMapLink.removeAttribute("href");
+    }
+  }
   const markets = payload?.markets || {};
   const cardsRoot = document.querySelector("#market-cards");
   if (cardsRoot) {
@@ -396,17 +428,13 @@ function renderInformation(payload) {
   }
   const updated = document.querySelector("#market-updated");
   if (updated && payload?.updated_at) updated.textContent = new Date(payload.updated_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
-  const weatherSource = document.querySelector("#weather-source");
-  if (weatherSource) {
-    weatherSource.hidden = !weather.provider;
-    weatherSource.textContent = weather.provider ? `${weather.provider}${weather.cached ? " · cached" : ""}` : "";
-  }
 }
 async function loadInformation(force = false) {
   const query = new URLSearchParams();
   if (state.coordinates) {
     query.set("latitude", String(state.coordinates.latitude));
     query.set("longitude", String(state.coordinates.longitude));
+    if (Number.isFinite(state.coordinates.accuracy)) query.set("accuracy", String(state.coordinates.accuracy));
   }
   if (force) query.set("refresh", "true");
   try {
@@ -421,7 +449,7 @@ function requestLocalWeather() {
     return;
   }
   navigator.geolocation.getCurrentPosition(position => {
-    state.coordinates = {latitude: position.coords.latitude, longitude: position.coords.longitude};
+    state.coordinates = {latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy};
     loadInformation();
   }, () => loadInformation(), {enableHighAccuracy: false, maximumAge: 900000, timeout: 6000});
 }

@@ -44,6 +44,38 @@ $hostExe = Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'
 $tray = Join-Path $controlPlane 'tray.py'
 $url = 'http://localhost:8765/'
 
+function Show-AriadneStartupFailure {
+    param([string]$Message)
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show($Message, 'Ariadne could not start', 'OK', 'Error') | Out-Null
+    }
+    catch {
+        Write-Error $Message
+    }
+}
+
+function Wait-ForAriadneResidentHost {
+    param(
+        [System.Diagnostics.Process]$HostProcess,
+        [int]$TimeoutMilliseconds = 30000
+    )
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        try {
+            if ($HostProcess.HasExited) { return $false }
+            $response = Invoke-WebRequest -Uri ($url + 'api/status') -UseBasicParsing -TimeoutSec 1
+            if ($response.StatusCode -eq 200) {
+                $payload = $response.Content | ConvertFrom-Json
+                if ($payload.rust_host.state -eq 'online') { return $true }
+            }
+        }
+        catch { }
+        Start-Sleep -Milliseconds 250
+    }
+    return $false
+}
+
 if (-not $LegacyPythonTray) {
     if (-not (Test-Path -LiteralPath $hostExe -PathType Leaf)) {
         throw "Canonical Ariadne Host executable was not found: $hostExe. Build it first with the release target."
@@ -53,22 +85,18 @@ if (-not $LegacyPythonTray) {
         $env:ARIADNE_PYTHON = $bundledPython
     }
     Write-Host "Starting Ariadne Rust Host: $hostExe" -ForegroundColor Green
-    Start-Process -FilePath (Resolve-Path -LiteralPath $hostExe).Path -WorkingDirectory $projectRoot -WindowStyle Hidden
+    $hostProcess = Start-Process -FilePath (Resolve-Path -LiteralPath $hostExe).Path -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru
     if ($OpenBrowser) {
-        $opened = $false
-        for ($attempt = 0; $attempt -lt 120; $attempt++) {
-            try {
-                $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 1
-                if ($response.StatusCode -eq 200) {
-                    Start-Process $url
-                    $opened = $true
-                    break
-                }
-            }
-            catch { }
-            Start-Sleep -Milliseconds 250
+        if (Wait-ForAriadneResidentHost -HostProcess $hostProcess) {
+            Start-Process $url
         }
-        if (-not $opened) { Start-Process $url }
+        else {
+            Show-AriadneStartupFailure @"
+The Ariadne backend did not become ready under the Rust host.
+
+The browser was not opened and this launch was not accepted as a running Ariadne session. Check the resident host/tray startup and try again.
+"@
+        }
     }
     return
 }

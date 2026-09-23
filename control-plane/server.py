@@ -456,6 +456,7 @@ GPU_TRANSITION_STATE = "IDLE"
 GPU_TRANSITION_DETAIL = "GPU is available to the next approved workload."
 GPU_TRANSITION_OPERATION: str | None = None
 GPU_TRANSITION_STARTED_AT: float | None = None
+GPU_ADMISSION_WAIT_SECONDS = max(5.0, float(os.environ.get("ARIADNE_GPU_ADMISSION_WAIT", "45")))
 RENDERER_START_THREAD: threading.Thread | None = None
 RENDERER_STOP_THREAD: threading.Thread | None = None
 RENDERER_OPERATION_ID: str | None = None
@@ -1426,13 +1427,28 @@ def ensure_ai_gpu_access() -> None:
 
 @contextmanager
 def ai_gpu_admission():
-    """Reserve AI ownership across a complete Ariadne request, including retrieval."""
+    """Reserve AI ownership across a complete Ariadne request, including retrieval.
+
+    A renderer handoff is transient. Waiting here prevents a normal chat request
+    from losing its turn merely because it arrived during the final seconds of
+    a legitimate renderer shutdown or startup. A renderer that is already
+    ready still keeps ownership and is rejected immediately.
+    """
     global GPU_AI_ADMISSIONS, GPU_OWNER
-    with GPU_ARBITRATION_LOCK:
-        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
-            raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {GPU_TRANSITION_DETAIL}")
-        GPU_OWNER = "AI"
-        GPU_AI_ADMISSIONS += 1
+    deadline = time.monotonic() + GPU_ADMISSION_WAIT_SECONDS
+    while True:
+        with GPU_ARBITRATION_LOCK:
+            if GPU_OWNER == "RENDERER" and GPU_TRANSITION_STATE == "IDLE":
+                raise RuntimeError(f"GPU is reserved for renderer: {GPU_TRANSITION_DETAIL}")
+            if GPU_TRANSITION_STATE == "IDLE":
+                GPU_OWNER = "AI"
+                GPU_AI_ADMISSIONS += 1
+                break
+            remaining = deadline - time.monotonic()
+            detail = GPU_TRANSITION_DETAIL
+        if remaining <= 0:
+            raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {detail}")
+        time.sleep(min(0.25, remaining))
     try:
         yield
     finally:
@@ -3610,18 +3626,41 @@ def _renderer_stop_worker(operation_id: str) -> None:
         deadline = time.monotonic() + 30.0
         while time.monotonic() < deadline:
             status = wan2gp_status(ignore_transition=True)
-            if status.get("state") in {"offline", "standby"}:
+            status_detail = str(status.get("detail") or "")
+            unmanaged_port = status.get("state") == "error" and "occupied" in status_detail.casefold()
+            if status.get("state") in {"offline", "standby"} or unmanaged_port:
                 vram_after = gpu_status()
+                if unmanaged_port:
+                    lifecycle_state = "ERROR"
+                    lifecycle_error = (
+                        "The renderer was not managed by Ariadne; port 8766 is occupied by another service."
+                    )
+                    gpu_detail = "GPU is available; the renderer port is occupied by another service."
+                else:
+                    lifecycle_state = "STOPPED"
+                    lifecycle_error = None
+                    gpu_detail = "GPU is available to the next approved workload."
                 with GPU_ARBITRATION_LOCK:
                     GPU_OWNER = "NONE"
                     GPU_TRANSITION_STATE = "IDLE"
-                    GPU_TRANSITION_DETAIL = "GPU is available to the next approved workload."
+                    GPU_TRANSITION_DETAIL = gpu_detail
                     GPU_TRANSITION_OPERATION = None
                     GPU_TRANSITION_STARTED_AT = None
-                    RENDERER_LIFECYCLE_STATE = "STOPPED"
-                    RENDERER_LIFECYCLE_ERROR = None
-                log_renderer_lifecycle("stop_complete", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), final=status, vram_before=vram_before, vram_after=vram_after)
-                announce_media_lifecycle("Video", str(status.get("lifecycle_state") or "STOPPED"), str(status.get("detail") or "Video renderer is stopped."))
+                    RENDERER_LIFECYCLE_STATE = lifecycle_state
+                    RENDERER_LIFECYCLE_ERROR = lifecycle_error
+                log_renderer_lifecycle(
+                    "stop_skipped" if unmanaged_port else "stop_complete",
+                    operation_id=operation_id,
+                    elapsed_seconds=round(time.monotonic() - started, 2),
+                    final=status,
+                    vram_before=vram_before,
+                    vram_after=vram_after,
+                )
+                announce_media_lifecycle(
+                    "Video",
+                    lifecycle_state,
+                    lifecycle_error or str(status.get("detail") or "Video renderer is stopped."),
+                )
                 return
             time.sleep(RENDERER_POLL_INTERVAL_SECONDS)
         raise TimeoutError("Renderer did not confirm shutdown within 30 seconds.")
@@ -6658,6 +6697,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
             self.send_json(home_information_payload(
                 query.get("latitude", [None])[0],
                 query.get("longitude", [None])[0],
+                query.get("accuracy", [None])[0],
                 force=query.get("refresh", [""])[0].casefold() == "true",
             ))
             return
@@ -7675,6 +7715,20 @@ class AriadneHandler(BaseHTTPRequestHandler):
 
 def main() -> None:
     global HTTP_SERVER
+    if os.name == "nt" and os.environ.get("ARIADNE_ALLOW_UNSUPERVISED_CORE") != "1":
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline:
+            if host_status().get("available"):
+                break
+            time.sleep(0.1)
+        else:
+            message = (
+                "Ariadne Python core refused to start without the resident Rust host. "
+                "Start Ariadne from the normal Start-menu shortcut, or set "
+                "ARIADNE_ALLOW_UNSUPERVISED_CORE=1 for an explicit development run."
+            )
+            print(message, file=sys.stderr)
+            return
     expire_home_chats()
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
     HTTP_SERVER = httpd

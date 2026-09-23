@@ -238,17 +238,24 @@ class InformationCache:
             self._weather[key] = (self._clock(), result)
         return {**result, "cached": False}
 
-    def payload(self, latitude: float | None = None, longitude: float | None = None, *, force: bool = False) -> dict[str, Any]:
+    def payload(self, latitude: float | None = None, longitude: float | None = None,
+                accuracy_m: float | None = None, *, force: bool = False) -> dict[str, Any]:
         weather = _unavailable("Allow local browser location access to load weather.")
         if latitude is not None and longitude is not None:
             weather = self.weather(latitude, longitude, force=force)
+            weather = {
+                **weather,
+                "location": {"latitude": round(latitude, 3), "longitude": round(longitude, 3)},
+                "accuracy_m": accuracy_m,
+            }
         return {"ok": True, "weather": weather, "markets": self.markets(force=force), "updated_at": datetime.now(timezone.utc).isoformat()}
 
 
 INFORMATION_CACHE = InformationCache()
 
 
-def home_information_payload(latitude: str | None = None, longitude: str | None = None, *, force: bool = False) -> dict[str, Any]:
+def home_information_payload(latitude: str | None = None, longitude: str | None = None,
+                             accuracy: str | None = None, *, force: bool = False) -> dict[str, Any]:
     def parse_coordinate(value: str | None, minimum: float, maximum: float) -> float | None:
         try:
             coordinate = float(value) if value is not None else None
@@ -258,4 +265,5 @@ def home_information_payload(latitude: str | None = None, longitude: str | None 
 
     lat = parse_coordinate(latitude, -90, 90)
     lon = parse_coordinate(longitude, -180, 180)
-    return INFORMATION_CACHE.payload(lat, lon, force=force)
+    accuracy_m = parse_coordinate(accuracy, 0, 10_000_000)
+    return INFORMATION_CACHE.payload(lat, lon, accuracy_m, force=force)

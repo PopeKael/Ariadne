@@ -247,7 +247,12 @@ body:not(.chat-expanded) .ask-panel:has(#chat-log:empty) .ask-form textarea { mi
 .information-refresh:hover { border-color:var(--teal); background:rgba(105,213,210,.16); }
 .information-refresh:disabled { opacity:.55; cursor:wait; }
 .information-state { display:block; margin-top:9px; color:var(--muted); font-size:11px; line-height:1.35; }
+.weather-module #weather-state[hidden] { display:none; }
 .information-source { margin:9px 0 0; color:var(--faint); font-size:9px; }
+.weather-module .weather-provenance { display:flex; align-items:baseline; gap:10px; line-height:1.35; font-size:8px; overflow-wrap:anywhere; }
+.weather-provenance span { min-width:0; flex:1; }
+.weather-provenance a { flex:none; margin-left:auto; color:var(--teal); text-decoration:none; white-space:nowrap; }
+.weather-provenance a:hover { text-decoration:underline; }
 .information-updated { color:var(--faint); font-size:9px; white-space:nowrap; }
 .weather-current { display:flex; align-items:center; gap:10px; margin-top:10px; }
 .weather-temperature { color:var(--ink); font-size:26px; line-height:1; }

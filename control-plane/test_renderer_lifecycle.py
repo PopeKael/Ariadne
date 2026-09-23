@@ -82,6 +82,21 @@ class RendererLifecycleTests(unittest.TestCase):
         self.assertEqual(server.GPU_OWNER, "NONE")
         self.assertEqual(server.RENDERER_LIFECYCLE_STATE, "STOPPED")
 
+    def test_stop_worker_releases_gpu_when_renderer_port_is_unmanaged(self):
+        with patch.object(server, "gpu_status", return_value={"available": True, "free_gb": 12}), \
+             patch.object(server, "_stop_wan2gp_backend", return_value={"ok": True}), \
+             patch.object(server, "wan2gp_status", return_value={
+                 "state": "error",
+                 "detail": "Port 8766 is occupied but is not the Ariadne renderer service.",
+             }), \
+             patch.object(server, "log_renderer_lifecycle"), \
+             patch.object(server, "announce_media_lifecycle"):
+            server._renderer_stop_worker("test-operation")
+        self.assertEqual(server.GPU_OWNER, "NONE")
+        self.assertEqual(server.GPU_TRANSITION_STATE, "IDLE")
+        self.assertEqual(server.RENDERER_LIFECYCLE_STATE, "ERROR")
+        self.assertIn("occupied by another service", server.RENDERER_LIFECYCLE_ERROR)
+
     def test_running_renderer_is_adopted_without_duplicate_process(self):
         server.GPU_OWNER = "NONE"
         server.GPU_TRANSITION_STATE = "IDLE"
