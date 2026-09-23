@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from concurrent.futures import ThreadPoolExecutor
 import io
 import json
 import math
@@ -236,8 +237,11 @@ def _series_payload(series_id: str, label: str, symbol: str) -> dict[str, object
 
 
 def _market_payload() -> dict[str, object]:
-    markets = [_series_payload(*definition) for definition in MARKET_SERIES]
-    oil = [_series_payload(*definition) for definition in OIL_SERIES]
+    definitions = list(MARKET_SERIES) + list(OIL_SERIES)
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="home-market") as executor:
+        results = list(executor.map(lambda definition: _series_payload(*definition), definitions))
+    markets = results[:len(MARKET_SERIES)]
+    oil = results[len(MARKET_SERIES):]
     return {
         "ok": any(item.get("ok") for item in markets + oil),
         "source": "Stooq",
