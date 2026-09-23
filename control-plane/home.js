@@ -1142,6 +1142,279 @@ function endRequestStatus() {
   if (state.requestTimer) window.clearInterval(state.requestTimer);
   state.requestTimer = null;
 }
+const LIVE_INFORMATION_REFRESH_MS = 15 * 60 * 1000;
+let liveInformationLoading = false;
+
+function weatherGlyph(code) {
+  const value = Number(code);
+  if (value === 0) return "☀";
+  if (value === 1 || value === 2) return "◒";
+  if (value === 3) return "☁";
+  if (value === 45 || value === 48) return "≋";
+  if (value >= 95) return "ϟ";
+  if ((value >= 71 && value <= 77) || value === 85 || value === 86) return "✣";
+  if ((value >= 51 && value <= 67) || (value >= 80 && value <= 82)) return "☂";
+  return "·";
+}
+
+function formatLiveNumber(value, maximumFractionDigits = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return number.toLocaleString([], {maximumFractionDigits});
+}
+
+function shortDate(value) {
+  const date = new Date(String(value) + (String(value).length === 10 ? "T00:00:00" : ""));
+  if (Number.isNaN(date.getTime())) return String(value || "");
+  return date.toLocaleDateString([], {month: "short", day: "numeric"});
+}
+
+function renderInteractiveChart(root, datasets, options = {}) {
+  if (!root) return;
+  root.replaceChildren();
+  const clean = (Array.isArray(datasets) ? datasets : [])
+    .map(dataset => ({
+      ...dataset,
+      series: (Array.isArray(dataset.series) ? dataset.series : [])
+        .filter(point => Number.isFinite(Number(point?.close)))
+        .map(point => ({date: String(point.date || ""), close: Number(point.close)})),
+    }))
+    .filter(dataset => dataset.series.length >= 2);
+  if (!clean.length) {
+    root.append(el("div", "live-empty", options.emptyText || "Chart unavailable."));
+    return;
+  }
+
+  const width = 240;
+  const height = Number(options.height || 58);
+  const pad = 4;
+  const allValues = clean.flatMap(dataset => dataset.series.map(point => point.close));
+  let min = Math.min(...allValues);
+  let max = Math.max(...allValues);
+  if (max === min) {
+    max += 1;
+    min -= 1;
+  }
+  const spread = max - min;
+  min -= spread * 0.08;
+  max += spread * 0.08;
+
+  const wrapper = el("div", "spark-chart");
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", options.ariaLabel || "Seven-session price chart");
+
+  const baseline = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  baseline.setAttribute("x1", "0");
+  baseline.setAttribute("x2", String(width));
+  baseline.setAttribute("y1", String(height - 1));
+  baseline.setAttribute("y2", String(height - 1));
+  baseline.setAttribute("class", "spark-baseline");
+  svg.append(baseline);
+
+  const xFor = (index, count) => count <= 1 ? width / 2 : pad + index * ((width - pad * 2) / (count - 1));
+  const yFor = value => pad + (max - value) * ((height - pad * 2) / (max - min));
+
+  clean.forEach(dataset => {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const d = dataset.series.map((point, index) => {
+      const x = xFor(index, dataset.series.length);
+      const y = yFor(point.close);
+      return `${index ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(" ");
+    path.setAttribute("d", d);
+    path.setAttribute("class", "spark-line " + (dataset.className || ""));
+    path.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.append(path);
+  });
+
+  const crosshair = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  crosshair.setAttribute("y1", "0");
+  crosshair.setAttribute("y2", String(height));
+  crosshair.setAttribute("class", "spark-crosshair");
+  crosshair.hidden = true;
+  svg.append(crosshair);
+
+  const tooltip = el("div", "spark-tooltip");
+  tooltip.hidden = true;
+  wrapper.append(svg, tooltip);
+  root.append(wrapper);
+
+  const reference = clean.reduce((best, dataset) => dataset.series.length > best.series.length ? dataset : best, clean[0]);
+  const showPoint = event => {
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const refIndex = Math.round(ratio * (reference.series.length - 1));
+    const x = xFor(refIndex, reference.series.length);
+    crosshair.setAttribute("x1", String(x));
+    crosshair.setAttribute("x2", String(x));
+    crosshair.hidden = false;
+
+    const rows = [];
+    const referencePoint = reference.series[refIndex];
+    if (referencePoint) rows.push(shortDate(referencePoint.date));
+    for (const dataset of clean) {
+      const index = Math.round(ratio * (dataset.series.length - 1));
+      const point = dataset.series[index];
+      if (!point) continue;
+      rows.push(`${dataset.label}: ${dataset.prefix || ""}${formatLiveNumber(point.close, dataset.decimals ?? 2)}`);
+    }
+    tooltip.textContent = rows.join(" · ");
+    tooltip.hidden = false;
+    const left = Math.max(4, Math.min(rect.width - tooltip.offsetWidth - 4, event.clientX - rect.left + 8));
+    tooltip.style.left = left + "px";
+  };
+  svg.addEventListener("pointermove", showPoint);
+  svg.addEventListener("pointerenter", showPoint);
+  svg.addEventListener("pointerleave", () => {
+    crosshair.hidden = true;
+    tooltip.hidden = true;
+  });
+}
+
+function renderWeather(payload) {
+  const root = document.querySelector("#weather-content");
+  const source = document.querySelector("#weather-source");
+  if (!root || !source) return;
+  root.replaceChildren();
+  if (!payload?.ok) {
+    root.append(el("div", "live-empty", payload?.message || "Local weather unavailable."));
+    source.textContent = "OPEN-METEO · WEATHER UNAVAILABLE";
+    return;
+  }
+  const current = payload.current || {};
+  const hero = el("div", "weather-hero");
+  const glyph = el("div", "weather-glyph", weatherGlyph(current.weather_code));
+  const reading = el("div", "weather-reading");
+  reading.append(
+    el("strong", "", formatLiveNumber(current.temperature_c, 0) + "°C"),
+    el("span", "", current.condition || "Weather"),
+  );
+  hero.append(glyph, reading);
+  const meta = el("div", "weather-meta");
+  meta.append(
+    el("span", "", payload.location || "Local weather"),
+    el("span", "", `Feels ${formatLiveNumber(current.feels_like_c, 0)}° · Humidity ${formatLiveNumber(current.humidity_percent, 0)}%`),
+  );
+  const forecast = el("div", "weather-forecast");
+  for (const day of (payload.forecast || []).slice(0, 5)) {
+    const date = new Date(String(day.date) + "T00:00:00");
+    const cell = el("div", "weather-day");
+    cell.title = `${day.condition || "Weather"} · rain ${formatLiveNumber(day.rain_percent, 0)}%`;
+    cell.append(
+      el("span", "weather-day-name", Number.isNaN(date.getTime()) ? shortDate(day.date) : date.toLocaleDateString([], {weekday:"short"})),
+      el("span", "weather-day-glyph", weatherGlyph(day.weather_code)),
+      el("strong", "", formatLiveNumber(day.high_c, 0) + "°"),
+      el("small", "", formatLiveNumber(day.low_c, 0) + "°"),
+    );
+    forecast.append(cell);
+  }
+  root.append(hero, meta, forecast);
+  source.textContent = "OPEN-METEO · " + (payload.timezone || "LOCAL TIME");
+}
+
+function renderMarkets(payload) {
+  const root = document.querySelector("#market-list");
+  const source = document.querySelector("#market-source");
+  if (!root || !source) return;
+  root.replaceChildren();
+  const markets = Array.isArray(payload?.markets) ? payload.markets : [];
+  if (!markets.length) {
+    root.append(el("div", "live-empty", "Market history unavailable."));
+    source.textContent = "STOOQ · MARKET DATA UNAVAILABLE";
+    return;
+  }
+  for (const market of markets) {
+    const card = el("article", "market-row");
+    const heading = el("div", "market-row-heading");
+    const label = el("strong", "", market.label || market.symbol || "Index");
+    if (!market.ok) {
+      heading.append(label, el("span", "market-change unavailable", "—"));
+      card.append(heading, el("small", "market-error", "No recent data"));
+      root.append(card);
+      continue;
+    }
+    const change = Number(market.change_percent || 0);
+    const changeClass = change > 0 ? "up" : change < 0 ? "down" : "flat";
+    const changeLabel = (change > 0 ? "↗ " : change < 0 ? "↘ " : "") + Math.abs(change).toFixed(2) + "%";
+    heading.append(label, el("span", "market-change " + changeClass, changeLabel));
+    const value = el("span", "market-value", formatLiveNumber(market.last, market.last >= 1000 ? 0 : 2));
+    const chart = el("div", "market-mini-chart");
+    card.append(heading, value, chart);
+    renderInteractiveChart(chart, [{
+      label: market.label,
+      series: market.series,
+      className: "market-line " + changeClass,
+      decimals: market.last >= 1000 ? 0 : 2,
+    }], {height: 44, ariaLabel: market.label + " last seven trading sessions"});
+    root.append(card);
+  }
+  source.textContent = "STOOQ · " + (payload.period_label || "LAST 7 TRADING SESSIONS");
+}
+
+function renderOil(payload) {
+  const root = document.querySelector("#oil-chart");
+  const legend = document.querySelector("#oil-legend");
+  if (!root || !legend) return;
+  legend.replaceChildren();
+  const oil = Array.isArray(payload?.oil) ? payload.oil.filter(item => item?.ok) : [];
+  if (!oil.length) {
+    root.replaceChildren(el("div", "live-empty", "Oil history unavailable."));
+    return;
+  }
+  for (const item of oil) {
+    const itemClass = item.id === "wti" ? "wti" : "brent";
+    const pill = el("span", "oil-legend-item " + itemClass);
+    pill.append(el("i", ""), el("strong", "", item.label), el("span", "", "$" + formatLiveNumber(item.last, 2)));
+    legend.append(pill);
+  }
+  renderInteractiveChart(root, oil.map(item => ({
+    label: item.label,
+    series: item.series,
+    className: item.id === "wti" ? "oil-wti" : "oil-brent",
+    prefix: "$",
+    decimals: 2,
+  })), {height: 86, ariaLabel: "WTI and Brent crude oil last seven trading sessions"});
+}
+
+function browserLocation() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      position => resolve({lat: position.coords.latitude, lon: position.coords.longitude}),
+      () => resolve(null),
+      {enableHighAccuracy: false, timeout: 5000, maximumAge: 30 * 60 * 1000},
+    );
+  });
+}
+
+async function loadLiveInformation() {
+  if (liveInformationLoading) return;
+  liveInformationLoading = true;
+  document.querySelectorAll("[data-live-refresh]").forEach(button => button.classList.add("loading"));
+  try {
+    const location = await browserLocation();
+    const query = location ? `?lat=${encodeURIComponent(location.lat)}&lon=${encodeURIComponent(location.lon)}` : "";
+    const payload = await getJson("/api/home/information" + query);
+    renderWeather(payload.weather || {});
+    renderMarkets(payload.market || {});
+    renderOil(payload.market || {});
+  } catch (error) {
+    renderWeather({ok:false, message:"Live information unavailable: " + error.message});
+    renderMarkets({});
+    renderOil({});
+  } finally {
+    liveInformationLoading = false;
+    document.querySelectorAll("[data-live-refresh]").forEach(button => button.classList.remove("loading"));
+  }
+}
+
 async function loadHome() {
   if (state.contextMutationInFlight) return;
   try {
@@ -1293,4 +1566,7 @@ window.addEventListener("beforeunload", closeSession);
 startSession();
 loadTools();
 loadHome();
+loadLiveInformation();
+document.querySelectorAll("[data-live-refresh]").forEach(button => button.addEventListener("click", loadLiveInformation));
 window.setInterval(loadHome, 15000);
+window.setInterval(loadLiveInformation, LIVE_INFORMATION_REFRESH_MS);

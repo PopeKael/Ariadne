@@ -44,8 +44,22 @@
           <section class="panel signals-panel" aria-labelledby="today-heading"><div class="panel-heading signals-heading"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Discover</h2><p>Curated locally from your connected sources.</p></div><div class="signals-heading-meta"><span id="signal-count" class="signal-count">Loading signals…</span><span class="panel-mark">◌</span></div></div><div id="today-list" class="signal-feed"><div class="loading-row">Reading local signals…</div></div></section>
         </div>
         <aside class="live-column" aria-label="Live information">
-          <section class="panel live-module"><span class="eyebrow">LOCAL WEATHER</span><h2>Weather</h2><p>Live weather will appear here when a local provider is configured.</p><span class="module-state">INACTIVE · NO FAKE DATA</span></section>
-          <section class="panel live-module"><span class="eyebrow">MARKETS</span><h2>Watchlist</h2><p>Market data is held until a clean local source is available.</p><span class="module-state">INACTIVE · NO FAKE DATA</span></section>
+          <section class="panel live-module weather-module" aria-labelledby="weather-heading">
+            <div class="live-module-heading"><div><span class="eyebrow">LOCAL WEATHER</span><h2 id="weather-heading">Weather</h2></div><button class="live-refresh" type="button" data-live-refresh aria-label="Refresh live information" title="Refresh live information">↻</button></div>
+            <div id="weather-content" class="weather-content"><div class="live-loading">Waiting for local weather…</div></div>
+            <span id="weather-source" class="module-state">OPEN-METEO · LOCATION REQUIRED</span>
+          </section>
+          <section class="panel live-module markets-module" aria-labelledby="markets-heading">
+            <div class="live-module-heading"><div><span class="eyebrow">MARKETS</span><h2 id="markets-heading">7-session view</h2></div><span class="live-period">7D</span></div>
+            <div id="market-list" class="market-list"><div class="live-loading">Loading market history…</div></div>
+            <span id="market-source" class="module-state">STOOQ · DAILY CLOSES</span>
+          </section>
+          <section class="panel live-module oil-module" aria-labelledby="oil-heading">
+            <div class="live-module-heading"><div><span class="eyebrow">ENERGY</span><h2 id="oil-heading">Crude oil</h2></div><span class="live-period">7D</span></div>
+            <div id="oil-legend" class="oil-legend" aria-live="polite"></div>
+            <div id="oil-chart" class="oil-chart"><div class="live-loading">Loading WTI and Brent…</div></div>
+            <span class="module-state">WTI + BRENT · DAILY CLOSES</span>
+          </section>
           <section class="panel adaptive-panel" aria-labelledby="adaptive-heading"><div class="panel-heading compact"><div><span class="eyebrow">ADAPTIVE PROFILE</span><h2 id="adaptive-heading">What Ariadne is learning</h2><p>Evidence-backed preferences from your signal feedback.</p></div><a class="text-button" href="/configuration#adaptive-settings">Setup</a></div><div id="adaptive-summary" class="adaptive-summary"><div class="loading-row">Reading learned preferences…</div></div></section>
           <details class="panel diagnostics-panel" id="activity-details"><summary><span><span class="eyebrow">DIAGNOSTICS / HISTORY</span><strong>Episodic Capture</strong><small>Meaningful work, saves, warnings and failures.</small></span><span class="panel-mark">↻</span></summary><div id="activity-list" class="activity-list"><div class="loading-row">Reading activity…</div></div><p id="activity-empty" class="quiet empty-state" hidden>No meaningful activity recorded yet.</p></details>
         </aside>
