@@ -1,5 +1,30 @@
 const HOME_REQUEST_TIMEOUT_MS = 240000;
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map()};
+const CHAT_PAGE = document.body.classList.contains("chat-page");
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), coordinates: null};
+
+function chatUrl({chatId = "", prompt = "", signalId = "", vaultMode = "", toolIds = []} = {}) {
+  const url = new URL("/chat", window.location.origin);
+  if (chatId) url.searchParams.set("chat_id", chatId);
+  if (prompt) url.searchParams.set("prompt", prompt);
+  if (signalId) url.searchParams.set("signal_id", signalId);
+  if (vaultMode) url.searchParams.set("vault_mode", vaultMode);
+  if (toolIds.length) url.searchParams.set("tools", toolIds.join(","));
+  return url.pathname + url.search;
+}
+
+async function openFreshChat({prompt = "", signalId = ""} = {}) {
+  if (!state.sessionId && !(await startSession())) return false;
+  const status = document.querySelector("#ask-status");
+  const result = await postWithSessionRecovery("/api/home/chat/new", {session_id: state.sessionId, chat_id: state.chatId});
+  const chatId = result.chat && result.chat.chat_id;
+  if (!chatId) throw new Error("The local service did not return a new chat.");
+  rememberChat(chatId);
+  const vaultMode = document.querySelector("#knowledge-mode")?.value || "auto";
+  const toolIds = Array.from(state.selectedToolIds);
+  closeSession();
+  window.location.assign(chatUrl({chatId, prompt, signalId, vaultMode, toolIds}));
+  return true;
+}
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -196,6 +221,210 @@ function renderHealth(payload) {
   document.querySelector("#model-name").textContent = homeRoute.model_id || payload.resident_model || "No Home model selected";
   document.querySelector("#model-context").textContent = `${Math.round((payload.context_tokens || 16384) / 1024)}K context · ${homeRoute.provider_id || "unconfigured"} · ${homeRoute.location || "—"}`;
 }
+function formatInformationNumber(value, digits = 1) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toLocaleString([], {maximumFractionDigits: digits}) : "—";
+}
+function formatInformationDate(value, options) {
+  const date = new Date(String(value) + "T12:00:00");
+  return Number.isNaN(date.getTime()) ? String(value || "—") : date.toLocaleDateString([], options);
+}
+function renderInformationChart(card, colour = "#69d5d2") {
+  const points = Array.isArray(card.points) ? card.points : [];
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "market-chart");
+  svg.setAttribute("viewBox", "0 0 220 54");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `${card.label || "Market"} last seven sessions`);
+  const values = points.map(point => Number(point.value)).filter(Number.isFinite);
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const spread = Math.max(0.0001, maximum - minimum);
+  const coordinates = points.map((point, index) => {
+    const x = points.length <= 1 ? 110 : 4 + (index * 212 / (points.length - 1));
+    const y = 48 - ((Number(point.value) - minimum) / spread * 42);
+    return {x, y, point};
+  });
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  line.setAttribute("points", coordinates.map(item => `${item.x},${item.y}`).join(" "));
+  line.setAttribute("fill", "none");
+  line.setAttribute("stroke", colour);
+  line.setAttribute("stroke-width", "2");
+  line.setAttribute("stroke-linecap", "round");
+  line.setAttribute("stroke-linejoin", "round");
+  svg.append(line);
+  coordinates.forEach(item => {
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("cx", String(item.x));
+    dot.setAttribute("cy", String(item.y));
+    dot.setAttribute("r", "3");
+    dot.setAttribute("fill", colour);
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = `${item.point.date}: ${formatInformationNumber(item.point.value, 2)}`;
+    dot.append(title);
+    svg.append(dot);
+  });
+  return svg;
+}
+function renderMultiInformationChart(cards) {
+  const width = 220;
+  const height = 54;
+  const padding = 4;
+  const allPoints = cards.flatMap(card => Array.isArray(card.points) ? card.points : []);
+  const values = allPoints.map(point => Number(point.value)).filter(Number.isFinite);
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const spread = Math.max(0.0001, maximum - minimum);
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "market-chart oil-combined-chart");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "WTI and Brent crude last seven sessions");
+  cards.forEach((card, cardIndex) => {
+    const colour = cardIndex === 0 ? "#69d5d2" : "#e1b879";
+    const points = Array.isArray(card.points) ? card.points : [];
+    const coordinates = points.map((point, index) => ({
+      x: points.length <= 1 ? width / 2 : padding + (index * (width - padding * 2) / (points.length - 1)),
+      y: height - padding - ((Number(point.value) - minimum) / spread * (height - padding * 2)),
+      point,
+    }));
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    line.setAttribute("points", coordinates.map(item => `${item.x},${item.y}`).join(" "));
+    line.setAttribute("fill", "none");
+    line.setAttribute("stroke", colour);
+    line.setAttribute("stroke-width", "2");
+    line.setAttribute("stroke-linecap", "round");
+    line.setAttribute("stroke-linejoin", "round");
+    svg.append(line);
+    coordinates.forEach(item => {
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("cx", String(item.x));
+      dot.setAttribute("cy", String(item.y));
+      dot.setAttribute("r", "3");
+      dot.setAttribute("fill", colour);
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = `${card.label} · ${item.point.date}: ${formatInformationNumber(item.point.value, 2)}`;
+      dot.append(title);
+      svg.append(dot);
+    });
+  });
+  return svg;
+}
+function renderMarketCard(card, colour = "#69d5d2") {
+  const wrapper = el("article", "market-card");
+  if (!card || !card.available) {
+    wrapper.append(el("strong", "market-card-title", card?.label || "Market"), el("span", "information-state", "Unavailable"));
+    return wrapper;
+  }
+  const heading = el("div", "market-card-heading");
+  heading.append(el("strong", "market-card-title", card.label));
+  const change = Number(card.change_percent);
+  const changeLabel = Number.isFinite(change) ? `${change >= 0 ? "↑" : "↓"} ${Math.abs(change).toFixed(2)}%` : "—";
+  heading.append(el("span", "market-change " + (change >= 0 ? "positive" : "negative"), changeLabel));
+  wrapper.append(heading);
+  const value = el("div", "market-card-value", `${card.currency || ""} ${formatInformationNumber(card.last, 2)}`.trim());
+  wrapper.append(value, renderInformationChart(card, colour));
+  return wrapper;
+}
+function renderOilCard(cards) {
+  const root = document.querySelector("#oil-card");
+  if (!root) return;
+  root.replaceChildren();
+  const available = (Array.isArray(cards) ? cards : []).filter(card => card && card.available);
+  if (available.length < 1) {
+    root.hidden = false;
+    root.append(el("strong", "oil-heading", "Crude oil"), el("span", "information-state", "Unavailable"));
+    return;
+  }
+  root.hidden = false;
+  const heading = el("div", "oil-heading");
+  heading.append(el("strong", "", "Crude oil"), el("span", "oil-legend", "WTI · Brent"));
+  root.append(heading);
+  const chart = el("div", "oil-chart-row");
+  const labels = el("div", "oil-series-labels");
+  available.forEach((card, index) => {
+    const label = el("span", "oil-series-label", `${card.label}: ${card.currency || "USD"} ${formatInformationNumber(card.last, 2)}`);
+    label.style.setProperty("--series-colour", index === 0 ? "#69d5d2" : "#e1b879");
+    labels.append(label);
+  });
+  chart.append(labels, renderMultiInformationChart(available));
+  root.append(chart);
+}
+function renderInformation(payload) {
+  const weather = payload?.weather || {};
+  const weatherState = document.querySelector("#weather-state");
+  const currentRoot = document.querySelector("#weather-current");
+  const forecastRoot = document.querySelector("#weather-forecast");
+  if (weatherState && currentRoot && forecastRoot) {
+    currentRoot.replaceChildren();
+    forecastRoot.replaceChildren();
+    if (!weather.available) {
+      weatherState.hidden = false;
+      weatherState.textContent = weather.message || "Weather is unavailable right now.";
+      currentRoot.hidden = true;
+      forecastRoot.hidden = true;
+    } else {
+      weatherState.hidden = true;
+      currentRoot.hidden = false;
+      const current = weather.current || {};
+      const temperature = el("strong", "weather-temperature", `${formatInformationNumber(current.temperature, 0)}°C`);
+      const summary = el("div", "weather-summary");
+      summary.append(el("strong", "", current.label || "Conditions unavailable"), el("span", "", `Feels like ${formatInformationNumber(current.apparent_temperature, 0)}° · Humidity ${formatInformationNumber(current.humidity, 0)}%`));
+      currentRoot.append(temperature, summary);
+      const forecast = Array.isArray(weather.forecast) ? weather.forecast : [];
+      forecast.forEach(day => {
+        const item = el("div", "forecast-day");
+        item.append(el("strong", "", formatInformationDate(day.date, {weekday: "short"})), el("span", "", `${formatInformationNumber(day.high, 0)}° / ${formatInformationNumber(day.low, 0)}°`), el("small", "", day.label || "—"));
+        forecastRoot.append(item);
+      });
+      forecastRoot.hidden = !forecast.length;
+    }
+  }
+  const markets = payload?.markets || {};
+  const cardsRoot = document.querySelector("#market-cards");
+  if (cardsRoot) {
+    cardsRoot.replaceChildren();
+    const cards = Array.isArray(markets.cards) ? markets.cards : [];
+    if (!cards.length) cardsRoot.append(el("div", "information-state", markets.message || "Market data is unavailable right now."));
+    else cards.forEach(card => cardsRoot.append(renderMarketCard(card)));
+  }
+  renderOilCard(markets.oil);
+  const source = document.querySelector("#market-source");
+  if (source) {
+    source.hidden = !markets.provider;
+    source.textContent = markets.provider ? `${markets.provider}${markets.cached ? " · cached" : ""}` : "";
+  }
+  const updated = document.querySelector("#market-updated");
+  if (updated && payload?.updated_at) updated.textContent = new Date(payload.updated_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+  const weatherSource = document.querySelector("#weather-source");
+  if (weatherSource) {
+    weatherSource.hidden = !weather.provider;
+    weatherSource.textContent = weather.provider ? `${weather.provider}${weather.cached ? " · cached" : ""}` : "";
+  }
+}
+async function loadInformation(force = false) {
+  const query = new URLSearchParams();
+  if (state.coordinates) {
+    query.set("latitude", String(state.coordinates.latitude));
+    query.set("longitude", String(state.coordinates.longitude));
+  }
+  if (force) query.set("refresh", "true");
+  try {
+    renderInformation(await getJson("/api/home/information?" + query.toString()));
+  } catch (error) {
+    renderInformation({weather: {available: false, message: "Information is unavailable right now."}, markets: {cards: [], oil: [], message: error.message}});
+  }
+}
+function requestLocalWeather() {
+  if (!navigator.geolocation) {
+    loadInformation();
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(position => {
+    state.coordinates = {latitude: position.coords.latitude, longitude: position.coords.longitude};
+    loadInformation();
+  }, () => loadInformation(), {enableHighAccuracy: false, maximumAge: 900000, timeout: 6000});
+}
 const SIGNAL_SECTIONS = [
   ["Main News Feed", "Main News Feed", "The wider world, distilled locally."],
   ["Thailand Focus", "Thailand Focus", "Thailand news and local-interest signals from the existing producer path."],
@@ -213,6 +442,19 @@ function inferSignalCategory(item) {
   if (/thailand|thai|bangkok|phuket|pattaya|immigration|visa|baht|expat/.test(text)) return "Thailand Focus";
   if (/artificial intelligence|\bai\b|machine learning|llm|openai|anthropic|google deepmind|hacker news|ars technica|automation|robot/.test(text)) return "AI Watch";
   return "Main News Feed";
+}
+
+function displaySignalSummary(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= 240) return text;
+  const sentences = text.match(/[^.!?]+[.!?](?:\s|$)/g) || [];
+  let result = "";
+  for (const sentence of sentences) {
+    if ((result + sentence).trim().length > 240) break;
+    result += sentence;
+  }
+  if (result.trim()) return result.trim();
+  return text.slice(0, 237).replace(/\s+\S*$/, "").trim() + "…";
 }
 
 function positionSignalDetails(anchor, popover) {
@@ -247,7 +489,7 @@ function renderSignalCard(item) {
   const validUrl = item.url && /^https?:\/\//i.test(item.url);
   const body = el("div", "signal-card-body");
   const title = el("h3", "signal-card-title", item.label || "Signal");
-  const summary = el("p", "signal-summary", item.summary || item.detail || "");
+  const summary = el("p", "signal-summary", displaySignalSummary(item.summary || item.detail || ""));
   const discovery = item.provenance && typeof item.provenance === "object" ? item.provenance.discovery : null;
   const sourceCount = Number(discovery && discovery.source_count || 0);
   const watchlistTopics = Array.isArray(item.watchlist_matches)
@@ -480,6 +722,18 @@ async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
   }
 }
 async function promoteSignalToVault(signalId, button, status) {
+  if (!CHAT_PAGE) {
+    button.disabled = true;
+    status.textContent = "Opening discussion…";
+    try {
+      await openFreshChat({signalId});
+    } catch (error) {
+      button.disabled = false;
+      status.textContent = "Could not open chat";
+      button.title = error.message || "The signal discussion could not be opened.";
+    }
+    return;
+  }
   if (state.processing) {
     status.textContent = "Finish the current Ariadne response before changing article context.";
     return;
@@ -659,6 +913,11 @@ function rememberChat(chatId) {
   try { localStorage.setItem("ariadne.home.chat_id", chatId); } catch (_) {}
 }
 async function selectRecentChat(chatId) {
+  if (!CHAT_PAGE) {
+    closeSession();
+    window.location.assign(chatUrl({chatId}));
+    return;
+  }
   if (!state.sessionId || chatId === state.chatId) return;
   try {
     const result = await postWithSessionRecovery("/api/home/chat/select", {session_id: state.sessionId, chat_id: chatId});
@@ -672,6 +931,14 @@ async function selectRecentChat(chatId) {
   }
 }
 async function startNewChat() {
+  if (!CHAT_PAGE) {
+    try {
+      await openFreshChat();
+    } catch (error) {
+      document.querySelector("#ask-status").textContent = "Could not start a new chat: " + error.message;
+    }
+    return;
+  }
   const status = document.querySelector("#ask-status");
   if (!state.sessionId && !(await startSession())) return;
   const button = document.querySelector("#new-chat");
@@ -808,13 +1075,183 @@ function buildResponseFeedback(metadata) {
   applyResponseFeedbackState(root, metadata.feedback);
   return root;
 }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>\"']/g, character => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[character]));
+}
+function safeMarkdownUrl(value) {
+  try {
+    const url = new URL(String(value || ""), window.location.origin);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch (_) {
+    return "";
+  }
+}
+function renderInlineMarkdown(value, codeBlocks) {
+  let text = escapeHtml(value);
+  const inlineCode = [];
+  text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+    const token = `\u0000INLINE${inlineCode.length}\u0000`;
+    inlineCode.push(`<code>${code}</code>`);
+    return token;
+  });
+  text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g, (_, alt, url, title) => {
+    const safe = safeMarkdownUrl(url);
+    return safe ? `<img src="${escapeHtml(safe)}" alt="${alt}"${title ? ` title="${title}"` : ""}>` : alt;
+  });
+  text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, url) => {
+    const safe = safeMarkdownUrl(url);
+    return safe ? `<a href="${escapeHtml(safe)}" target="_blank" rel="noreferrer">${label}</a>` : label;
+  });
+  text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  text = text.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+  text = text.replace(/_([^_\n]+)_/g, "<em>$1</em>");
+  text = text.replace(/\[((?:Vault|Live) Source \d+)\]/g, '<span class="citation">[$1]</span>');
+  text = text.replace(/\u0000INLINE(\d+)\u0000/g, (_, index) => inlineCode[Number(index)] || "");
+  text = text.replace(/\u0000CODE(\d+)\u0000/g, (_, index) => codeBlocks[Number(index)] || "");
+  return text;
+}
+function markdownTableCells(line) {
+  return String(line || "").trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(cell => cell.trim());
+}
+function renderMarkdown(markdown) {
+  const codeBlocks = [];
+  const source = String(markdown || "").replace(/```([\w+-]*)\s*\n?([\s\S]*?)```/g, (_, language, code) => {
+    const className = language ? ` class="language-${escapeHtml(language)}"` : "";
+    const token = `\u0000CODE${codeBlocks.length}\u0000`;
+    codeBlocks.push(`<pre><code${className}>${escapeHtml(code.replace(/\n$/, ""))}</code></pre>`);
+    return token;
+  });
+  const lines = source.replace(/\r\n?/g, "\n").split("\n");
+  const blocks = [];
+  let paragraph = [];
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      blocks.push(`<p>${renderInlineMarkdown(paragraph.join("\n"), codeBlocks).replace(/\n/g, "<br>")}</p>`);
+      paragraph = [];
+    }
+  };
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim()) { flushParagraph(); continue; }
+    const heading = line.match(/^#{1,3}\s+(.+)$/);
+    if (heading) { flushParagraph(); blocks.push(`<h${heading[0].indexOf(" ")}>${renderInlineMarkdown(heading[1], codeBlocks)}</h${heading[0].indexOf(" ")}>`); continue; }
+    if (line.startsWith(">")) { flushParagraph(); blocks.push(`<blockquote>${renderInlineMarkdown(line.replace(/^>\s?/, ""), codeBlocks)}</blockquote>`); continue; }
+    if (/^\s*[-*+]\s+/.test(line) || /^\s*\d+[.)]\s+/.test(line)) {
+      flushParagraph();
+      const ordered = /^\s*\d+[.)]\s+/.test(line);
+      const items = [];
+      while (index < lines.length && (ordered ? /^\s*\d+[.)]\s+/.test(lines[index]) : /^\s*[-*+]\s+/.test(lines[index]))) {
+        items.push(lines[index].replace(ordered ? /^\s*\d+[.)]\s+/ : /^\s*[-*+]\s+/, "")); index += 1;
+      }
+      index -= 1;
+      blocks.push(`<${ordered ? "ol" : "ul"}>${items.map(item => `<li>${renderInlineMarkdown(item, codeBlocks)}</li>`).join("")}</${ordered ? "ol" : "ul"}>`);
+      continue;
+    }
+    if (line.includes("|") && index + 1 < lines.length && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[index + 1])) {
+      flushParagraph();
+      const headers = markdownTableCells(line); index += 2; const rows = [];
+      while (index < lines.length && lines[index].includes("|") && lines[index].trim()) { rows.push(markdownTableCells(lines[index])); index += 1; }
+      index -= 1;
+      blocks.push(`<table><thead><tr>${headers.map(cell => `<th>${renderInlineMarkdown(cell, codeBlocks)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_, column) => `<td>${renderInlineMarkdown(row[column] || "", codeBlocks)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      continue;
+    }
+    if (/^\u0000CODE\d+\u0000$/.test(line.trim())) { flushParagraph(); blocks.push(renderInlineMarkdown(line.trim(), codeBlocks)); continue; }
+    paragraph.push(line);
+  }
+  flushParagraph();
+  return blocks.join("");
+}
+function updateChatLayout() {
+  if (!CHAT_PAGE) return;
+  const meaningful = Boolean(document.querySelector("#chat-log .message"));
+  document.body.classList.toggle("chat-active", meaningful);
+  document.body.classList.toggle("chat-empty", !meaningful);
+  const collapse = document.querySelector("#collapse-chat");
+  if (collapse) collapse.hidden = !meaningful;
+}
+function showChatActivity() {
+  const details = document.querySelector("#chat-activity");
+  const list = document.querySelector("#chat-activity-list");
+  if (!details || !list) return;
+  details.hidden = false;
+  details.open = true;
+  list.replaceChildren();
+  document.querySelector("#chat-activity-summary").textContent = "Working";
+}
+function pushChatActivity(event) {
+  const list = document.querySelector("#chat-activity-list");
+  const summary = document.querySelector("#chat-activity-summary");
+  if (!list) return;
+  list.querySelectorAll(".current").forEach(item => item.classList.remove("current"));
+  const item = el("div", "chat-activity-item current", event.label || event.message || "Working");
+  list.append(item);
+  if (summary) summary.textContent = event.label || event.message || "Working";
+}
+function finishChatActivity(label = "Completed") {
+  const details = document.querySelector("#chat-activity");
+  const summary = document.querySelector("#chat-activity-summary");
+  const list = document.querySelector("#chat-activity-list");
+  if (summary) summary.textContent = label;
+  list?.querySelectorAll(".current").forEach(item => { item.classList.remove("current"); item.classList.add("complete"); });
+  if (details) details.open = false;
+}
+async function streamHomeChat(payload, onEvent, options = {}) {
+  const response = await fetch("/api/home/chat/stream", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload), signal:options.signal});
+  if (!response.ok) {
+    const raw = await response.text();
+    let data = {};
+    try { data = raw ? JSON.parse(raw) : {}; } catch (_) {}
+    throw new Error(data.message || `HTTP ${response.status}`);
+  }
+  if (!response.body) throw new Error("The local service did not provide a response stream.");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult = null;
+  const consume = block => {
+    const data = block.split("\n").filter(line => line.startsWith("data:")).map(line => line.slice(5).trim()).join("\n");
+    if (!data) return;
+    const event = JSON.parse(data);
+    if (event.type === "error") throw new Error(event.message || "The local response failed.");
+    if (event.type === "final") finalResult = event;
+    if (onEvent) onEvent(event);
+  };
+  while (true) {
+    const {value, done} = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), {stream:!done});
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() || "";
+    blocks.forEach(consume);
+    if (done) break;
+  }
+  if (buffer.trim()) consume(buffer);
+  if (!finalResult) throw new Error("The local response stream ended before completion.");
+  return finalResult;
+}
+function showInWorkbench(content, title = "Conversation output") {
+  const panel = document.querySelector("#workbench");
+  const root = document.querySelector("#workbench-content");
+  const toggle = document.querySelector("#workbench-toggle");
+  if (!panel || !root) return;
+  root.replaceChildren();
+  const heading = el("div", "workbench-output-heading", title);
+  const output = el("div", "workbench-output");
+  output.innerHTML = renderMarkdown(content);
+  root.append(heading, output);
+  panel.hidden = false;
+  document.body.classList.add("workbench-open");
+  if (toggle) toggle.setAttribute("aria-expanded", "true");
+}
 function addMessage(role, content, metadata) {
   const log = document.querySelector("#chat-log");
+  if (!log) return;
   document.querySelector(".empty-chat")?.remove();
   const message = el("article", "message " + role);
   message.append(el("span", "message-label", role === "user" ? "YOU" : "ARIADNE"));
   const displayContent = content || (metadata && metadata.state === "pending" ? "Response pending…" : metadata && metadata.state === "interrupted" ? "Response interrupted; no complete response was recorded." : "");
-  const messageBody = el("div", "message-body", displayContent);
+  const messageBody = el("div", "message-body");
+  messageBody.innerHTML = renderMarkdown(displayContent);
   message.append(messageBody);
   if (role === "assistant" && metadata && !["pending", "interrupted"].includes(metadata.state)) {
     const meta = el("div", "message-meta");
@@ -864,6 +1301,12 @@ function addMessage(role, content, metadata) {
     readButton.title = "Copy this answer to the Windows reader and send Alt+F1";
     readButton.addEventListener("click", () => readAnswer(messageBody, readButton));
     meta.append(readButton);
+    if (String(content || "").includes("```") || /!\[[^\]]*\]\([^)]*\)/.test(String(content || ""))) {
+      const workbenchButton = el("button", "read-button", "Open in Workbench");
+      workbenchButton.type = "button";
+      workbenchButton.addEventListener("click", () => showInWorkbench(String(content || ""), "Conversation output"));
+      meta.append(workbenchButton);
+    }
     message.append(meta);
     if (metadata.sources && metadata.sources.length) {
       const details = el("details", "sources");
@@ -885,6 +1328,8 @@ function addMessage(role, content, metadata) {
   } else {
     log.scrollTop = log.scrollHeight;
   }
+  updateChatLayout();
+  return message;
 }
 function summarizeCitations(sources) {
   const identities = new Set();
@@ -899,8 +1344,9 @@ function restoreMessages(messages) {
   state.messages = [];
   const log = document.querySelector("#chat-log");
   const meaningful = (messages || []).some(item => item && ["user", "assistant"].includes(item.role) && String(item.content || "").trim());
+  if (!CHAT_PAGE) return;
   document.body.classList.toggle("chat-expanded", meaningful);
-  document.querySelector("#collapse-chat").hidden = !meaningful;
+  if (!log) return;
   log.replaceChildren();
   for (const item of messages || []) {
     if (!item || !["user", "assistant"].includes(item.role)) continue;
@@ -908,6 +1354,7 @@ function restoreMessages(messages) {
     state.messages.push({role: item.role, content});
     addMessage(item.role, content, item);
   }
+  updateChatLayout();
 }
 function selectReadableAnswer(node) {
   const selection = window.getSelection();
@@ -1143,6 +1590,10 @@ function endRequestStatus() {
   state.requestTimer = null;
 }
 async function loadHome() {
+  if (CHAT_PAGE) {
+    await loadChatHealth();
+    return;
+  }
   if (state.contextMutationInFlight) return;
   try {
     const data = await getJson("/api/home/activity");
@@ -1174,8 +1625,12 @@ async function startSession() {
     if (state.heartbeat) window.clearInterval(state.heartbeat);
     state.heartbeat = null;
     let requestedChatId = null;
-    try { requestedChatId = localStorage.getItem("ariadne.home.chat_id"); } catch (_) {}
-    const result = await postJson("/api/session/start", {surface: "home", chat_id: requestedChatId});
+    if (CHAT_PAGE) {
+      requestedChatId = new URLSearchParams(window.location.search).get("chat_id");
+    } else {
+      try { requestedChatId = localStorage.getItem("ariadne.home.chat_id"); } catch (_) {}
+    }
+    const result = await postJson("/api/session/start", {surface: CHAT_PAGE ? "chat" : "home", chat_id: requestedChatId});
     state.sessionId = result.session_id;
     state.chatId = result.chat_id;
     try { localStorage.setItem("ariadne.home.chat_id", state.chatId); } catch (_) {}
@@ -1183,7 +1638,8 @@ async function startSession() {
     renderAttachments(result.documents || []);
     await loadRecentChats();
     if (result.resumed && result.messages && result.messages.length) {
-      document.querySelector("#ask-status").textContent = "Recovered the durable local chat.";
+      const status = document.querySelector("#ask-status");
+      if (status) status.textContent = "Recovered the durable local chat.";
     }
     state.heartbeat = window.setInterval(async () => {
       if (!state.sessionId) return;
@@ -1196,7 +1652,8 @@ async function startSession() {
     }, Math.max(3000, (result.heartbeat_seconds || 5) * 1000));
     return true;
   } catch (error) {
-    document.querySelector("#ask-status").textContent = "Session unavailable: " + error.message;
+    const status = document.querySelector("#ask-status");
+    if (status) status.textContent = "Session unavailable: " + error.message;
     return false;
   }
 }
@@ -1206,12 +1663,38 @@ async function ask(event) {
   const submit = document.querySelector("#ask-submit");
   const status = document.querySelector("#ask-status");
   const message = input.value.trim();
-  if (!message || !state.sessionId) {
-    status.textContent = state.sessionId ? "Type a question first." : "Starting the local session…";
+  if (!message) {
+    if (!CHAT_PAGE) {
+      submit.disabled = true;
+      status.textContent = "Opening a new chat…";
+      try {
+        await openFreshChat();
+      } catch (error) {
+        status.textContent = "Could not open chat: " + error.message;
+        submit.disabled = false;
+      }
+    } else {
+      status.textContent = state.sessionId ? "Type a question first." : "Starting the local session…";
+    }
+    return;
+  }
+  if (!state.sessionId) {
+    status.textContent = "Starting the local session…";
     return;
   }
   if (state.contextMutationInFlight || state.signalArticleBusy.size || loadingSourceArticles().length) {
     status.textContent = "Wait for the selected source article to finish loading before asking Ariadne.";
+    return;
+  }
+  if (!CHAT_PAGE) {
+    submit.disabled = true;
+    status.textContent = "Opening a full chat…";
+    try {
+      await openFreshChat({prompt: message});
+    } catch (error) {
+      status.textContent = "Could not open chat: " + error.message;
+      submit.disabled = false;
+    }
     return;
   }
   const history = state.messages.slice(-8);
@@ -1219,39 +1702,58 @@ async function ask(event) {
   document.querySelector("#collapse-chat").hidden = false;
   state.messages.push({role: "user", content: message});
   addMessage("user", message);
+  const streamingMessage = addMessage("assistant", "", {state: "pending"});
+  const streamingBody = streamingMessage?.querySelector(".message-body");
   input.value = "";
   submit.disabled = true;
   setContextMutationState(true);
+  showChatActivity();
   beginRequestStatus(status);
   const controller = new AbortController();
   state.requestAbortController = controller;
   state.requestTimeout = window.setTimeout(() => controller.abort(), HOME_REQUEST_TIMEOUT_MS);
   try {
-    const result = await postJson("/api/home/chat", {
+    let streamedAnswer = "";
+    const result = await streamHomeChat({
       session_id: state.sessionId,
       chat_id: state.chatId,
       message: message,
       history: history,
       vault_mode: document.querySelector("#knowledge-mode").value,
       tool_ids: Array.from(state.selectedToolIds)
+    }, event => {
+      if (event.type === "activity") {
+        pushChatActivity(event);
+        status.textContent = event.label || event.message || "Working";
+      } else if (event.type === "delta") {
+        streamedAnswer += String(event.text || "");
+        if (streamingBody) streamingBody.innerHTML = renderMarkdown(streamedAnswer);
+        const log = document.querySelector("#chat-log");
+        if (log) log.scrollTop = log.scrollHeight;
+      }
     }, {signal: controller.signal});
     result.timing = result.timing || fallbackTiming(result.answer);
     status.textContent = "Answering…";
-    state.messages.push({role: "assistant", content: result.answer});
-    addMessage("assistant", result.answer, result);
+    const answer = String(result.answer || streamedAnswer || "").trim();
+    streamingMessage?.remove();
+    state.messages.push({role: "assistant", content: answer});
+    addMessage("assistant", answer, result);
     const timing = formatTiming(result.timing);
     status.textContent = result.generation_truncated
       ? "Response stopped at the output limit. Continue is available."
       : "Complete.";
     if (timing) status.textContent += " · " + timing;
+    finishChatActivity(result.generation_truncated ? "Completed with output limit" : "Completed");
     loadHome();
     loadRecentChats();
   } catch (error) {
+    streamingMessage?.remove();
     const timedOut = error && error.name === "AbortError";
     const message = timedOut
       ? "The local Home request exceeded 4 minutes without returning an answer. Check the chat before retrying."
       : "I could not complete that locally: " + error.message;
     addMessage("assistant", message);
+    finishChatActivity(timedOut ? "Timed out" : "Could not complete");
     status.textContent = timedOut ? "Timed out: no answer was returned." : "Error: the local request failed.";
   } finally {
     if (state.requestTimeout) window.clearTimeout(state.requestTimeout);
@@ -1263,34 +1765,101 @@ async function ask(event) {
     input.focus();
   }
 }
+async function loadChatHealth() {
+  try {
+    const data = await getJson("/api/home/activity");
+    renderHealth(data.health);
+  } catch (_) {
+    const root = document.querySelector("#header-health");
+    if (root) root.replaceChildren(el("span", "header-health-loading", "Status unavailable"));
+    const updated = document.querySelector("#health-updated");
+    if (updated) updated.textContent = "Status unavailable";
+  }
+}
 function closeSession() {
   if (!state.sessionId) return;
   const payload = JSON.stringify({session_id: state.sessionId, chat_id: state.chatId});
   navigator.sendBeacon("/api/session/close", new Blob([payload], {type: "application/json"}));
   state.sessionId = null;
 }
-document.querySelector("#collapse-chat").addEventListener("click", () => {
-  document.body.classList.remove("chat-expanded");
-  document.querySelector("#collapse-chat").hidden = true;
+async function initializeChatPage() {
+  if (!(await startSession())) return;
+  const params = new URLSearchParams(window.location.search);
+  const requestedTools = String(params.get("tools") || "").split(",").map(value => value.trim()).filter(Boolean);
+  requestedTools.forEach(toolId => state.selectedToolIds.add(toolId));
+  const mode = params.get("vault_mode");
+  if (mode && document.querySelector("#knowledge-mode")) document.querySelector("#knowledge-mode").value = mode;
+  const signalId = params.get("signal_id");
+  if (signalId) {
+    const button = document.createElement("button");
+    const status = document.querySelector("#ask-status");
+    button.disabled = false;
+    await promoteSignalToVault(signalId, button, status);
+    return;
+  }
+  const prompt = params.get("prompt");
+  if (prompt && !state.messages.some(item => item.role === "user" && item.content === prompt)) {
+    const input = document.querySelector("#ask-input");
+    const form = document.querySelector("#ask-form");
+    if (input && form) {
+      input.value = prompt;
+      window.history.replaceState({}, "", chatUrl({chatId: state.chatId, vaultMode: mode || "", toolIds: requestedTools}));
+      window.setTimeout(() => form.requestSubmit(), 0);
+    }
+  }
+}
+const collapseButton = document.querySelector("#collapse-chat");
+if (collapseButton) collapseButton.addEventListener("click", () => {
+  if (CHAT_PAGE) window.location.assign("/");
+  else {
+    document.body.classList.remove("chat-expanded");
+    collapseButton.hidden = true;
+  }
 });
-document.querySelector("#ask-form").addEventListener("submit", ask);
-document.querySelector("#document-input").addEventListener("change", async event => {
+const workbenchToggle = document.querySelector("#workbench-toggle");
+const workbenchClose = document.querySelector("#workbench-close");
+function setWorkbenchOpen(open) {
+  const panel = document.querySelector("#workbench");
+  if (!panel) return;
+  panel.hidden = !open;
+  document.body.classList.toggle("workbench-open", open);
+  if (workbenchToggle) workbenchToggle.setAttribute("aria-expanded", String(open));
+}
+if (workbenchToggle) workbenchToggle.addEventListener("click", () => setWorkbenchOpen(workbenchToggle.getAttribute("aria-expanded") !== "true"));
+if (workbenchClose) workbenchClose.addEventListener("click", () => setWorkbenchOpen(false));
+const askForm = document.querySelector("#ask-form");
+if (askForm) askForm.addEventListener("submit", ask);
+const documentInput = document.querySelector("#document-input");
+if (documentInput) documentInput.addEventListener("change", async event => {
   for (const file of Array.from(event.target.files || [])) await attachFile(file);
   event.target.value = "";
 });
-document.querySelector("#tools-button").addEventListener("click", () => {
+const toolsButton = document.querySelector("#tools-button");
+if (toolsButton) toolsButton.addEventListener("click", () => {
   const palette = document.querySelector("#tools-palette");
-  const button = document.querySelector("#tools-button");
   const open = palette.hidden;
   palette.hidden = !open;
-  button.setAttribute("aria-expanded", open ? "true" : "false");
+  toolsButton.setAttribute("aria-expanded", open ? "true" : "false");
 });
-document.querySelector("#new-chat").addEventListener("click", startNewChat);
-document.querySelector("#save-chat").addEventListener("click", saveCurrentChat);
-document.querySelector("#export-chat").addEventListener("click", exportCurrentChat);
-document.querySelector("#purge-chat").addEventListener("click", purgeCurrentChat);
+const newChatButton = document.querySelector("#new-chat");
+if (newChatButton) newChatButton.addEventListener("click", startNewChat);
+const saveButton = document.querySelector("#save-chat");
+if (saveButton) saveButton.addEventListener("click", saveCurrentChat);
+const exportButton = document.querySelector("#export-chat");
+if (exportButton) exportButton.addEventListener("click", exportCurrentChat);
+const purgeButton = document.querySelector("#purge-chat");
+if (purgeButton) purgeButton.addEventListener("click", purgeCurrentChat);
+const informationRefresh = document.querySelector("#information-refresh");
+if (informationRefresh) informationRefresh.addEventListener("click", () => loadInformation(true));
 window.addEventListener("beforeunload", closeSession);
-startSession();
 loadTools();
-loadHome();
-window.setInterval(loadHome, 15000);
+if (CHAT_PAGE) {
+  loadChatHealth();
+  initializeChatPage();
+} else {
+  startSession();
+  loadHome();
+  requestLocalWeather();
+  window.setInterval(loadHome, 15000);
+  window.setInterval(() => loadInformation(), 15 * 60 * 1000);
+}

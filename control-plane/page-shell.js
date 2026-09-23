@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  const routes = [["Home","/",["/","/home"]],["Create","/create",["/create"]],["Tools","/plugins",["/plugins"]],["Workshop","/workshop",["/workshop"],"workshop-link"],["Model Lab","/model-lab",["/model-lab"],"model-lab-link"],["Setup","/configuration",["/configuration","/setup","/configuration/avatar"]],["System","/system-details",["/system-details","/details","/index.html"]]];
+  const routes = [["Home","/",["/","/home"]],["Chat","/chat",["/chat"]],["Create","/create",["/create"]],["Tools","/plugins",["/plugins"]],["Workshop","/workshop",["/workshop"],"workshop-link"],["Model Lab","/model-lab",["/model-lab"],"model-lab-link"],["Setup","/configuration",["/configuration","/setup","/configuration/avatar"]],["System","/system-details",["/system-details","/details","/index.html"]]];
   function make(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node}
   function addRuntimeChip(root,label,value,id){const chip=make("span","ariadne-runtime-chip");chip.id=id;chip.append(make("span","chip-label",label),make("span","chip-value",value));root.append(chip);return chip}
   const bar=make("header","ariadne-appbar"),inner=make("div","ariadne-appbar-inner"),brand=make("a","ariadne-appbrand");brand.href="/";brand.setAttribute("aria-label","Ariadne Home");

@@ -17,7 +17,7 @@ import hashlib
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ariadne_embeddings import DEFAULT_MODEL, DEFAULT_OLLAMA_URL, chunk_hash, cosine, load_index, ollama_embed
 
@@ -1135,7 +1135,8 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
                 context_tokens: int | None = None,
                 metrics: dict[str, Any] | None = None,
                 keep_alive: int | str | None = None,
-                output_tokens: int | None = None) -> str:
+                output_tokens: int | None = None,
+                on_delta: Callable[[str], None] | None = None) -> str:
     """Generate text only through the configured loopback Ollama endpoint."""
     base_url = DEFAULT_OLLAMA_URL
     selected_model = model or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
@@ -1149,7 +1150,7 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
         128,
         int(output_tokens or os.environ.get("ARIADNE_NUM_PREDICT", DEFAULT_OUTPUT_TOKENS)),
     )
-    body = {"model": selected_model, "messages": messages, "stream": False,
+    body = {"model": selected_model, "messages": messages, "stream": bool(on_delta),
             "options": {"temperature": 0, "seed": 42, "num_ctx": selected_context_tokens,
                         "num_predict": selected_output_tokens}}
     if keep_alive is not None:
@@ -1161,8 +1162,24 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
         data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=180) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        with urllib.request.urlopen(request, timeout=300) as response:
+            if on_delta is None:
+                payload = json.loads(response.read().decode("utf-8"))
+            else:
+                payload = {}
+                chunks: list[str] = []
+                for raw_line in response:
+                    if not raw_line.strip():
+                        continue
+                    event = json.loads(raw_line.decode("utf-8"))
+                    delta = event.get("message", {}).get("content")
+                    if isinstance(delta, str) and delta:
+                        chunks.append(delta)
+                        on_delta(delta)
+                    if event.get("done"):
+                        payload = event
+                        break
+                payload["message"] = {"content": "".join(chunks)}
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Ollama chat is unavailable at {base_url}: {exc.reason}") from exc
     except (TimeoutError, json.JSONDecodeError) as exc:

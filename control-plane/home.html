@@ -12,40 +12,49 @@
   <a href="/" aria-label="Ariadne Home" class="sr-only">Ariadne Home</a>
   <div class="home-shell">
     <header class="home-header">
-      <div class="header-copy"><span class="eyebrow">ARIADNE HOME</span><h1>Good to see you, Warren.</h1><p>Your local assistant, vault, and daily starting point.</p></div>
       <div class="header-actions"><div id="header-health" class="header-health" aria-label="Local service health" aria-live="polite"><span class="header-health-loading">Checking...</span></div><div class="header-meta"><span id="health-updated" class="quiet header-updated">Checking...</span><span id="deployment-mode-badge" class="local-badge"><i></i> RUN · HERA</span><span class="local-badge"><i></i> LOCAL ONLY</span></div></div>
     </header>
     <main>
       <section class="home-layout">
-        <aside class="recent-column">
+        <aside class="home-left-column">
+          <section class="panel home-welcome">
+            <span class="eyebrow">ARIADNE HOME</span>
+            <h1>Good to see you, Warren.</h1>
+            <p>Your local assistant, vault, and daily starting point.</p>
+          </section>
+          <section class="panel ask-panel" aria-labelledby="ask-heading">
+            <div class="panel-heading compact"><div><span class="eyebrow">ASK ARIADNE</span><h2 id="ask-heading">Start a new chat</h2><p>Your question will open in a new page.</p></div><div class="ask-heading-actions"><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div></div></div>
+            <form id="ask-form" class="ask-form">
+              <label class="sr-only" for="ask-input">Ask Ariadne a question</label>
+              <div class="ask-input-row"><textarea id="ask-input" rows="1" maxlength="8000" placeholder="Ask Ariadne anything…"></textarea><button id="ask-submit" class="primary-button" type="submit">Ask <span>↗</span></button></div><div class="tool-row"><label class="attach-button" for="document-input">+ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
+              <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet" role="status">Ready.</span></div>
+            </form>
+            <button id="new-chat" class="new-chat-button left-new-chat" type="button">+ New Chat</button>
+          </section>
           <section class="panel recent-panel" aria-labelledby="recent-heading">
             <div class="panel-heading compact recent-heading">
               <div><span class="eyebrow">CHAT MEMORY</span><h2 id="recent-heading">Recent Chats</h2><p>Local conversations, kept for seven days.</p></div>
-              <button id="new-chat" class="new-chat-button" type="button">+ New Chat</button>
-            </div>
-            <div class="chat-actions" aria-label="Current chat actions">
-              <button id="save-chat" class="chat-action" type="button">Save to Inbox</button>
-              <button id="export-chat" class="chat-action" type="button">Export Markdown</button>
-              <button id="purge-chat" class="chat-action destructive" type="button">Purge Chat</button>
             </div>
             <div id="recent-chat-list" class="recent-chat-list" aria-live="polite"><div class="loading-row">Reading recent chats…</div></div>
           </section>
         </aside>
         <div class="home-main-column">
-          <section class="panel ask-panel" aria-labelledby="ask-heading">
-            <div class="panel-heading compact"><div><span class="eyebrow">CONCIERGE</span><h2 id="ask-heading">Ask Ariadne</h2><p>Ask a quick question, then return to your signals.</p></div><div class="ask-heading-actions"><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div><button id="collapse-chat" class="chat-collapse" type="button" hidden>Back to Signals</button></div></div>
-          <form id="ask-form" class="ask-form">
-            <label class="sr-only" for="ask-input">Ask Ariadne a question</label>
-            <div class="ask-input-row"><textarea id="ask-input" rows="1" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea><button id="ask-submit" class="primary-button" type="submit">Ask <span>↗</span></button></div><div class="tool-row"><label class="attach-button" for="document-input">+ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
-            <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet" role="status">Ready.</span></div><p class="empty-helper">Normal questions stay local. Ariadne can use your Vault when relevant.</p>
-          </form>
-          <div id="chat-log" class="chat-log" aria-live="polite"></div>
-          </section>
-          <section class="panel signals-panel" aria-labelledby="today-heading"><div class="panel-heading signals-heading"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Discover</h2><p>Curated locally from your connected sources.</p></div><div class="signals-heading-meta"><span id="signal-count" class="signal-count">Loading signals…</span><span class="panel-mark">◌</span></div></div><div id="today-list" class="signal-feed"><div class="loading-row">Reading local signals…</div></div></section>
+          <section class="panel signals-panel" aria-labelledby="today-heading"><div class="panel-heading signals-heading"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Discover</h2><p>Curated from your connected sources. Click any article to open a full analysis in a new chat.</p></div><div class="signals-heading-meta"><span id="signal-count" class="signal-count">Loading signals…</span><span class="panel-mark">◌</span></div></div><div id="today-list" class="signal-feed"><div class="loading-row">Reading local signals…</div></div></section>
         </div>
         <aside class="live-column" aria-label="Live information">
-          <section class="panel live-module"><span class="eyebrow">LOCAL WEATHER</span><h2>Weather</h2><p>Live weather will appear here when a local provider is configured.</p><span class="module-state">INACTIVE · NO FAKE DATA</span></section>
-          <section class="panel live-module"><span class="eyebrow">MARKETS</span><h2>Watchlist</h2><p>Market data is held until a clean local source is available.</p><span class="module-state">INACTIVE · NO FAKE DATA</span></section>
+          <section class="panel live-module weather-module" aria-labelledby="weather-heading">
+            <div class="information-heading"><div><span class="eyebrow">LOCAL WEATHER</span><h2 id="weather-heading">Weather</h2></div><button id="information-refresh" class="information-refresh" type="button" title="Refresh weather and markets">↻</button></div>
+            <div id="weather-state" class="information-state">Requesting local weather…</div>
+            <div id="weather-current" class="weather-current" hidden></div>
+            <div id="weather-forecast" class="weather-forecast" hidden></div>
+            <p id="weather-source" class="information-source" hidden></p>
+          </section>
+          <section class="panel live-module markets-module" aria-labelledby="markets-heading">
+            <div class="information-heading"><div><span class="eyebrow">MARKETS</span><h2 id="markets-heading">Last 7 sessions</h2></div><span id="market-updated" class="information-updated"></span></div>
+            <div id="market-cards" class="market-cards"><div class="information-state">Loading market data…</div></div>
+            <div id="oil-card" class="oil-card" hidden></div>
+            <p id="market-source" class="information-source" hidden></p>
+          </section>
           <section class="panel adaptive-panel" aria-labelledby="adaptive-heading"><div class="panel-heading compact"><div><span class="eyebrow">ADAPTIVE PROFILE</span><h2 id="adaptive-heading">What Ariadne is learning</h2><p>Evidence-backed preferences from your signal feedback.</p></div><a class="text-button" href="/configuration#adaptive-settings">Setup</a></div><div id="adaptive-summary" class="adaptive-summary"><div class="loading-row">Reading learned preferences…</div></div></section>
           <details class="panel diagnostics-panel" id="activity-details"><summary><span><span class="eyebrow">DIAGNOSTICS / HISTORY</span><strong>Episodic Capture</strong><small>Meaningful work, saves, warnings and failures.</small></span><span class="panel-mark">↻</span></summary><div id="activity-list" class="activity-list"><div class="loading-row">Reading activity…</div></div><p id="activity-empty" class="quiet empty-state" hidden>No meaningful activity recorded yet.</p></details>
         </aside>

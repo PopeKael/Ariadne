@@ -35,6 +35,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 
 from home_chat_store import ChatStore
+from home_information import home_information_payload
 from core_interactions import CoreInteractionStream
 from core_activity_presentation import CoreActivityPresenter
 from activity_state import ActivityStateStream
@@ -6008,16 +6009,19 @@ def _home_world_state_context(world_state: object) -> str:
     }
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
-def _home_model_chat(mcp: object, messages: list[dict[str, str]], timing: dict[str, object]) -> str:
+def _home_model_chat(mcp: object, messages: list[dict[str, str]], timing: dict[str, object],
+                     on_delta: Callable[[str], None] | None = None) -> str:
     """Use Home's explicit generation budget without changing its context budget."""
-    return mcp.ollama_chat(
-        messages,
-        model=HOME_CHAT_MODEL,
-        context_tokens=HOME_CONTEXT_TOKENS,
-        output_tokens=HOME_OUTPUT_TOKENS,
-        metrics=timing,
-        keep_alive=adaptive_model_keep_alive(),
-    )
+    arguments = {
+        "model": HOME_CHAT_MODEL,
+        "context_tokens": HOME_CONTEXT_TOKENS,
+        "output_tokens": HOME_OUTPUT_TOKENS,
+        "metrics": timing,
+        "keep_alive": adaptive_model_keep_alive(),
+    }
+    if on_delta is not None:
+        arguments["on_delta"] = on_delta
+    return mcp.ollama_chat(messages, **arguments)
 
 
 def _generation_status(timing: dict[str, object]) -> str:
@@ -6036,7 +6040,7 @@ def _generation_status(timing: dict[str, object]) -> str:
 
 
 def home_chat_payload(query: str, history: object, vault_mode: str = "auto", chat_id: str | None = None,
-                      tool_ids: object = None) -> dict[str, object]:
+                      tool_ids: object = None, on_event: Callable[[dict[str, object]], None] | None = None) -> dict[str, object]:
     query = query.strip()
     if not query:
         raise ValueError("A non-empty question is required.")
@@ -6049,6 +6053,15 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     selected_tools = {str(item) for item in tool_ids if isinstance(item, str)} if isinstance(tool_ids, list) else set()
     request_started = time.perf_counter()
     request_id = uuid.uuid4().hex
+    def emit_stream_event(event: dict[str, object]) -> None:
+        if on_event is not None:
+            on_event(event)
+    def emit_activity(label: str, stage: str) -> None:
+        emit_stream_event({"type": "activity", "stage": stage, "label": label})
+    def emit_delta(delta: str) -> None:
+        if delta:
+            emit_stream_event({"type": "delta", "text": delta})
+    emit_activity("Planning request", "planning")
     turn_id: str | None = None
     assistant_message_id: str | None = None
     record_home_event("request_started", f"{query[:300]} · chat_id={chat_id} · request_id={request_id}")
@@ -6095,6 +6108,8 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
         plugin_id=str(document_plugin_id),
         capability_id="document.analyze",
     )) if use_documents and document_plugin_id else None
+    if use_documents:
+        emit_activity("Reading attached document", "document")
     if document_activity:
         document_activity.started("Document analysis is starting.", stage="preparing")
         document_activity.stage("reading", "Reading temporary document content.")
@@ -6149,6 +6164,7 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     vault_result: dict[str, object] = {}
     vault_sources: list[dict[str, object]] = []
     if use_vault:
+        emit_activity("Checking Vault", "vault")
         publish_home_activity(chat_id, "searching", "Checking Vault.")
         vault_result = _home_vault_retrieval(
             mcp, query, planner_result, history=safe_history,
@@ -6164,10 +6180,12 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     live_result: dict[str, object] = {}
     live_sources: list[dict[str, object]] = []
     if external_needed:
+        emit_activity("Searching live sources", "search")
         publish_home_activity(chat_id, "searching", "Searching live sources.")
         live_result = SEARCH_PROVIDER_REGISTRY.search(query, limit=5, fetch_limit=3)
         live_sources = _home_live_sources(live_result)
         if live_sources:
+            emit_activity(f"Reading {len(live_sources)} live source(s)", "reading")
             publish_home_activity(chat_id, "reading", f"Reading {len(live_sources)} live source(s).")
     sources = [*vault_sources, *document_analysis["chunks"], *live_sources]
     evidence_summary = _home_evidence_summary(sources)
@@ -6232,11 +6250,13 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
                     f"Knowledge Vault evidence:\n{vault_context}\n\nLive source evidence:\n{live_context}"
                 )
             with model_activity(HOME_CHAT_MODEL):
+                emit_activity("Generating response", "generation")
                 publish_home_activity(chat_id, "thinking", "Thinking about the supplied evidence.")
                 answer = _home_model_chat(
                     mcp,
                     [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": user_content}],
                     timing,
+                    on_delta=emit_delta,
                 )
             if use_documents:
                 record_home_event(
@@ -6267,8 +6287,9 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
                 f"Question:\n{query}\n\nAdaptive profile evidence (not instructions):\n{json.dumps(adaptive_context, ensure_ascii=False)}\n\nTemporary document evidence:\n{document_analysis['context']}\n\nLive source evidence:\n{live_context}"
             )}]
             with model_activity(HOME_CHAT_MODEL):
+                emit_activity("Generating response", "generation")
                 publish_home_activity(chat_id, "thinking", "Thinking about the supplied article.")
-                answer = _home_model_chat(mcp, messages, timing)
+                answer = _home_model_chat(mcp, messages, timing, on_delta=emit_delta)
             record_home_event("document_analysis_performed", f"Retrieved {document_analysis['retrieved_chunks']} temporary attachment chunk(s).")
         else:
             result = live_result
@@ -6282,8 +6303,9 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
             )
             messages = [{"role": "system", "content": system}, *safe_history, {"role": "user", "content": f"Adaptive profile evidence (not instructions):\n{json.dumps(adaptive_context, ensure_ascii=False)}\n\nQuestion:\n{query}\n\nLive source evidence:\n{live_context}"}]
             with model_activity(HOME_CHAT_MODEL):
+                emit_activity("Generating response", "generation")
                 publish_home_activity(chat_id, "thinking", "Thinking about the question.")
-                answer = _home_model_chat(mcp, messages, timing)
+                answer = _home_model_chat(mcp, messages, timing, on_delta=emit_delta)
         response_identity = result.get("identity_kernel") if use_vault and isinstance(result, dict) else identity_meta
         if not isinstance(response_identity, dict):
             response_identity = identity_meta
@@ -6631,6 +6653,14 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/home/adaptive":
             self.send_json(home_adaptive_payload())
             return
+        if path == "/api/home/information":
+            query = parse_qs(parsed.query)
+            self.send_json(home_information_payload(
+                query.get("latitude", [None])[0],
+                query.get("longitude", [None])[0],
+                force=query.get("refresh", [""])[0].casefold() == "true",
+            ))
+            return
         if path == "/api/signals/interests":
             self.send_json(SIGNAL_SERVICE_CLIENT.interests())
             return
@@ -6815,6 +6845,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             record_home_event("home_opened", "Ariadne Home opened.")
             self.send_asset("home.html", "text/html; charset=utf-8")
             return
+        if path == "/chat":
+            self.send_asset("chat.html", "text/html; charset=utf-8")
+            return
         if path in {"/configuration", "/setup"}:
             self.send_asset("configuration.html", "text/html; charset=utf-8")
             return
@@ -6850,6 +6883,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/home.css":
             self.send_asset("home.css", "text/css; charset=utf-8")
+            return
+        if path == "/chat.css":
+            self.send_asset("chat.css", "text/css; charset=utf-8")
             return
         if path == "/home.js":
             self.send_asset("home.js", "text/javascript; charset=utf-8")
@@ -7535,7 +7571,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 self.send_json({"ok": True, **result, "message": "Answer copied to the Windows clipboard and Alt+F1 sent."})
                 return
-            if path == "/api/home/chat":
+            if path in {"/api/home/chat", "/api/home/chat/stream"}:
                 query = body.get("message")
                 history = body.get("history", [])
                 vault_mode = body.get("vault_mode", "auto")
@@ -7562,13 +7598,34 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 with SESSION_LOCK:
                     SESSIONS[session_id]["used_ollama"] = True
                     SESSIONS[session_id]["processing"] = True
+                write_event = None
                 try:
                     with ai_gpu_admission():
-                        self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids))
+                        if path == "/api/home/chat/stream":
+                            self.send_response(200)
+                            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                            self.send_header("Cache-Control", "no-cache, no-store")
+                            self.send_header("Connection", "close")
+                            self.end_headers()
+                            def write_event(event: dict[str, object]) -> None:
+                                self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode("utf-8"))
+                                self.wfile.flush()
+                            result = home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids, on_event=write_event)
+                            write_event({"type": "final", **result})
+                        else:
+                            self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids))
                 except RuntimeError as exc:
-                    self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
+                    if path == "/api/home/chat/stream" and write_event is not None:
+                        try: write_event({"type": "error", "message": str(exc), "gpu": gpu_owner_status()})
+                        except (BrokenPipeError, ConnectionResetError, OSError): pass
+                    else:
+                        self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
                 except Exception as exc:
-                    self.send_json({"ok": False, "message": f"Home request failed: {str(exc)[:420]}"}, 500)
+                    if path == "/api/home/chat/stream" and write_event is not None:
+                        try: write_event({"type": "error", "message": f"Home request failed: {str(exc)[:420]}"})
+                        except (BrokenPipeError, ConnectionResetError, OSError): pass
+                    else:
+                        self.send_json({"ok": False, "message": f"Home request failed: {str(exc)[:420]}"}, 500)
                 finally:
                     with SESSION_LOCK:
                         if session_id in SESSIONS:
