@@ -16,16 +16,44 @@ Each run is either:
 - **STANDARD INCOMPATIBLE** — the model or supplied source cannot satisfy the
   recipe. The run must not silently lower context, output, or reasoning mode.
 
-The recipe supplies **TEST INSTRUCTIONS** and Test 1 restores its canonical
-two-file **SOURCE MATERIAL** bundle automatically. The bundle is the Ten Years
-in Thailand transcript plus the YouTube Package instruction document. The
-operator can inspect, reorder, or remove files for an Adapted run, but a New
-Run restores the canonical pair without another file chooser operation.
+The recipe supplies **TEST INSTRUCTIONS** from the canonical `2. YouTube
+Package.md` file. Test 1 restores its unchanged two-file bundle automatically:
+`1. Ten Years in Thailand.md` is **SOURCE MATERIAL** and `2. YouTube
+Package.md` is **TEST INSTRUCTIONS**. The model receives each document once in
+this exact assembly:
+
+```text
+TEST INSTRUCTIONS
+<exact content of 2. YouTube Package.md>
+
+SOURCE MATERIAL
+<exact content of 1. Ten Years in Thailand.md>
+```
+
+New Run and Reset test defaults restore both files. A Test 1 run is STANDARD
+only when the canonical filename, role, order, SHA-256, and numeric parameters
+all match; a changed, replaced, missing, or reordered file is
+STANDARD INCOMPATIBLE rather than silently STANDARD.
+
+## Benchmark generations and history
+
+Test 1's current generation is identified deterministically from its test case,
+canonical document filename/role/order/SHA-256 identity, and canonical numeric
+parameters. New run records store that generation ID and a separate benchmark
+status: **CANONICAL** for an exact match, **CURRENT / ADAPTED** for a run made
+under the current generation with deliberate parameter changes, and **LEGACY /
+PRE-FREEZE** for records without the current generation identity. The existing
+STANDARD, ADAPTED, and STANDARD INCOMPATIBLE classification remains separate.
+
+The history view defaults to **Current benchmark**. **Legacy** and **All**
+filters keep earlier records available for forensic reference without including
+them in normal comparison views. Old JSONL records are never rewritten or
+deleted; their legacy status is derived when history is read.
 
 ## Test 1: 10 Years in Thailand / YouTube Packaging
 
 The canonical recipe uses context 16,384, requested output 4,096, temperature
-0, top-p 0.9, seed 42, one Markdown source, and fresh text-only execution with
+0, top-p 0.9, seed 42, two canonical Markdown files, and fresh text-only execution with
 web, tools, Vault retrieval, memory, and conversation history disabled. The
 recipe records grounding, instruction following, completeness, and creative
 synthesis for later human review.
@@ -51,9 +79,10 @@ host acknowledgement is not presented as proof of activity.
 
 ## Reset and export rules
 
-**New run** clears source files, live output, and the current result while
-preserving the selected model and recipe. **Reset test defaults** restores the
-recipe's canonical parameters and preserves history. Completed runs can export
+**New run** clears live output and the current result, then restores Test 1's
+canonical files while preserving the selected model and recipe. **Reset test
+defaults** restores the recipe's canonical parameters and both canonical files
+while preserving history. Completed runs can export
 the final response or a complete Markdown record containing the recipe,
 capabilities, source hashes, instructions, effective parameters, thinking,
 answer, and telemetry.

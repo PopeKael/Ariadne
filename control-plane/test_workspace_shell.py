@@ -40,6 +40,7 @@ class WorkspaceShellTests(unittest.TestCase):
         sequence = (ROOT / "sequence.html").read_text(encoding="utf-8")
         workshop = (ROOT / "workshop.html").read_text(encoding="utf-8")
         model_lab = (ROOT / "model-lab.html").read_text(encoding="utf-8")
+        model_lab_js = (ROOT / "model-lab.js").read_text(encoding="utf-8")
         plugins = (ROOT / "plugins.html").read_text(encoding="utf-8")
         for label in ("Home", "Create", "Tools", "Workshop", "Model Lab", "Setup", "System"):
             self.assertIn(f'"{label}"', shell)
@@ -85,6 +86,13 @@ class WorkspaceShellTests(unittest.TestCase):
         self.assertIn('id="lab-context"', model_lab)
         self.assertIn('id="lab-run"', model_lab)
         self.assertIn("Reviewable history", model_lab)
+        self.assertIn("two canonical Markdown files", model_lab)
+        self.assertIn("unchanged canonical pair and order", model_lab)
+        self.assertIn("modelLabExportName(latestRun, \"Answer\")", model_lab_js)
+        self.assertIn("modelLabExportName(latestRun, \"Full Run\")", model_lab_js)
+        for field in ("recorded_at", "filenamePart", "created:", "provider_runtime:", "reasoning_mode:", "run_id:", "ensureHistoryControls", "Current benchmark", "LEGACY / PRE-FREEZE"):
+            self.assertIn(field, model_lab_js)
+        self.assertNotIn("ariadne-${latestRun.run_id.slice(0, 8)}", model_lab_js)
         model_lab_css = (ROOT / "model-lab.css").read_text(encoding="utf-8")
         self.assertIn(".benchmark-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)", model_lab_css)
         self.assertIn("overflow-wrap:anywhere", model_lab_css)

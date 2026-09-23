@@ -42,14 +42,20 @@ discrete levels remain disabled.
 
 The harness sends an explicit model, recipe, source order, and Ollama options to
 native Ollama without changing Home routing or enabling web, tools, Vault
-retrieval, memory, or conversation history. Streaming keeps thinking and final
-response in separate panels, and each run records the exact instructions,
-source metadata and hashes, capability snapshot, context estimate, effective
-configuration, output, telemetry, provider timing, and Rust/avatar transition
+retrieval, memory, or conversation history. Test 1's built-in pair is
+validated by canonical filename, role, order, and SHA-256 before a run is
+STANDARD, and the assembled prompt contains the instruction file once followed
+by the source file once. Streaming keeps thinking and final response in
+separate panels, and each run records the exact instructions, source metadata
+and hashes, capability snapshot, context estimate, effective configuration,
+output, telemetry, provider timing, and Rust/avatar transition
 acknowledgements in the append-only
 `control-plane/runtime/model-lab-runs.jsonl` history. See
 [`MODEL-LAB-BENCHMARK-HARNESS.md`](MODEL-LAB-BENCHMARK-HARNESS.md) for the
-operator and acceptance contract.
+operator and acceptance contract. The history layer derives a deterministic
+benchmark generation ID from the frozen fixture identity and canonical numeric
+parameters, stores it on new runs, and presents current-generation and
+pre-freeze records separately without rewriting the append-only history.
 
 ### Synology deployment
 

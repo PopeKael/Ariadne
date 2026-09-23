@@ -114,37 +114,10 @@ MODEL_LAB_FIXTURE_ROOT = ROOT / "model-lab-fixtures"
 MODEL_LAB_RUN_LOCK = threading.Lock()
 MODEL_LAB_REASONING_LEVELS = ("off", "low", "medium", "high", "max")
 MODEL_LAB_REASONING_ALIASES = {"standard": "off", "reasoning": "low", "deep": "high"}
-MODEL_LAB_YOUTUBE_PACKAGING_INSTRUCTIONS = """Read the supplied canonical source bundle carefully. Use 1. Ten Years in Thailand.md as the transcript and 2. YouTube Package.md as the detailed packaging brief, then create the complete YouTube packaging for Chanya & Wazza – Life in Thailand.
-
-This is authentic everyday suburban Thai life from an Australian who has lived in Thailand long-term with his Thai partner. It is not primarily a tourist, food-review, Top 10 Thailand, or expat-outrage channel. Keep the tone conversational, personal, reflective, grounded, and story-first. Treat the two supplied files as the complete test fixture. Do not invent events or claims not supported by the transcript.
-
-Return these sections:
-
-### TITLE OPTIONS
-Provide 7 natural YouTube title options, each under 100 characters and without emojis. After them, identify the strongest title and briefly explain why.
-
-### DESCRIPTION
-Write a 150–250 word story-first description. Include the real emotional thread, relevant Thailand/retirement context, and the channel's authentic tone. Do not use generic promotional filler. End with:
-💬 Join our Community Discord
-https://discord.gg/PFENZwaqZy
-
-❤️ Support us on Patreon
-https://www.patreon.com/c/chanyawazza
-
-### CHAPTERS
-Create meaningful YouTube chapters in MM:SS format. The first must be 00:00 and chapters should generally be 2–3 minutes apart.
-
-### HASHTAGS
-Provide exactly 10 relevant hashtags on one comma-separated line, each beginning with #.
-
-### YOUTUBE TAGS
-Provide one comma-separated line below 500 characters. Include relevant baseline tags such as thailand, bangkok, chanya and wazza, aussie living in thailand, aussie expat, and warren gerdes.
-
-### THUMBNAIL / SPLASH TEXT
-Provide 3 short, readable options of about 2–5 words each.
-
-### STORY ANALYSIS
-Briefly assess the central story, the hook, the strongest section, and anything that could confuse or weaken the story."""
+MODEL_LAB_TEST_01_CANONICAL_DOCUMENTS = (
+    {"order": 1, "name": "1. Ten Years in Thailand.md", "fixture": "test-01/1. Ten Years in Thailand.md", "role": "source material", "sha256": "5c644d1f1917fbbb515c0796bd6ccf32f1123499de3ad3bc38760cbb3743202c"},
+    {"order": 2, "name": "2. YouTube Package.md", "fixture": "test-01/2. YouTube Package.md", "role": "test instructions", "sha256": "73ce8076796de542e18c5831939fcb0e764db7a33fb454a7fd6861baf83aee03"},
+)
 MODEL_LAB_TEST_CASES = [
     {
         "id": "test-01",
@@ -154,15 +127,11 @@ MODEL_LAB_TEST_CASES = [
         "comparison_key": "youtube-packaging-ten-years-thailand",
         "required_capabilities": ["text"],
         "canonical_parameters": {"context_tokens": 16384, "output_tokens": 4096, "temperature": 0.0, "top_p": 0.9, "seed": 42},
-        "benchmark_instructions": MODEL_LAB_YOUTUBE_PACKAGING_INSTRUCTIONS,
         "source_material": {
             "type": "markdown",
             "count": 2,
             "description": "The canonical transcript and YouTube packaging instruction files are built into Test 1 and restored for each new run.",
-            "default_documents": [
-                {"name": "1. Ten Years in Thailand.md", "fixture": "test-01/1. Ten Years in Thailand.md", "role": "transcript"},
-                {"name": "2. YouTube Package.md", "fixture": "test-01/2. YouTube Package.md", "role": "test instructions"},
-            ],
+            "default_documents": [dict(item) for item in MODEL_LAB_TEST_01_CANONICAL_DOCUMENTS],
         },
         "scoring": {"dimensions": ["grounding", "instruction_following", "completeness", "creative_synthesis"], "manual_review": True},
     },
@@ -184,6 +153,73 @@ MODEL_LAB_TEST_CASES = [
 ]
 MODEL_LAB_TEST_CASE_IDS = {item["id"] for item in MODEL_LAB_TEST_CASES}
 MODEL_LAB_TEST_CASES_BY_ID = {item["id"]: item for item in MODEL_LAB_TEST_CASES}
+
+
+def model_lab_generation_definition(test_case_id: str) -> dict[str, object] | None:
+    """Return the stable definition whose digest identifies a benchmark generation."""
+    normalized_id = str(test_case_id).casefold()
+    test_case = MODEL_LAB_TEST_CASES_BY_ID.get(normalized_id)
+    if not test_case:
+        return None
+    specifications = MODEL_LAB_TEST_01_CANONICAL_DOCUMENTS if normalized_id == "test-01" else tuple(test_case.get("source_material", {}).get("default_documents", []))
+    documents = [
+        {
+            "order": int(item.get("order", order)),
+            "name": str(item.get("name") or ""),
+            "role": str(item.get("role") or ""),
+            "sha256": str(item.get("sha256") or "").casefold(),
+        }
+        for order, item in enumerate(specifications, start=1)
+    ]
+    return {
+        "test_case_id": normalized_id,
+        "canonical_parameters": dict(test_case.get("canonical_parameters") or {}),
+        "documents": documents,
+    }
+
+
+def model_lab_generation_id(test_case_id: str) -> str | None:
+    definition = model_lab_generation_definition(test_case_id)
+    if definition is None:
+        return None
+    serialized = json.dumps(definition, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return f"mlg-{hashlib.sha256(serialized.encode('utf-8')).hexdigest()[:16]}"
+
+
+def model_lab_generation_metadata(test_case_id: str) -> dict[str, object] | None:
+    definition = model_lab_generation_definition(test_case_id)
+    if definition is None:
+        return None
+    return {"id": model_lab_generation_id(test_case_id), "definition": definition}
+
+
+def _model_lab_run_matches_generation(record: dict[str, object], test_case_id: str) -> bool:
+    definition = model_lab_generation_definition(test_case_id)
+    if not definition:
+        return False
+    source_documents = record.get("source_documents")
+    if not isinstance(source_documents, list) or len(source_documents) != len(definition["documents"]):
+        return False
+    for actual, expected in zip(source_documents, definition["documents"]):
+        if not isinstance(actual, dict):
+            return False
+        if (actual.get("order"), actual.get("name"), str(actual.get("role") or "").casefold(), str(actual.get("sha256") or "").casefold()) != (
+            expected["order"], expected["name"], expected["role"], expected["sha256"]
+        ):
+            return False
+    effective = record.get("effective")
+    if not isinstance(effective, dict):
+        return False
+    return all(effective.get(key) == value for key, value in definition["canonical_parameters"].items())
+
+
+def model_lab_benchmark_status(record: dict[str, object]) -> str:
+    """Classify history independently from STANDARD/ADAPTED run classification."""
+    test_case_id = str(record.get("test_case_id") or "ad-hoc").casefold()
+    current_generation_id = model_lab_generation_id(test_case_id)
+    if current_generation_id is None or record.get("benchmark_generation_id") != current_generation_id:
+        return "LEGACY / PRE-FREEZE"
+    return "CANONICAL" if _model_lab_run_matches_generation(record, test_case_id) else "CURRENT / ADAPTED"
 MODEL_LAB_PROFILES = {
     "long-document": {
         "label": "Long document · controlled",
@@ -1628,7 +1664,9 @@ def _model_lab_run_rows(limit: int = 50) -> list[dict[str, object]]:
                 except (TypeError, ValueError, json.JSONDecodeError):
                     continue
                 if isinstance(value, dict):
-                    rows.append(value)
+                    row = dict(value)
+                    row["benchmark_status"] = model_lab_benchmark_status(row)
+                    rows.append(row)
     except OSError:
         return []
     return rows[-max(1, min(int(limit), 100)):][::-1]
@@ -1646,23 +1684,27 @@ def _record_model_lab_run(record: dict[str, object]) -> None:
 
 def model_lab_fixture_documents(test_case_id: str) -> tuple[list[dict[str, object]], str | None]:
     """Load the canonical local source bundle for a recipe without a file chooser."""
-    test_case = MODEL_LAB_TEST_CASES_BY_ID.get(str(test_case_id).casefold())
+    normalized_id = str(test_case_id).casefold()
+    test_case = MODEL_LAB_TEST_CASES_BY_ID.get(normalized_id)
     if not test_case:
         return [], "The selected benchmark has no canonical source bundle."
+    specifications = MODEL_LAB_TEST_01_CANONICAL_DOCUMENTS if normalized_id == "test-01" else tuple(test_case.get("source_material", {}).get("default_documents", []))
     documents: list[dict[str, object]] = []
-    for order, specification in enumerate(test_case.get("source_material", {}).get("default_documents", []), start=1):
+    for order, specification in enumerate(specifications, start=1):
         relative = Path(str(specification.get("fixture") or ""))
         path = (MODEL_LAB_FIXTURE_ROOT / relative).resolve()
         try:
             path.relative_to(MODEL_LAB_FIXTURE_ROOT.resolve())
-            content = path.read_text(encoding="utf-8")
+            raw_content = path.read_bytes()
+            content = raw_content.decode("utf-8")
         except (OSError, UnicodeError, ValueError):
             return [], f"The canonical benchmark source is unavailable: {specification.get('name', relative.name)}."
         documents.append({
             "order": order,
             "name": str(specification.get("name") or path.name),
             "size": path.stat().st_size,
-            "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            "sha256": hashlib.sha256(raw_content).hexdigest(),
+            "canonical_sha256": str(specification.get("sha256") or ""),
             "type": "text/markdown",
             "type_label": "TEXT",
             "role": str(specification.get("role") or "source material"),
@@ -1670,6 +1712,22 @@ def model_lab_fixture_documents(test_case_id: str) -> tuple[list[dict[str, objec
             "fixture": str(relative).replace("\\", "/"),
         })
     return documents, None
+
+
+def _model_lab_test_case_payload(test_case: dict[str, object]) -> dict[str, object]:
+    """Expose Test 1 instructions from its fixture, never from duplicated server text."""
+    payload = dict(test_case)
+    source_material = dict(test_case.get("source_material") or {})
+    default_documents = [dict(item) for item in source_material.get("default_documents", [])]
+    source_material["default_documents"] = default_documents
+    documents, error = model_lab_fixture_documents(str(test_case.get("id") or ""))
+    if not error:
+        instruction = next((item["content"] for item in documents if item.get("role") == "test instructions"), "")
+        if instruction:
+            payload["benchmark_instructions"] = instruction
+    payload["benchmark_generation_id"] = model_lab_generation_id(str(test_case.get("id") or ""))
+    payload["source_material"] = source_material
+    return payload
 
 
 def model_lab_payload() -> dict[str, object]:
@@ -1690,7 +1748,12 @@ def model_lab_payload() -> dict[str, object]:
             "keep_alive": "5m",
         },
         "reasoning_levels": [{"id": level, "label": level.upper()} for level in MODEL_LAB_REASONING_LEVELS],
-        "test_cases": MODEL_LAB_TEST_CASES,
+        "test_cases": [_model_lab_test_case_payload(item) for item in MODEL_LAB_TEST_CASES],
+        "benchmark_generations": {
+            test_case_id: model_lab_generation_metadata(test_case_id)
+            for test_case_id in MODEL_LAB_TEST_CASE_IDS
+            if model_lab_generation_metadata(test_case_id) is not None
+        },
         "runs": _model_lab_run_rows(),
     }
 
@@ -1769,7 +1832,7 @@ def _model_lab_prepare(body: dict[str, object]) -> tuple[dict[str, object] | Non
     if not isinstance(prefill, str):
         return None, ({"ok": False, "message": "Source material must be text."}, 400)
     prefill = prefill.strip()
-    instructions = test_case["benchmark_instructions"] if test_case else prompt
+    instructions = test_case.get("benchmark_instructions", prompt) if test_case else prompt
     if len(instructions) > 120_000 or len(prefill) > 120_000:
         return None, ({"ok": False, "message": "Benchmark instructions and source material are limited to 120,000 characters each."}, 400)
     try:
@@ -1801,9 +1864,32 @@ def _model_lab_prepare(body: dict[str, object]) -> tuple[dict[str, object] | Non
             size = max(0, int(item.get("size") or 0))
         except (TypeError, ValueError):
             return None, ({"ok": False, "message": "Attached source size is invalid."}, 400)
-        documents.append({"order": len(documents) + 1, "name": name, "size": size, "sha256": str(item.get("sha256") or "")[:64]})
+        documents.append({
+            "order": len(documents) + 1,
+            "name": name,
+            "size": size,
+            "sha256": str(item.get("sha256") or "")[:64].casefold(),
+            "role": str(item.get("role") or "").strip().casefold(),
+        })
     if test_case and test_case["source_material"]["count"] != len(documents):
         return None, ({"ok": False, "classification": "STANDARD INCOMPATIBLE", "message": f"{test_case['label']} requires exactly {test_case['source_material']['count']} source file(s); received {len(documents)}."}, 409)
+    if test_case_id == "test-01":
+        fixture_documents, fixture_error = model_lab_fixture_documents(test_case_id)
+        expected_documents = list(MODEL_LAB_TEST_01_CANONICAL_DOCUMENTS)
+        if fixture_error or len(fixture_documents) != len(expected_documents) or any(
+            (actual.get("order"), actual.get("name"), actual.get("role"), actual.get("sha256"))
+            != (expected.get("order"), expected.get("name"), expected.get("role"), expected.get("sha256"))
+            for actual, expected in zip(fixture_documents, expected_documents)
+        ):
+            return None, ({"ok": False, "classification": "STANDARD INCOMPATIBLE", "message": "Test 1 canonical fixture identity changed; the built-in files no longer match their canonical filename, role, order, and SHA-256 manifest."}, 409)
+        if any(
+            (actual.get("order"), actual.get("name"), actual.get("role"), actual.get("sha256"))
+            != (expected.get("order"), expected.get("name"), expected.get("role"), expected.get("sha256"))
+            for actual, expected in zip(documents, expected_documents)
+        ):
+            return None, ({"ok": False, "classification": "STANDARD INCOMPATIBLE", "message": "Test 1 requires the unchanged canonical files in canonical order: Document 1 is SOURCE MATERIAL and Document 2 is TEST INSTRUCTIONS."}, 409)
+        instructions = next(item["content"] for item in fixture_documents if item.get("role") == "test instructions")
+        prefill = "\n\n".join(str(item["content"]) for item in fixture_documents if item.get("role") == "source material")
     label = str(body.get("label") or (test_case["name"] if test_case else profile["label"])).strip()[:160]
     comparison_key = str(body.get("comparison_key") or (test_case["comparison_key"] if test_case else label or profile_id)).strip()[:160]
     catalog = ollama_catalog()
@@ -1898,6 +1984,10 @@ def _model_lab_prepare(body: dict[str, object]) -> tuple[dict[str, object] | Non
         "runtime": "native Ollama",
         "reasoning_level": reasoning_level,
     }
+    generation_id = model_lab_generation_id(test_case_id)
+    if generation_id:
+        record["benchmark_generation_id"] = generation_id
+    record["benchmark_status"] = model_lab_benchmark_status(record)
     presentation = {"rust_host": host_status(), "transitions": []}
     record["presentation"] = presentation
     return {
