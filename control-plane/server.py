@@ -35,6 +35,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 
 from home_chat_store import ChatStore
+from home_information import home_information_payload
 from core_interactions import CoreInteractionStream
 from core_activity_presentation import CoreActivityPresenter
 from activity_state import ActivityStateStream
@@ -6617,6 +6618,18 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/home/health":
             self.send_json(home_health_payload())
+            return
+        if path == "/api/home/information":
+            query = parse_qs(parsed.query)
+            try:
+                latitude_raw = query.get("lat", [None])[0]
+                longitude_raw = query.get("lon", [None])[0]
+                latitude = float(latitude_raw) if latitude_raw not in (None, "") else None
+                longitude = float(longitude_raw) if longitude_raw not in (None, "") else None
+            except (TypeError, ValueError):
+                self.send_json({"ok": False, "message": "lat and lon must be numeric coordinates."}, 400)
+                return
+            self.send_json(home_information_payload(latitude, longitude))
             return
         if path == "/api/home/activity":
             self.send_json(home_activity_payload())
