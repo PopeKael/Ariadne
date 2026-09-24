@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from home_chat_store import ChatStore, isoformat  # noqa: E402
+from home_chat_store import ChatStore, isoformat, title_from_document  # noqa: E402
 
 
 class HomeChatStoreTests(unittest.TestCase):
@@ -21,6 +21,46 @@ class HomeChatStoreTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_document_title_uses_metadata_and_is_not_replaced_by_later_turns(self):
+        self.assertEqual(
+            title_from_document({"filename": "article.md", "metadata": {"title": "Metadata title"}}),
+            "Metadata title",
+        )
+        self.assertEqual(
+            title_from_document({"filename": "quarterly_report-v2.md", "metadata": {}}),
+            "quarterly report v2",
+        )
+        chat = self.store.create()
+        turn_id, _ = self.store.begin_turn(
+            chat["chat_id"], "Summarise this", "qwen3.5:9b", {},
+            title="The supplied document title",
+        )
+        self.store.complete_turn(
+            chat["chat_id"], turn_id, "The first answer.", model="qwen3.5:9b",
+            used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={},
+        )
+        first = self.store.get(chat["chat_id"])
+        self.assertEqual(first["title"], "The supplied document title")
+        later_turn, _ = self.store.begin_turn(chat["chat_id"], "A later question", "qwen3.5:9b", {}, title="Later title")
+        self.store.complete_turn(
+            chat["chat_id"], later_turn, "The later answer.", model="qwen3.5:9b",
+            used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={},
+        )
+        self.assertEqual(self.store.get(chat["chat_id"])["title"], "The supplied document title")
+
+    def test_no_document_title_uses_first_exchange_after_completion(self):
+        chat = self.store.create()
+        turn_id, _ = self.store.begin_turn(chat["chat_id"], "What changed in the article?", "qwen3.5:9b", {})
+        self.store.complete_turn(
+            chat["chat_id"], turn_id, "The article explains the major policy change.", model="qwen3.5:9b",
+            used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={},
+        )
+        self.assertIn("What changed in the article", self.store.get(chat["chat_id"])["title"])
+        titled = self.store.title_from_first_exchange(chat["chat_id"])
+        self.assertIn("What changed in the article", titled["title"])
+        self.assertIn("The article explains", titled["title"])
+        self.assertEqual(self.store.title_from_first_exchange(chat["chat_id"])["title"], titled["title"])
 
     def test_user_and_pending_assistant_are_written_before_generation(self):
         chat = self.store.create({"id": "ariadne", "version": "1.1.0"})
@@ -126,13 +166,18 @@ class HomeChatStoreTests(unittest.TestCase):
     def test_recent_list_hides_empty_records_without_touching_archived_or_inbox_copies(self):
         active = self.store.create()
         inbox = self.store.create()
+        inbox_turn, _ = self.store.begin_turn(inbox["chat_id"], "Inbox question", "qwen3.5:9b", {})
+        self.store.complete_turn(
+            inbox["chat_id"], inbox_turn, "Inbox answer", model="qwen3.5:9b",
+            used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={},
+        )
         self.store.save_to_inbox(inbox["chat_id"])
         archived = self.store.create()
         self.store.close_and_archive(archived["chat_id"])
 
         visible = {item["chat_id"] for item in self.store.list_recent()}
         self.assertNotIn(active["chat_id"], visible)
-        self.assertNotIn(inbox["chat_id"], visible)
+        self.assertIn(inbox["chat_id"], visible)
         self.assertNotIn(archived["chat_id"], visible)
         inbox_record = self.store.get(inbox["chat_id"])
         archived_record = self.store.get(archived["chat_id"])
@@ -143,6 +188,11 @@ class HomeChatStoreTests(unittest.TestCase):
         removable = self.store.create()
         protected = self.store.create()
         inbox = self.store.create()
+        inbox_turn, _ = self.store.begin_turn(inbox["chat_id"], "Inbox question", "qwen3.5:9b", {})
+        self.store.complete_turn(
+            inbox["chat_id"], inbox_turn, "Inbox answer", model="qwen3.5:9b",
+            used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={},
+        )
         self.store.save_to_inbox(inbox["chat_id"])
         archived = self.store.create()
         _, archive_path = self.store.close_and_archive(archived["chat_id"])
@@ -177,7 +227,10 @@ class HomeChatStoreTests(unittest.TestCase):
 
     def test_save_to_inbox_is_idempotent_and_export_preserves_transcript_order(self):
         chat = self.store.create()
-        _, initial_inbox_path = self.store.save_to_inbox(chat["chat_id"])
+        with self.assertRaisesRegex(ValueError, "cannot be saved"):
+            self.store.save_to_inbox(chat["chat_id"])
+        with self.assertRaisesRegex(ValueError, "cannot be exported"):
+            self.store.export_markdown(chat["chat_id"])
         turn_id, _ = self.store.begin_turn(chat["chat_id"], "First saved question", "qwen3.5:9b", {})
         self.store.complete_turn(
             chat["chat_id"], turn_id, "First saved answer", model="qwen3.5:9b", used_vault=False,
@@ -185,13 +238,12 @@ class HomeChatStoreTests(unittest.TestCase):
         )
         first_record, inbox_path = self.store.save_to_inbox(chat["chat_id"])
         second_record, same_path = self.store.save_to_inbox(chat["chat_id"])
-        self.assertEqual(initial_inbox_path, inbox_path)
         self.assertEqual(inbox_path, same_path)
         self.assertEqual(second_record["inbox_path"], inbox_path)
         self.assertTrue((self.vault / inbox_path).is_file())
         self.assertEqual(len(list((self.vault / "Inbox").glob("*.md"))), 1)
         markdown, filename = self.store.export_markdown(chat["chat_id"])
-        self.assertTrue(filename.startswith("First saved question_"))
+        self.assertTrue(filename.startswith("First saved question"))
         self.assertTrue(filename.endswith(f"_{chat['chat_id'][:8]}.md"))
         self.assertLess(markdown.index("First saved question"), markdown.index("First saved answer"))
         self.assertIn("saved_to_inbox: true", (self.vault / inbox_path).read_text(encoding="utf-8"))

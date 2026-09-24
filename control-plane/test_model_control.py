@@ -102,7 +102,7 @@ class ModelControlTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(payload["ok"])
         unload.assert_called_once_with("old-model")
-        preload.assert_called_once_with("new-model")
+        preload.assert_called_once_with("new-model", keep_alive=server.HOME_MODEL_KEEP_ALIVE)
         inference = save.call_args.kwargs["inference"]
         self.assertEqual(inference["routes"]["home_chat"], "ollama-desktop")
         self.assertEqual(inference["routes"]["planner"], "ollama-planner")

@@ -43,6 +43,42 @@ def title_from_message(message: str) -> str:
     return cleaned[:80].rstrip() or "Ariadne Home chat"
 
 
+def _clean_title(value: object, limit: int = 80) -> str:
+    cleaned = " ".join(str(value or "").replace("\r", " ").replace("\n", " ").split())
+    return cleaned[:limit].rstrip(" .!?-:")
+
+
+def _title_fragment(value: object, limit: int = 52) -> str:
+    cleaned = _clean_title(value, 240)
+    first_sentence = re.split(r"(?<=[.!?])\s+", cleaned, maxsplit=1)[0]
+    return first_sentence[:limit].rstrip(" .!?-:")
+
+
+def title_from_document(document: object) -> str | None:
+    if not isinstance(document, dict):
+        return None
+    metadata = document.get("metadata") if isinstance(document.get("metadata"), dict) else {}
+    metadata_title = _clean_title(metadata.get("title"), 80)
+    if metadata_title:
+        return metadata_title
+    filename = str(document.get("filename") or "").replace("\\", "/")
+    stem = Path(filename).stem
+    stem = re.sub(r"__signal-[A-Za-z0-9_-]+$", "", stem)
+    stem = stem.replace("_", " ").replace("-", " ")
+    return _title_fragment(stem, 80) or None
+
+
+def title_from_exchange(message: object, answer: object) -> str | None:
+    question = _title_fragment(message)
+    takeaway = _title_fragment(answer)
+    if not question:
+        return takeaway or None
+    if not takeaway:
+        return question
+    available = max(1, 80 - len(question) - 3)
+    return f"{question} — {takeaway[:available].rstrip(' .!?-:')}"
+
+
 def _meaningful_messages(messages: object) -> list[dict[str, Any]]:
     if not isinstance(messages, list):
         return []
@@ -184,7 +220,7 @@ class ChatStore:
         return {
             "schema_version": CHAT_SCHEMA_VERSION,
             "chat_id": chat_id,
-            "title": "Ariadne Home chat",
+            "title": None,
             "status": "active",
             "started_at": timestamp,
             "last_activity_at": timestamp,
@@ -236,7 +272,7 @@ class ChatStore:
             return history[-max(1, limit):]
 
     def begin_turn(self, chat_id: str, message: str, model: str,
-                   identity_kernel: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+                   identity_kernel: dict[str, Any], title: str | None = None) -> tuple[str, dict[str, Any]]:
         with _process_lock(self.lock_path):
             record = self._load_locked(chat_id)
             if not record or record.get("status") != "active":
@@ -246,8 +282,8 @@ class ChatStore:
             turn_id = uuid.uuid4().hex
             user_message_id = uuid.uuid4().hex
             assistant_message_id = uuid.uuid4().hex
-            if not record.get("messages"):
-                record["title"] = title_from_message(message)
+            if not record.get("messages") and title:
+                record["title"] = _clean_title(title, 80)
             record["last_activity_at"] = timestamp
             record["expires_at"] = isoformat(now + timedelta(days=RETENTION_DAYS))
             record["model"] = model
@@ -276,6 +312,48 @@ class ChatStore:
             ])
             self._write_locked(record)
             return turn_id, record
+
+    def _title_first_exchange_locked(self, record: dict[str, Any]) -> None:
+        if record.get("title"):
+            return
+        messages = record.get("messages") if isinstance(record.get("messages"), list) else []
+        first_user = next(
+            (
+                item for item in messages
+                if isinstance(item, dict)
+                and item.get("role") == "user"
+                and isinstance(item.get("content"), str)
+                and item.get("content", "").strip()
+            ),
+            None,
+        )
+        first_answer = next(
+            (
+                item for item in messages
+                if isinstance(item, dict)
+                and item.get("role") == "assistant"
+                and item.get("state") == "complete"
+                and isinstance(item.get("content"), str)
+                and item.get("content", "").strip()
+            ),
+            None,
+        )
+        if not first_user or not first_answer:
+            return
+        title = title_from_exchange(first_user.get("content"), first_answer.get("content"))
+        if title:
+            record["title"] = title
+
+    def title_from_first_exchange(self, chat_id: str) -> dict[str, Any] | None:
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record:
+                return record
+            before = record.get("title")
+            self._title_first_exchange_locked(record)
+            if record.get("title") != before:
+                self._write_locked(record)
+            return record
 
     def _find_assistant_locked(self, record: dict[str, Any], turn_id: str) -> dict[str, Any]:
         for item in reversed(record["messages"]):
@@ -310,6 +388,7 @@ class ChatStore:
                     if isinstance(item, str) and item.strip()
                 ],
             })
+            self._title_first_exchange_locked(record)
             record["last_activity_at"] = timestamp
             record["expires_at"] = isoformat(now + timedelta(days=RETENTION_DAYS))
             self._write_locked(record)
@@ -587,6 +666,8 @@ class ChatStore:
             record = self._load_locked(chat_id)
             if not record:
                 raise ValueError("Temporary Home chat not found.")
+            if not _meaningful_messages(record.get("messages")):
+                raise ValueError("Empty chats cannot be saved to Inbox.")
             now = self.now_fn()
             path = self._inbox_path(record)
             _atomic_bytes(path, self._format_markdown(record, now, saved_to_inbox=True).encode("utf-8"))
@@ -600,6 +681,8 @@ class ChatStore:
             record = self._load_locked(chat_id)
             if not record:
                 raise ValueError("Temporary Home chat not found.")
+            if not _meaningful_messages(record.get("messages")):
+                raise ValueError("Empty chats cannot be exported.")
             now = self.now_fn()
             filename = f"{_safe_filename(str(record.get('title') or 'chat'))}_{chat_id[:8]}.md"
             return self._format_markdown(record, now), filename

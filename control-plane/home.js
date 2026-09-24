@@ -13,17 +13,21 @@ function chatUrl({chatId = "", prompt = "", signalId = "", vaultMode = "", toolI
   return url.pathname + url.search;
 }
 
-async function openFreshChat({prompt = "", signalId = ""} = {}) {
-  if (!state.sessionId && !(await startSession())) return false;
-  const status = document.querySelector("#ask-status");
+async function openFreshChat({prompt = "", signalId = "", newTabWindow = null} = {}) {
+  if (!state.sessionId && !(await startSession())) {
+    if (newTabWindow && !newTabWindow.closed) newTabWindow.close();
+    return false;
+  }
   const result = await postWithSessionRecovery("/api/home/chat/new", {session_id: state.sessionId, chat_id: state.chatId});
   const chatId = result.chat && result.chat.chat_id;
   if (!chatId) throw new Error("The local service did not return a new chat.");
   rememberChat(chatId);
   const vaultMode = document.querySelector("#knowledge-mode")?.value || "auto";
   const toolIds = Array.from(state.selectedToolIds);
+  const destination = chatUrl({chatId, prompt, signalId, vaultMode, toolIds});
   closeSession();
-  window.location.assign(chatUrl({chatId, prompt, signalId, vaultMode, toolIds}));
+  if (newTabWindow) newTabWindow.location.replace(destination);
+  else window.location.assign(destination);
   return true;
 }
 
@@ -784,9 +788,18 @@ async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
   }
 }
 async function openSignalTldr(signalId, button, feedbackRoot) {
-  if (!state.sessionId && !(await startSession())) return;
   if (!signalId || button.disabled) return;
   const status = feedbackRoot.querySelector(".feedback-status");
+  const newTabWindow = window.open("about:blank", "_blank");
+  if (!newTabWindow) {
+    if (status) status.textContent = "Could not open chat";
+    button.title = "The browser blocked the new chat tab.";
+    return;
+  }
+  if (!state.sessionId && !(await startSession())) {
+    if (!newTabWindow.closed) newTabWindow.close();
+    return;
+  }
   button.disabled = true;
   if (status) status.textContent = "Opening TLDR…";
   try {
@@ -802,8 +815,9 @@ async function openSignalTldr(signalId, button, feedbackRoot) {
   }
   try {
     if (status) status.textContent = "Opening article chat…";
-    await openFreshChat({signalId, prompt: TLDR_PROMPT});
+    await openFreshChat({signalId, prompt: TLDR_PROMPT, newTabWindow});
   } catch (error) {
+    if (!newTabWindow.closed) newTabWindow.close();
     button.disabled = false;
     if (status) status.textContent = "Could not open chat";
     button.title = error.message || "The TLDR chat could not be opened.";
@@ -813,9 +827,17 @@ async function promoteSignalToVault(signalId, button, status, options = {}) {
   if (!CHAT_PAGE) {
     button.disabled = true;
     status.textContent = "Opening discussion…";
+    const newTabWindow = window.open("about:blank", "_blank");
+    if (!newTabWindow) {
+      button.disabled = false;
+      status.textContent = "Could not open chat";
+      button.title = "The browser blocked the new chat tab.";
+      return;
+    }
     try {
-      await openFreshChat({signalId});
+      await openFreshChat({signalId, newTabWindow});
     } catch (error) {
+      if (!newTabWindow.closed) newTabWindow.close();
       button.disabled = false;
       status.textContent = "Could not open chat";
       button.title = error.message || "The signal discussion could not be opened.";

@@ -47,6 +47,46 @@ class ModelResidencyTests(unittest.TestCase):
         unload.assert_called_once_with("idle-model")
         self.assertEqual(result["unloaded"], ["idle-model"])
 
+    def test_home_model_is_preserved_by_normal_residency_monitoring(self):
+        original_model = server.HOME_CHAT_MODEL
+        server.HOME_CHAT_MODEL = "home-model"
+        try:
+            with server.MODEL_ACTIVITY_LOCK:
+                server.MODEL_LAST_USED["home-model"] = time.monotonic() - 3_600
+            catalog = {"available": True, "loaded_details": [{"name": "home-model", "size_vram": 1_000}]}
+            with patch.object(server, "ollama_catalog", return_value=catalog), \
+                 patch.object(server, "gpu_status", return_value={"available": True, "total_gb": 16, "free_gb": 8, "state": "nominal"}), \
+                 patch.object(server, "unload_ollama_model") as unload:
+                result = server.monitor_ollama_models()
+            unload.assert_not_called()
+            self.assertEqual(result["unloaded"], [])
+        finally:
+            server.HOME_CHAT_MODEL = original_model
+
+    def test_idle_session_cleanup_preserves_home_model(self):
+        original_done = server.IDLE_SHUTDOWN_DONE
+        with server.SESSION_LOCK:
+            original_sessions = dict(server.SESSIONS)
+            server.SESSIONS.clear()
+        server.IDLE_SHUTDOWN_DONE = False
+        try:
+            with patch.object(server, "release_idle_ollama_models") as release, \
+                 patch.object(server, "release_workloads"):
+                server.shutdown_idle_workloads()
+            release.assert_called_once_with(force=True, preserve_models={server.HOME_CHAT_MODEL})
+        finally:
+            server.IDLE_SHUTDOWN_DONE = original_done
+            with server.SESSION_LOCK:
+                server.SESSIONS.clear()
+                server.SESSIONS.update(original_sessions)
+
+    def test_explicit_unload_path_still_releases_home_model(self):
+        catalog = {"available": True, "loaded_details": [{"name": server.HOME_CHAT_MODEL, "size_vram": 1_000}]}
+        with patch.object(server, "ollama_catalog", return_value=catalog), \
+             patch.object(server, "unload_ollama_model", return_value=True) as unload:
+            server._unload_ollama_models()
+        unload.assert_called_once_with(server.HOME_CHAT_MODEL)
+
     def test_unload_uses_reversible_keep_alive_zero(self):
         with patch.object(server, "post_json", return_value={} ) as post:
             self.assertTrue(server.unload_ollama_model("reloadable-model"))

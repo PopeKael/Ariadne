@@ -34,7 +34,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 
-from home_chat_store import ChatStore
+from home_chat_store import ChatStore, title_from_document
 from home_information import home_information_payload
 from core_interactions import CoreInteractionStream
 from core_activity_presentation import CoreActivityPresenter
@@ -80,6 +80,7 @@ LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
 OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
+HOME_MODEL_KEEP_ALIVE = -1
 FINAL_AVATAR_DIALOGUE = "Here's your answer."
 HOME_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_CTX", "16384")))
 HOME_OUTPUT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_PREDICT", "4096")))
@@ -451,6 +452,8 @@ RESOURCE_STATUS_REFRESH_IN_FLIGHT = False
 MODEL_ACTIVITY_LOCK = threading.RLock()
 MODEL_IN_FLIGHT: dict[str, int] = {}
 MODEL_LAST_USED: dict[str, float] = {}
+HOME_MODEL_PRELOAD_LOCK = threading.Lock()
+HOME_MODEL_PRELOAD_THREAD: threading.Thread | None = None
 MODEL_SWITCH_LOCK = threading.Lock()
 GPU_ARBITRATION_LOCK = threading.RLock()
 GPU_OWNER = "NONE"
@@ -1550,7 +1553,8 @@ def unload_ollama_model(name: str) -> bool:
         return False
 
 
-def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object] | None = None, pressure: bool = False) -> dict[str, object]:
+def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object] | None = None,
+                               pressure: bool = False, preserve_models: set[str] | None = None) -> dict[str, object]:
     """The single Ollama residency release path used by monitoring and transitions."""
     catalog = ollama_catalog()
     if not catalog.get("available"):
@@ -1560,6 +1564,7 @@ def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object]
     with MODEL_ACTIVITY_LOCK:
         protected = set(MODEL_IN_FLIGHT)
         last_used = dict(MODEL_LAST_USED)
+    preserved = {str(name) for name in (preserve_models or set()) if str(name).strip()}
     preferred = {HOME_CHAT_MODEL, PLANNER_MODEL}
     unloaded: list[str] = []
     blocked: list[str] = []
@@ -1568,6 +1573,8 @@ def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object]
             continue
         name = str(item.get("name") or "")
         if not name:
+            continue
+        if name in preserved:
             continue
         if name in protected:
             blocked.append(name)
@@ -1597,7 +1604,7 @@ def monitor_ollama_models() -> dict[str, object]:
         for item in catalog.get("loaded_details", []):
             if isinstance(item, dict) and item.get("name"):
                 MODEL_LAST_USED.setdefault(str(item["name"]), now)
-    release = release_idle_ollama_models(policy=policy, pressure=pressure)
+    release = release_idle_ollama_models(policy=policy, pressure=pressure, preserve_models={HOME_CHAT_MODEL})
     unloaded = release["unloaded"]
     return {
         "state": "pressure" if pressure else "nominal",
@@ -1625,17 +1632,18 @@ def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, obj
     }
 
 
-def preload_ollama_model(model: str | None = None, *, options: dict[str, object] | None = None, thinking: str | None = None) -> dict[str, object]:
+def preload_ollama_model(model: str | None = None, *, options: dict[str, object] | None = None,
+                         thinking: str | None = None, keep_alive: int | str | None = None) -> dict[str, object]:
     selected_model = (model or OLLAMA_CHAT_MODEL).strip() or OLLAMA_CHAT_MODEL
-    keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE
-    if OLLAMA_PRELOAD_KEEP_ALIVE.casefold() == "adaptive":
-        keep_alive = adaptive_model_keep_alive()
-    elif OLLAMA_PRELOAD_KEEP_ALIVE.strip().lstrip("-").isdigit():
-        keep_alive = int(OLLAMA_PRELOAD_KEEP_ALIVE)
+    selected_keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE if keep_alive is None else keep_alive
+    if keep_alive is None and OLLAMA_PRELOAD_KEEP_ALIVE.casefold() == "adaptive":
+        selected_keep_alive = adaptive_model_keep_alive()
+    elif keep_alive is None and OLLAMA_PRELOAD_KEEP_ALIVE.strip().lstrip("-").isdigit():
+        selected_keep_alive = int(OLLAMA_PRELOAD_KEEP_ALIVE)
     payload = {
         "model": selected_model,
         "stream": False,
-        "keep_alive": keep_alive,
+        "keep_alive": selected_keep_alive,
     }
     if options:
         payload["options"] = dict(options)
@@ -1650,6 +1658,43 @@ def preload_ollama_model(model: str | None = None, *, options: dict[str, object]
         return {"ok": True, "model": selected_model, "detail": detail, "response": response}
     except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
         return {"ok": False, "model": selected_model, "detail": f"Model preload failed: {exc}"}
+
+
+def _preload_home_chat_model_worker(model: str) -> None:
+    global HOME_MODEL_PRELOAD_THREAD
+    try:
+        with ai_gpu_admission():
+            catalog = ollama_catalog()
+            loaded = {str(name) for name in catalog.get("loaded", [])}
+            if not catalog.get("available") or model in loaded:
+                return
+            with model_activity(model):
+                preload_ollama_model(model, keep_alive=HOME_MODEL_KEEP_ALIVE)
+    except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError):
+        pass
+    finally:
+        with HOME_MODEL_PRELOAD_LOCK:
+            HOME_MODEL_PRELOAD_THREAD = None
+
+
+def start_home_chat_model_preload() -> dict[str, object]:
+    """Schedule the selected Home model without delaying page startup."""
+    global HOME_MODEL_PRELOAD_THREAD
+    model = str(HOME_CHAT_MODEL or "").strip()
+    if not model:
+        return {"ok": False, "state": "skipped", "detail": "No Home chat model is configured."}
+    with HOME_MODEL_PRELOAD_LOCK:
+        if HOME_MODEL_PRELOAD_THREAD is not None and HOME_MODEL_PRELOAD_THREAD.is_alive():
+            return {"ok": True, "model": model, "state": "loading", "detail": "Home model preload is already in progress."}
+        thread = threading.Thread(
+            target=_preload_home_chat_model_worker,
+            args=(model,),
+            name="ariadne-home-model-preload",
+            daemon=True,
+        )
+        HOME_MODEL_PRELOAD_THREAD = thread
+        thread.start()
+    return {"ok": True, "model": model, "state": "scheduled", "detail": "Home model preload scheduled."}
 
 
 def model_control_payload() -> dict[str, object]:
@@ -2229,10 +2274,10 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
             if old_model and old_model != requested and old_model in loaded:
                 unload_ollama_model(old_model)
 
-        preload = preload_ollama_model(requested)
+        preload = preload_ollama_model(requested, keep_alive=HOME_MODEL_KEEP_ALIVE)
         if not preload.get("ok"):
             if previous_model and previous_model != requested:
-                preload_ollama_model(previous_model)
+                preload_ollama_model(previous_model, keep_alive=HOME_MODEL_KEEP_ALIVE)
             return {"ok": False, "message": str(preload.get("detail") or "The selected model could not be loaded.")}, 503
 
         saved = save_configuration(inference=_inference_configuration_for_model(requested))
@@ -2645,7 +2690,7 @@ def enhance_music_caption(body: dict[str, object]) -> tuple[dict[str, object], i
                     context_tokens=min(HOME_CONTEXT_TOKENS, 8_192),
                     output_tokens=900,
                     metrics=metrics,
-                    keep_alive=adaptive_model_keep_alive(),
+                    keep_alive=HOME_MODEL_KEEP_ALIVE,
                 )
     except (RuntimeError, OSError, urllib.error.URLError, ValueError) as exc:
         return {"ok": False, "message": f"MiniMax caption enhancement could not use the local LLM: {exc}"}, 503
@@ -3846,7 +3891,7 @@ def shutdown_idle_workloads() -> None:
         if IDLE_SHUTDOWN_DONE:
             return
         IDLE_SHUTDOWN_DONE = True
-    _unload_ollama_models()
+    release_idle_ollama_models(force=True, preserve_models={HOME_CHAT_MODEL})
     release_workloads(force=True)
 
 
@@ -6073,7 +6118,7 @@ def _home_model_chat(mcp: object, messages: list[dict[str, str]], timing: dict[s
         "context_tokens": HOME_CONTEXT_TOKENS,
         "output_tokens": HOME_OUTPUT_TOKENS,
         "metrics": timing,
-        "keep_alive": adaptive_model_keep_alive(),
+        "keep_alive": HOME_MODEL_KEEP_ALIVE,
     }
     if on_delta is not None:
         arguments["on_delta"] = on_delta
@@ -6188,7 +6233,10 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     )
     if personality_guidance:
         identity += "ACTIVE PERSONALITY / VOICE PROFILE — BEHAVIOURAL GUIDANCE ONLY\n" + personality_guidance[:2_000] + "\nEND PERSONALITY / VOICE PROFILE\n\n"
-    turn_id, turn_record = HOME_CHAT_STORE.begin_turn(chat_id, query, HOME_CHAT_MODEL, identity_meta)
+    first_document_title = title_from_document(attachment_summaries[0]) if attachment_summaries else None
+    turn_id, turn_record = HOME_CHAT_STORE.begin_turn(
+        chat_id, query, HOME_CHAT_MODEL, identity_meta, title=first_document_title,
+    )
     assistant_message_id = next(
         (
             str(item.get("message_id"))
@@ -7587,7 +7635,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
                     self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
                     return
-                record, inbox_path = HOME_CHAT_STORE.save_to_inbox(active_chat_id)
+                try:
+                    record, inbox_path = HOME_CHAT_STORE.save_to_inbox(active_chat_id)
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                    return
                 record_home_event("chat_saved_to_inbox", f"{active_chat_id} -> {inbox_path}")
                 self.send_json({"ok": True, "chat_id": active_chat_id, "inbox_path": inbox_path, "title": record.get("title")})
                 return
@@ -7596,7 +7648,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 if requested_chat_id is not None and str(requested_chat_id) != active_chat_id:
                     self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
                     return
-                markdown, filename = HOME_CHAT_STORE.export_markdown(active_chat_id)
+                try:
+                    markdown, filename = HOME_CHAT_STORE.export_markdown(active_chat_id)
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                    return
                 record_home_event("chat_exported", f"{active_chat_id} exported as Markdown.")
                 self.send_json({"ok": True, "chat_id": active_chat_id, "filename": filename, "markdown": markdown})
                 return
@@ -7774,6 +7830,7 @@ def main() -> None:
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
     HTTP_SERVER = httpd
     start_lifecycle_watchdog()
+    start_home_chat_model_preload()
     print(f"Ariadne listening at http://{HOST}:{PORT}")
     try:
         httpd.serve_forever()

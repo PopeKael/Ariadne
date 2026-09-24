@@ -78,6 +78,7 @@ class HomeDocumentHttpTests(unittest.TestCase):
                 self.assertFalse(answered["used_vault"])
                 self.assertIn("Narathiwat", fake.calls[0][-1]["content"])
                 self.assertEqual(answered["document_analysis"]["retrieved_chunks"], 2)
+                self.assertEqual(server.HOME_CHAT_STORE.get(started["chat_id"])["title"], "Late article")
                 combined = self.post(port, "/api/home/chat", {
                     "session_id": started["session_id"], "chat_id": started["chat_id"],
                     "message": "Compare this document with my Vault.", "vault_mode": "always",
