@@ -71,6 +71,13 @@ CREATE TABLE IF NOT EXISTS signal_feedback (
     recorded_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_signal_feedback_signal ON signal_feedback(signal_id, recorded_at DESC);
+CREATE TABLE IF NOT EXISTS signal_interactions (
+    interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signal_id TEXT NOT NULL REFERENCES signals(signal_id) ON DELETE CASCADE,
+    interaction_type TEXT NOT NULL CHECK (interaction_type IN ('tldr')),
+    recorded_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_signal_interactions_signal ON signal_interactions(signal_id, recorded_at DESC);
 CREATE TABLE IF NOT EXISTS watchlist_topics (
     topic_id TEXT PRIMARY KEY,
     topic TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -472,6 +479,21 @@ class SignalStore:
             self._connection.execute("INSERT INTO signal_feedback (signal_id,feedback_value,recorded_at) VALUES (?,?,?)", (signal_id, value, timestamp))
             self._connection.commit()
             return {"signal_id": signal_id, "feedback": value, "recorded_at": timestamp}
+
+    def record_interaction(self, signal_id: str, value: str, recorded_at: str | None = None) -> dict[str, Any]:
+        if value != "tldr":
+            raise ValueError("Interaction must be tldr")
+        with self._lock:
+            timestamp = recorded_at or utc_now()
+            row = self._connection.execute("SELECT signal_id FROM signals WHERE signal_id = ?", (signal_id,)).fetchone()
+            if row is None:
+                raise ValueError("Unknown signal_id")
+            self._connection.execute(
+                "INSERT INTO signal_interactions (signal_id,interaction_type,recorded_at) VALUES (?,?,?)",
+                (signal_id, value, timestamp),
+            )
+            self._connection.commit()
+            return {"signal_id": signal_id, "interaction": value, "recorded_at": timestamp}
 
     def latest_feedback(self, signal_ids: Iterable[str | None]) -> dict[str, dict[str, str]]:
         values = [str(value) for value in signal_ids if value]

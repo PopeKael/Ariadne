@@ -97,6 +97,18 @@ class RendererLifecycleTests(unittest.TestCase):
         self.assertEqual(server.RENDERER_LIFECYCLE_STATE, "ERROR")
         self.assertIn("occupied by another service", server.RENDERER_LIFECYCLE_ERROR)
 
+    def test_stopping_idle_renderer_is_silent(self):
+        server.GPU_OWNER = "AI"
+        server.GPU_TRANSITION_STATE = "IDLE"
+        with patch.object(server, "wan2gp_status", return_value={
+            "state": "offline",
+            "lifecycle_state": "STOPPED",
+            "detail": "Linux video renderer is stopped - port 8766 is not listening",
+        }), patch.object(server, "announce_media_lifecycle") as announce:
+            result = server.stop_wan2gp()
+        self.assertTrue(result["ok"])
+        announce.assert_not_called()
+
     def test_running_renderer_is_adopted_without_duplicate_process(self):
         server.GPU_OWNER = "NONE"
         server.GPU_TRANSITION_STATE = "IDLE"

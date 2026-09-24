@@ -38,6 +38,12 @@ class BasicRanker:
         weights.update(profile.get("weights") if isinstance(profile.get("weights"), dict) else {})
         source_scores = {str(item.get("label")): float(item.get("score", 0.0)) for item in profile.get("sources", []) if isinstance(item, dict)}
         category_scores = {str(item.get("label")): float(item.get("score", 0.0)) for item in profile.get("categories", []) if isinstance(item, dict)}
+        feedback = profile.get("feedback") if isinstance(profile.get("feedback"), dict) else {}
+        reviewed_ids = {
+            str(signal_id)
+            for signal_id, value in feedback.items()
+            if isinstance(value, dict) and value.get("value") in {"useful", "interesting"}
+        }
         semantic_available = profile.get("semantic_state") == "healthy" and int(profile.get("semantic_interest_count", 0)) > 0
         for signal in signals:
             age = _age_hours(signal.published_at, now)
@@ -63,9 +69,11 @@ class BasicRanker:
                 reasons.append("learned preference")
             elif affinity < -0.08:
                 reasons.append("reduced learned preference")
+            if signal.signal_id in reviewed_ids:
+                reasons.append("already reviewed")
             reasons.extend(["recent", "complete content"])
             scored.append(signal.__class__(**{**signal.__dict__, "rank_score": score, "rank_reason": " · ".join(reasons)}))
-        scored.sort(key=lambda item: (-item.rank_score, item.published_at, item.signal_id))
+        scored.sort(key=lambda item: (1 if item.signal_id in reviewed_ids else 0, -item.rank_score, item.published_at, item.signal_id))
         selected: list[Signal] = []
         source_counts: dict[str, int] = {}
         for signal in scored:

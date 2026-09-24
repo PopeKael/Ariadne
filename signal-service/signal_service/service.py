@@ -202,7 +202,9 @@ class SignalService:
         profile = self.store.learned_preferences()
         profile["semantic_state"] = self._semantic_status.get("state")
         profile["semantic_interest_count"] = len(self.store.list_interests(active_only=True))
-        ranked = self.ranker.rank(self.store.recent(limit=self.briefing_pool_limit), limit=self.briefing_pool_limit, profile=profile)
+        recent = self.store.recent(limit=self.briefing_pool_limit)
+        profile["feedback"] = self.store.latest_feedback([signal.signal_id for signal in recent])
+        ranked = self.ranker.rank(recent, limit=self.briefing_pool_limit, profile=profile)
         return self.store.save_briefing(ranked, collection)
 
     @staticmethod
@@ -446,6 +448,11 @@ class SignalService:
         result["learned_preferences"] = self.store.rebuild_learned_preferences()
         self._build_cached_briefing({"mode": "feedback", "signal_id": signal_id, "feedback": value})
         return result
+
+    def record_interaction(self, signal_id: str, value: str, recorded_at: str | None = None) -> dict[str, Any]:
+        if value != "tldr":
+            raise ValueError("Interaction must be tldr")
+        return self.store.record_interaction(signal_id, value, recorded_at)
 
     def add_watchlist_topic(self, topic: str, active: bool = True) -> dict[str, Any]:
         return self.store.upsert_watchlist_topic(topic, active)

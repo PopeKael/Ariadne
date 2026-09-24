@@ -75,9 +75,11 @@ class ActivityStateStream:
         self,
         *,
         emit_avatar_state: Callable[[str], bool] | None = None,
+        emit_avatar_status: Callable[[str], bool] | None = None,
         executor: Executor | None = None,
     ) -> None:
         self._emit_avatar_state = emit_avatar_state
+        self._emit_avatar_status = emit_avatar_status
         self._executor = executor or ThreadPoolExecutor(max_workers=1, thread_name_prefix="activity-avatar")
         self._owns_executor = executor is None
         self._lock = threading.RLock()
@@ -100,10 +102,18 @@ class ActivityStateStream:
             should_emit = bool(avatar_state and avatar_state != self._last_avatar_state.get(str(chat_id)))
             if should_emit:
                 self._last_avatar_state[str(chat_id)] = str(avatar_state)
+            status_text = str(message or ACTIVITY_LABELS[state]).strip()
+            should_emit_status = bool(self._emit_avatar_status and status_text)
         if should_emit and self._emit_avatar_state is not None:
             # Submission is intentionally not awaited.  The native host has
             # its own 800 ms minimum-dwell/coalescing policy.
             self._executor.submit(self._deliver_avatar_state, str(avatar_state))
+        if should_emit_status:
+            # Keep the host's status bubble aligned with the same ordered
+            # activity stream as the avatar pose.  Otherwise an unrelated
+            # media message can remain visible while Home is reading a
+            # document or answering a question.
+            self._executor.submit(self._deliver_avatar_status, status_text)
         return snapshot
 
     def snapshot(self, chat_id: str) -> ActivitySnapshot:
@@ -116,6 +126,13 @@ class ActivityStateStream:
     def _deliver_avatar_state(self, state: str) -> None:
         try:
             self._emit_avatar_state(state)
+        except Exception:
+            # Avatar presentation is optional and never part of request work.
+            return
+
+    def _deliver_avatar_status(self, status: str) -> None:
+        try:
+            self._emit_avatar_status(status)
         except Exception:
             # Avatar presentation is optional and never part of request work.
             return

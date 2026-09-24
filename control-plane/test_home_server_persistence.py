@@ -207,6 +207,38 @@ class HomeServerPersistenceTests(unittest.TestCase):
                 server.DOCUMENT_WORK_ROOT = original_documents_root
                 server.HOME_EVENTS_PATH = original_events_path
 
+    def test_fresh_home_session_does_not_recover_article_context(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_documents_root = server.DOCUMENT_WORK_ROOT
+            store = ChatStore(Path(temporary))
+            chat = store.create()
+            server.HOME_CHAT_STORE = store
+            server.DOCUMENT_WORK_ROOT = Path(temporary) / "document_contexts"
+            server.attach_document(
+                server.DOCUMENT_WORK_ROOT,
+                chat["chat_id"],
+                "signal-context__signal-fresh.md",
+                "---\ntype: source-article\nsignal_id: signal-fresh\ntitle: Fresh home session\narticle_status: ready\n---\n# Fresh home session\n",
+            )
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            try:
+                started = self.post(
+                    httpd.server_address[1],
+                    "/api/session/start",
+                    {"surface": "home", "fresh": True},
+                )
+                self.assertNotEqual(started["chat_id"], chat["chat_id"])
+                self.assertFalse(started["resumed"])
+                self.assertEqual(started["documents"], [])
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                server.HOME_CHAT_STORE = original_store
+                server.DOCUMENT_WORK_ROOT = original_documents_root
+
     def test_backend_ignores_browser_history_and_persists_success(self):
         with tempfile.TemporaryDirectory() as temporary:
             original_store = server.HOME_CHAT_STORE

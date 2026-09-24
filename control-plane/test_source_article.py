@@ -104,6 +104,22 @@ class SourceArticleTests(unittest.TestCase):
             self.assertIn("## Signal context", note)
             self.assertIn("Think with Ariadne", note)
 
+    def test_promote_preserves_signal_context_when_source_fetch_fails(self):
+        signal = {
+            "signal_id": "signal-1234567890abcdef",
+            "title": "A source-blocked article",
+            "source_name": "Example publisher",
+            "url": "https://example.test/blocked",
+            "summary": "The verified front-page signal remains available while the publisher blocks the full article.",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch("source_article._fetch_article", side_effect=OSError("HTTP Error 403: Forbidden")):
+                result = promote_signal(Path(temporary), signal)
+            note = next((Path(temporary) / "Inbox").glob("*.md")).read_text(encoding="utf-8")
+            self.assertIn("HTTP Error 403", result["fetch_error"])
+            self.assertIn('article_status: "unavailable"', note)
+            self.assertIn("The verified front-page signal remains available", note)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -72,7 +72,12 @@ class HomeSignalIntegrationTests(unittest.TestCase):
     def test_signal_promotion_endpoint_uses_current_signal_service_record(self):
         signal = {"signal_id": "signal-1234567890abcdef", "title": "A signal", "url": "https://example.test/story"}
         fake_client = Mock()
-        fake_client.briefing.return_value = {"ok": True, "signals": [signal]}
+        fake_client.briefing.return_value = {
+            "ok": False,
+            "stale": True,
+            "message": "Signal Service unavailable: timed out",
+            "signals": [signal],
+        }
         with tempfile.TemporaryDirectory() as temporary:
             original_store = server.HOME_CHAT_STORE
             original_client = server.SIGNAL_SERVICE_CLIENT
@@ -111,7 +116,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                             result = json.loads(response.read().decode("utf-8"))
                 self.assertTrue(result["ok"])
                 self.assertEqual(result["document"]["document_id"], "doc-1")
-                fake_client.briefing.assert_called_once_with(limit=40)
+                fake_client.briefing.assert_called_once_with(limit=100)
                 self.assertEqual(result["stage"], "opening_discussion")
                 start.assert_called_once_with(started["session_id"], started["chat_id"], signal, "doc-1")
                 attach.assert_called_once()
@@ -278,6 +283,42 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                 httpd.server_close()
                 server.HOME_CHAT_STORE = original_store
                 server.HOME_EVENTS_PATH = original_events
+
+    def test_tldr_interaction_endpoint_forwards_distinct_interaction(self):
+        original_store = server.HOME_CHAT_STORE
+        original_client = server.SIGNAL_SERVICE_CLIENT
+        with tempfile.TemporaryDirectory() as temporary:
+            server.HOME_CHAT_STORE = ChatStore(Path(temporary))
+            fake_client = Mock()
+            fake_client.interaction.return_value = {"ok": True, "signal_id": "signal-1", "interaction": "tldr"}
+            server.SIGNAL_SERVICE_CLIENT = fake_client
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            try:
+                start_request = urllib.request.Request(
+                    f"http://localhost:{httpd.server_address[1]}/api/session/start",
+                    data=b"{}",
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(start_request, timeout=5) as response:
+                    started = json.loads(response.read().decode("utf-8"))
+                interaction_request = urllib.request.Request(
+                    f"http://localhost:{httpd.server_address[1]}/api/home/signals/interaction",
+                    data=json.dumps({"session_id": started["session_id"], "signal_id": "signal-1", "interaction": "tldr"}).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(interaction_request, timeout=5) as response:
+                    result = json.loads(response.read().decode("utf-8"))
+                self.assertTrue(result["ok"])
+                fake_client.interaction.assert_called_once_with("signal-1", "tldr")
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                server.HOME_CHAT_STORE = original_store
+                server.SIGNAL_SERVICE_CLIENT = original_client
 
     def test_today_renders_cached_signal_with_source_url(self):
         fake_client = Mock()

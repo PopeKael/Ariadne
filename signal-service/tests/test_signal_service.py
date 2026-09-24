@@ -124,6 +124,28 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual([row["feedback_value"] for row in rows], ["interesting"])
         self.assertEqual(self.service.briefing()["signals"][0]["feedback"]["value"], "interesting")
 
+    def test_tldr_interaction_is_logged_without_becoming_feedback(self):
+        self.service.ingest_candidates([candidate()])
+        signal_id = self.service.briefing()["signals"][0]["signal_id"]
+        recorded = self.service.record_interaction(signal_id, "tldr")
+        self.assertEqual(recorded["interaction"], "tldr")
+        rows = self.service.store._connection.execute(
+            "SELECT interaction_type FROM signal_interactions WHERE signal_id = ?", (signal_id,)
+        ).fetchall()
+        self.assertEqual([row["interaction_type"] for row in rows], ["tldr"])
+        self.assertNotIn("feedback", self.service.briefing()["signals"][0])
+
+    def test_useful_or_interesting_signals_move_to_bottom_of_briefing(self):
+        self.service.ingest_candidates([
+            candidate(url="https://example.test/story/1", title="Reviewed story", published_at="2026-09-07T08:02:00+00:00"),
+            candidate(url="https://example.test/story/2", title="Fresh story", published_at="2026-09-07T08:01:00+00:00"),
+        ])
+        signals = self.service.briefing()["signals"]
+        reviewed_id = next(item["signal_id"] for item in signals if item["title"] == "Reviewed story")
+        self.service.record_feedback(reviewed_id, "interesting")
+        reordered = self.service.briefing()["signals"]
+        self.assertEqual(reordered[-1]["title"], "Reviewed story")
+
     def test_watchlist_topics_are_persistent(self):
         topic = self.service.add_watchlist_topic("Synology container startup")
         self.assertTrue(topic["active"])
@@ -264,6 +286,14 @@ class SignalServiceTests(unittest.TestCase):
             )
             with urlopen(feedback_request, timeout=2) as response:
                 feedback = json.loads(response.read())
+            interaction_request = Request(
+                base + f"/v1/signals/{briefing['signals'][0]['signal_id']}/interaction",
+                data=json.dumps({"interaction": "tldr"}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urlopen(interaction_request, timeout=2) as response:
+                interaction = json.loads(response.read())
             with patch("signal_service.service.fetch_feed", side_effect=RuntimeError("temporary outage")):
                 self.service.refresh()
             with urlopen(base + "/v1/briefing?limit=1", timeout=2) as response:
@@ -276,6 +306,8 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(briefing["signals"][0]["url"], "https://example.test/story/1")
         self.assertTrue(feedback["ok"])
         self.assertEqual(feedback["feedback"], "interesting")
+        self.assertTrue(interaction["ok"])
+        self.assertEqual(interaction["interaction"], "tldr")
         self.assertEqual(watchlist["topics"], [])
         self.assertEqual(watchlist_created["topic"]["topic"], "Thailand immigration")
         self.assertTrue(interest_created["ok"])

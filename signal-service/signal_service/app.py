@@ -90,6 +90,16 @@ class SignalHandler(BaseHTTPRequestHandler):
             except ValueError as exc:
                 self._send({"ok": False, "message": str(exc)}, 400)
             return
+        interaction_match = re.fullmatch(r"/v1/signals/([^/]+)/interaction", parsed.path)
+        if interaction_match:
+            try:
+                payload = self._read_json()
+                value = payload.get("interaction") if isinstance(payload, dict) else None
+                result = self.server.service.record_interaction(interaction_match.group(1), str(value or ""))
+                self._send({"ok": True, **result})
+            except ValueError as exc:
+                self._send({"ok": False, "message": str(exc)}, 400)
+            return
         if parsed.path == "/v1/watchlist/topics":
             try:
                 payload = self._read_json()

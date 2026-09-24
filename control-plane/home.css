@@ -235,6 +235,8 @@ body:not(.chat-expanded) .ask-panel:has(#chat-log:empty) .ask-form textarea { mi
 .feedback-label { color:var(--faint); font-size:10px; margin-right:2px; }
 .feedback-button { border:1px solid #315466; border-radius:99px; padding:3px 6px; background:rgba(105,213,210,.04); color:var(--muted); font:inherit; font-size:10px; cursor:pointer; }
 .feedback-button:hover,.feedback-button.selected { border-color:var(--teal); background:rgba(105,213,210,.16); color:var(--teal); }
+.tldr-button { border-color:rgba(225,184,121,.55); color:var(--gold); }
+.tldr-button:hover { border-color:var(--gold); background:rgba(225,184,121,.16); color:var(--gold); }
 .feedback-button:disabled { opacity:.55; cursor:wait; }
 .feedback-status { color:var(--green); font-size:10px; }
 .live-column { overflow:auto; }

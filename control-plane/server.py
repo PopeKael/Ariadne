@@ -320,7 +320,10 @@ SIGNAL_ARTICLE_JOBS: dict[str, dict[str, object]] = {}
 RABBIT_HOLE_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rabbit-hole")
 RABBIT_HOLE_RESULT_PATH = Path(os.environ.get("ARIADNE_RABBIT_HOLE_RESULT_PATH", str(ROOT / "runtime" / "rabbit-hole-result.json")))
 RABBIT_HOLE_FALLBACK_RESULT_PATH = Path(tempfile.gettempdir()) / "Ariadne" / "rabbit-hole-result.json"
-HOME_ACTIVITY_STREAM = ActivityStateStream(emit_avatar_state=emit_state)
+HOME_ACTIVITY_STREAM = ActivityStateStream(
+    emit_avatar_state=emit_state,
+    emit_avatar_status=emit_say,
+)
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
 VAULT_WORKER_PATH = ROOT / "vault_worker.py"
 MCP_MODULE_PATH = PROJECT_ROOT / "00_System" / "ariadne_mcp.py"
@@ -3680,9 +3683,23 @@ def _renderer_stop_worker(operation_id: str) -> None:
 def stop_wan2gp(*, wait: bool = False) -> dict[str, object]:
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
     global GPU_TRANSITION_STARTED_AT, RENDERER_STOP_THREAD, RENDERER_OPERATION_ID, RENDERER_STOP_REQUESTED
+    current = wan2gp_status(ignore_transition=True)
+    current_state = str(current.get("state") or "")
     with GPU_ARBITRATION_LOCK:
+        stop_thread_active = RENDERER_STOP_THREAD is not None and RENDERER_STOP_THREAD.is_alive()
+        start_thread_active = RENDERER_START_THREAD is not None and RENDERER_START_THREAD.is_alive()
+        renderer_active = current_state in {"online", "starting"} or stop_thread_active or start_thread_active
+        transition_active = GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER in {"RENDERER", "TRANSITION"}
+        if not renderer_active and not transition_active:
+            # Session cleanup calls this function defensively.  Do not turn a
+            # normal Chat -> Home navigation into a false video lifecycle
+            # event when no Ariadne renderer is active.
+            RENDERER_STOP_REQUESTED = True
+            if GPU_OWNER == "RENDERER":
+                GPU_OWNER = "NONE"
+            return {"ok": True, "wan2gp": current}
         RENDERER_STOP_REQUESTED = True
-        if RENDERER_STOP_THREAD is not None and RENDERER_STOP_THREAD.is_alive():
+        if stop_thread_active:
             result = {"ok": True, "wan2gp": wan2gp_status()}
         else:
             operation_id = uuid.uuid4().hex
@@ -7254,8 +7271,15 @@ class AriadneHandler(BaseHTTPRequestHandler):
             if path == "/api/session/start":
                 expire_home_chats()
                 requested_chat_id = body.get("chat_id")
+                fresh_home_session = body.get("fresh") is True
                 recovered_context_chat = None
-                if not isinstance(requested_chat_id, str) or not requested_chat_id.strip():
+                if (
+                    not fresh_home_session
+                    and (
+                        not isinstance(requested_chat_id, str)
+                        or not requested_chat_id.strip()
+                    )
+                ):
                     recovered_context_chat = recover_home_chat_with_article_context()
                     if recovered_context_chat:
                         requested_chat_id = recovered_context_chat
@@ -7331,10 +7355,22 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 if not isinstance(signal_id, str) or not signal_id.strip():
                     self.send_json({"ok": False, "message": "A signal_id is required."}, 400)
                     return
-                if feedback not in {"useful", "interesting", "not_useful"}:
-                    self.send_json({"ok": False, "message": "Feedback must be useful, interesting, or not_useful."}, 400)
+                if feedback not in {"useful", "interesting"}:
+                    self.send_json({"ok": False, "message": "Feedback must be useful or interesting."}, 400)
                     return
                 result = SIGNAL_SERVICE_CLIENT.feedback(signal_id.strip(), feedback)
+                self.send_json(result, 200 if result.get("ok") else 502)
+                return
+            if path == "/api/home/signals/interaction":
+                signal_id = body.get("signal_id")
+                interaction = body.get("interaction")
+                if not isinstance(signal_id, str) or not signal_id.strip():
+                    self.send_json({"ok": False, "message": "A signal_id is required."}, 400)
+                    return
+                if interaction != "tldr":
+                    self.send_json({"ok": False, "message": "Interaction must be tldr."}, 400)
+                    return
+                result = SIGNAL_SERVICE_CLIENT.interaction(signal_id.strip(), interaction)
                 self.send_json(result, 200 if result.get("ok") else 502)
                 return
             if path == "/api/home/signals/promote":
@@ -7345,12 +7381,17 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 if not isinstance(signal_id, str) or not signal_id.strip():
                     self.send_json({"ok": False, "message": "A signal_id is required."}, 400)
                     return
-                briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=40)
-                if not briefing.get("ok", True):
-                    self.send_json({"ok": False, "message": str(briefing.get("message") or "Signal Service is unavailable.")}, 502)
-                    return
-                signal = next((item for item in briefing.get("signals", []) if isinstance(item, dict) and item.get("signal_id") == signal_id.strip()), None)
+                # Home renders the 100-item briefing and the client retains
+                # that successful result when a later NAS refresh is busy.
+                # Promotion must resolve against the same window and may use
+                # a matching cached signal during that transient failure.
+                briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=100)
+                briefing_signals = briefing.get("signals") if isinstance(briefing.get("signals"), list) else []
+                signal = next((item for item in briefing_signals if isinstance(item, dict) and item.get("signal_id") == signal_id.strip()), None)
                 if signal is None:
+                    if not briefing.get("ok", True):
+                        self.send_json({"ok": False, "message": str(briefing.get("message") or "Signal Service is unavailable.")}, 502)
+                        return
                     self.send_json({"ok": False, "message": "That signal is no longer available in the current briefing."}, 404)
                     return
                 mode = body.get("mode", "replace")

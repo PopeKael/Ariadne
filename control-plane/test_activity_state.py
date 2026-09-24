@@ -11,8 +11,13 @@ from activity_state import ActivityStateStream  # noqa: E402
 class ActivityStateTests(unittest.TestCase):
     def test_one_stream_drives_status_snapshot_and_async_avatar_mapping(self):
         emitted = []
+        statuses = []
         executor = ThreadPoolExecutor(max_workers=1)
-        stream = ActivityStateStream(emit_avatar_state=lambda state: emitted.append(state), executor=executor)
+        stream = ActivityStateStream(
+            emit_avatar_state=lambda state: emitted.append(state),
+            emit_avatar_status=lambda status: statuses.append(status),
+            executor=executor,
+        )
         try:
             stream.publish("chat-1", "reading", "Reading source article.")
             stream.publish("chat-1", "thinking", "Thinking.")
@@ -23,6 +28,7 @@ class ActivityStateTests(unittest.TestCase):
             self.assertEqual(snapshot["state"], "complete")
             self.assertEqual(snapshot["label"], "Complete")
             self.assertEqual(emitted, ["reading", "thinking", "speaking"])
+            self.assertEqual(statuses, ["Reading source article.", "Thinking.", "Answering.", "Complete."])
         finally:
             stream.close()
 

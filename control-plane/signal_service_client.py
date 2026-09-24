@@ -123,6 +123,20 @@ class SignalServiceClient:
         except (OSError, urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
             return {"ok": False, "message": f"Signal feedback unavailable: {str(exc)[:180]}"}
 
+    def interaction(self, signal_id: str, value: str) -> dict[str, Any]:
+        request = urllib.request.Request(
+            f"{self.base_url}/v1/signals/{urllib.parse.quote(str(signal_id), safe='')}/interaction",
+            data=json.dumps({"interaction": value}).encode("utf-8"),
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                result = json.loads(response.read(200_000).decode("utf-8"))
+            return result if isinstance(result, dict) else {"ok": False, "message": "Signal Service returned a non-object response."}
+        except (OSError, urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            return {"ok": False, "message": f"Signal interaction unavailable: {str(exc)[:180]}"}
+
     def health(self) -> dict[str, Any]:
         result = self._get("/v1/health")
         if not result.get("ok"):

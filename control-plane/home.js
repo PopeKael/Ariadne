@@ -1,6 +1,7 @@
 const HOME_REQUEST_TIMEOUT_MS = 240000;
+const TLDR_PROMPT = "Give me a clear, plain-English summary of this article in 200 to 300 words. Focus on what happened, why it matters, and any important uncertainty.";
 const CHAT_PAGE = document.body.classList.contains("chat-page");
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), coordinates: null};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
 
 function chatUrl({chatId = "", prompt = "", signalId = "", vaultMode = "", toolIds = []} = {}) {
   const url = new URL("/chat", window.location.origin);
@@ -32,14 +33,31 @@ function el(tag, className, text) {
   if (text !== undefined) node.textContent = text;
   return node;
 }
+function localServiceError(error) {
+  const message = String(error && error.message || error || "");
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return new Error("Ariadne's local service is unavailable. Start the Rust host from the Start menu or system tray, then try again.");
+  }
+  return error instanceof Error ? error : new Error(message || "The local service request failed.");
+}
 async function getJson(url) {
-  const response = await fetch(url, {cache: "no-store"});
+  let response;
+  try {
+    response = await fetch(url, {cache: "no-store"});
+  } catch (error) {
+    throw localServiceError(error);
+  }
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || ("HTTP " + response.status));
   return data;
 }
 async function postJson(url, payload, options = {}) {
-  const response = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload), signal: options.signal});
+  let response;
+  try {
+    response = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload), signal: options.signal});
+  } catch (error) {
+    throw localServiceError(error);
+  }
   const raw = await response.text();
   let data = {};
   try { data = raw ? JSON.parse(raw) : {}; } catch (_) {
@@ -108,6 +126,10 @@ function renderAttachments(documents) {
   addArticle.title = state.addArticleMode ? "Select a Discover article to add to the current context" : "Keep the current article context and add another Discover article";
   addArticle.addEventListener("click", beginArticleAdd);
   root.append(addArticle);
+}
+function replaceSignalArticleDocument(document) {
+  if (!document || !document.document_id) return;
+  renderAttachments(state.attachments.map(item => item.document_id === document.document_id ? document : item));
 }
 function loadingSourceArticles() {
   return state.attachments.filter(document => {
@@ -637,7 +659,7 @@ function renderSignalCard(item) {
     const actions = el("div", "signal-card-actions");
     const feedback = el("div", "signal-feedback");
     feedback.append(el("span", "feedback-label", "Your take"));
-    const feedbackValues = [["useful", "Useful"], ["interesting", "Interesting"], ["not_useful", "Not useful"]];
+    const feedbackValues = [["useful", "Useful"], ["interesting", "Interesting"]];
     for (const [value, label] of feedbackValues) {
       const button = el("button", "feedback-button", label);
       button.type = "button";
@@ -651,6 +673,12 @@ function renderSignalCard(item) {
       feedback.append(button);
     }
     feedback.append(el("span", "feedback-status"));
+
+    const tldrButton = el("button", "feedback-button tldr-button", "TLDR");
+    tldrButton.type = "button";
+    tldrButton.setAttribute("aria-label", `Open a 200 to 300 word summary of ${item.label || "this signal"}`);
+    tldrButton.addEventListener("click", () => openSignalTldr(item.signal_id, tldrButton, feedback));
+    feedback.append(tldrButton);
 
     const promotion = el("div", "signal-promotion");
     const thinkButton = el("button", "think-button", "Think with Ariadne");
@@ -670,6 +698,7 @@ function renderSignalCard(item) {
 function renderToday(items) {
   const root = document.querySelector("#today-list");
   const count = document.querySelector("#signal-count");
+  const scrollTop = root.scrollTop;
   root.replaceChildren();
   const signals = (items || []).filter(item => item && item.signal_id).map(item => ({...item, category: inferSignalCategory(item)}));
   const displayedSignalIds = new Set();
@@ -696,11 +725,15 @@ function renderToday(items) {
     if (initialMatches.length) renderMatches(initialMatches);
     else grid.append(el("p", "signal-section-empty", category === "Watchlist" ? "No watchlist topics are active yet." : "No signals in this section yet."));
     section.append(grid);
-    if (assignedMatches.length > INITIAL_SIGNALS_PER_SECTION) {
+    const expanded = state.signalExpandedSections.has(category);
+    if (expanded && assignedMatches.length > INITIAL_SIGNALS_PER_SECTION) {
+      renderMatches(assignedMatches.slice(INITIAL_SIGNALS_PER_SECTION));
+    } else if (assignedMatches.length > INITIAL_SIGNALS_PER_SECTION) {
       const remaining = assignedMatches.length - INITIAL_SIGNALS_PER_SECTION;
       const more = el("button", "signal-section-more", `Show ${remaining} more`);
       more.type = "button";
       more.addEventListener("click", () => {
+        state.signalExpandedSections.add(category);
         renderMatches(assignedMatches.slice(INITIAL_SIGNALS_PER_SECTION));
         more.remove();
       });
@@ -708,6 +741,7 @@ function renderToday(items) {
     }
     root.append(section);
   }
+  root.scrollTop = Math.min(scrollTop, Math.max(0, root.scrollHeight - root.clientHeight));
 }
 function renderAdaptive(payload) {
   const root = document.querySelector("#adaptive-summary");
@@ -749,7 +783,33 @@ async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
     buttons.forEach(button => { button.disabled = false; });
   }
 }
-async function promoteSignalToVault(signalId, button, status) {
+async function openSignalTldr(signalId, button, feedbackRoot) {
+  if (!state.sessionId && !(await startSession())) return;
+  if (!signalId || button.disabled) return;
+  const status = feedbackRoot.querySelector(".feedback-status");
+  button.disabled = true;
+  if (status) status.textContent = "Opening TLDR…";
+  try {
+    const result = await postWithSessionRecovery("/api/home/signals/interaction", {
+      session_id: state.sessionId,
+      signal_id: signalId,
+      interaction: "tldr",
+    });
+    if (!result.ok) throw new Error(result.message || "The TLDR interaction was not recorded.");
+  } catch (error) {
+    // Tracking should not prevent the user from reaching the article chat.
+    button.title = error.message || "TLDR tracking was unavailable.";
+  }
+  try {
+    if (status) status.textContent = "Opening article chat…";
+    await openFreshChat({signalId, prompt: TLDR_PROMPT});
+  } catch (error) {
+    button.disabled = false;
+    if (status) status.textContent = "Could not open chat";
+    button.title = error.message || "The TLDR chat could not be opened.";
+  }
+}
+async function promoteSignalToVault(signalId, button, status, options = {}) {
   if (!CHAT_PAGE) {
     button.disabled = true;
     status.textContent = "Opening discussion…";
@@ -784,12 +844,16 @@ async function promoteSignalToVault(signalId, button, status) {
     button.classList.add("promoted");
     status.textContent = "Reading source article…";
     document.querySelector("#ask-status").textContent = "Reading source article… Signal context is ready; the full article is loading in the background.";
-    watchSignalArticle(signalId, result.document.document_id, button, status);
+    if (options.monitor !== false) {
+      watchSignalArticle(signalId, result.document.document_id, button, status);
+    }
+    return true;
   } catch (error) {
     state.signalArticleBusy.delete(signalId);
     status.textContent = "Not promoted";
     button.title = error.message || "The signal could not be promoted.";
     document.querySelector("#ask-status").textContent = "Could not read that source article: " + (error.message || "promotion failed");
+    return false;
   } finally {
     state.contextMutationInFlight = false;
     setContextMutationState(false);
@@ -812,9 +876,7 @@ function watchSignalArticle(signalId, documentId, button, status) {
       }
       state.signalArticleBusy.delete(signalId);
       state.signalArticlePollers.delete(signalId);
-      if (result.document) {
-        renderAttachments(state.attachments.map(item => item.document_id === documentId ? result.document : item));
-      }
+      replaceSignalArticleDocument(result.document);
       button.disabled = false;
       if (job.status === "ready") {
         status.textContent = job.message || "Source article ready.";
@@ -835,6 +897,36 @@ function watchSignalArticle(signalId, documentId, button, status) {
   };
   const timer = window.setTimeout(poll, 200);
   state.signalArticlePollers.set(signalId, timer);
+}
+async function waitForSignalArticleReady(signalId) {
+  const started = Date.now();
+  while (Date.now() - started < HOME_REQUEST_TIMEOUT_MS) {
+    const result = await postWithSessionRecovery("/api/home/signals/promote/status", {
+      session_id: state.sessionId,
+      chat_id: state.chatId,
+      signal_id: signalId,
+    });
+    replaceSignalArticleDocument(result.document);
+    const job = result.job || {};
+    if (job.status === "ready") {
+      state.signalArticleBusy.delete(signalId);
+      return true;
+    }
+    if (job.status === "unavailable") {
+      state.signalArticleBusy.delete(signalId);
+      const documentStatus = result.document && result.document.metadata && result.document.metadata.article_status;
+      if (documentStatus === "unavailable") {
+        document.querySelector("#ask-status").textContent = "The full source was unavailable; summarizing the published signal context instead.";
+        return true;
+      }
+      document.querySelector("#ask-status").textContent = job.message || "The source article was unavailable.";
+      return false;
+    }
+    document.querySelector("#ask-status").textContent = job.message || "Reading source article…";
+    await new Promise(resolve => window.setTimeout(resolve, 500));
+  }
+  document.querySelector("#ask-status").textContent = "The source article took too long to load; the chat is ready when it finishes.";
+  return false;
 }
 function openAskAriadne() {
   document.body.classList.add("chat-expanded");
@@ -1655,10 +1747,12 @@ async function startSession() {
     let requestedChatId = null;
     if (CHAT_PAGE) {
       requestedChatId = new URLSearchParams(window.location.search).get("chat_id");
-    } else {
-      try { requestedChatId = localStorage.getItem("ariadne.home.chat_id"); } catch (_) {}
     }
-    const result = await postJson("/api/session/start", {surface: CHAT_PAGE ? "chat" : "home", chat_id: requestedChatId});
+    const result = await postJson("/api/session/start", {
+      surface: CHAT_PAGE ? "chat" : "home",
+      chat_id: requestedChatId,
+      fresh: !CHAT_PAGE,
+    });
     state.sessionId = result.session_id;
     state.chatId = result.chat_id;
     try { localStorage.setItem("ariadne.home.chat_id", state.chatId); } catch (_) {}
@@ -1818,14 +1912,23 @@ async function initializeChatPage() {
   const mode = params.get("vault_mode");
   if (mode && document.querySelector("#knowledge-mode")) document.querySelector("#knowledge-mode").value = mode;
   const signalId = params.get("signal_id");
+  const prompt = params.get("prompt");
   if (signalId) {
     const button = document.createElement("button");
     const status = document.querySelector("#ask-status");
     button.disabled = false;
-    await promoteSignalToVault(signalId, button, status);
+    const promoted = await promoteSignalToVault(signalId, button, status, {monitor: false});
+    if (prompt && promoted && await waitForSignalArticleReady(signalId)) {
+      const input = document.querySelector("#ask-input");
+      const form = document.querySelector("#ask-form");
+      if (input && form) {
+        input.value = prompt;
+        window.history.replaceState({}, "", chatUrl({chatId: state.chatId, vaultMode: mode || "", toolIds: requestedTools}));
+        window.setTimeout(() => form.requestSubmit(), 0);
+      }
+    }
     return;
   }
-  const prompt = params.get("prompt");
   if (prompt && !state.messages.some(item => item.role === "user" && item.content === prompt)) {
     const input = document.querySelector("#ask-input");
     const form = document.querySelector("#ask-form");
