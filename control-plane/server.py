@@ -311,6 +311,7 @@ SIGNAL_SERVICE_CLIENTS = {
     mode: SignalServiceClient(
         str(config["signal_url"]),
         diagnostics_path=ROOT / "runtime" / f"signal-service-events-{mode.lower()}.jsonl",
+        cache_path=ROOT / "runtime" / f"signal-service-briefing-{mode.lower()}.json",
     )
     for mode, config in DEPLOYMENT_MODE_CONFIG.items()
 }

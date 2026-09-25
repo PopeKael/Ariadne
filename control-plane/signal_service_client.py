@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -24,7 +25,7 @@ LEGACY_SOURCE_CATEGORIES = {
 
 
 class SignalServiceClient:
-    def __init__(self, base_url: str | None = None, *, timeout: float | None = None, diagnostics_path: str | Path | None = None):
+    def __init__(self, base_url: str | None = None, *, timeout: float | None = None, diagnostics_path: str | Path | None = None, cache_path: str | Path | None = None):
         self.base_url = (base_url or os.environ.get("ARIADNE_SIGNAL_SERVICE_URL", "http://192.168.1.200:8788")).rstrip("/")
         # Signal intake and briefing rebuilds can briefly take a few seconds
         # on the NAS. Keep the deadline bounded, but do not fail normal LAN
@@ -32,8 +33,47 @@ class SignalServiceClient:
         self.timeout = max(0.1, float(timeout if timeout is not None else os.environ.get("ARIADNE_SIGNAL_SERVICE_TIMEOUT", "5.0")))
         path = diagnostics_path or os.environ.get("ARIADNE_SIGNAL_SERVICE_EVENTS_PATH") or Path(__file__).resolve().parent / "runtime" / "signal-service-events.jsonl"
         self._diagnostics = LibrarianEventStream(Path(path))
+        configured_cache_path = cache_path or os.environ.get("ARIADNE_SIGNAL_BRIEFING_CACHE_PATH")
+        self._cache_path = Path(configured_cache_path) if configured_cache_path else None
         self._briefing_cache_lock = Lock()
-        self._last_successful_briefing: dict[str, Any] | None = None
+        self._last_successful_briefing: dict[str, Any] | None = self._load_cached_briefing()
+
+    def _load_cached_briefing(self) -> dict[str, Any] | None:
+        """Load the last valid public briefing without making startup depend on Hera."""
+        if self._cache_path is None:
+            return None
+        try:
+            if not self._cache_path.is_file() or self._cache_path.stat().st_size > 5_000_000:
+                return None
+            value = json.loads(self._cache_path.read_text(encoding="utf-8"))
+            if not isinstance(value, dict) or not isinstance(value.get("signals"), list):
+                return None
+            return {**value, "signals": list(value["signals"])}
+        except (OSError, ValueError, json.JSONDecodeError):
+            return None
+
+    def _persist_briefing(self, briefing: dict[str, Any]) -> None:
+        """Atomically retain a bounded last-known-good briefing for the next process."""
+        if self._cache_path is None:
+            return
+        temporary_path: Path | None = None
+        try:
+            self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=self._cache_path.parent,
+                prefix=f".{self._cache_path.name}.", suffix=".tmp", delete=False,
+            ) as handle:
+                temporary_path = Path(handle.name)
+                json.dump(briefing, handle, ensure_ascii=False, separators=(",", ":"))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, self._cache_path)
+        except OSError:
+            if temporary_path is not None:
+                try:
+                    temporary_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
     def clear_cache(self) -> None:
         """Forget the last briefing before an environment switch.
@@ -87,8 +127,10 @@ class SignalServiceClient:
         signals = raw_signals if isinstance(raw_signals, list) else []
         result["signals"] = signals
         if result.get("ok", True) and isinstance(raw_signals, list):
+            successful = {**result, "signals": list(signals)}
             with self._briefing_cache_lock:
-                self._last_successful_briefing = {**result, "signals": list(signals)}
+                self._last_successful_briefing = successful
+            self._persist_briefing(successful)
             return {**result, "signals": list(signals[:bounded_limit])}
 
         with self._briefing_cache_lock:

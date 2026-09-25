@@ -51,6 +51,26 @@ class SignalServiceClientTests(unittest.TestCase):
         self.assertEqual(result["generated_at"], briefing["generated_at"])
         self.assertEqual(result["signals"], briefing["signals"])
 
+    def test_populated_briefing_survives_process_restart_from_disk(self):
+        cache_path = Path(self.temp.name) / "briefing.json"
+        first_client = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path, cache_path=cache_path)
+        briefing = {
+            "ok": True,
+            "stale": False,
+            "generated_at": "2026-09-11T01:00:00+00:00",
+            "signals": [{"signal_id": "signal-1", "title": "First signal"}],
+        }
+        with patch.object(first_client, "_get", return_value=briefing):
+            first_client.briefing()
+
+        restarted_client = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path, cache_path=cache_path)
+        with patch.object(restarted_client, "_get", return_value={"ok": False, "state": "offline", "message": "timed out"}):
+            result = restarted_client.briefing()
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["stale"])
+        self.assertEqual(result["generated_at"], briefing["generated_at"])
+        self.assertEqual(result["signals"], briefing["signals"])
+
     def test_populated_briefing_survives_temporary_offline_response(self):
         client = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path)
         briefing = {
