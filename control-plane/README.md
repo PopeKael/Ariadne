@@ -26,6 +26,15 @@ The active Ollama model store is `F:\AI\Models\Ollama`. The previous C: store is
 as `C:\Users\Warren\.ollama\models.rollback-20260817` until the new location
 has had normal use. Native model behaviour can be adjusted with
 `ARIADNE_CHAT_MODEL` and `ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE`.
+The low-level Ollama API uses `http://127.0.0.1:11434`; browser-facing Ariadne
+pages continue to use `localhost`.
+
+At Ariadne startup, the Python core performs a bounded Ollama preflight. It
+checks the configured model catalogue without loading a model; if an Ollama
+update left the endpoint attached to the wrong store, Ariadne verifies the
+listener owner, restarts only that exact `ollama.exe` listener, and waits only
+for the model catalogue to recover. It never broad-kills processes or blocks
+startup on model loading.
 
 Docker and Compose files in this repository are manual packaging/deployment
 artifacts for Hera. They are not runtime dependencies, are not started by

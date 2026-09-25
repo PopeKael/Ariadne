@@ -65,7 +65,7 @@ def _saved(path: Path | None = None) -> dict[str, Any]:
 
 
 def default_providers() -> list[Provider]:
-    ollama_url = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
+    ollama_url = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
     home_model = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
     planner_model = os.environ.get("ARIADNE_PLANNER_MODEL", home_model)
     embedding_model = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")

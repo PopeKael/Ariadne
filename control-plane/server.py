@@ -60,6 +60,7 @@ from librarian_harness import (
     interpret_and_resolve,
     request_needs_personal_context,
 )
+from ollama_runtime import startup_preflight
 from evidence_router import decide as decide_evidence, external_search_needed
 from search_providers import SearchProviderRegistry
 from plugin_activity import PluginActivityStream
@@ -77,7 +78,10 @@ PROJECT_ROOT = ROOT.parent
 HOST = os.environ.get("ARIADNE_BIND_ADDRESS", "127.0.0.1")
 PORT = int(os.environ.get("ARIADNE_PORT", "8765"))
 LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
-OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
+# Ollama is a low-level local service, not a user-facing page. Pin the
+# transport to IPv4 loopback so Windows cannot route Ariadne to a stale
+# IPv6/localhost listener left behind by an Ollama update.
+OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 HOME_MODEL_KEEP_ALIVE = -1
@@ -7826,6 +7830,14 @@ def main() -> None:
             )
             print(message, file=sys.stderr)
             return
+    ollama_startup = startup_preflight(
+        OLLAMA_URL,
+        tuple(dict.fromkeys((HOME_CHAT_MODEL, PLANNER_MODEL))),
+    )
+    print(
+        "Ariadne Ollama startup preflight: "
+        f"{ollama_startup.get('state')} · {ollama_startup.get('detail')}"
+    )
     expire_home_chats()
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
     HTTP_SERVER = httpd
