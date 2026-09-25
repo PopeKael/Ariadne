@@ -16,6 +16,75 @@ from home_chat_store import ChatStore  # noqa: E402
 
 
 class HomeSignalIntegrationTests(unittest.TestCase):
+    def test_discovery_article_id_uses_discovery_canonical_url_rule(self):
+        self.assertEqual(
+            server._discovery_article_id_for_url("https://WWW.Example.test/story/?utm_source=mail&id=7#top"),
+            server._discovery_article_id_for_url("https://www.example.test/story?id=7"),
+        )
+        self.assertIsNone(server._discovery_article_id_for_url("not a publisher URL"))
+
+    def test_signal_article_cache_hit_attaches_markdown_without_publisher_fetch(self):
+        signal = {"signal_id": "signal-1234567890abcdef", "title": "Cached report", "source_name": "Example", "url": "https://example.test/story", "summary": "Stored digest."}
+        key = server._signal_article_job_key("chat-cache-hit", signal["signal_id"])
+        original_jobs = server.SIGNAL_ARTICLE_JOBS
+        original_events = server.HOME_EVENTS_PATH
+        original_documents = server.DOCUMENT_WORK_ROOT
+        with tempfile.TemporaryDirectory() as temporary:
+            server.SIGNAL_ARTICLE_JOBS = {key: {"status": "loading"}}
+            server.HOME_EVENTS_PATH = Path(temporary) / "Journal" / "events.md"
+            server.DOCUMENT_WORK_ROOT = Path(temporary) / "documents"
+            try:
+                cache = {"status": "hit", "label": "ARTICLE CACHE HIT", "article_id": "article-123", "retrieval_ms": 4.2, "publisher_fetch_occurred": False, "storage": "local_file", "network_fetch": False}
+                with patch.object(server, "_fetch_cached_signal_article", return_value=("Cached body from Hera.", cache)), patch.object(server, "promote_signal") as promote, patch.object(server, "update_document", return_value={"document_id": "doc-1", "content_hash": "abc"}) as update, patch.object(server, "publish_home_activity"), patch.object(server, "_session_processing", return_value=False):
+                    server._run_signal_article_job(key, "session", "chat-cache-hit", signal, "doc-1")
+                promote.assert_not_called()
+                attached = update.call_args.args[-1]
+                self.assertIn("Cached body from Hera.", attached)
+                self.assertIn('article_status: "ready"', attached)
+                result = server.SIGNAL_ARTICLE_JOBS[key]
+                self.assertEqual(result["article_cache"]["label"], "ARTICLE CACHE HIT")
+                self.assertFalse(result["result"]["publisher_fetch_occurred"])
+                self.assertEqual(result["status"], "ready")
+                self.assertIn("Cached article loaded", result["message"])
+            finally:
+                server.SIGNAL_ARTICLE_JOBS = original_jobs
+                server.HOME_EVENTS_PATH = original_events
+                server.DOCUMENT_WORK_ROOT = original_documents
+
+    def test_signal_article_cache_miss_uses_existing_publisher_fallback(self):
+        signal = {"signal_id": "signal-1234567890abcdef", "title": "Uncached report", "url": "https://example.test/uncached"}
+        key = server._signal_article_job_key("chat-cache-miss", signal["signal_id"])
+        original_jobs = server.SIGNAL_ARTICLE_JOBS
+        original_events = server.HOME_EVENTS_PATH
+        original_documents = server.DOCUMENT_WORK_ROOT
+        original_vault = server.VAULT_ROOT
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            note = root / "Inbox" / "Uncached report.md"
+            note.parent.mkdir(parents=True)
+            note.write_text("---\ntype: source-article\narticle_status: ready\n---\n\nPublisher fallback body.\n", encoding="utf-8")
+            server.SIGNAL_ARTICLE_JOBS = {key: {"status": "loading"}}
+            server.HOME_EVENTS_PATH = root / "Journal" / "events.md"
+            server.DOCUMENT_WORK_ROOT = root / "documents"
+            server.VAULT_ROOT = root
+            try:
+                cache = {"status": "miss", "label": "ARTICLE CACHE MISS", "article_id": "article-uncached", "retrieval_ms": 3.1, "publisher_fetch_occurred": False}
+                fallback = {"signal_id": signal["signal_id"], "path": "Inbox/Uncached report.md", "fetch_error": "", "cache_hit": False}
+                with patch.object(server, "_fetch_cached_signal_article", return_value=(None, cache)), patch.object(server, "promote_signal", return_value=fallback) as promote, patch.object(server, "update_document", return_value={"document_id": "doc-2"}), patch.object(server, "publish_home_activity"), patch.object(server, "_session_processing", return_value=False):
+                    server._run_signal_article_job(key, "session", "chat-cache-miss", signal, "doc-2")
+                promote.assert_called_once_with(root, signal)
+                result = server.SIGNAL_ARTICLE_JOBS[key]
+                self.assertEqual(result["article_cache"]["label"], "ARTICLE CACHE MISS")
+                self.assertTrue(result["article_cache"]["publisher_fetch_occurred"])
+                self.assertTrue(result["result"]["publisher_fetch_occurred"])
+                self.assertEqual(result["status"], "ready")
+                self.assertEqual(result["message"], "Cache miss · fetching publisher")
+            finally:
+                server.SIGNAL_ARTICLE_JOBS = original_jobs
+                server.HOME_EVENTS_PATH = original_events
+                server.DOCUMENT_WORK_ROOT = original_documents
+                server.VAULT_ROOT = original_vault
+
     def test_chat_refuses_to_run_while_source_article_is_loading(self):
         with tempfile.TemporaryDirectory() as temporary:
             original_store = server.HOME_CHAT_STORE

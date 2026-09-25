@@ -18,7 +18,7 @@ class HomeNavigationTests(unittest.TestCase):
         self.assertIn('window.open("about:blank", "_blank")', function)
         self.assertIn("newTabWindow});", function)
         self.assertLess(function.index('window.open("about:blank", "_blank")'), function.index("await startSession()"))
-        self.assertIn("const destination = chatUrl({chatId, prompt, signalId, vaultMode, toolIds});", source)
+        self.assertIn("const destination = chatUrl({chatId, prompt, signalId, tldrStartedAt, articleId, articleAction, articleStartedAt, vaultMode, toolIds});", source)
         self.assertIn("else window.location.assign(destination);", source)
 
     def test_think_action_uses_the_same_new_tab_chat_path(self):

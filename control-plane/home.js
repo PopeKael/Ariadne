@@ -1,19 +1,23 @@
 const HOME_REQUEST_TIMEOUT_MS = 240000;
 const TLDR_PROMPT = "Give me a clear, plain-English summary of this article in 200 to 300 words. Focus on what happened, why it matters, and any important uncertainty.";
 const CHAT_PAGE = document.body.classList.contains("chat-page");
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
 
-function chatUrl({chatId = "", prompt = "", signalId = "", vaultMode = "", toolIds = []} = {}) {
+function chatUrl({chatId = "", prompt = "", signalId = "", tldrStartedAt = "", articleId = "", articleAction = "", articleStartedAt = "", vaultMode = "", toolIds = []} = {}) {
   const url = new URL("/chat", window.location.origin);
   if (chatId) url.searchParams.set("chat_id", chatId);
   if (prompt) url.searchParams.set("prompt", prompt);
   if (signalId) url.searchParams.set("signal_id", signalId);
+  if (tldrStartedAt) url.searchParams.set("tldr_started_at", tldrStartedAt);
+  if (articleId) url.searchParams.set("article_id", articleId);
+  if (articleAction) url.searchParams.set("article_action", articleAction);
+  if (articleStartedAt) url.searchParams.set("article_started_at", articleStartedAt);
   if (vaultMode) url.searchParams.set("vault_mode", vaultMode);
   if (toolIds.length) url.searchParams.set("tools", toolIds.join(","));
   return url.pathname + url.search;
 }
 
-async function openFreshChat({prompt = "", signalId = "", newTabWindow = null} = {}) {
+async function openFreshChat({prompt = "", signalId = "", tldrStartedAt = "", articleId = "", articleAction = "", articleStartedAt = "", newTabWindow = null} = {}) {
   if (!state.sessionId && !(await startSession())) {
     if (newTabWindow && !newTabWindow.closed) newTabWindow.close();
     return false;
@@ -24,7 +28,7 @@ async function openFreshChat({prompt = "", signalId = "", newTabWindow = null} =
   rememberChat(chatId);
   const vaultMode = document.querySelector("#knowledge-mode")?.value || "auto";
   const toolIds = Array.from(state.selectedToolIds);
-  const destination = chatUrl({chatId, prompt, signalId, vaultMode, toolIds});
+  const destination = chatUrl({chatId, prompt, signalId, tldrStartedAt, articleId, articleAction, articleStartedAt, vaultMode, toolIds});
   closeSession();
   if (newTabWindow) newTabWindow.location.replace(destination);
   else window.location.assign(destination);
@@ -113,8 +117,14 @@ function renderAttachments(documents) {
     const isArticle = metadata.type === "source-article" || Boolean(inferredSignalId);
     const chip = el("span", "attachment-chip" + (isArticle ? " source-article-chip" : ""));
     chip.title = isArticle ? (metadata.title || document.title || document.filename || "Source article") : (document.title || document.filename || "Attached document");
-    const articleLabel = metadata.article_status === "loading" ? " · reading" : metadata.article_status === "unavailable" ? " · unavailable" : "";
-    chip.append(el("span", "", isArticle ? (metadata.title || document.title || document.filename || "Source article") + articleLabel : (document.filename || document.title || "Attached document")));
+    const articleStatus = metadata.article_status === "loading" ? " · reading" : metadata.article_status === "unavailable" ? " · unavailable" : "";
+    const interactionLabel = metadata.interaction_action === "tldr_opened" ? "TLDR · Hera cache"
+      : metadata.interaction_action === "discussion_opened" ? "Discussion · Hera cache" : "";
+    const timingLabel = Number.isFinite(Number(metadata.cache_retrieval_ms))
+      ? ` · ${Number(metadata.cache_retrieval_ms).toFixed(1)} ms cache · ready ${Math.round(Number(metadata.click_ready_ms))} ms` : "";
+    const articleTitle = metadata.title || document.title || document.filename || "Source article";
+    const articleCaption = [interactionLabel, articleTitle + articleStatus].filter(Boolean).join(" · ") + timingLabel;
+    chip.append(el("span", "", isArticle ? articleCaption : (document.filename || document.title || "Attached document")));
     const remove = el("button", "attachment-remove", "×");
     remove.type = "button";
     remove.disabled = state.processing;
@@ -540,6 +550,7 @@ function positionSignalDetails(anchor, popover) {
 function renderSignalCard(item) {
   const card = el("article", "signal-card " + (item.tone || "quiet"));
   card.dataset.signalId = item.signal_id || "";
+  if (item.article_id) card.dataset.articleId = item.article_id;
   const validUrl = item.url && /^https?:\/\//i.test(item.url);
   const body = el("div", "signal-card-body");
   const title = el("h3", "signal-card-title", item.label || "Signal");
@@ -659,7 +670,40 @@ function renderSignalCard(item) {
     sourceLink.title = "Open original source";
     body.append(sourceLink);
   }
-  if (item.signal_id) {
+  if (item.article_id) {
+    const actions = el("div", "signal-card-actions");
+    const feedback = el("div", "signal-feedback");
+    feedback.append(el("span", "feedback-label", "Your take"));
+    const feedbackValues = [["useful", "Useful"], ["interesting", "Interesting"], ["not_useful", "Not useful"]];
+    for (const [value, label] of feedbackValues) {
+      const button = el("button", "feedback-button", label);
+      button.type = "button";
+      button.dataset.value = value;
+      button.setAttribute("aria-label", `${label} article`);
+      if (item.feedback && item.feedback.value === value) button.classList.add("selected");
+      button.addEventListener("click", () => {
+        if (!button.classList.contains("selected")) submitNewsFeedback(item.article_id, value, card, feedback);
+      });
+      feedback.append(button);
+    }
+    feedback.append(el("span", "feedback-status"));
+
+    const tldrButton = el("button", "feedback-button tldr-button", "TLDR");
+    tldrButton.type = "button";
+    tldrButton.setAttribute("aria-label", `Open a 200 to 300 word summary of ${item.label || "this article"}`);
+    tldrButton.addEventListener("click", () => openNewsArticle(item.article_id, "tldr_opened", tldrButton, feedback, TLDR_PROMPT));
+    feedback.append(tldrButton);
+
+    const discussion = el("div", "signal-promotion");
+    const discussButton = el("button", "think-button", "Think with Ariadne");
+    discussButton.type = "button";
+    discussButton.setAttribute("aria-label", `Discuss ${item.label || "this article"} with Ariadne`);
+    const discussionStatus = el("span", "promotion-status");
+    discussButton.addEventListener("click", () => openNewsArticle(item.article_id, "discussion_opened", discussButton, discussionStatus));
+    discussion.append(discussButton, discussionStatus);
+    actions.append(feedback, info, discussion);
+    card.append(actions);
+  } else if (item.signal_id) {
     const actions = el("div", "signal-card-actions");
     const feedback = el("div", "signal-feedback");
     feedback.append(el("span", "feedback-label", "Your take"));
@@ -704,47 +748,17 @@ function renderToday(items) {
   const count = document.querySelector("#signal-count");
   const scrollTop = root.scrollTop;
   root.replaceChildren();
-  const signals = (items || []).filter(item => item && item.signal_id).map(item => ({...item, category: inferSignalCategory(item)}));
-  const displayedSignalIds = new Set();
-  if (count) count.textContent = `${signals.length} curated signals`;
-  for (const [category, label, description] of SIGNAL_SECTIONS) {
-    const section = el("section", "signal-section");
-    section.dataset.category = category;
-    const sectionHeading = el("div", "signal-section-heading");
-    const headingCopy = el("div");
-    headingCopy.append(el("span", "eyebrow", label), el("p", "signal-section-description", description));
-    const matches = category === "Watchlist"
-      ? signals.filter(item => item.category === "Watchlist" || (Array.isArray(item.watchlist_matches) && item.watchlist_matches.length > 0))
-      : signals.filter(item => item.category === category);
-    // Reserve the whole bounded section before rendering its first page. This
-    // keeps the Watchlist projection from stealing or duplicating a signal
-    // when another section is expanded later.
-    const assignedMatches = matches.filter(item => !displayedSignalIds.has(item.signal_id)).slice(0, MAX_SIGNALS_PER_SECTION);
-    assignedMatches.forEach(item => displayedSignalIds.add(item.signal_id));
-    sectionHeading.append(headingCopy, el("span", "signal-section-count", `${assignedMatches.length}`));
-    section.append(sectionHeading);
-    const grid = el("div", "signal-section-grid");
-    const renderMatches = values => values.forEach(item => grid.append(renderSignalCard(item)));
-    const initialMatches = assignedMatches.slice(0, INITIAL_SIGNALS_PER_SECTION);
-    if (initialMatches.length) renderMatches(initialMatches);
-    else grid.append(el("p", "signal-section-empty", category === "Watchlist" ? "No watchlist topics are active yet." : "No signals in this section yet."));
-    section.append(grid);
-    const expanded = state.signalExpandedSections.has(category);
-    if (expanded && assignedMatches.length > INITIAL_SIGNALS_PER_SECTION) {
-      renderMatches(assignedMatches.slice(INITIAL_SIGNALS_PER_SECTION));
-    } else if (assignedMatches.length > INITIAL_SIGNALS_PER_SECTION) {
-      const remaining = assignedMatches.length - INITIAL_SIGNALS_PER_SECTION;
-      const more = el("button", "signal-section-more", `Show ${remaining} more`);
-      more.type = "button";
-      more.addEventListener("click", () => {
-        state.signalExpandedSections.add(category);
-        renderMatches(assignedMatches.slice(INITIAL_SIGNALS_PER_SECTION));
-        more.remove();
-      });
-      section.append(more);
-    }
-    root.append(section);
-  }
+  const cards = (items || []).filter(item => item && typeof item === "object").map(item => ({
+    ...item,
+    signal_id: "",
+    label: item.title || item.label || "Article",
+    url: item.canonical_url || item.url || "",
+    source: item.source || item.source_name || "",
+  }));
+  if (count) count.textContent = `${cards.length} cached articles`;
+  const grid = el("div", "signal-section-grid");
+  cards.forEach(item => grid.append(renderSignalCard(item)));
+  root.append(grid);
   root.scrollTop = Math.min(scrollTop, Math.max(0, root.scrollHeight - root.clientHeight));
 }
 function renderAdaptive(payload) {
@@ -770,6 +784,55 @@ function renderAdaptive(payload) {
   const ratingTotal = Object.values(ratings).reduce((total, value) => total + Number(value || 0), 0);
   if (ratingTotal) root.append(el("p", "adaptive-response-evidence", `Answer-style evidence: ${ratingTotal} response rating${ratingTotal === 1 ? "" : "s"} · ${Number(response.comment_count || 0)} comment${Number(response.comment_count || 0) === 1 ? "" : "s"}.`));
 }
+async function submitNewsFeedback(articleId, value, card, feedbackRoot) {
+  if (!state.sessionId && !(await startSession())) return;
+  const buttons = Array.from(feedbackRoot.querySelectorAll("button"));
+  const status = feedbackRoot.querySelector(".feedback-status");
+  buttons.forEach(button => { button.disabled = true; });
+  if (status) status.textContent = "Saving…";
+  try {
+    const result = await postWithSessionRecovery("/api/home/news/feedback", {
+      session_id: state.sessionId, article_id: articleId, feedback: value,
+    });
+    if (!result.ok || !result.persisted_to_hera) throw new Error(result.message || "Hera did not confirm saving feedback.");
+    buttons.forEach(button => button.classList.toggle("selected", button.dataset.value === value));
+    if (status) status.textContent = "Saved";
+  } catch (error) {
+    if (status) status.textContent = "Not saved";
+    feedbackRoot.title = error.message || "Feedback could not be saved to Hera.";
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+async function openNewsArticle(articleId, action, button, statusRoot, prompt = "") {
+  if (!articleId || button.disabled) return;
+  const articleStartedAt = Date.now();
+  const status = statusRoot.querySelector(".feedback-status, .promotion-status");
+  const newTabWindow = window.open("about:blank", "_blank");
+  if (!newTabWindow) {
+    if (status) status.textContent = "Could not open chat";
+    button.title = "The browser blocked the new chat tab.";
+    return;
+  }
+  newTabWindow.document.title = action === "tldr_opened" ? "Opening TLDR · Ariadne" : "Opening article discussion · Ariadne";
+  newTabWindow.document.body.textContent = action === "tldr_opened"
+    ? "Opening TLDR · loading the cached article from Hera…"
+    : "Opening article discussion · loading the cached article from Hera…";
+  if (!state.sessionId && !(await startSession())) {
+    if (!newTabWindow.closed) newTabWindow.close();
+    return;
+  }
+  button.disabled = true;
+  if (status) status.textContent = action === "tldr_opened" ? "Opening TLDR…" : "Opening discussion…";
+  try {
+    await openFreshChat({articleId, articleAction: action, articleStartedAt, prompt, newTabWindow});
+  } catch (error) {
+    if (!newTabWindow.closed) newTabWindow.close();
+    button.disabled = false;
+    if (status) status.textContent = "Could not open chat";
+    button.title = error.message || "The article chat could not be opened.";
+  }
+}
 async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
   if (!state.sessionId) return;
   const buttons = Array.from(feedbackRoot.querySelectorAll("button"));
@@ -789,6 +852,7 @@ async function submitSignalFeedback(signalId, value, card, feedbackRoot) {
 }
 async function openSignalTldr(signalId, button, feedbackRoot) {
   if (!signalId || button.disabled) return;
+  const tldrStartedAt = Date.now();
   const status = feedbackRoot.querySelector(".feedback-status");
   const newTabWindow = window.open("about:blank", "_blank");
   if (!newTabWindow) {
@@ -815,7 +879,7 @@ async function openSignalTldr(signalId, button, feedbackRoot) {
   }
   try {
     if (status) status.textContent = "Opening article chat…";
-    await openFreshChat({signalId, prompt: TLDR_PROMPT, newTabWindow});
+    await openFreshChat({signalId, prompt: TLDR_PROMPT, tldrStartedAt, newTabWindow});
   } catch (error) {
     if (!newTabWindow.closed) newTabWindow.close();
     button.disabled = false;
@@ -890,7 +954,7 @@ function watchSignalArticle(signalId, documentId, button, status) {
       const result = await postWithSessionRecovery("/api/home/signals/promote/status", {session_id: state.sessionId, chat_id: state.chatId, signal_id: signalId, document_id: documentId});
       const job = result.job || {};
       if (job.status === "loading") {
-        status.textContent = "Reading source article…";
+        status.textContent = job.message || "Reading source article…";
         document.querySelector("#ask-status").textContent = job.message || "Reading source article…";
         const timer = window.setTimeout(poll, 500);
         state.signalArticlePollers.set(signalId, timer);
@@ -902,8 +966,10 @@ function watchSignalArticle(signalId, documentId, button, status) {
       button.disabled = false;
       if (job.status === "ready") {
         status.textContent = job.message || "Source article ready.";
-        button.title = "Source article cached in the Knowledge Vault.";
-        document.querySelector("#ask-status").textContent = "Source article ready. Ask Ariadne has the Signal context and article evidence.";
+        button.title = job.article_cache && job.article_cache.status === "hit"
+          ? "Source article loaded from Hera article cache."
+          : "Source article cached in the Knowledge Vault.";
+        document.querySelector("#ask-status").textContent = job.message || "Source article ready. Ask Ariadne has the Signal context and article evidence.";
       } else {
         status.textContent = "Signal context attached; article unavailable";
         button.title = job.message || "The source article was unavailable.";
@@ -921,6 +987,7 @@ function watchSignalArticle(signalId, documentId, button, status) {
   state.signalArticlePollers.set(signalId, timer);
 }
 async function waitForSignalArticleReady(signalId) {
+  const tldrStartedAt = Number(new URLSearchParams(window.location.search).get("tldr_started_at")) || 0;
   const started = Date.now();
   while (Date.now() - started < HOME_REQUEST_TIMEOUT_MS) {
     const result = await postWithSessionRecovery("/api/home/signals/promote/status", {
@@ -932,6 +999,13 @@ async function waitForSignalArticleReady(signalId) {
     const job = result.job || {};
     if (job.status === "ready") {
       state.signalArticleBusy.delete(signalId);
+      if (tldrStartedAt && Number.isFinite(Number(job.document_ready_at_ms))) {
+        const elapsed = Math.max(0, Number(job.document_ready_at_ms) - tldrStartedAt);
+        const cache = job.article_cache || {};
+        document.querySelector("#ask-status").textContent = cache.status === "hit"
+          ? `Cached article loaded · ${cache.retrieval_ms} ms (document ready ${elapsed} ms after TLDR click).`
+          : job.message || `Source article ready ${elapsed} ms after TLDR click.`;
+      }
       return true;
     }
     if (job.status === "unavailable") {
@@ -949,6 +1023,41 @@ async function waitForSignalArticleReady(signalId) {
   }
   document.querySelector("#ask-status").textContent = "The source article took too long to load; the chat is ready when it finishes.";
   return false;
+}
+async function attachNewsArticleContext(articleId, action, articleStartedAt) {
+  const status = document.querySelector("#ask-status");
+  const prompt = new URLSearchParams(window.location.search).get("prompt") || "";
+  if (status) status.textContent = action === "tldr_opened"
+    ? "TLDR · Loading cached article from Hera…"
+    : "Article discussion · Loading cached article from Hera…";
+  try {
+    const result = await postWithSessionRecovery("/api/home/news/article-context", {
+      session_id: state.sessionId, article_id: articleId, action,
+    });
+    if (!result.ok || !result.document) throw new Error(result.message || "Hera returned no cached article.");
+    const clickElapsed = articleStartedAt ? Math.max(0, Date.now() - articleStartedAt) : null;
+    const retrievalMs = Number(result.retrieval && result.retrieval.retrieval_ms);
+    const readyMs = Number(result.document_ready_ms);
+    state.attachments = result.documents || [...state.attachments, result.document];
+    const activeDocument = state.attachments.find(item => item.metadata && item.metadata.article_id === articleId);
+    if (activeDocument) {
+      activeDocument.metadata = {...activeDocument.metadata, interaction_action: action,
+        cache_retrieval_ms: retrievalMs, click_ready_ms: clickElapsed ?? readyMs};
+    }
+    renderAttachments(state.attachments);
+    const timing = Number.isFinite(retrievalMs) && Number.isFinite(readyMs)
+      ? `Cached article loaded · ${retrievalMs} ms (document ready ${clickElapsed == null ? readyMs : clickElapsed} ms after click).`
+      : "Cached article loaded and attached.";
+    const actionLabel = action === "tldr_opened" ? "TLDR ready · " : "Article ready · ";
+    const interactionNote = result.interaction_queued
+      ? " Interaction recording is running in the background."
+      : result.interaction_persisted === false ? " Interaction history could not be saved." : "";
+    if (status) status.textContent = actionLabel + timing + interactionNote;
+    return true;
+  } catch (error) {
+    if (status) status.textContent = `Article unavailable · ${error.message || "Hera cache retrieval failed"}. No publisher fetch was attempted.`;
+    return false;
+  }
 }
 function openAskAriadne() {
   document.body.classList.add("chat-expanded");
@@ -1731,16 +1840,33 @@ function endRequestStatus() {
   if (state.requestTimer) window.clearInterval(state.requestTimer);
   state.requestTimer = null;
 }
-async function loadHome() {
+async function loadNewsSnapshot() {
+  const started = performance.now();
+  try {
+    const result = await getJson("/api/news/briefing-snapshot");
+    const cards = result && result.available && result.briefing && result.briefing.articles;
+    if (!Array.isArray(cards)) return false;
+    renderToday(cards);
+    const elapsedMs = Math.round((performance.now() - started) * 1000) / 1000;
+    console.info("[HOME NEWS SNAPSHOT]", JSON.stringify({cards: cards.length, briefing_hash: result.briefing_hash, elapsed_ms: elapsedMs}));
+    return true;
+  } catch (_) {
+    // Keep already-rendered cards intact if the local snapshot endpoint is unavailable.
+    return false;
+  }
+}
+async function loadHome({refreshNews = false} = {}) {
   if (CHAT_PAGE) {
     await loadChatHealth();
     return;
   }
   if (state.contextMutationInFlight) return;
+  // Only page entry/explicit invocation reads news. Routine status polls never
+  // replace cards, so a background Hera sync cannot reorder this Home session.
+  if (refreshNews) await loadNewsSnapshot();
   try {
     const data = await getJson("/api/home/activity");
     renderHealth(data.health);
-    renderToday(data.today);
     renderActivity(data.activity);
     try { renderAdaptive(await getJson("/api/home/adaptive")); } catch (_) { renderAdaptive({}); }
   } catch (error) {
@@ -1780,7 +1906,10 @@ async function startSession() {
     try { localStorage.setItem("ariadne.home.chat_id", state.chatId); } catch (_) {}
     restoreMessages(result.messages || []);
     renderAttachments(result.documents || []);
-    await loadRecentChats();
+    // Sidebar history is noncritical and can load while article context opens.
+    // Keep its disk scan off the click-to-document-ready path.
+    const openingArticle = CHAT_PAGE && new URLSearchParams(window.location.search).has("article_id");
+    if (!openingArticle) loadRecentChats();
     if (result.resumed && result.messages && result.messages.length) {
       const status = document.querySelector("#ask-status");
       if (status) status.textContent = "Recovered the durable local chat.";
@@ -1858,13 +1987,16 @@ async function ask(event) {
   state.requestTimeout = window.setTimeout(() => controller.abort(), HOME_REQUEST_TIMEOUT_MS);
   try {
     let streamedAnswer = "";
+    const articleTldr = state.articleTldrPending;
+    state.articleTldrPending = false;
     const result = await streamHomeChat({
       session_id: state.sessionId,
       chat_id: state.chatId,
       message: message,
       history: history,
       vault_mode: document.querySelector("#knowledge-mode").value,
-      tool_ids: Array.from(state.selectedToolIds)
+      tool_ids: Array.from(state.selectedToolIds),
+      article_tldr: articleTldr
     }, event => {
       if (event.type === "activity") {
         pushChatActivity(event);
@@ -1934,7 +2066,24 @@ async function initializeChatPage() {
   const mode = params.get("vault_mode");
   if (mode && document.querySelector("#knowledge-mode")) document.querySelector("#knowledge-mode").value = mode;
   const signalId = params.get("signal_id");
+  const articleId = params.get("article_id");
+  const articleAction = params.get("article_action") || "discussion_opened";
+  state.articleTldrPending = articleAction === "tldr_opened";
+  const articleStartedAt = Number(params.get("article_started_at")) || 0;
   const prompt = params.get("prompt");
+  if (articleId) {
+    const ready = await attachNewsArticleContext(articleId, articleAction, articleStartedAt);
+    window.history.replaceState({}, "", chatUrl({chatId: state.chatId, vaultMode: mode || "", toolIds: requestedTools}));
+    if (ready && prompt) {
+      const input = document.querySelector("#ask-input");
+      const form = document.querySelector("#ask-form");
+      if (input && form) {
+        input.value = prompt;
+        window.setTimeout(() => form.requestSubmit(), 0);
+      }
+    }
+    return;
+  }
   if (signalId) {
     const button = document.createElement("button");
     const status = document.querySelector("#ask-status");
@@ -2011,7 +2160,7 @@ if (CHAT_PAGE) {
   initializeChatPage();
 } else {
   startSession();
-  loadHome();
+  loadHome({refreshNews: true});
   requestLocalWeather();
   window.setInterval(loadHome, 15000);
   window.setInterval(() => loadInformation(), 15 * 60 * 1000);

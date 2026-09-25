@@ -29,6 +29,7 @@ METADATA_KEYS = {
     "created_date", "description", "tags", "type", "signal_id", "source_url",
     "resolved_url", "published_at", "captured_at", "category", "image_url",
     "watchlist_matches", "provenance", "article_status", "article_error", "signal_context",
+    "article_id", "article_cache",
 }
 
 

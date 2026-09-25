@@ -1,0 +1,17 @@
+[
+  {"name": "BBC World", "url": "https://feeds.bbci.co.uk/news/world/rss.xml", "category": "World", "kind": "rss_atom", "enabled": true},
+  {"name": "BBC Asia", "url": "https://feeds.bbci.co.uk/news/world/asia/rss.xml", "category": "Asia", "kind": "rss_atom", "enabled": true},
+  {"name": "BBC Technology", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml", "category": "Technology", "kind": "rss_atom", "enabled": true},
+  {"name": "BBC Business", "url": "https://feeds.bbci.co.uk/news/business/rss.xml", "category": "Business", "kind": "rss_atom", "enabled": true},
+  {"name": "The Guardian World", "url": "https://www.theguardian.com/world/rss", "category": "World", "kind": "rss_atom", "enabled": true},
+  {"name": "The Guardian Technology", "url": "https://www.theguardian.com/technology/rss", "category": "Technology", "kind": "rss_atom", "enabled": true},
+  {"name": "The Guardian Science", "url": "https://www.theguardian.com/science/rss", "category": "Science", "kind": "rss_atom", "enabled": true},
+  {"name": "NPR World", "url": "https://feeds.npr.org/1004/rss.xml", "category": "World", "kind": "rss_atom", "enabled": true},
+  {"name": "NPR Technology", "url": "https://feeds.npr.org/1019/rss.xml", "category": "Technology", "kind": "rss_atom", "enabled": true},
+  {"name": "NPR Science", "url": "https://feeds.npr.org/1007/rss.xml", "category": "Science", "kind": "rss_atom", "enabled": true},
+  {"name": "Al Jazeera", "url": "https://www.aljazeera.com/xml/rss/all.xml", "category": "World", "kind": "rss_atom", "enabled": true},
+  {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "category": "Technology", "kind": "rss_atom", "enabled": true},
+  {"name": "MIT Technology Review", "url": "https://www.technologyreview.com/feed/", "category": "Technology", "kind": "rss_atom", "enabled": true},
+  {"name": "Khaosod English", "url": "https://www.khaosodenglish.com/feed/", "category": "Thailand", "kind": "rss_atom", "enabled": true},
+  {"name": "NASA Breaking News", "url": "https://www.nasa.gov/rss/dyn/breaking_news.rss", "category": "Science & Space", "kind": "rss_atom", "enabled": true}
+]
