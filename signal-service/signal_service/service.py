@@ -159,6 +159,7 @@ def _iso_age_seconds(value: str | None) -> float | None:
 
 
 class SignalService:
+    EMBEDDING_BATCH_SIZE = 32
     MIN_SEMANTIC_MATCH_SCORE = 0.58
 
     """Portable service object used by both the HTTP server and tests."""
@@ -219,6 +220,17 @@ class SignalService:
         aliases = ", ".join(str(item) for item in interest.get("aliases", []) if str(item).strip())
         return "\n".join(part for part in (interest.get("name"), interest.get("description"), aliases) if str(part or "").strip())[:4_000]
 
+    def _embed_texts(self, texts: list[str], provider: Any) -> list[list[float]]:
+        """Keep provider requests bounded; Ollama rejects oversized batches."""
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), self.EMBEDDING_BATCH_SIZE):
+            batch = texts[start:start + self.EMBEDDING_BATCH_SIZE]
+            result = self.inference.embed_many(batch, provider)
+            if len(result) != len(batch):
+                raise ProviderUnavailable("Embedding provider returned an incompatible batch response.")
+            vectors.extend(result)
+        return vectors
+
     @staticmethod
     def _cosine(left: list[float], right: list[float]) -> float:
         if not left or len(left) != len(right):
@@ -263,13 +275,13 @@ class SignalService:
         embedded_signals = 0
         try:
             if interest_pending:
-                vectors = self.inference.embed_many([self._interest_text(item) for item, _ in interest_pending], selected_provider)
+                vectors = self._embed_texts([self._interest_text(item) for item, _ in interest_pending], selected_provider)
                 for (interest, source_hash), vector in zip(interest_pending, vectors):
                     self.store.save_embedding("interest", interest["interest_id"], selected_provider.provider_id, selected_provider.model_id, len(vector), selected_provider.embedding_version, source_hash, vector)
                     interest_vectors[interest["interest_id"]] = vector
                     embedded_interests += 1
             if signal_pending:
-                vectors = self.inference.embed_many([self._signal_text(item) for item, _ in signal_pending], selected_provider)
+                vectors = self._embed_texts([self._signal_text(item) for item, _ in signal_pending], selected_provider)
                 for (signal, source_hash), vector in zip(signal_pending, vectors):
                     self.store.save_embedding("signal", signal.signal_id, selected_provider.provider_id, selected_provider.model_id, len(vector), selected_provider.embedding_version, source_hash, vector)
                     signal_vectors[signal.signal_id] = vector

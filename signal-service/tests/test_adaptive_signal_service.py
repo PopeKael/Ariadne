@@ -32,6 +32,17 @@ class FakeInference:
         return {"version": 1, "providers": [dict(self.provider.as_dict(), state="Configured", credential_state="Configured")], "routes": {"embedding": {"provider_id": self.provider.provider_id, "model_id": self.provider.model_id, "location": "nas", "state": "Configured", "compatible_provider_ids": [self.provider.provider_id]}}}
 
 
+class BoundedInference(FakeInference):
+    def __init__(self, batch_limit):
+        super().__init__()
+        self.batch_limit = batch_limit
+
+    def embed_many(self, texts, provider):
+        if len(texts) > self.batch_limit:
+            raise AssertionError(f"batch exceeded test limit: {len(texts)}")
+        return super().embed_many(texts, provider)
+
+
 class AdaptiveSignalServiceTests(unittest.TestCase):
     def test_builtin_source_migration_is_idempotent_and_preserves_history(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -64,6 +75,24 @@ class AdaptiveSignalServiceTests(unittest.TestCase):
                 call_count = len(fake.calls)
                 service.ingest_candidates([{"title": "Compact silicon for useful local models", "url": "https://example.test/compact", "summary": "A compact silicon platform for running useful models."}], default_source_name="Example", default_category="AI Watch")
                 self.assertEqual(len(fake.calls), call_count)
+            finally:
+                service.close()
+
+    def test_semantic_embedding_requests_are_bounded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = BoundedInference(batch_limit=2)
+            service = SignalService(Path(temporary) / "signals.sqlite3", feeds=[], inference=fake)
+            try:
+                service.EMBEDDING_BATCH_SIZE = 2
+                service.upsert_interest({"name": "Local AI hardware", "description": "Local AI hardware"})
+                candidates = [
+                    {"title": f"Local model report {index}", "url": f"https://example.test/{index}", "summary": "Practical local AI hardware", "image_url": "https://example.test/image.png"}
+                    for index in range(5)
+                ]
+                service.ingest_candidates(candidates, default_source_name="Example")
+                self.assertEqual(service._semantic_status["state"], "healthy")
+                self.assertTrue(all(len(call) <= 2 for call in fake.calls))
+                self.assertGreaterEqual(len(fake.calls), 3)
             finally:
                 service.close()
 

@@ -162,11 +162,28 @@ class InferenceRegistry:
         if provider.provider_type == "ollama":
             try:
                 request = urllib.request.Request(provider.endpoint + "/api/tags", headers={"Accept": "application/json"})
-                with urllib.request.urlopen(request, timeout=1.5):
-                    return "Configured"
-            except (OSError, urllib.error.URLError, TimeoutError):
+                with urllib.request.urlopen(request, timeout=1.5) as response:
+                    payload = json.loads(response.read(5_000_000).decode("utf-8"))
+                models = payload.get("models") if isinstance(payload, dict) else None
+                if not isinstance(models, list) or not any(
+                    self._model_name_matches(provider.model_id, item.get("name"))
+                    for item in models if isinstance(item, dict)
+                ):
+                    return "Unavailable"
+                return "Configured"
+            except (OSError, urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
                 return "Unavailable"
         return "Configured"
+
+    @staticmethod
+    def _model_name_matches(configured: str, available: object) -> bool:
+        """Accept Ollama's implicit ``:latest`` tag for an untagged model."""
+        configured_name = str(configured or "").strip()
+        available_name = str(available or "").strip()
+        return bool(configured_name and available_name and (
+            configured_name == available_name
+            or (":" not in configured_name and available_name == configured_name + ":latest")
+        ))
 
     def snapshot(self) -> dict[str, Any]:
         routes: dict[str, Any] = {}
@@ -190,8 +207,9 @@ class InferenceRegistry:
         selected = provider or self.route("embedding")
         if selected is None:
             raise ProviderUnavailable("No compatible embedding provider is configured.")
-        if self.state(selected) in {"Missing", "Unavailable"}:
-            raise ProviderUnavailable(f"Embedding provider {selected.provider_id} is {self.state(selected).casefold()}.")
+        selected_state = self.state(selected)
+        if selected_state in {"Missing", "Unavailable"}:
+            raise ProviderUnavailable(f"Embedding provider {selected.provider_id} is {selected_state.casefold()}.")
         if selected.provider_type == "ollama":
             body = {"model": selected.model_id, "input": texts, "truncate": True}
             request = urllib.request.Request(selected.endpoint + "/api/embed", data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
