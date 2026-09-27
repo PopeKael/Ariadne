@@ -6,6 +6,7 @@ services:
     environment:
       ARIADNE_ENVIRONMENT: prod
       ARIADNE_INSTANCE: hera-signal
+      SIGNAL_SERVICE_PUBLIC_URL: ${SIGNAL_SERVICE_PUBLIC_URL:-http://192.168.1.200:8788}
     volumes:
       - type: bind
         source: ${HERA_SIGNAL_DATA_PATH:-/volume1/docker/ariadne-signal-service/data}

@@ -5,6 +5,7 @@ import os
 import json
 import hashlib
 import math
+import mimetypes
 import threading
 import time
 from dataclasses import replace
@@ -12,7 +13,7 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import urljoin, urlsplit, urlencode
+from urllib.parse import parse_qsl, urljoin, urlsplit, urlunsplit, urlencode
 from urllib.request import Request, urlopen
 
 from .diagnostics import emit_diagnostic
@@ -27,6 +28,7 @@ class _ImageMetaParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.og_image = ""
+        self.og_image_url = ""
         self.og_secure_image = ""
         self.twitter_image = ""
         self.twitter_src_image = ""
@@ -41,6 +43,8 @@ class _ImageMetaParser(HTMLParser):
             return
         if key == "og:image" and not self.og_image:
             self.og_image = content
+        elif key == "og:image:url" and not self.og_image_url:
+            self.og_image_url = content
         elif key == "og:image:secure_url" and not self.og_secure_image:
             self.og_secure_image = content
         elif key == "twitter:image" and not self.twitter_image:
@@ -128,22 +132,127 @@ def _resolve_google_news_url(url: str, timeout: float) -> str:
     return resolved if isinstance(resolved, str) and resolved.startswith(("http://", "https://")) else url
 
 
-def fetch_article_image(url: str, timeout: float = 2.0) -> str:
-    """Resolve an article's preferred social image without making intake fragile."""
-    bounded_timeout = max(0.5, min(float(timeout), 10.0))
-    article_url = _resolve_google_news_url(url, bounded_timeout)
-    request = Request(article_url, headers={"Accept": "text/html,application/xhtml+xml", "User-Agent": "Ariadne Signal Service/0.1"})
-    with urlopen(request, timeout=max(0.5, min(float(timeout), 10.0))) as response:
-        raw = response.read(512_000)
+_ARTICLE_HEADERS = {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.8",
+    "Cache-Control": "no-cache",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 AriadneSignal/0.2",
+}
+
+
+# Only remove parameters that are unambiguously used for campaign/referrer
+# tracking. Article-identifying or publisher-specific query parameters remain
+# untouched.
+_KNOWN_TRACKING_PARAMETERS = frozenset({
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+    "gclid", "dclid", "fbclid", "msclkid", "mc_cid", "mc_eid", "traffic_source",
+})
+
+
+def _without_known_tracking_parameters(url: str) -> str:
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    filtered = [(key, value) for key, value in query if key.casefold() not in _KNOWN_TRACKING_PARAMETERS]
+    if len(filtered) == len(query):
+        return url
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(filtered, doseq=True), parts.fragment))
+
+
+def _fetch_article_image_once(article_url: str, timeout: float) -> str:
+    request_headers = dict(_ARTICLE_HEADERS)
+    request_headers["Referer"] = article_url
+    request = Request(article_url, headers=request_headers)
+    with urlopen(request, timeout=timeout) as response:
+        raw = response.read(2_000_000)
         charset = response.headers.get_content_charset() or "utf-8"
         final_url = response.geturl() if hasattr(response, "geturl") else article_url
     parser = _ImageMetaParser()
     parser.feed(raw.decode(charset, errors="replace"))
-    candidate = parser.og_image or parser.og_secure_image or parser.twitter_image or parser.twitter_src_image
+    candidate = parser.og_image or parser.og_image_url or parser.og_secure_image or parser.twitter_image or parser.twitter_src_image
     if not candidate:
         return ""
     resolved = canonical_url(urljoin(final_url, candidate))
     return resolved if resolved.startswith(("http://", "https://")) else ""
+
+
+def fetch_article_image(url: str, timeout: float = 2.0) -> str:
+    """Resolve an article's preferred social image from its bounded ``<head>``."""
+    bounded_timeout = max(0.5, min(float(timeout), 10.0))
+    article_url = _resolve_google_news_url(url, bounded_timeout)
+    fetch_timeout = max(0.5, min(float(timeout), 10.0))
+    image_url = _fetch_article_image_once(article_url, fetch_timeout)
+    if image_url:
+        return image_url
+    fallback_url = _without_known_tracking_parameters(article_url)
+    if fallback_url == article_url:
+        return ""
+    return _fetch_article_image_once(fallback_url, fetch_timeout)
+
+
+_IMAGE_RETRY_DELAYS = (300, 1_800, 10_800, 43_200)
+_IMAGE_MAX_BYTES = 12_000_000
+_IMAGE_MIME_EXTENSIONS = {
+    "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
+    "image/gif": ".gif", "image/avif": ".avif", "image/svg+xml": ".svg",
+}
+
+
+def _retry_delay(attempt_count: int) -> int:
+    return _IMAGE_RETRY_DELAYS[min(max(0, attempt_count), len(_IMAGE_RETRY_DELAYS) - 1)]
+
+
+def _retry_is_due(state: dict[str, Any] | None) -> bool:
+    if not state:
+        return True
+    next_retry = str(state.get("next_retry_at") or "")
+    if not next_retry:
+        return not bool(state.get("cache_path"))
+    try:
+        parsed = datetime.fromisoformat(next_retry.replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) >= parsed.astimezone(timezone.utc)
+
+
+def _image_extension(image_url: str, content_type: str) -> str:
+    mime = content_type.casefold().split(";", 1)[0].strip()
+    if mime in _IMAGE_MIME_EXTENSIONS:
+        return _IMAGE_MIME_EXTENSIONS[mime]
+    return mimetypes.guess_extension(mime) or Path(urlsplit(image_url).path).suffix.casefold() or ".img"
+
+
+def fetch_remote_image(image_url: str, source_url: str, timeout: float = 5.0) -> tuple[bytes, str]:
+    """Fetch one selected image with browser-like headers and a hard byte cap."""
+    bounded_timeout = max(0.5, min(float(timeout), 15.0))
+    request = Request(
+        image_url,
+        headers={
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.8",
+            "Referer": source_url,
+            "User-Agent": _ARTICLE_HEADERS["User-Agent"],
+        },
+    )
+    with urlopen(request, timeout=bounded_timeout) as response:
+        headers = response.headers
+        content_type = str(headers.get("Content-Type") or "") if hasattr(headers, "get") else ""
+        if not content_type and hasattr(headers, "get_content_type"):
+            content_type = str(headers.get_content_type() or "")
+        body = response.read(_IMAGE_MAX_BYTES + 1)
+    if len(body) > _IMAGE_MAX_BYTES:
+        raise ValueError(f"image exceeds {_IMAGE_MAX_BYTES} byte limit")
+    extension = _image_extension(image_url, content_type)
+    if content_type and not content_type.startswith("image/"):
+        raise ValueError(f"remote image returned non-image content type {content_type}")
+    if not content_type and extension == ".img":
+        raise ValueError(f"remote image returned non-image content type {content_type or 'unknown'}")
+    if not body:
+        raise ValueError("remote image returned an empty body")
+    return body, content_type.split(";", 1)[0].strip() or "application/octet-stream"
 
 
 def _iso_age_seconds(value: str | None) -> float | None:
@@ -166,6 +275,8 @@ class SignalService:
 
     def __init__(self, database_path: str | Path, feeds: Iterable[FeedDefinition] | None = None, *, ranker: SignalRanker | None = None, feed_timeout: float = 15.0, item_limit: int = 20, inference: InferenceRegistry | None = None):
         self.store = SignalStore(database_path)
+        self.image_cache_dir = Path(os.environ.get("SIGNAL_SERVICE_IMAGE_CACHE_DIR", str(Path(database_path).parent / "images")))
+        self.image_cache_dir.mkdir(parents=True, exist_ok=True)
         if feeds is not None:
             self.feeds = list(feeds)
         elif os.environ.get("SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS", "").casefold() in {"1", "true", "yes", "on"}:
@@ -195,6 +306,39 @@ class SignalService:
         self._refresh_running = False
         self._successful_feed_collection_logged = False
         self._semantic_status: dict[str, Any] = {"state": "pending", "provider_id": None, "model_id": None, "embedded_signals": 0, "embedded_interests": 0, "match_count": 0, "error": ""}
+
+    def _cache_image(self, image_url: str, source_url: str) -> tuple[str, str]:
+        body, mime = fetch_remote_image(
+            image_url,
+            source_url,
+            timeout=float(os.environ.get("SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS", "5")),
+        )
+        suffix = _image_extension(image_url, mime)
+        filename = "image-" + hashlib.sha256(image_url.encode("utf-8")).hexdigest()[:40] + suffix
+        target = self.image_cache_dir / filename
+        if not target.is_file():
+            temporary = target.with_name(f".{target.name}.{threading.get_ident()}.tmp")
+            try:
+                temporary.write_bytes(body)
+                temporary.replace(target)
+            finally:
+                temporary.unlink(missing_ok=True)
+        return filename, mime
+
+    def cached_image(self, filename: str) -> tuple[bytes, str] | None:
+        if not filename or Path(filename).name != filename or not filename.startswith("image-"):
+            return None
+        target = (self.image_cache_dir / filename).resolve()
+        try:
+            target.relative_to(self.image_cache_dir.resolve())
+            body = target.read_bytes()
+        except (OSError, ValueError):
+            return None
+        if len(body) > _IMAGE_MAX_BYTES:
+            return None
+        suffix = target.suffix.casefold()
+        mime = next((value for value, extension in _IMAGE_MIME_EXTENSIONS.items() if extension == suffix), None) or "application/octet-stream"
+        return body, mime
 
     def close(self) -> None:
         self.store.close()
@@ -324,20 +468,56 @@ class SignalService:
                 signal = normalize_candidate(candidate, default_source_name=default_source_name, default_source_url=default_source_url, ingest_type=ingest_type, adapter=adapter, default_category=default_category)
                 existing = self.store.image_enrichment_state(signal.dedupe_key)
                 image_error = ""
-                if existing and existing["image_url"]:
-                    signal = replace(signal, image_url=str(existing["image_url"]))
-                elif not signal.image_url and not (existing and existing["attempted_at"]):
+                image_status = "not_attempted"
+                image_cache_path = ""
+                image_cache_mime = ""
+                image_source_url = str(signal.image_url or (existing or {}).get("image_url") or "")
+                can_attempt = _retry_is_due(existing)
+                existing_cache = str((existing or {}).get("cache_path") or "")
+                existing_cache_file = self.image_cache_dir / existing_cache if existing_cache else None
+                if existing_cache and (existing_cache_file is None or not existing_cache_file.is_file()):
+                    can_attempt = True
+                if existing and existing_cache and existing_cache_file.is_file():
+                    signal = replace(signal, image_url=str(existing.get("image_url") or signal.image_url or ""))
+                    image_status = str(existing.get("status") or "cached")
+                elif can_attempt:
                     try:
-                        image_url = fetch_article_image(signal.url, timeout=float(os.environ.get("SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS", "5")))
+                        if not image_source_url:
+                            image_source_url = fetch_article_image(signal.url, timeout=float(os.environ.get("SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS", "5")))
+                        if image_source_url:
+                            image_cache_path, image_cache_mime = self._cache_image(image_source_url, signal.url)
+                            image_status = "cached"
+                        else:
+                            image_status = "no_url_found"
                     except Exception as exc:
-                        image_url = ""
                         image_error = str(exc)
-                    signal = replace(signal, image_url=image_url)
+                        image_status = "remote_image_failed"
+                    signal = replace(signal, image_url=image_source_url)
+                elif existing:
+                    signal = replace(signal, image_url=str(existing.get("image_url") or signal.image_url or ""))
+                    image_status = str(existing.get("status") or "not_attempted")
                 stored, created = self.store.upsert(signal)
-                if not signal.image_url and not (existing and existing["attempted_at"]):
-                    self.store.mark_image_enrichment(stored.signal_id, error=image_error)
-                elif signal.image_url and not (existing and existing["attempted_at"]):
-                    self.store.mark_image_enrichment(stored.signal_id, signal.image_url)
+                if can_attempt and image_status != "not_attempted":
+                    attempt_count = int((existing or {}).get("attempt_count") or 0)
+                    next_retry_at = None if image_status == "cached" else datetime.fromtimestamp(time.time() + _retry_delay(attempt_count), timezone.utc).isoformat()
+                    self.store.mark_image_enrichment(
+                        stored.signal_id,
+                        image_url=image_source_url,
+                        cache_path=image_cache_path,
+                        cache_mime=image_cache_mime,
+                        status=image_status,
+                        error=image_error,
+                        next_retry_at=next_retry_at,
+                    )
+                    emit_diagnostic(
+                        "image_enrichment_completed",
+                        signal_id=stored.signal_id,
+                        status=image_status,
+                        source_url_found=bool(image_source_url),
+                        attempt_count=attempt_count + 1,
+                        next_retry_at=next_retry_at,
+                        error=image_error[:180],
+                    )
                 accepted += 1
                 if not created:
                     duplicates += 1
@@ -358,6 +538,21 @@ class SignalService:
         return {"accepted": accepted, "duplicates": duplicates, "rejected": rejected, "errors": errors, "briefing": briefing}
 
     def refresh(self) -> dict[str, Any]:
+        # Hera receives candidates from Discovery/n8n rather than collecting
+        # local RSS feeds. A scheduled refresh still runs for that deployment,
+        # but an empty feed set is an intentional intake-only mode, not a
+        # failed collection. Preserve the last successful intake/briefing
+        # state so the health indicator does not turn red every 15 minutes.
+        if not self.feeds:
+            return {
+                "ok": True,
+                "mode": "intake_only",
+                "accepted": 0,
+                "duplicates": 0,
+                "sources": [],
+                "errors": [],
+                "briefing": self.store.latest_briefing(),
+            }
         with self._lock:
             if self._refresh_running:
                 return {"ok": False, "running": True, "briefing": self.store.latest_briefing()}

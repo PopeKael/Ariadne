@@ -41,11 +41,18 @@ the default is 240, while Ariadne Home requests up to 100 items for browsing.
   incoming title, summary, content, and source text. Matching signals keep
   their original category and carry `watchlist_matches` for the Watchlist view.
 
-Candidates without an image are refined in the Signal Service by making one
-short, cached article-page request. The service prefers `og:image` and falls
-back to `twitter:image`; an incoming `image_url` is never replaced, and a
-failed lookup is recorded without rejecting the signal. The timeout defaults
-to two seconds and can be adjusted with `SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS`.
+Candidates without an image are refined in the Signal Service by making a
+bounded article-page request. The service prefers `og:image`, `og:image:url`,
+and the existing secure/Twitter fallbacks, then fetches the selected image into
+the persistent `/data/images` cache. Home receives a Signal Service image URL,
+so the browser does not hotlink publisher CDNs. Successful copies are reused;
+failed or empty lookups record status, attempt count, last error, and a bounded
+retry time (5 minutes, 30 minutes, then hours). The article request uses
+browser-like headers and reads up to 2 MB. The timeout can be adjusted with
+`SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS`. If the original article URL yields no
+image, a second lookup removes only a small whitelist of known campaign
+parameters such as `utm_*`, `fbclid`, `gclid`, and `traffic_source`; the
+original URL remains unchanged in Signal provenance.
 
 Candidates may use common names such as `title`/`headline`, `url`/`link`,
 `summary`/`description`, and `published_at`/`published`/`pubDate`. The original

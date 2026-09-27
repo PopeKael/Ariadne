@@ -58,16 +58,16 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
                 server.NEWS_BRIEFING_CACHE = previous_cache
                 server.SIGNAL_SERVICE_CLIENT = previous_signal_client
 
-    def test_home_loads_news_only_from_snapshot_on_page_entry(self):
+    def test_home_renders_signal_activity_feed_on_page_entry(self):
         source = (ROOT / "home.js").read_text(encoding="utf-8")
         self.assertIn('getJson("/api/news/briefing-snapshot")', source)
-        self.assertIn('label: item.title || item.label || "Article"', source)
-        self.assertIn('url: item.canonical_url || item.url || ""', source)
+        self.assertIn('label: item.label || item.title || "Article"', source)
+        self.assertIn('url: item.url || item.canonical_url || ""', source)
         self.assertIn("cards.forEach(item => grid.append(renderSignalCard(item)))", source)
-        self.assertNotIn("renderToday(data.today)", source)
+        self.assertIn("if (Array.isArray(data.today)) renderToday(data.today);", source)
         home_load = source.split("async function loadHome(", 1)[1].split("\nfunction sessionLost", 1)[0]
-        self.assertIn("if (refreshNews) await loadNewsSnapshot();", home_load)
-        self.assertLess(home_load.index("await loadNewsSnapshot()"), home_load.index('getJson("/api/home/activity")'))
+        self.assertNotIn("await loadNewsSnapshot()", home_load)
+        self.assertIn('const data = await getJson("/api/home/activity")', home_load)
         self.assertIn("loadHome({refreshNews: true})", source)
         self.assertIn("window.setInterval(loadHome, 15000)", source)
 
@@ -80,7 +80,7 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
         self.assertIn('params.get("article_id")', source)
         self.assertIn('state.articleTldrPending = articleAction === "tldr_opened"', source)
         self.assertIn("article_tldr: articleTldr", source)
-        self.assertIn('Opening TLDR · loading the cached article from Hera…', source)
+        self.assertIn('showArticleLaunchState(newTabWindow, action === "tldr_opened" ? "Preparing TLDR · Ariadne" : "Preparing article · Ariadne")', source)
         news_open = source.split("async function openNewsArticle", 1)[1].split("async function submitSignalFeedback", 1)[0]
         self.assertIn("articleId, articleAction: action", news_open)
         self.assertNotIn("signal_id", news_open)

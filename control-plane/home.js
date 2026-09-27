@@ -662,7 +662,9 @@ function renderSignalCard(item) {
   } else card.append(fallback());
   card.append(body);
   if (validUrl) {
-    const sourceLabel = item.source && item.source !== "Ariadne Discovery Engine" ? item.source : "Original source";
+    const sourceLabel = item.source && item.source !== "Ariadne Discovery Engine"
+      ? item.source
+      : sourceNames.join(", ") || "Original source";
     const sourceLink = el("a", "signal-source-link", `${sourceLabel} ↗`);
     sourceLink.href = item.url;
     sourceLink.target = "_blank";
@@ -750,9 +752,13 @@ function renderToday(items) {
   root.replaceChildren();
   const cards = (items || []).filter(item => item && typeof item === "object").map(item => ({
     ...item,
-    signal_id: "",
-    label: item.title || item.label || "Article",
-    url: item.canonical_url || item.url || "",
+    // Signal Service cards carry the identifiers needed for feedback, TLDR,
+    // and Think with Ariadne. Preserve them when adapting the payload instead
+    // of reducing the authoritative signal feed to a legacy article snapshot.
+    signal_id: item.signal_id || "",
+    article_id: item.article_id || "",
+    label: item.label || item.title || "Article",
+    url: item.url || item.canonical_url || "",
     source: item.source || item.source_name || "",
   }));
   if (count) count.textContent = `${cards.length} cached articles`;
@@ -804,6 +810,56 @@ async function submitNewsFeedback(articleId, value, card, feedbackRoot) {
     buttons.forEach(button => { button.disabled = false; });
   }
 }
+function showArticleLaunchState(newTabWindow, title = "Preparing article · Ariadne") {
+  if (!newTabWindow || newTabWindow.closed) return;
+  const launchDocument = newTabWindow.document;
+  launchDocument.title = title;
+  launchDocument.documentElement.innerHTML = `
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${title}</title>
+      <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+      <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body { min-height: 100%; margin: 0; }
+        body {
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          color: #edf7f7;
+          font: 16px/1.5 "Segoe UI", Inter, system-ui, sans-serif;
+          background: linear-gradient(rgba(3,10,24,.78), rgba(3,8,18,.9)), url("/ariadne-network-backdrop.png") center/cover fixed, #030712;
+        }
+        .launch-card {
+          width: min(680px, 100%);
+          padding: 32px;
+          border: 1px solid rgba(105,213,210,.3);
+          border-radius: 18px;
+          background: linear-gradient(145deg, rgba(16,38,51,.94), rgba(8,23,32,.96));
+          box-shadow: 0 24px 80px rgba(0,0,0,.45);
+        }
+        .launch-brand { display: flex; align-items: center; gap: 12px; color: #69d5d2; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; font-size: 11px; }
+        .launch-mark { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #69d5d2; border-radius: 12px; background: rgba(105,213,210,.08); font-size: 22px; }
+        h1 { margin: 24px 0 8px; font-size: clamp(24px, 4vw, 34px); line-height: 1.15; }
+        p { margin: 0; color: #a9c0ca; }
+        .launch-progress { height: 7px; margin-top: 26px; overflow: hidden; border-radius: 99px; background: #142936; }
+        .launch-progress span { display: block; width: 38%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #d8a86e, #69d5d2, #d8a86e); background-size: 220% 100%; animation: move 1.8s ease-in-out infinite; }
+        .launch-note { display: block; margin-top: 12px; color: #78919d; font-size: 12px; }
+        @keyframes move { 0% { transform: translateX(-120%); background-position: 0 0; } 100% { transform: translateX(300%); background-position: 220% 0; } }
+      </style>
+    </head>
+    <body>
+      <main class="launch-card" aria-live="polite">
+        <div class="launch-brand"><span class="launch-mark">✦</span><span>Ariadne</span></div>
+        <h1>Preparing article…</h1>
+        <p>Opening the local Ariadne chat and checking Hera’s article cache.</p>
+        <div class="launch-progress" aria-hidden="true"><span></span></div>
+        <small class="launch-note">This window will continue automatically.</small>
+      </main>
+    </body>`;
+}
 async function openNewsArticle(articleId, action, button, statusRoot, prompt = "") {
   if (!articleId || button.disabled) return;
   const articleStartedAt = Date.now();
@@ -814,10 +870,7 @@ async function openNewsArticle(articleId, action, button, statusRoot, prompt = "
     button.title = "The browser blocked the new chat tab.";
     return;
   }
-  newTabWindow.document.title = action === "tldr_opened" ? "Opening TLDR · Ariadne" : "Opening article discussion · Ariadne";
-  newTabWindow.document.body.textContent = action === "tldr_opened"
-    ? "Opening TLDR · loading the cached article from Hera…"
-    : "Opening article discussion · loading the cached article from Hera…";
+  showArticleLaunchState(newTabWindow, action === "tldr_opened" ? "Preparing TLDR · Ariadne" : "Preparing article · Ariadne");
   if (!state.sessionId && !(await startSession())) {
     if (!newTabWindow.closed) newTabWindow.close();
     return;
@@ -860,6 +913,7 @@ async function openSignalTldr(signalId, button, feedbackRoot) {
     button.title = "The browser blocked the new chat tab.";
     return;
   }
+  showArticleLaunchState(newTabWindow, "Preparing TLDR · Ariadne");
   if (!state.sessionId && !(await startSession())) {
     if (!newTabWindow.closed) newTabWindow.close();
     return;
@@ -898,6 +952,7 @@ async function promoteSignalToVault(signalId, button, status, options = {}) {
       button.title = "The browser blocked the new chat tab.";
       return;
     }
+    showArticleLaunchState(newTabWindow, "Preparing article · Ariadne");
     try {
       await openFreshChat({signalId, newTabWindow});
     } catch (error) {
@@ -1861,11 +1916,12 @@ async function loadHome({refreshNews = false} = {}) {
     return;
   }
   if (state.contextMutationInFlight) return;
-  // Only page entry/explicit invocation reads news. Routine status polls never
-  // replace cards, so a background Hera sync cannot reorder this Home session.
-  if (refreshNews) await loadNewsSnapshot();
   try {
     const data = await getJson("/api/home/activity");
+    // Signal Service is the authoritative Home feed.  This keeps cached image
+    // URLs on the same path as the health/briefing response instead of
+    // reintroducing the legacy publisher-CDN snapshot.
+    if (Array.isArray(data.today)) renderToday(data.today);
     renderHealth(data.health);
     renderActivity(data.activity);
     try { renderAdaptive(await getJson("/api/home/adaptive")); } catch (_) { renderAdaptive({}); }

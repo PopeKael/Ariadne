@@ -5228,13 +5228,23 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
                 "discovery_category", "first_seen_at", "last_seen_at", "representative_url",
             )
             provenance = {"discovery": {key: raw_discovery[key] for key in discovery_fields if key in raw_discovery}} if raw_discovery else {}
+            # Prefer Signal Service's durable local copy. A failed remote
+            # render must not send Home back to publisher-CDN hotlinking.
+            image_enrichment = item.get("image_enrichment") if isinstance(item.get("image_enrichment"), dict) else {}
+            cached_image_url = str(item.get("image_cache_url") or "")
+            enrichment_status = str(image_enrichment.get("status") or "")
+            display_image_url = cached_image_url
+            if not display_image_url and enrichment_status not in {"no_url_found", "remote_image_failed"}:
+                display_image_url = str(item.get("image_url") or "")
             signals.append({
                 "signal_id": str(item.get("signal_id") or ""),
                 "label": title,
                 "summary": summary,
                 "source": source,
                 "published_at": str(item.get("published_at") or item.get("updated_at") or ""),
-                "image_url": str(item.get("image_url") or ""),
+                "image_url": display_image_url,
+                "image_source_url": str(item.get("image_url") or ""),
+                "image_enrichment": image_enrichment,
                 "category": str(item.get("category") or ""),
                 "watchlist_matches": item.get("watchlist_matches") if isinstance(item.get("watchlist_matches"), list) else [],
                 "semantic_matches": item.get("semantic_matches") if isinstance(item.get("semantic_matches"), list) else [],

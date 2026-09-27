@@ -67,6 +67,15 @@ class SourceArticleTests(unittest.TestCase):
         self.assertNotIn("Cookie settings", text)
         self.assertNotIn("Home Subscribe", text)
 
+    def test_extract_article_text_handles_large_publisher_document_without_repeated_tree_walks(self):
+        related = b"<div class='related'><span>Recommended story</span></div>" * 8000
+        html = b"<html><body>" + related + b"<article><h1>Publisher headline</h1><p>The article body must still be selected from a large publisher response.</p><p>This second paragraph proves extraction completed.</p></article></body></html>"
+        text, title = extract_article_text(html)
+        self.assertEqual(title, "")
+        self.assertIn("The article body must still be selected", text)
+        self.assertIn("This second paragraph proves extraction completed", text)
+        self.assertNotIn("Recommended story", text)
+
     def test_promote_reuses_signal_id_note_and_preserves_metadata(self):
         html = b"<html><body><article><p>Clean source article text.</p></article></body></html>"
         signal = {

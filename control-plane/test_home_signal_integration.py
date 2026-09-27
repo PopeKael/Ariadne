@@ -409,6 +409,28 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         self.assertEqual(result[0]["provenance"]["discovery"]["first_seen_at"], "2026-09-07T12:30:00+07:00")
         self.assertTrue(result[0]["detail"].startswith("Cached · Example"))
 
+    def test_today_prefers_signal_service_image_cache_and_suppresses_failed_hotlink(self):
+        cached_client = Mock()
+        cached_client.briefing.return_value = {"ok": True, "stale": False, "signals": [{
+            "signal_id": "signal-cached", "title": "Cached image", "summary": "A concise summary with enough context for the card.",
+            "source_name": "Example", "url": "https://example.test/story", "image_url": "https://cdn.example.test/story.jpg",
+            "image_cache_url": "http://192.168.1.200:8788/v1/images/image-abc.jpg",
+            "image_enrichment": {"status": "cached", "attempt_count": 1},
+        }]}
+        with patch.object(server, "SIGNAL_SERVICE_CLIENT", cached_client):
+            result = server.home_today_payload({"services": []})
+        self.assertEqual(result[0]["image_url"], "http://192.168.1.200:8788/v1/images/image-abc.jpg")
+
+        failed_client = Mock()
+        failed_client.briefing.return_value = {"ok": True, "stale": False, "signals": [{
+            "signal_id": "signal-failed", "title": "Failed image", "summary": "A concise summary with enough context for the card.",
+            "source_name": "Example", "url": "https://example.test/story", "image_url": "https://cdn.example.test/story.jpg",
+            "image_enrichment": {"status": "remote_image_failed", "attempt_count": 1},
+        }]}
+        with patch.object(server, "SIGNAL_SERVICE_CLIENT", failed_client):
+            result = server.home_today_payload({"services": []})
+        self.assertEqual(result[0]["image_url"], "")
+
     def test_home_requests_discover_sized_briefing(self):
         fake_client = Mock()
         fake_client.briefing.return_value = {"ok": True, "stale": False, "signals": []}

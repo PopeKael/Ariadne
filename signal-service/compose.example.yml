@@ -14,6 +14,7 @@ services:
       # validating Discovery at http://192.168.1.200:8789/v1/health.
       # SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS: "true"
       SIGNAL_SERVICE_BRIEFING_POOL: 240
+      SIGNAL_SERVICE_PUBLIC_URL: ${SIGNAL_SERVICE_PUBLIC_URL:-http://localhost:8788}
       # Optional override: "Name|https://example/feed.xml,Other|https://example/feed.atom"
       # SIGNAL_SERVICE_FEEDS: "Ars Technica|https://feeds.arstechnica.com/arstechnica/index"
     volumes:

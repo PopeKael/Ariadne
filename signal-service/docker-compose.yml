@@ -1,6 +1,10 @@
 services:
   ariadne-signal-service:
-    build: .
+    build:
+      context: .
+      args:
+        ARIADNE_RUNTIME_BUILD: 20260927-og-cache-4
+    image: ariadne-signal-service:20260927-og-cache-4
     container_name: ariadne-signal-service
     restart: unless-stopped
     ports:
@@ -11,6 +15,7 @@ services:
       SIGNAL_SERVICE_DATABASE: /data/signals.sqlite3
       SIGNAL_SERVICE_REFRESH_SECONDS: 900
       SIGNAL_SERVICE_DISABLE_BUILTIN_FEEDS: "true"
-      SIGNAL_SERVICE_BRIEFING_POOL: 240
+      SIGNAL_SERVICE_PUBLIC_URL: ${SIGNAL_SERVICE_PUBLIC_URL:-http://192.168.1.200:8788}
+      SIGNAL_SERVICE_BRIEFING_RETENTION: 256
     volumes:
       - ./data:/data

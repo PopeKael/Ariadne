@@ -16,10 +16,15 @@ class HomeNavigationTests(unittest.TestCase):
         function = source[start:end]
 
         self.assertIn('window.open("about:blank", "_blank")', function)
+        self.assertIn('showArticleLaunchState(newTabWindow, "Preparing TLDR · Ariadne")', function)
         self.assertIn("newTabWindow});", function)
         self.assertLess(function.index('window.open("about:blank", "_blank")'), function.index("await startSession()"))
         self.assertIn("const destination = chatUrl({chatId, prompt, signalId, tldrStartedAt, articleId, articleAction, articleStartedAt, vaultMode, toolIds});", source)
         self.assertIn("else window.location.assign(destination);", source)
+        self.assertIn("<h1>Preparing article…</h1>", source)
+        self.assertIn("<title>${title}</title>", source)
+        self.assertIn("/ariadne-network-backdrop.png", source)
+        self.assertIn("This window will continue automatically.", source)
 
     def test_think_action_uses_the_same_new_tab_chat_path(self):
         source = self.source
@@ -28,6 +33,7 @@ class HomeNavigationTests(unittest.TestCase):
         function = source[start:end]
 
         self.assertIn('window.open("about:blank", "_blank")', function)
+        self.assertIn('showArticleLaunchState(newTabWindow, "Preparing article · Ariadne")', function)
         self.assertIn("newTabWindow});", function)
         self.assertIn("newTabWindow.location.replace(destination)", source)
 

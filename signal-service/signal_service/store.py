@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 import re
 import sqlite3
 import threading
@@ -11,6 +12,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import quote
 
 from .models import Signal, utc_now
 
@@ -38,7 +40,12 @@ CREATE TABLE IF NOT EXISTS signals (
     first_seen_at TEXT NOT NULL,
     last_seen_at TEXT NOT NULL,
     image_enrichment_attempted_at TEXT,
-    image_enrichment_error TEXT NOT NULL DEFAULT ''
+    image_enrichment_error TEXT NOT NULL DEFAULT '',
+    image_enrichment_attempt_count INTEGER NOT NULL DEFAULT 0,
+    image_enrichment_next_retry_at TEXT,
+    image_enrichment_status TEXT NOT NULL DEFAULT 'not_attempted',
+    image_cache_path TEXT NOT NULL DEFAULT '',
+    image_cache_mime TEXT NOT NULL DEFAULT ''
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_url_key ON signals(dedupe_key);
 CREATE INDEX IF NOT EXISTS idx_signals_content_key ON signals(content_key);
@@ -168,6 +175,7 @@ class SignalStore:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.briefing_retention = max(1, int(os.environ.get("SIGNAL_SERVICE_BRIEFING_RETENTION", "256")))
         self._lock = threading.RLock()
         self._connection = sqlite3.connect(self.path, check_same_thread=False)
         self._connection.row_factory = sqlite3.Row
@@ -186,6 +194,16 @@ class SignalStore:
             self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_attempted_at TEXT")
         if "image_enrichment_error" not in columns:
             self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_error TEXT NOT NULL DEFAULT ''")
+        if "image_enrichment_attempt_count" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_attempt_count INTEGER NOT NULL DEFAULT 0")
+        if "image_enrichment_next_retry_at" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_next_retry_at TEXT")
+        if "image_enrichment_status" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_status TEXT NOT NULL DEFAULT 'not_attempted'")
+        if "image_cache_path" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN image_cache_path TEXT NOT NULL DEFAULT ''")
+        if "image_cache_mime" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN image_cache_mime TEXT NOT NULL DEFAULT ''")
         self._migrate_watchlist_topics()
         self._ensure_builtin_sources()
         self._connection.commit()
@@ -423,9 +441,20 @@ class SignalStore:
         with self._lock:
             selected = list(signals)
             topics = self.watchlist_topics()
-            payload = {"signals": [self._signal_payload(signal.as_dict(), topics) for signal in selected]}
+            payload = {"signals": [self._signal_payload(self._with_image_enrichment(signal.as_dict()), topics) for signal in selected]}
             briefing = {"briefing_id": "briefing-" + uuid.uuid4().hex[:16], "generated_at": utc_now(), "signal_count": len(selected), "signals": payload["signals"], "collection": collection}
             self._connection.execute("INSERT INTO briefings (briefing_id,generated_at,signal_count,signals_json,collection_json) VALUES (?,?,?,?,?)", (briefing["briefing_id"], briefing["generated_at"], len(selected), json.dumps(payload["signals"], ensure_ascii=False), json.dumps(collection, ensure_ascii=False)))
+            # Briefings are a derived cache, not the source of truth.  Keep a
+            # bounded history so repeated refresh/feedback writes cannot grow
+            # the SQLite file without limit.
+            self._connection.execute(
+                """DELETE FROM briefings WHERE rowid IN (
+                       SELECT rowid FROM briefings
+                       ORDER BY generated_at DESC, rowid DESC
+                       LIMIT -1 OFFSET ?
+                   )""",
+                (self.briefing_retention,),
+            )
             self._connection.commit()
             return briefing
 
@@ -440,6 +469,7 @@ class SignalStore:
             for item in signals:
                 if not isinstance(item, dict):
                     continue
+                item.update(self._with_image_enrichment(item))
                 item["watchlist_matches"] = self._signal_watchlist_matches(item, topics)
                 if item.get("signal_id") in feedback:
                     item["feedback"] = feedback[item["signal_id"]]
@@ -513,18 +543,90 @@ class SignalStore:
     def image_enrichment_state(self, dedupe_key: str) -> dict[str, str] | None:
         with self._lock:
             row = self._connection.execute(
-                "SELECT signal_id,image_url,image_enrichment_attempted_at FROM signals WHERE dedupe_key = ? LIMIT 1",
+                """SELECT signal_id,image_url,image_enrichment_attempted_at,image_enrichment_error,
+                          image_enrichment_attempt_count,image_enrichment_next_retry_at,
+                          image_enrichment_status,image_cache_path,image_cache_mime
+                   FROM signals WHERE dedupe_key = ? LIMIT 1""",
                 (dedupe_key,),
             ).fetchone()
             if row is None:
                 return None
-            return {"signal_id": str(row["signal_id"]), "image_url": str(row["image_url"] or ""), "attempted_at": str(row["image_enrichment_attempted_at"] or "")}
+            return {
+                "signal_id": str(row["signal_id"]),
+                "image_url": str(row["image_url"] or ""),
+                "attempted_at": str(row["image_enrichment_attempted_at"] or ""),
+                "last_attempt_at": str(row["image_enrichment_attempted_at"] or ""),
+                "last_error": str(row["image_enrichment_error"] or ""),
+                "attempt_count": int(row["image_enrichment_attempt_count"] or 0),
+                "next_retry_at": str(row["image_enrichment_next_retry_at"] or ""),
+                "status": str(row["image_enrichment_status"] or "not_attempted"),
+                "cache_path": str(row["image_cache_path"] or ""),
+                "cache_mime": str(row["image_cache_mime"] or ""),
+            }
 
-    def mark_image_enrichment(self, signal_id: str, image_url: str = "", error: str = "") -> None:
+    def image_enrichment_payload(self, signal_id: str) -> dict[str, Any]:
+        with self._lock:
+            row = self._connection.execute(
+                """SELECT image_url,image_enrichment_attempted_at,image_enrichment_error,
+                          image_enrichment_attempt_count,image_enrichment_next_retry_at,
+                          image_enrichment_status,image_cache_path,image_cache_mime
+                   FROM signals WHERE signal_id = ? LIMIT 1""",
+                (signal_id,),
+            ).fetchone()
+            if row is None:
+                return {"image_cache_url": "", "image_enrichment": {"status": "not_attempted"}}
+            cache_path = str(row["image_cache_path"] or "")
+            cache_root = Path(os.environ.get("SIGNAL_SERVICE_IMAGE_CACHE_DIR", str(self.path.parent / "images"))).resolve()
+            cache_file = (cache_root / cache_path).resolve() if cache_path else None
+            if cache_file is not None:
+                try:
+                    cache_file.relative_to(cache_root)
+                    if not cache_file.is_file():
+                        cache_path = ""
+                except ValueError:
+                    cache_path = ""
+            public_base = os.environ.get("SIGNAL_SERVICE_PUBLIC_URL", "http://localhost:8788").rstrip("/")
+            return {
+                "image_cache_url": f"{public_base}/v1/images/{quote(cache_path, safe='')}" if cache_path else "",
+                "image_enrichment": {
+                    "status": str(row["image_enrichment_status"] or "not_attempted"),
+                    "attempt_count": int(row["image_enrichment_attempt_count"] or 0),
+                    "last_attempt_at": row["image_enrichment_attempted_at"],
+                    "last_error": str(row["image_enrichment_error"] or ""),
+                    "next_retry_at": row["image_enrichment_next_retry_at"],
+                    "cache_mime": str(row["image_cache_mime"] or ""),
+                },
+            }
+
+    def _with_image_enrichment(self, payload: dict[str, Any]) -> dict[str, Any]:
+        result = dict(payload)
+        result.update(self.image_enrichment_payload(str(payload.get("signal_id") or "")))
+        return result
+
+    def mark_image_enrichment(
+        self,
+        signal_id: str,
+        *,
+        image_url: str = "",
+        cache_path: str = "",
+        cache_mime: str = "",
+        status: str = "remote_image_failed",
+        error: str = "",
+        next_retry_at: str | None = None,
+    ) -> None:
         with self._lock:
             self._connection.execute(
-                "UPDATE signals SET image_url = CASE WHEN ? <> '' THEN ? ELSE image_url END, image_enrichment_attempted_at = ?, image_enrichment_error = ? WHERE signal_id = ?",
-                (image_url, image_url, utc_now(), error[:500], signal_id),
+                """UPDATE signals SET
+                   image_url = CASE WHEN ? <> '' THEN ? ELSE image_url END,
+                   image_cache_path = CASE WHEN ? <> '' THEN ? ELSE image_cache_path END,
+                   image_cache_mime = CASE WHEN ? <> '' THEN ? ELSE image_cache_mime END,
+                   image_enrichment_attempted_at = ?,
+                   image_enrichment_attempt_count = image_enrichment_attempt_count + 1,
+                   image_enrichment_next_retry_at = ?,
+                   image_enrichment_status = ?,
+                   image_enrichment_error = ?
+                   WHERE signal_id = ?""",
+                (image_url, image_url, cache_path, cache_path, cache_mime, cache_mime, utc_now(), next_retry_at, status, error[:500], signal_id),
             )
             self._connection.commit()
 

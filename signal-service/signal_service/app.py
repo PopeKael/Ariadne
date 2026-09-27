@@ -61,6 +61,20 @@ class SignalHandler(BaseHTTPRequestHandler):
             else:
                 self._send({"ok": True, **briefing})
             return
+        image_match = re.fullmatch(r"/v1/images/(image-[a-f0-9]{40}\.[a-z0-9]+)", parsed.path)
+        if image_match:
+            cached = self.server.service.cached_image(image_match.group(1))
+            if cached is None:
+                self._send({"ok": False, "message": "Cached image not found."}, 404)
+                return
+            body, content_type = cached
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "public, max-age=86400, immutable")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if parsed.path == "/v1/watchlist/topics":
             self._send({"ok": True, "topics": self.server.service.watchlist_topics()})
             return

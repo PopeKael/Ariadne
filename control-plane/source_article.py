@@ -30,6 +30,8 @@ class _Node:
         self.tag = tag
         self.attrs = attrs or {}
         self.children: list[_Node | str] = []
+        self._text_cache: str | None = None
+        self._descendants_cache: list[_Node] | None = None
 
 
 class _ArticleHTMLParser(HTMLParser):
@@ -93,16 +95,26 @@ def _node_text(node: _Node | str) -> str:
         return node
     if node.tag in _SKIP_TAGS:
         return ""
-    return " ".join(_node_text(child) for child in node.children if _node_text(child)).strip()
+    if node._text_cache is None:
+        parts: list[str] = []
+        for child in node.children:
+            text = _node_text(child)
+            if text:
+                parts.append(text)
+        node._text_cache = " ".join(parts).strip()
+    return node._text_cache
 
 
 def _iter_nodes(node: _Node) -> list[_Node]:
+    if node._descendants_cache is not None:
+        return node._descendants_cache
     result: list[_Node] = []
     for child in node.children:
         if not isinstance(child, _Node):
             continue
         result.append(child)
         result.extend(_iter_nodes(child))
+    node._descendants_cache = result
     return result
 
 

@@ -14,7 +14,7 @@ from signal_service.feeds import FeedDefinition
 from signal_service.app import SignalHTTPServer
 from signal_service.models import normalize_candidate
 from signal_service.ranking import BasicRanker
-from signal_service.service import SignalService, extract_intake_candidates, fetch_article_image
+from signal_service.service import SignalService, _without_known_tracking_parameters, extract_intake_candidates, fetch_article_image
 
 
 def candidate(url="https://example.test/story/1", title="Useful story", summary="A useful summary.", **extra):
@@ -177,17 +177,21 @@ class SignalServiceTests(unittest.TestCase):
 
     def test_missing_image_is_enriched_from_og_image_and_persisted(self):
         html = b'<html><head><meta property="og:image" content="/images/story.jpg"><meta name="twitter:image" content="/images/twitter.jpg"></head></html>'
-        response = type("Response", (), {"headers": type("Headers", (), {"get_content_charset": lambda self: "utf-8"})(), "read": lambda self, limit: html, "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
-        with patch("signal_service.service.urlopen", return_value=response) as fetch:
+        page_response = type("Response", (), {"headers": type("Headers", (), {"get_content_charset": lambda self: "utf-8"})(), "read": lambda self, limit: html, "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
+        image_response = type("Response", (), {"headers": type("Headers", (), {"get": lambda self, key: "image/jpeg"})(), "read": lambda self, limit: b"jpeg-bytes", "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
+        with patch("signal_service.service.urlopen", side_effect=[page_response, image_response]) as fetch:
             result = self.service.ingest_candidates([candidate()])
         self.assertEqual(result["accepted"], 1)
-        fetch.assert_called_once()
+        self.assertEqual(fetch.call_count, 2)
         self.assertEqual(self.service.briefing()["signals"][0]["image_url"], "https://example.test/images/story.jpg")
+        self.assertTrue(self.service.briefing()["signals"][0]["image_cache_url"].endswith(".jpg"))
+        self.assertEqual(self.service.briefing()["signals"][0]["image_enrichment"]["status"], "cached")
 
     def test_missing_image_falls_back_to_twitter_image(self):
         html = b'<html><head><meta name="twitter:image" content="https://cdn.example.test/twitter.jpg"></head></html>'
-        response = type("Response", (), {"headers": type("Headers", (), {"get_content_charset": lambda self: "utf-8"})(), "read": lambda self, limit: html, "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
-        with patch("signal_service.service.urlopen", return_value=response):
+        page_response = type("Response", (), {"headers": type("Headers", (), {"get_content_charset": lambda self: "utf-8"})(), "read": lambda self, limit: html, "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
+        image_response = type("Response", (), {"headers": type("Headers", (), {"get": lambda self, key: "image/jpeg"})(), "read": lambda self, limit: b"jpeg-bytes", "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
+        with patch("signal_service.service.urlopen", side_effect=[page_response, image_response]):
             self.service.ingest_candidates([candidate(url="https://example.test/twitter-story")])
         self.assertEqual(self.service.briefing()["signals"][0]["image_url"], "https://cdn.example.test/twitter.jpg")
 
@@ -197,6 +201,56 @@ class SignalServiceTests(unittest.TestCase):
         with patch("signal_service.service.urlopen", return_value=response):
             image_url = fetch_article_image("https://publisher.example.test/section/story")
         self.assertEqual(image_url, "https://publisher.example.test/images/secure.jpg")
+
+    def test_image_url_variant_is_found_beyond_previous_512kb_ceiling(self):
+        html = (b"<html><head>" + (b"x" * 600_000) +
+                b'<meta property="og:image:url" content="/images/large-head.jpg"></head></html>')
+        response = type("Response", (), {"headers": type("Headers", (), {"get_content_charset": lambda self: "utf-8"})(), "read": lambda self, limit: html, "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
+        with patch("signal_service.service.urlopen", return_value=response):
+            image_url = fetch_article_image("https://publisher.example.test/large-head")
+        self.assertEqual(image_url, "https://publisher.example.test/images/large-head.jpg")
+
+    def test_al_jazeera_tracking_url_retries_without_traffic_source_and_caches_image(self):
+        tracked_url = "https://www.aljazeera.com/video/newsfeed/2026/9/27/araghchi-ignores-trump-waits-for-mediators-response-on-hormuz?traffic_source=rss"
+        clean_url = "https://www.aljazeera.com/video/newsfeed/2026/9/27/araghchi-ignores-trump-waits-for-mediators-response-on-hormuz"
+        image_url = "https://www.aljazeera.com/wp-content/uploads/2026/09/hormuz.jpg"
+
+        def page_response(body, final_url):
+            return type("Response", (), {
+                "headers": type("Headers", (), {"get_content_charset": lambda self: "utf-8"})(),
+                "read": lambda self, limit: body,
+                "geturl": lambda self: final_url,
+                "__enter__": lambda self: self,
+                "__exit__": lambda self, *args: None,
+            })()
+
+        image_response = type("Response", (), {
+            "headers": type("Headers", (), {"get": lambda self, key: "image/jpeg"})(),
+            "read": lambda self, limit: b"cached-jpeg",
+            "__enter__": lambda self: self,
+            "__exit__": lambda self, *args: None,
+        })()
+        with patch("signal_service.service.urlopen", side_effect=[
+            page_response(b"<html><head><title>Al Jazeera</title></head></html>", tracked_url),
+            page_response(f'<meta property="og:image" content="{image_url}">'.encode(), clean_url),
+            image_response,
+        ]) as fetch:
+            result = self.service.ingest_candidates([candidate(url=tracked_url, title="Araghchi waits for mediators", summary="Al Jazeera report")])
+
+        self.assertEqual(result["accepted"], 1)
+        self.assertEqual(fetch.call_count, 3)
+        requested_urls = [call.args[0].full_url for call in fetch.call_args_list]
+        self.assertEqual(requested_urls[0], tracked_url)
+        self.assertEqual(requested_urls[1], clean_url)
+        briefing_signal = self.service.briefing()["signals"][0]
+        self.assertEqual(briefing_signal["url"], tracked_url)
+        self.assertEqual(briefing_signal["image_url"], image_url)
+        self.assertTrue(briefing_signal["image_cache_url"])
+        self.assertEqual(briefing_signal["image_enrichment"]["status"], "cached")
+
+    def test_tracking_fallback_keeps_non_tracking_query_parameters(self):
+        tagged = "https://example.test/story?edition=video&traffic_source=rss"
+        self.assertEqual(_without_known_tracking_parameters(tagged), "https://example.test/story?edition=video")
 
     def test_google_news_article_is_resolved_before_image_fetch(self):
         google_page = b'<c-wiz><div data-n-a-id="article-id" data-n-a-ts="123" data-n-a-sg="signature"></div></c-wiz>'
@@ -212,10 +266,12 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(fetch.call_count, 3)
 
     def test_incoming_image_is_preserved_without_fetching(self):
-        with patch("signal_service.service.urlopen") as fetch:
+        image_response = type("Response", (), {"headers": type("Headers", (), {"get": lambda self, key: "image/jpeg"})(), "read": lambda self, limit: b"jpeg-bytes", "__enter__": lambda self: self, "__exit__": lambda self, *args: None})()
+        with patch("signal_service.service.urlopen", return_value=image_response) as fetch:
             self.service.ingest_candidates([candidate(image_url="https://cdn.example.test/incoming.jpg")])
-        fetch.assert_not_called()
+        fetch.assert_called_once()
         self.assertEqual(self.service.briefing()["signals"][0]["image_url"], "https://cdn.example.test/incoming.jpg")
+        self.assertTrue(self.service.briefing()["signals"][0]["image_cache_url"])
 
     def test_failed_image_enrichment_does_not_reject_or_repeat_for_known_signal(self):
         with patch("signal_service.service.urlopen", side_effect=TimeoutError("image timeout")) as fetch:
@@ -226,6 +282,25 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(fetch.call_count, 1)
         self.assertEqual(self.service.briefing()["signals"][0]["image_url"], "")
 
+    def test_failed_image_enrichment_records_status_and_retries_when_due(self):
+        with patch("signal_service.service.fetch_article_image", return_value="") as lookup, \
+             patch("signal_service.service.emit_diagnostic") as diagnostic:
+            self.service.ingest_candidates([candidate(url="https://example.test/no-image")])
+            dedupe_key = normalize_candidate(candidate(url="https://example.test/no-image")).dedupe_key
+            state = self.service.store.image_enrichment_state(dedupe_key)
+        self.assertEqual(state["status"], "no_url_found")
+        self.assertEqual(state["attempt_count"], 1)
+        self.assertTrue(state["next_retry_at"])
+        self.assertEqual(diagnostic.call_args_list[-1].kwargs["status"], "no_url_found")
+        self.service.store._connection.execute(
+            "UPDATE signals SET image_enrichment_next_retry_at = ? WHERE dedupe_key = ?",
+            ("2000-01-01T00:00:00+00:00", dedupe_key),
+        )
+        self.service.store._connection.commit()
+        with patch("signal_service.service.fetch_article_image", return_value="") as retry_lookup:
+            self.service.ingest_candidates([candidate(url="https://example.test/no-image")])
+        retry_lookup.assert_called_once()
+
     def test_feed_failure_returns_last_successful_cached_briefing_as_stale(self):
         self.service.ingest_candidates([candidate()])
         with patch("signal_service.service.fetch_feed", side_effect=RuntimeError("feed unavailable")):
@@ -235,6 +310,18 @@ class SignalServiceTests(unittest.TestCase):
         self.assertTrue(briefing["stale"])
         self.assertEqual(briefing["signals"][0]["title"], "Useful story")
         self.assertEqual(briefing["errors"][0]["source"], "Test")
+
+    def test_intake_only_refresh_preserves_healthy_cached_briefing(self):
+        service = SignalService(Path(self.temp.name) / "intake-only.sqlite3", feeds=[])
+        try:
+            service.ingest_candidates([candidate()])
+            result = service.refresh()
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["mode"], "intake_only")
+            self.assertEqual(service.health()["state"], "healthy")
+            self.assertFalse(service.briefing()["stale"])
+        finally:
+            service.close()
 
     def test_feed_success_normalizes_real_adapter_candidates(self):
         with patch("signal_service.service.fetch_feed", return_value=[candidate("https://example.test/live", "Live item")]) as fetch, \
@@ -268,6 +355,10 @@ class SignalServiceTests(unittest.TestCase):
                 intake = json.loads(response.read())
             with urlopen(base + "/v1/briefing?limit=1", timeout=2) as response:
                 briefing = json.loads(response.read())
+            cached_filename = "image-" + ("a" * 40) + ".jpg"
+            (self.service.image_cache_dir / cached_filename).write_bytes(b"cached-jpeg")
+            with urlopen(base + "/v1/images/" + cached_filename, timeout=2) as response:
+                cached_image = response.read()
             with urlopen(base + "/v1/watchlist/topics", timeout=2) as response:
                 watchlist = json.loads(response.read())
             interest_request = Request(base + "/v1/interests", data=json.dumps({"name": "Local AI hardware", "description": "Local inference hardware"}).encode(), headers={"Content-Type": "application/json"}, method="POST")
@@ -304,6 +395,7 @@ class SignalServiceTests(unittest.TestCase):
         self.assertTrue(health["ok"])
         self.assertEqual(intake["accepted"], 1)
         self.assertEqual(briefing["signals"][0]["url"], "https://example.test/story/1")
+        self.assertEqual(cached_image, b"cached-jpeg")
         self.assertTrue(feedback["ok"])
         self.assertEqual(feedback["feedback"], "interesting")
         self.assertTrue(interaction["ok"])

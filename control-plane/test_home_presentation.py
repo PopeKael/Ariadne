@@ -49,7 +49,8 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("Original source", js)
         self.assertIn("Think with Ariadne", js)
         self.assertIn('"TLDR"', js)
-        self.assertNotIn("Not useful", js)
+        signal_card = js.split("} else if (item.signal_id)", 1)[1].split("return card;", 1)[0]
+        self.assertNotIn("Not useful", signal_card)
         self.assertIn("/api/home/signals/interaction", js)
         self.assertIn("TLDR_PROMPT", js)
         self.assertIn("waitForSignalArticleReady", js)
@@ -102,6 +103,9 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("position:fixed", css)
         self.assertIn("const scrollTop = root.scrollTop", js)
         self.assertIn("root.scrollTop = Math.min(scrollTop", js)
+        self.assertIn("signal_id: item.signal_id || \"\"", render_today)
+        self.assertIn("article_id: item.article_id || \"\"", render_today)
+        self.assertIn("sourceNames.join(\", \") || \"Original source\"", js)
         self.assertIn("generation-warning", css)
 
     def test_canonical_activity_stream_has_operational_states(self):

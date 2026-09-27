@@ -7,6 +7,7 @@ services:
     environment:
       ARIADNE_ENVIRONMENT: dev
       ARIADNE_INSTANCE: local-dev-signal
+      SIGNAL_SERVICE_PUBLIC_URL: http://localhost:18788
     volumes:
       - type: bind
         source: ./runtime/discovery-signal-dev/signal
