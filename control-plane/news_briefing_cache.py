@@ -86,6 +86,19 @@ def _merge_cards(previous: list[dict[str, Any]], incoming: list[dict[str, Any]])
             continue
         local = previous_by_id.get(article_id, {})
         card = {**local, **remote}
+        # Hera's article card can still arrive without image enrichment. Keep
+        # Ariadne's durable cached-image reference across card refreshes.
+        cached_image_url = str(local.get("image_cache_url") or "")
+        local_enrichment = local.get("image_enrichment")
+        if cached_image_url:
+            card["image_cache_url"] = cached_image_url
+            card["image_url"] = cached_image_url
+            if local_enrichment:
+                card["image_enrichment"] = copy.deepcopy(local_enrichment)
+        elif isinstance(local_enrichment, dict) and not remote.get("image_enrichment"):
+            card["image_enrichment"] = copy.deepcopy(local_enrichment)
+            if local_enrichment.get("status") in {"no_url_found", "remote_image_failed"}:
+                card["image_url"] = ""
         local_feedback = _feedback_value(local)
         remote_feedback = _feedback_value(remote)
         if local_feedback and (not remote_feedback or _feedback_timestamp(local) > _feedback_timestamp(remote)):
@@ -259,6 +272,42 @@ class NewsBriefingCache:
             self._fingerprint = _fingerprint(updated)
             self._cached_at = self._file_mtime()
         return True
+
+    def update_article_image_metadata(self, metadata_by_id: dict[str, dict[str, Any]]) -> bool:
+        """Persist references to images already cached by Signal Service."""
+        if not metadata_by_id:
+            return False
+        changed = False
+        with self._lock:
+            if self._briefing is None:
+                return False
+            updated = copy.deepcopy(self._briefing)
+            for article in updated.get("articles", []):
+                if not isinstance(article, dict):
+                    continue
+                metadata = metadata_by_id.get(str(article.get("article_id") or ""))
+                if not isinstance(metadata, dict):
+                    continue
+                for key in ("image_cache_url", "image_enrichment"):
+                    value = metadata.get(key)
+                    if value and article.get(key) != value:
+                        article[key] = copy.deepcopy(value)
+                        changed = True
+                cache_url = str(metadata.get("image_cache_url") or "")
+                status = str((metadata.get("image_enrichment") or {}).get("status") or "")
+                if cache_url and article.get("image_url") != cache_url:
+                    article["image_url"] = cache_url
+                    changed = True
+                elif not cache_url and status in {"no_url_found", "remote_image_failed"} and article.get("image_url"):
+                    # Do not send a known-broken publisher hotlink to the browser.
+                    article["image_url"] = ""
+                    changed = True
+            if changed:
+                self._atomic_write(updated)
+                self._briefing = updated
+                self._fingerprint = _fingerprint(updated)
+                self._cached_at = self._file_mtime()
+        return changed
 
     def _request_briefing(self) -> dict[str, Any]:
         parts = urlsplit(self.base_url)

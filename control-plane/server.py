@@ -325,6 +325,9 @@ NEWS_BRIEFING_CACHE = NewsBriefingCache(
         "ARIADNE_NEWS_BRIEFING_CACHE_PATH", str(ROOT / "runtime" / "news-briefing.json")
     )),
 )
+NEWS_IMAGE_SYNC_INTERVAL_SECONDS = max(60, int(os.environ.get("ARIADNE_NEWS_IMAGE_SYNC_SECONDS", "300")))
+NEWS_IMAGE_SYNC_STOP = threading.Event()
+NEWS_IMAGE_SYNC_THREAD: threading.Thread | None = None
 SEARCH_PROVIDER_REGISTRY = SearchProviderRegistry()
 HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
 HOME_CHAT_STORE = ChatStore(VAULT_ROOT)
@@ -5199,6 +5202,88 @@ def home_adaptive_payload() -> dict[str, object]:
     }
 
 
+def _cached_news_image_metadata() -> dict[str, dict[str, object]]:
+    """Join Signal's already-cached image metadata to Hera cards by stable article ID."""
+    cached_briefing = SIGNAL_SERVICE_CLIENT.cached_briefing()
+    signal_items = cached_briefing.get("signals", []) if isinstance(cached_briefing, dict) else []
+    metadata: dict[str, dict[str, object]] = {}
+    for signal in signal_items:
+        if not isinstance(signal, dict):
+            continue
+        article_id = _discovery_article_id_for_url(
+            signal.get("canonical_url") or signal.get("url") or signal.get("article_url")
+        )
+        if not article_id:
+            continue
+        image_cache_url = str(signal.get("image_cache_url") or "")
+        enrichment = signal.get("image_enrichment")
+        enrichment = dict(enrichment) if isinstance(enrichment, dict) else {}
+        status = str(enrichment.get("status") or "")
+        if image_cache_url or status in {"no_url_found", "remote_image_failed"}:
+            metadata[article_id] = {
+                "image_cache_url": image_cache_url,
+                "image_enrichment": enrichment,
+                "image_url": image_cache_url if image_cache_url else "",
+            }
+    return metadata
+
+
+def _news_snapshot_with_cached_images(snapshot: dict[str, object]) -> dict[str, object]:
+    """Enrich the defensive local snapshot using Signal's local briefing cache only."""
+    briefing = snapshot.get("briefing")
+    cards = briefing.get("articles") if isinstance(briefing, dict) else None
+    if not isinstance(cards, list):
+        return snapshot
+    metadata = _cached_news_image_metadata()
+    if not metadata:
+        return snapshot
+    briefing["articles"] = [
+        {**card, **metadata.get(str(card.get("article_id") or ""), {})}
+        if isinstance(card, dict) else card
+        for card in cards
+    ]
+    return snapshot
+
+
+def refresh_cached_news_images() -> dict[str, object]:
+    """Refresh only image metadata from Signal's cached briefing, never card ranking."""
+    # The news-card snapshot is the durable cache for this projection. Avoid
+    # rewriting Signal's larger briefing file on every image-only refresh.
+    briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=200, persist_cache=False)
+    metadata = _cached_news_image_metadata()
+    changed = NEWS_BRIEFING_CACHE.update_article_image_metadata(metadata) if metadata else False
+    return {
+        "ok": bool(briefing.get("ok", True)) if isinstance(briefing, dict) else False,
+        "signal_count": len(briefing.get("signals", [])) if isinstance(briefing, dict) and isinstance(briefing.get("signals"), list) else 0,
+        "matched_articles": len(metadata),
+        "updated_local_cards": changed,
+    }
+
+
+def _news_image_sync_worker() -> None:
+    while not NEWS_IMAGE_SYNC_STOP.is_set():
+        try:
+            refresh_cached_news_images()
+        except Exception as exc:
+            print(f"Ariadne cached news image refresh unavailable: {str(exc)[:180]}", flush=True)
+        if NEWS_IMAGE_SYNC_STOP.wait(NEWS_IMAGE_SYNC_INTERVAL_SECONDS):
+            return
+
+
+def start_news_image_sync() -> None:
+    """Keep the local card cache joined to Hera's already-cached image set."""
+    global NEWS_IMAGE_SYNC_THREAD
+    if NEWS_IMAGE_SYNC_THREAD is not None and NEWS_IMAGE_SYNC_THREAD.is_alive():
+        return
+    NEWS_IMAGE_SYNC_STOP.clear()
+    NEWS_IMAGE_SYNC_THREAD = threading.Thread(
+        target=_news_image_sync_worker,
+        name="ariadne-news-image-cache-sync",
+        daemon=True,
+    )
+    NEWS_IMAGE_SYNC_THREAD.start()
+
+
 def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
     signals: list[dict[str, object]] = []
     local_snapshot = NEWS_BRIEFING_CACHE.snapshot()
@@ -5208,6 +5293,12 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
     # poller owns Hera refresh; Home must render its last-known-good cards
     # without waiting on Signal Service or a publisher.
     cards = NEWS_BRIEFING_CACHE.ranked_articles(limit=100, preferences=learned_preferences if isinstance(learned_preferences, dict) else None)
+    image_metadata = _cached_news_image_metadata()
+    if image_metadata:
+        cards = [
+            {**item, **image_metadata.get(str(item.get("article_id") or ""), {})}
+            for item in cards
+        ]
     stale = not local_snapshot.get("available") or local_snapshot.get("sync", {}).get("state") == "unavailable"
     for item in cards:
         if not isinstance(item, dict):
@@ -5245,7 +5336,9 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
                 "summary": summary,
                 "source": source,
                 "published_at": str(item.get("published_at") or item.get("updated_at") or ""),
-                "image_url": str(item.get("image_url") or ""),
+                "image_url": str(item.get("image_cache_url") or item.get("image_url") or ""),
+                "image_cache_url": str(item.get("image_cache_url") or ""),
+                "image_enrichment": item.get("image_enrichment") if isinstance(item.get("image_enrichment"), dict) else {},
                 "category": str(item.get("category") or ""),
                 "why_appeared": "Local Ariadne ranking · " + ", ".join(
                     f"{key}={value}" for key, value in relevance.items()
@@ -7006,7 +7099,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         if path == "/api/news/briefing-snapshot":
-            snapshot = NEWS_BRIEFING_CACHE.snapshot()
+            snapshot = _news_snapshot_with_cached_images(NEWS_BRIEFING_CACHE.snapshot())
             self.send_json(snapshot, 200 if snapshot["available"] else 503)
             return
         _expire_sessions()
@@ -8215,6 +8308,9 @@ def main() -> None:
     # Disk is loaded when NEWS_BRIEFING_CACHE is constructed. Start Hera sync
     # asynchronously so neither startup nor the local snapshot API waits on it.
     NEWS_BRIEFING_CACHE.start_background_sync()
+    # Refresh cached image metadata separately; Home's local card snapshot and
+    # final Ariadne ranking remain immediate and do not wait on Signal Service.
+    start_news_image_sync()
     ollama_startup = startup_preflight(
         OLLAMA_URL,
         tuple(dict.fromkeys((HOME_CHAT_MODEL, PLANNER_MODEL))),

@@ -120,9 +120,9 @@ class SignalServiceClient:
             )
             return {"ok": False, "state": "offline", "message": f"Signal Service unavailable: {str(exc)[:180]}"}
 
-    def briefing(self, limit: int = 6) -> dict[str, Any]:
-        bounded_limit = max(1, min(int(limit), 100))
-        result = self._get(f"/v1/briefing?limit={max(1, min(int(limit), 100))}")
+    def briefing(self, limit: int = 6, *, persist_cache: bool = True) -> dict[str, Any]:
+        bounded_limit = max(1, min(int(limit), 200))
+        result = self._get(f"/v1/briefing?limit={bounded_limit}")
         raw_signals = result.get("signals")
         signals = raw_signals if isinstance(raw_signals, list) else []
         result["signals"] = signals
@@ -130,7 +130,8 @@ class SignalServiceClient:
             successful = {**result, "signals": list(signals)}
             with self._briefing_cache_lock:
                 self._last_successful_briefing = successful
-            self._persist_briefing(successful)
+            if persist_cache:
+                self._persist_briefing(successful)
             return {**result, "signals": list(signals[:bounded_limit])}
 
         with self._briefing_cache_lock:
@@ -150,6 +151,17 @@ class SignalServiceClient:
             "signals": list(cached.get("signals", [])),
         }
         return {**fallback, "signals": fallback["signals"][:bounded_limit]}
+
+    def cached_briefing(self) -> dict[str, Any] | None:
+        """Return the last persisted/in-memory briefing without contacting Signal Service."""
+        with self._briefing_cache_lock:
+            cached = self._last_successful_briefing
+            if not isinstance(cached, dict):
+                return None
+            return {
+                **cached,
+                "signals": [dict(item) for item in cached.get("signals", []) if isinstance(item, dict)],
+            }
 
     def feedback(self, signal_id: str, value: str) -> dict[str, Any]:
         request = urllib.request.Request(
