@@ -15,7 +15,7 @@ from typing import Any
 
 from .clustering import cluster_articles, diversify, rank_stories, story_from_cluster
 from .feeds import FetchResult, configured_sources, fetch_feed
-from .models import Article, SourceDefinition, source_domain, stable_source_id, utc_now
+from .models import Article, SourceDefinition, source_domain, stable_article_id, stable_source_id, utc_now
 from .store import DiscoveryStore
 
 
@@ -39,12 +39,16 @@ class DiscoveryEngine:
         self.searxng_url = os.environ.get("DISCOVERY_SERVICE_SEARXNG_URL", "").strip().rstrip("/")
         self.search_queries = [item.strip() for item in os.environ.get("DISCOVERY_SERVICE_SEARCH_QUERIES", "world news|Main News Feed,AI artificial intelligence|AI Watch,Thailand news|Thailand Focus,science discovery|Science,technology hardware|Technology,cybersecurity|Security,finance markets|Finance,space exploration|Space,health research|Health").split(",") if "|" in item and item.split("|", 1)[0].strip()]
         self.signal_service_url = os.environ.get("DISCOVERY_SERVICE_SIGNAL_SERVICE_URL", "").strip().rstrip("/")
+        self.article_cache_url = os.environ.get("DISCOVERY_SERVICE_ARTICLE_CACHE_URL", "").strip().rstrip("/")
+        self.article_cache_timeout = max(5.0, float(os.environ.get("DISCOVERY_SERVICE_ARTICLE_CACHE_TIMEOUT_SECONDS", "40")))
+        self.article_cache_concurrency = max(1, min(int(os.environ.get("DISCOVERY_SERVICE_ARTICLE_CACHE_CONCURRENCY", "4")), 8))
         self._lock = threading.RLock()
         self._refresh_running = False
         self._last_attempt_at: str | None = None
         self._last_success_at: str | None = None
         self._last_result: dict[str, Any] = {}
         self._last_push: dict[str, Any] = {}
+        self._last_article_cache: dict[str, Any] = {"enabled": bool(self.article_cache_url), "attempted": False, "ready": 0, "failed": 0}
 
     def close(self) -> None:
         self.store.close()
@@ -94,7 +98,7 @@ class DiscoveryEngine:
         candidates = []
         for story in stories:
             evidence_lines = "\n".join(f"- {item.get('source_name')}: {item.get('title')} ({item.get('url')})" for item in story.get("evidence", [])[:12])
-            candidates.append({"title": story["title"], "url": story["url"], "summary": story["summary"], "content": story["summary"] + ("\n\nReports found:\n" + evidence_lines if evidence_lines else ""), "source_name": "Ariadne Discovery Engine", "source_url": self.signal_service_url, "category": _signal_category(story), "published_at": story.get("published_at"), "image_url": story.get("image_url", ""), "provenance": {"discovery": {"story_id": story["story_id"], "article_count": story.get("article_count", 0), "source_count": story.get("source_count", 0), "source_names": story.get("source_names", []), "source_domains": story.get("source_domains", []), "evidence": story.get("evidence", []), "rank_score": story.get("rank_score", 0), "discovery_category": story.get("category", "Main News Feed"), "first_seen_at": story.get("first_seen_at", ""), "last_seen_at": story.get("last_seen_at", ""), "representative_url": story.get("representative_url", story["url"])}}})
+            candidates.append({"title": story["title"], "url": story["url"], "article_id": story.get("article_id") or stable_article_id(story.get("url")), "article_cache": story.get("article_cache", {}), "summary": story["summary"], "content": story["summary"] + ("\n\nReports found:\n" + evidence_lines if evidence_lines else ""), "source_name": "Ariadne Discovery Engine", "source_url": self.signal_service_url, "category": _signal_category(story), "published_at": story.get("published_at"), "image_url": story.get("image_url", ""), "provenance": {"discovery": {"story_id": story["story_id"], "article_count": story.get("article_count", 0), "source_count": story.get("source_count", 0), "source_names": story.get("source_names", []), "source_domains": story.get("source_domains", []), "evidence": story.get("evidence", []), "rank_score": story.get("rank_score", 0), "discovery_category": story.get("category", "Main News Feed"), "first_seen_at": story.get("first_seen_at", ""), "last_seen_at": story.get("last_seen_at", ""), "representative_url": story.get("representative_url", story["url"])}}})
         accepted = 0
         duplicates = 0
         failed_batches = 0
@@ -140,6 +144,47 @@ class DiscoveryEngine:
             result["error"] = errors[-1]
         return result
 
+    def _materialize_article(self, story: dict[str, Any]) -> dict[str, Any]:
+        article_id = str(story.get("article_id") or stable_article_id(story.get("url")) or "")
+        if not article_id:
+            return {"status": "unavailable", "article_id": "", "error": "Story has no stable article ID."}
+        request = urllib.request.Request(
+            f"{self.article_cache_url}/v1/cache/articles/{urllib.parse.quote(article_id, safe='')}",
+            headers={"Accept": "application/json", "User-Agent": "Ariadne Discovery Engine/0.1"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.article_cache_timeout) as response:
+                result = json.loads(response.read(200_000).decode("utf-8"))
+            if not isinstance(result, dict) or result.get("ok") is not True or not result.get("content_ready"):
+                raise RuntimeError(str(result.get("error") if isinstance(result, dict) else "Article cache returned an invalid response.")[:400])
+            return {"status": "ready", "backend": "hera-article-cache", "article_id": article_id, "cached": bool(result.get("cached")), "fetched": bool(result.get("fetched"))}
+        except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError, RuntimeError) as exc:
+            return {"status": "unavailable", "backend": "hera-article-cache", "article_id": article_id, "error": f"{type(exc).__name__}: {str(exc)[:400]}"}
+
+    def _materialize_articles(self, stories: list[dict[str, Any]]) -> dict[str, Any]:
+        summary = {"enabled": bool(self.article_cache_url), "attempted": False, "ready": 0, "failed": 0}
+        if not self.article_cache_url or not stories:
+            for story in stories:
+                story["article_id"] = str(story.get("article_id") or stable_article_id(story.get("url")) or "")
+                story["article_cache"] = {"status": "not_configured"}
+            self._last_article_cache = summary
+            return summary
+        summary["attempted"] = True
+        with ThreadPoolExecutor(max_workers=self.article_cache_concurrency, thread_name_prefix="article-cache") as executor:
+            futures = {executor.submit(self._materialize_article, story): story for story in stories}
+            for future in as_completed(futures):
+                story = futures[future]
+                result = future.result()
+                story["article_id"] = result.get("article_id") or str(story.get("article_id") or "")
+                story["article_cache"] = result
+                if result.get("status") == "ready":
+                    summary["ready"] += 1
+                else:
+                    summary["failed"] += 1
+        self._last_article_cache = summary
+        return summary
+
     def refresh(self) -> dict[str, Any]:
         with self._lock:
             if self._refresh_running:
@@ -167,9 +212,10 @@ class DiscoveryEngine:
             if search_articles:
                 accepted += self.store.upsert_articles(search_articles)
             stories = self._build_stories()
+            article_cache = self._materialize_articles(stories)
             push = self._push(stories)
             collection_ok = bool(successful_sources or search_articles or (not due and stories))
-            result = {"ok": collection_ok, "attempted_sources": len(due), "successful_sources": successful_sources, "accepted_articles": accepted, "search_articles": len(search_articles), "story_count": len(stories), "failures": failures, "push": push, "generated_at": utc_now()}
+            result = {"ok": collection_ok, "attempted_sources": len(due), "successful_sources": successful_sources, "accepted_articles": accepted, "search_articles": len(search_articles), "story_count": len(stories), "failures": failures, "article_cache": article_cache, "push": push, "generated_at": utc_now()}
             with self._lock:
                 if successful_sources or search_articles:
                     self._last_success_at = utc_now()
@@ -201,7 +247,7 @@ class DiscoveryEngine:
             success = self._last_success_at
         counts = self.store.counts()
         state = "healthy" if success and not result.get("failures") else "attention" if result else "starting"
-        return {"ok": True, "service": "ariadne-discovery-service", "version": "0.1.0", "environment": os.environ.get("ARIADNE_ENVIRONMENT", "unknown"), "instance": os.environ.get("ARIADNE_INSTANCE", "discovery"), "build_sha": os.environ.get("ARIADNE_BUILD_SHA", "unknown"), "state": state, "refresh_running": running, "refresh_seconds": self.interval_seconds, "last_attempt_at": attempt, "last_success_at": success, "source_count": counts["sources"], "article_count": counts["articles"], "story_count": counts["stories"], "search_enabled": bool(self.searxng_url), "signal_service_configured": bool(self.signal_service_url), "signal_service_url": self.signal_service_url, "last_refresh": result, "last_push": self._last_push}
+        return {"ok": True, "service": "ariadne-discovery-service", "version": "0.1.0", "environment": os.environ.get("ARIADNE_ENVIRONMENT", "unknown"), "instance": os.environ.get("ARIADNE_INSTANCE", "discovery"), "build_sha": os.environ.get("ARIADNE_BUILD_SHA", "unknown"), "state": state, "refresh_running": running, "refresh_seconds": self.interval_seconds, "last_attempt_at": attempt, "last_success_at": success, "source_count": counts["sources"], "article_count": counts["articles"], "story_count": counts["stories"], "search_enabled": bool(self.searxng_url), "signal_service_configured": bool(self.signal_service_url), "signal_service_url": self.signal_service_url, "article_cache_configured": bool(self.article_cache_url), "article_cache_url": self.article_cache_url, "article_cache": self._last_article_cache, "last_refresh": result, "last_push": self._last_push}
 
     def stories(self, limit: int = 80) -> list[dict[str, Any]]:
         return self.store.stories(limit=limit)

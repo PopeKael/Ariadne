@@ -21,7 +21,28 @@ services:
       ARIADNE_INSTANCE: hera-discovery
       # Hera uses the same private Compose network, never the NAS host route.
       DISCOVERY_SERVICE_SIGNAL_SERVICE_URL: http://signal:8788
+      # Discovery must materialize the Markdown before publishing a Signal card.
+      DISCOVERY_SERVICE_ARTICLE_CACHE_URL: http://article-cache:8790
     volumes:
       - type: bind
         source: ${HERA_DISCOVERY_DATA_PATH:-/volume1/docker/ariadne-discovery-service/data}
         target: /data
+    depends_on:
+      article-cache:
+        condition: service_started
+
+  article-cache:
+    build:
+      context: ./discovery-service
+      dockerfile: article-cache.Dockerfile
+    container_name: ariadne-article-cache-prod
+    ports:
+      - "8790:8790"
+    volumes:
+      - type: bind
+        source: ${HERA_DISCOVERY_DATA_PATH:-/volume1/docker/ariadne-discovery-service/data}
+        target: /source
+        read_only: true
+      - type: bind
+        source: ${HERA_ARTICLE_CACHE_DATA_PATH:-/volume1/docker/ariadne-article-cache/data}
+        target: /cache

@@ -44,7 +44,7 @@ class ArticleCacheHandler(BaseHTTPRequestHandler):
             if not entry or markdown is None:
                 self._send({"ok": False, "article_id": article_id, "error": "Article is not cached."}, 404)
                 return
-            self._send({"ok": True, "article": entry, "markdown": markdown, "retrieval": {"storage": "local_file", "network_fetch": False}})
+            self._send({"ok": True, "article": entry, "markdown": markdown, "retrieval": {"storage": "local_file", "network_fetch": False, "publisher_fetch_occurred": False}})
             return
         self._send({"ok": False, "message": "Not found."}, 404)
 

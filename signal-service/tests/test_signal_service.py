@@ -45,6 +45,16 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(signal.provenance["discovery"]["story_id"], "story-1")
         self.assertEqual(signal.provenance["discovery"]["source_count"], 3)
 
+    def test_article_identity_and_cache_status_survive_signal_persistence(self):
+        signal = candidate(
+            article_id="article-materialized",
+            article_cache={"status": "ready", "backend": "hera-article-cache"},
+        )
+        self.service.ingest_candidates([signal])
+        stored = self.service.briefing()["signals"][0]
+        self.assertEqual(stored["article_id"], "article-materialized")
+        self.assertEqual(stored["article_cache"]["status"], "ready")
+
     def test_normalization_accepts_open_graph_image_metadata(self):
         signal = normalize_candidate({"title": "Story", "url": "https://example.test/story", "summary": "Summary", "metadata": {"og:image": "https://cdn.example.test/story.jpg"}})
         self.assertEqual(signal.image_url, "https://cdn.example.test/story.jpg")

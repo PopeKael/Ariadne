@@ -85,6 +85,63 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                 server.DOCUMENT_WORK_ROOT = original_documents
                 server.VAULT_ROOT = original_vault
 
+    def test_signal_article_cache_checks_hera_news_backend_before_spike(self):
+        signal = {"signal_id": "signal-1234567890abcdef", "url": "https://example.test/story"}
+        article_id = server._discovery_article_id_for_url(signal["url"])
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return json.dumps({
+                    "ok": True,
+                    "article": {"article_id": article_id},
+                    "markdown": "# Cached from news backend",
+                    "retrieval": {"storage": "local_file", "network_fetch": False, "publisher_fetch_occurred": False},
+                }).encode("utf-8")
+
+        with patch.object(server, "NEWS_BRIEFING_CACHE", Mock(base_url="http://news-backend.test")), \
+                patch.object(server, "ARTICLE_CACHE_URL", "http://spike.test"), \
+                patch.object(server.urllib.request, "urlopen", return_value=FakeResponse()) as urlopen:
+            markdown, metadata = server._fetch_cached_signal_article(signal)
+
+        self.assertEqual(markdown, "# Cached from news backend")
+        self.assertEqual(metadata["cache_backend"], "hera-news-backend")
+        self.assertEqual(urlopen.call_args.args[0].full_url, f"http://news-backend.test/articles/{article_id}")
+
+    def test_signal_article_cache_accepts_ready_legacy_spike_response(self):
+        signal = {"signal_id": "signal-legacy-cache", "url": "https://example.test/legacy"}
+        article_id = server._discovery_article_id_for_url(signal["url"])
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return json.dumps({
+                    "ok": True,
+                    "article": {"article_id": article_id, "content_ready": 1},
+                    "markdown": "# Cached by the legacy sidecar",
+                }).encode("utf-8")
+
+        def urlopen(request, timeout):
+            if request.full_url.startswith("http://news-backend.test/"):
+                raise urllib.error.HTTPError(request.full_url, 404, "not found", {}, None)
+            return FakeResponse()
+
+        with patch.object(server, "NEWS_BRIEFING_CACHE", Mock(base_url="http://news-backend.test")), \
+                patch.object(server, "ARTICLE_CACHE_URL", "http://spike.test"), \
+                patch.object(server.urllib.request, "urlopen", side_effect=urlopen):
+            markdown, metadata = server._fetch_cached_signal_article(signal)
+
+        self.assertEqual(markdown, "# Cached by the legacy sidecar")
+        self.assertEqual(metadata["cache_backend"], "article-cache-spike")
+        self.assertEqual(metadata["storage"], "local_file")
+        self.assertFalse(metadata["network_fetch"])
+
     def test_chat_refuses_to_run_while_source_article_is_loading(self):
         with tempfile.TemporaryDirectory() as temporary:
             original_store = server.HOME_CHAT_STORE
@@ -398,6 +455,8 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         self.assertEqual(result[0]["url"], "https://example.test/story")
         self.assertEqual(result[0]["summary"], "A concise summary with enough context for the card.")
         self.assertEqual(result[0]["source"], "Example")
+        self.assertEqual(result[0]["article_id"], server._discovery_article_id_for_url("https://example.test/story"))
+        self.assertEqual(result[0]["article_context"], "signal")
         self.assertEqual(result[0]["published_at"], "2026-09-07T12:34:00+07:00")
         self.assertEqual(result[0]["signal_id"], "signal-1")
         self.assertEqual(result[0]["image_url"], "https://example.test/image.jpg")

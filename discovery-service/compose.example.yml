@@ -18,6 +18,11 @@ services:
       # Use the Docker host gateway so separate Container Manager projects
       # can reach the Signal Service without relying on NAS hairpin routing.
       DISCOVERY_SERVICE_SIGNAL_SERVICE_URL: http://host.docker.internal:8788
+      # Materialize each ranked story before it is handed to Signal Service.
+      # The sidecar reads this Discovery database read-only and owns Markdown.
+      DISCOVERY_SERVICE_ARTICLE_CACHE_URL: http://ariadne-article-cache:8790
+      DISCOVERY_SERVICE_ARTICLE_CACHE_TIMEOUT_SECONDS: 40
+      DISCOVERY_SERVICE_ARTICLE_CACHE_CONCURRENCY: 4
       DISCOVERY_SERVICE_PUSH_TIMEOUT_SECONDS: 180
       # Optional SearXNG expansion. Leave empty until the endpoint is confirmed.
       DISCOVERY_SERVICE_SEARXNG_URL: ""
@@ -26,3 +31,15 @@ services:
       - ./data:/data
       # Replace this file with a private sources.json when adding more feeds.
       - ./sources.example.json:/app/sources.example.json:ro
+
+  ariadne-article-cache:
+    build:
+      context: .
+      dockerfile: article-cache.Dockerfile
+    container_name: ariadne-article-cache
+    restart: unless-stopped
+    ports:
+      - "8790:8790"
+    volumes:
+      - ./data:/source:ro
+      - ./article-cache-data:/cache

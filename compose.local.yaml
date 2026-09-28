@@ -24,7 +24,28 @@ services:
       # This is intentionally the Compose service name. DEV Discovery cannot
       # send candidates to Hera or to any other Signal Service.
       DISCOVERY_SERVICE_SIGNAL_SERVICE_URL: http://signal:8788
+      DISCOVERY_SERVICE_ARTICLE_CACHE_URL: http://article-cache:8790
     volumes:
       - type: bind
         source: ./runtime/discovery-signal-dev/discovery
         target: /data
+    depends_on:
+      article-cache:
+        condition: service_started
+
+  article-cache:
+    container_name: ariadne-article-cache-dev
+    build:
+      context: ./discovery-service
+      dockerfile: article-cache.Dockerfile
+    restart: "no"
+    ports:
+      - "127.0.0.1:18790:8790"
+    volumes:
+      - type: bind
+        source: ./runtime/discovery-signal-dev/discovery
+        target: /source
+        read_only: true
+      - type: bind
+        source: ./runtime/discovery-signal-dev/article-cache
+        target: /cache

@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS signals (
     published_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     discovered_at TEXT NOT NULL,
+    article_id TEXT NOT NULL DEFAULT '',
+    article_cache_json TEXT NOT NULL DEFAULT '{}',
     image_url TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT 'Main News Feed',
     media_json TEXT NOT NULL,
@@ -190,6 +192,10 @@ class SignalStore:
         columns = {str(row[1]) for row in self._connection.execute("PRAGMA table_info(signals)").fetchall()}
         if "category" not in columns:
             self._connection.execute("ALTER TABLE signals ADD COLUMN category TEXT NOT NULL DEFAULT 'Main News Feed'")
+        if "article_id" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN article_id TEXT NOT NULL DEFAULT ''")
+        if "article_cache_json" not in columns:
+            self._connection.execute("ALTER TABLE signals ADD COLUMN article_cache_json TEXT NOT NULL DEFAULT '{}'")
         if "image_enrichment_attempted_at" not in columns:
             self._connection.execute("ALTER TABLE signals ADD COLUMN image_enrichment_attempted_at TEXT")
         if "image_enrichment_error" not in columns:
@@ -246,15 +252,15 @@ class SignalStore:
                 content = signal.content if len(signal.content) >= len(row["content"]) else str(row["content"])
                 title = signal.title if signal.provenance.get("discovery") else str(row["title"])
                 connection.execute(
-                    """UPDATE signals SET title=?, summary=?, content=?, updated_at=?, image_url=?, category=?, media_json=?, provenance_json=?, last_seen_at=? WHERE signal_id=?""",
-                    (title, summary, content, signal.updated_at, signal.image_url or row["image_url"], signal.category or row["category"], json.dumps(signal.media or json.loads(row["media_json"]), ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), now, signal_id),
+                    """UPDATE signals SET title=?, summary=?, content=?, updated_at=?, article_id=?, article_cache_json=?, image_url=?, category=?, media_json=?, provenance_json=?, last_seen_at=? WHERE signal_id=?""",
+                    (title, summary, content, signal.updated_at, signal.article_id or row["article_id"], json.dumps(signal.article_cache or json.loads(row["article_cache_json"]), ensure_ascii=False), signal.image_url or row["image_url"], signal.category or row["category"], json.dumps(signal.media or json.loads(row["media_json"]), ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), now, signal_id),
                 )
                 stored = Signal(**{**signal.__dict__, "signal_id": signal_id, "title": title, "summary": summary, "content": content})
                 created = False
             else:
                 connection.execute(
-                    """INSERT INTO signals (signal_id,dedupe_key,content_key,title,summary,content,url,source_name,source_url,published_at,updated_at,discovered_at,image_url,category,media_json,provenance_json,rank_score,rank_reason,first_seen_at,last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (signal.signal_id, signal.dedupe_key, signal.content_key, signal.title, signal.summary, signal.content, signal.url, signal.source_name, signal.source_url, signal.published_at, signal.updated_at, signal.discovered_at, signal.image_url, signal.category, json.dumps(signal.media, ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), signal.rank_score, signal.rank_reason, now, now),
+                    """INSERT INTO signals (signal_id,dedupe_key,content_key,title,summary,content,url,source_name,source_url,published_at,updated_at,discovered_at,article_id,article_cache_json,image_url,category,media_json,provenance_json,rank_score,rank_reason,first_seen_at,last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (signal.signal_id, signal.dedupe_key, signal.content_key, signal.title, signal.summary, signal.content, signal.url, signal.source_name, signal.source_url, signal.published_at, signal.updated_at, signal.discovered_at, signal.article_id, json.dumps(signal.article_cache, ensure_ascii=False), signal.image_url, signal.category, json.dumps(signal.media, ensure_ascii=False), json.dumps(signal.provenance, ensure_ascii=False), signal.rank_score, signal.rank_reason, now, now),
                 )
                 stored = signal
                 created = True
@@ -273,7 +279,7 @@ class SignalStore:
             for row in rows:
                 semantic_matches = self._semantic_matches_for_signal(str(row["signal_id"]))
                 result.append(Signal(
-                    signal_id=row["signal_id"], dedupe_key=row["dedupe_key"], content_key=row["content_key"], title=row["title"], summary=row["summary"], content=row["content"], url=row["url"], source_name=row["source_name"], source_url=row["source_url"], published_at=row["published_at"], updated_at=row["updated_at"], discovered_at=row["discovered_at"], image_url=row["image_url"], category=row["category"], media=json.loads(row["media_json"]), provenance=json.loads(row["provenance_json"]), rank_score=float(row["rank_score"]), rank_reason=row["rank_reason"],
+                    signal_id=row["signal_id"], dedupe_key=row["dedupe_key"], content_key=row["content_key"], title=row["title"], summary=row["summary"], content=row["content"], url=row["url"], source_name=row["source_name"], source_url=row["source_url"], published_at=row["published_at"], updated_at=row["updated_at"], discovered_at=row["discovered_at"], article_id=row["article_id"], article_cache=json.loads(row["article_cache_json"]), image_url=row["image_url"], category=row["category"], media=json.loads(row["media_json"]), provenance=json.loads(row["provenance_json"]), rank_score=float(row["rank_score"]), rank_reason=row["rank_reason"],
                     semantic_matches=semantic_matches,
                 ))
             return result

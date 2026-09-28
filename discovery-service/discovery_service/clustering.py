@@ -78,6 +78,7 @@ def story_from_cluster(cluster: list[Article]) -> dict[str, Any]:
         # The earliest observed article anchors the story. New corroboration
         # can therefore update a story without creating a second Signal card.
         "story_id": "story-" + anchor.article_id.removeprefix("article-"),
+        "article_id": anchor.article_id,
         "title": best.title,
         "summary": summary[:4_000],
         "url": anchor.canonical_url,

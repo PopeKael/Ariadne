@@ -5236,8 +5236,12 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
             display_image_url = cached_image_url
             if not display_image_url and enrichment_status not in {"no_url_found", "remote_image_failed"}:
                 display_image_url = str(item.get("image_url") or "")
+            article_id = _news_article_id(item.get("article_id")) or _discovery_article_id_for_url(url) or ""
             signals.append({
                 "signal_id": str(item.get("signal_id") or ""),
+                "article_id": article_id,
+                "article_context": "signal",
+                "article_cache": item.get("article_cache") if isinstance(item.get("article_cache"), dict) else {},
                 "label": title,
                 "summary": summary,
                 "source": source,
@@ -5593,43 +5597,76 @@ def _discovery_article_id_for_url(value: object) -> str | None:
 
 
 def _fetch_cached_signal_article(signal: dict[str, object]) -> tuple[str | None, dict[str, object]]:
-    """Return local-cache Markdown and retrieval metadata; never populates/fetches publishers."""
-    article_id = _discovery_article_id_for_url(signal.get("url"))
+    """Return local-cache Markdown and retrieval metadata; never fetch publishers.
+
+    Signal cards come from Signal Service, but their source articles are indexed
+    by the Hera news backend. Keep the older isolated article-cache spike as a
+    compatibility fallback, but do not make it the primary cache for cards.
+    """
+    article_id = _news_article_id(signal.get("article_id")) or _discovery_article_id_for_url(signal.get("url"))
     metadata: dict[str, object] = {
         "status": "miss", "label": "ARTICLE CACHE MISS", "article_id": article_id,
         "retrieval_ms": 0.0, "publisher_fetch_occurred": False,
-        "storage": None, "network_fetch": None,
+        "storage": None, "network_fetch": None, "cache_backend": None,
     }
     if not article_id:
         metadata["error"] = "Signal URL could not be mapped to a Discovery article ID."
         return None, metadata
-    request = urllib.request.Request(
-        f"{ARTICLE_CACHE_URL}/v1/cache/articles/{urllib.parse.quote(article_id, safe='')}",
-        headers={"Accept": "application/json"},
-    )
+    encoded_id = urllib.parse.quote(article_id, safe="")
+    cache_urls = [
+        (f"{NEWS_BRIEFING_CACHE.base_url}/articles/{encoded_id}", "hera-news-backend"),
+        (f"{ARTICLE_CACHE_URL}/v1/cache/articles/{encoded_id}", "article-cache-spike"),
+    ]
     started = time.perf_counter()
-    try:
-        with urllib.request.urlopen(request, timeout=ARTICLE_CACHE_TIMEOUT_SECONDS) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except (OSError, ValueError, urllib.error.URLError) as exc:
-        metadata["retrieval_ms"] = round((time.perf_counter() - started) * 1000, 3)
-        metadata["error"] = str(exc)[:240]
-        return None, metadata
+    errors: list[str] = []
+    for url, backend in cache_urls:
+        try:
+            request = urllib.request.Request(url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(request, timeout=ARTICLE_CACHE_TIMEOUT_SECONDS) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (OSError, ValueError, urllib.error.URLError) as exc:
+            errors.append(f"{backend}: {str(exc)[:180]}")
+            continue
+        article = payload.get("article") if isinstance(payload, dict) else None
+        retrieval = payload.get("retrieval") if isinstance(payload, dict) else None
+        markdown = payload.get("markdown") if isinstance(payload, dict) else None
+        # The first Hera article-cache sidecar predates the explicit retrieval
+        # telemetry fields. Its GET path is read-only and returns the cache
+        # index entry plus Markdown, so accept that legacy response only when
+        # the entry itself proves the file is ready. New sidecars must still
+        # provide the stronger retrieval contract above.
+        legacy_sidecar = (
+            backend == "article-cache-spike"
+            and isinstance(article, dict)
+            and bool(article.get("content_ready"))
+            and isinstance(markdown, str)
+            and bool(markdown.strip())
+        )
+        retrieval_verified = (
+            isinstance(retrieval, dict)
+            and retrieval.get("storage") == "local_file"
+            and retrieval.get("network_fetch") is False
+            and retrieval.get("publisher_fetch_occurred", False) is False
+        ) or legacy_sidecar
+        if (
+            isinstance(payload, dict) and payload.get("ok") is True
+            and isinstance(article, dict) and article.get("article_id") == article_id
+            and retrieval_verified
+            and isinstance(markdown, str) and markdown.strip()
+        ):
+            if legacy_sidecar:
+                retrieval = {"storage": "local_file", "network_fetch": False, "publisher_fetch_occurred": False, "compatibility": "legacy_sidecar"}
+            metadata.update({
+                "status": "hit", "label": "ARTICLE CACHE HIT", "storage": "local_file",
+                "network_fetch": False, "cache_backend": backend,
+                "retrieval_ms": round((time.perf_counter() - started) * 1000, 3),
+            })
+            return markdown, metadata
+        errors.append(f"{backend}: cache returned no verified local Markdown")
     metadata["retrieval_ms"] = round((time.perf_counter() - started) * 1000, 3)
-    article = payload.get("article") if isinstance(payload, dict) else None
-    retrieval = payload.get("retrieval") if isinstance(payload, dict) else None
-    markdown = payload.get("markdown") if isinstance(payload, dict) else None
-    if not (
-        isinstance(payload, dict) and payload.get("ok") is True
-        and isinstance(article, dict) and article.get("article_id") == article_id
-        and isinstance(retrieval, dict) and retrieval.get("storage") == "local_file"
-        and retrieval.get("network_fetch") is False
-        and isinstance(markdown, str) and markdown.strip()
-    ):
-        metadata["error"] = str(payload.get("error") or "Cache returned no verified local Markdown.")[:240] if isinstance(payload, dict) else "Invalid cache response."
-        return None, metadata
-    metadata.update({"status": "hit", "label": "ARTICLE CACHE HIT", "storage": "local_file", "network_fetch": False})
-    return markdown, metadata
+    if errors:
+        metadata["error"] = "; ".join(errors)[:500]
+    return None, metadata
 
 
 def _cached_signal_markdown(signal: dict[str, object], article_id: str, markdown: str) -> str:

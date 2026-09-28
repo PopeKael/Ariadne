@@ -62,6 +62,12 @@ def canonical_url(value: object) -> str:
     return urlunsplit((parts.scheme.casefold(), netloc, path, urlencode(query), ""))
 
 
+def stable_article_id(value: object) -> str:
+    """Return the article ID shared by Discovery and the local Markdown cache."""
+    url = canonical_url(value)
+    return "article-" + hashlib.sha256(url.encode("utf-8")).hexdigest()[:28] if url else ""
+
+
 def source_domain(value: object) -> str:
     host = (urlsplit(canonical_url(value)).hostname or "").casefold()
     return host.removeprefix("www.")
@@ -119,7 +125,7 @@ class Article:
         # differ between outlets even when the underlying wire copy is exact.
         material = " ".join((summary, content)).casefold()
         content_hash = hashlib.sha256(material.encode("utf-8")).hexdigest()
-        article_id = "article-" + hashlib.sha256(url.encode("utf-8") if url else material.encode("utf-8")).hexdigest()[:28]
+        article_id = stable_article_id(url) or "article-" + hashlib.sha256(material.encode("utf-8")).hexdigest()[:28]
         return cls(article_id, url, title, summary, content, source_id, source_name, source_url, category, published, observed, canonical_url(candidate.get("image_url") or candidate.get("image") or ""), content_hash, dict(candidate.get("metadata") or {}))
 
     def as_dict(self) -> dict[str, Any]:
@@ -144,4 +150,4 @@ def stable_source_id(name: str, url: str) -> str:
     return "source-" + hashlib.sha256(f"{name}|{url}".casefold().encode("utf-8")).hexdigest()[:24]
 
 
-__all__ = ["Article", "SourceDefinition", "canonical_url", "clean_text", "normalize_timestamp", "source_domain", "stable_source_id", "tokens", "utc_now"]
+__all__ = ["Article", "SourceDefinition", "canonical_url", "clean_text", "normalize_timestamp", "source_domain", "stable_article_id", "stable_source_id", "tokens", "utc_now"]

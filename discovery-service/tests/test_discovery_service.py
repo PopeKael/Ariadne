@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT))
 from discovery_service.clustering import cluster_articles, diversify, rank_stories, story_from_cluster
 from discovery_service.engine import DiscoveryEngine, _signal_category
 from discovery_service.feeds import FetchResult, SourceDefinition, configured_sources, fetch_feed
-from discovery_service.models import Article, canonical_url
+from discovery_service.models import Article, canonical_url, stable_article_id
 
 
 def article(url, title, summary, source, category="Main News Feed", published_at="2026-09-10T06:00:00+00:00"):
@@ -39,6 +39,12 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(story["article_count"], 3)
         self.assertEqual(story["source_count"], 2)
         self.assertEqual(len(story["evidence"]), 3)
+
+    def test_story_identity_carries_the_anchor_article_id(self):
+        source = article("https://example.test/story", "A story", "The article body.", "Example")
+        story = story_from_cluster([source])
+        self.assertEqual(story["article_id"], source.article_id)
+        self.assertEqual(story["article_id"], stable_article_id(story["url"]))
 
     def test_diversity_prevents_one_category_consuming_every_slot(self):
         stories = rank_stories([{"story_id": f"story-{i}", "title": str(i), "summary": "", "category": "Technology" if i < 5 else "Science", "published_at": "2026-09-10T06:00:00+00:00", "source_count": 1, "article_count": 1} for i in range(6)])
@@ -102,6 +108,43 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(requests[0]["items"][0]["provenance"]["discovery"]["story_id"], "story-0")
         self.assertEqual(requests[0]["items"][0]["provenance"]["discovery"]["first_seen_at"], "2026-09-10T06:00:00+00:00")
         self.assertEqual(requests[0]["items"][0]["provenance"]["discovery"]["last_seen_at"], "2026-09-10T06:00:00+00:00")
+
+    def test_materialization_completes_before_signal_handoff(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, limit):
+                return json.dumps({"ok": True, "content_ready": 1, "cached": False, "fetched": True}).encode("utf-8")
+
+        story = {
+            "url": "https://example.test/materialized",
+            "title": "Materialized story",
+            "summary": "A story.",
+        }
+        requests = []
+
+        def urlopen(request, timeout):
+            requests.append(request)
+            return Response()
+
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ", {"DISCOVERY_SERVICE_ARTICLE_CACHE_URL": "http://cache.test", "DISCOVERY_SERVICE_ARTICLE_CACHE_CONCURRENCY": "1"}, clear=False
+        ), patch("discovery_service.engine.urllib.request.urlopen", side_effect=urlopen):
+            engine = DiscoveryEngine(str(Path(directory) / "discovery.sqlite3"), sources=[])
+            try:
+                result = engine._materialize_articles([story])
+            finally:
+                engine.close()
+
+        self.assertEqual(result, {"enabled": True, "attempted": True, "ready": 1, "failed": 0})
+        self.assertEqual(story["article_id"], stable_article_id(story["url"]))
+        self.assertEqual(story["article_cache"]["status"], "ready")
+        self.assertEqual(requests[0].method, "POST")
+        self.assertTrue(requests[0].full_url.endswith("/v1/cache/articles/" + story["article_id"]))
 
     def test_source_file_is_supported_for_large_catalogues(self):
         with tempfile.TemporaryDirectory() as directory:

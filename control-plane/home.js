@@ -590,6 +590,7 @@ function renderSignalCard(item) {
   addDetail("Why this appeared", why);
   if (Number.isFinite(rankScore)) addDetail("Rank score", rankScore.toFixed(3));
   addDetail("Original source", sourceNames.join(", ") || item.source || "Ariadne Discovery Engine");
+  if (item.article_id) addDetail("Article reference", item.article_id);
   if (Number.isFinite(sourceCount) && sourceCount > 0) addDetail("Coverage", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
   if (watchlistTopics.length) addDetail("Watchlist", watchlistTopics.join(", "), "signal-watchlist-match");
   if (formatDate(collected)) addDetail("Collected", formatDate(collected));
@@ -672,7 +673,8 @@ function renderSignalCard(item) {
     sourceLink.title = "Open original source";
     body.append(sourceLink);
   }
-  if (item.article_id) {
+  const newsArticleCard = item.article_context === "news" || (!item.signal_id && item.article_id);
+  if (newsArticleCard) {
     const actions = el("div", "signal-card-actions");
     const feedback = el("div", "signal-feedback");
     feedback.append(el("span", "feedback-label", "Your take"));
@@ -757,11 +759,13 @@ function renderToday(items) {
     // of reducing the authoritative signal feed to a legacy article snapshot.
     signal_id: item.signal_id || "",
     article_id: item.article_id || "",
+    article_context: item.article_context || (item.signal_id ? "signal" : "news"),
     label: item.label || item.title || "Article",
     url: item.url || item.canonical_url || "",
     source: item.source || item.source_name || "",
   }));
-  if (count) count.textContent = `${cards.length} cached articles`;
+  const signalCards = cards.some(item => item.signal_id && item.article_context !== "news");
+  if (count) count.textContent = `${cards.length} cached ${signalCards ? "signals" : "articles"}`;
   const grid = el("div", "signal-section-grid");
   cards.forEach(item => grid.append(renderSignalCard(item)));
   root.append(grid);

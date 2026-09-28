@@ -60,6 +60,12 @@ def canonical_url(value: object) -> str:
     return urlunsplit((parts.scheme.casefold(), netloc, path, parts.query, ""))
 
 
+def stable_article_id(value: object) -> str:
+    """Use the same URL-derived article identity as Discovery's cache."""
+    url = canonical_url(value)
+    return "article-" + hashlib.sha256(url.encode("utf-8")).hexdigest()[:28] if url else ""
+
+
 def _candidate_value(candidate: dict[str, Any], *names: str) -> object:
     for name in names:
         value = candidate.get(name)
@@ -97,6 +103,8 @@ class Signal:
     published_at: str
     updated_at: str
     discovered_at: str
+    article_id: str = ""
+    article_cache: dict[str, Any] = field(default_factory=dict)
     image_url: str = ""
     category: str = "Main News Feed"
     media: dict[str, Any] = field(default_factory=dict)
@@ -117,6 +125,8 @@ class Signal:
             "published_at": self.published_at,
             "updated_at": self.updated_at,
             "discovered_at": self.discovered_at,
+            "article_id": self.article_id,
+            "article_cache": self.article_cache,
             "image_url": self.image_url,
             "category": self.category,
             "media": self.media,
@@ -157,6 +167,10 @@ def normalize_candidate(
     published_at = normalize_timestamp(_candidate_value(candidate, "published_at", "published", "pubDate", "date", "timestamp"), observed_at)
     updated_at = normalize_timestamp(_candidate_value(candidate, "updated_at", "updated", "modified"), published_at)
     image_url = _candidate_image_url(candidate)
+    article_id = clean_text(_candidate_value(candidate, "article_id"), 160) or stable_article_id(url)
+    article_cache = _candidate_value(candidate, "article_cache")
+    if not isinstance(article_cache, dict):
+        article_cache = {}
     category = normalize_category(_candidate_value(candidate, "category", "section", "feed_category"), default_category)
     media = _candidate_value(candidate, "media", "media_metadata", "enclosure")
     if not isinstance(media, dict):
@@ -191,6 +205,8 @@ def normalize_candidate(
         published_at=published_at,
         updated_at=updated_at,
         discovered_at=observed_at,
+        article_id=article_id,
+        article_cache=article_cache,
         image_url=image_url,
         category=category,
         media=media,
