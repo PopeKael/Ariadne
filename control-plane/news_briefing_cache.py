@@ -61,6 +61,107 @@ def _validated_card_snapshot(value: object) -> dict[str, Any] | None:
     return cleaned
 
 
+def _feedback_value(card: dict[str, Any]) -> str:
+    feedback = card.get("feedback")
+    return str(feedback.get("value") or "") if isinstance(feedback, dict) else ""
+
+
+def _feedback_timestamp(card: dict[str, Any]) -> str:
+    feedback = card.get("feedback")
+    return str(feedback.get("updated_at") or feedback.get("timestamp") or "") if isinstance(feedback, dict) else ""
+
+
+def _merge_cards(previous: list[dict[str, Any]], incoming: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge Hera candidates by article ID while retaining local interaction state."""
+    previous_by_id = {
+        str(card.get("article_id")): card
+        for card in previous
+        if isinstance(card, dict) and str(card.get("article_id") or "").strip()
+    }
+    merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for remote in incoming:
+        article_id = str(remote.get("article_id") or "").strip()
+        if not article_id or article_id in seen:
+            continue
+        local = previous_by_id.get(article_id, {})
+        card = {**local, **remote}
+        local_feedback = _feedback_value(local)
+        remote_feedback = _feedback_value(remote)
+        if local_feedback and (not remote_feedback or _feedback_timestamp(local) > _feedback_timestamp(remote)):
+            card["feedback"] = local.get("feedback")
+        if local.get("interaction_state") and not remote.get("interaction_state"):
+            card["interaction_state"] = local["interaction_state"]
+        merged.append(card)
+        seen.add(article_id)
+    # Keep locally known candidates until Hera replaces them. Final local
+    # ranking and the 100-card limit decide what remains visible.
+    for local in previous:
+        if not isinstance(local, dict):
+            continue
+        article_id = str(local.get("article_id") or "").strip()
+        if article_id and article_id not in seen:
+            merged.append(dict(local))
+            seen.add(article_id)
+    return merged
+
+
+def _preference_score(card: dict[str, Any], preferences: dict[str, Any] | None) -> float:
+    """Apply local Warren preference evidence to one Hera candidate."""
+    preferences = preferences if isinstance(preferences, dict) else {}
+    source_scores = {
+        str(item.get("label") or "").casefold(): float(item.get("score") or 0)
+        for item in preferences.get("sources", [])
+        if isinstance(item, dict) and item.get("label")
+    }
+    category_scores = {
+        str(item.get("label") or "").casefold(): float(item.get("score") or 0)
+        for item in preferences.get("categories", [])
+        if isinstance(item, dict) and item.get("label")
+    }
+    interest_items = [
+        (str(item.get("label") or "").casefold(), float(item.get("score") or 0))
+        for item in preferences.get("interests", [])
+        if isinstance(item, dict) and item.get("label")
+    ]
+    source = str(card.get("source") or card.get("source_name") or "").casefold()
+    category = str(card.get("category") or "").casefold()
+    text = " ".join(str(card.get(key) or "") for key in ("title", "summary", "source", "category")).casefold()
+    score = float(card.get("rank_score") or card.get("briefing_score") or 0)
+    if score <= 1.0:
+        score *= 100.0
+    score += source_scores.get(source, 0.0) * 8.0
+    score += category_scores.get(category, 0.0) * 5.0
+    score += sum(value * 6.0 for label, value in interest_items if label and label in text)
+    feedback = _feedback_value(card)
+    score += {"useful": 8.0, "interesting": 6.0, "not_useful": -18.0}.get(feedback, 0.0)
+    if str(card.get("interaction_state") or "") == "consumed":
+        score -= 2.0
+    return score
+
+
+def _rank_cards(cards: list[dict[str, Any]], preferences: dict[str, Any] | None = None, limit: int = 100) -> list[dict[str, Any]]:
+    ranked = []
+    for index, card in enumerate(cards):
+        if not isinstance(card, dict) or not card.get("article_id"):
+            continue
+        item = dict(card)
+        item["local_rank_score"] = round(_preference_score(item, preferences), 4)
+        ranked.append((
+            -float(item["local_rank_score"]),
+            int(item.get("position") or index),
+            str(item.get("article_id")),
+            item,
+        ))
+    ranked.sort(key=lambda value: value[:3])
+    result = []
+    for position, (_, _, _, card) in enumerate(ranked[:max(1, min(int(limit), 100))], 1):
+        card["position"] = position
+        card["local_ranked"] = True
+        result.append(card)
+    return result
+
+
 class NewsBriefingCache:
     """Local-first snapshot access plus asynchronous, last-known-good Hera sync."""
 
@@ -118,6 +219,27 @@ class NewsBriefingCache:
             **({} if briefing is not None else {"message": "No local news briefing snapshot is available yet."}),
         }
 
+    def ranked_articles(self, *, limit: int = 100, preferences: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Return and persist Ariadne's final local card ordering."""
+        with self._lock:
+            if self._briefing is None:
+                return []
+            ranked = _rank_cards(list(self._briefing.get("articles", [])), preferences, limit)
+            current_ids = [str(card.get("article_id") or "") for card in self._briefing.get("articles", [])]
+            ranked_ids = [str(card.get("article_id") or "") for card in ranked]
+            if current_ids != ranked_ids or any(
+                card.get("local_rank_score") != current.get("local_rank_score")
+                for card, current in zip(ranked, self._briefing.get("articles", []))
+            ):
+                updated = copy.deepcopy(self._briefing)
+                updated["articles"] = ranked
+                updated["article_count"] = len(ranked)
+                self._atomic_write(updated)
+                self._briefing = updated
+                self._fingerprint = _fingerprint(updated)
+                self._cached_at = self._file_mtime()
+            return copy.deepcopy(ranked)
+
     def update_article_feedback(self, article_id: str, value: str, updated_at: str) -> bool:
         """Atomically update local card state after Hera confirms persisted feedback."""
         if value not in {"useful", "interesting", "not_useful"}:
@@ -131,6 +253,7 @@ class NewsBriefingCache:
             if article is None:
                 return False
             article["feedback"] = {"value": value, "updated_at": updated_at}
+            updated["articles"] = _rank_cards(updated.get("articles", []), limit=100)
             self._atomic_write(updated)
             self._briefing = updated
             self._fingerprint = _fingerprint(updated)
@@ -180,12 +303,23 @@ class NewsBriefingCache:
                 remote = _validated_card_snapshot(self._request_briefing())
                 if remote is None:
                     raise ValueError("Hera returned an invalid or unsuccessful briefing.")
-                version = _fingerprint(remote)
                 with self._lock:
-                    changed = self._briefing is None or version != self._fingerprint
+                    previous = self._briefing or {}
+                    merged = dict(remote)
+                    merged["articles"] = _rank_cards(
+                        _merge_cards(previous.get("articles", []) if isinstance(previous, dict) else [], remote["articles"]),
+                        limit=100,
+                    )
+                    merged["article_count"] = len(merged["articles"])
+                    version = _fingerprint(merged)
+                    previous_ids = [
+                        card.get("article_id") for card in previous.get("articles", [])
+                    ] if isinstance(previous, dict) else []
+                    merged_ids = [card.get("article_id") for card in merged["articles"]]
+                    changed = self._briefing is None or version != self._fingerprint or merged_ids != previous_ids
                     if changed:
-                        self._atomic_write(remote)
-                        self._briefing = remote
+                        self._atomic_write(merged)
+                        self._briefing = merged
                         self._fingerprint = version
                         self._cached_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
                     result = {

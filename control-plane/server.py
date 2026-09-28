@@ -5201,12 +5201,19 @@ def home_adaptive_payload() -> dict[str, object]:
 
 def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
     signals: list[dict[str, object]] = []
-    briefing = SIGNAL_SERVICE_CLIENT.briefing(limit=100)
-    for item in briefing.get("signals", []):
+    local_snapshot = NEWS_BRIEFING_CACHE.snapshot()
+    signal_health = health.get("signal_service") if isinstance(health.get("signal_service"), dict) else {}
+    learned_preferences = signal_health.get("learned_preferences") if isinstance(signal_health, dict) else {}
+    # This is deliberately local-only.  The background NewsBriefingCache
+    # poller owns Hera refresh; Home must render its last-known-good cards
+    # without waiting on Signal Service or a publisher.
+    cards = NEWS_BRIEFING_CACHE.ranked_articles(limit=100, preferences=learned_preferences if isinstance(learned_preferences, dict) else None)
+    stale = not local_snapshot.get("available") or local_snapshot.get("sync", {}).get("state") == "unavailable"
+    for item in cards:
         if not isinstance(item, dict):
             continue
         title = str(item.get("title") or "Signal")
-        source = str(item.get("source_name") or "Unknown source")
+        source = str(item.get("source") or item.get("source_name") or "Unknown source")
         summary = re.sub(r"\s+", " ", str(item.get("summary") or item.get("content") or "")).strip()
         summary = re.sub(r"(?:Article|Comments)\s+URL:\s*", "", summary, flags=re.IGNORECASE)
         summary = re.sub(r"https?://\S+", "", summary, flags=re.IGNORECASE)
@@ -5217,49 +5224,39 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
         if len(summary) > 260:
             summary = summary[:257].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
         detail = f"{source} · {summary}" if summary else source
-        if briefing.get("stale"):
+        if stale:
             detail = "Cached · " + detail
-        url = str(item.get("url") or "")
+        url = str(item.get("canonical_url") or item.get("url") or "")
         if url.startswith(("http://", "https://")):
-            raw_provenance = item.get("provenance") if isinstance(item.get("provenance"), dict) else {}
-            raw_discovery = raw_provenance.get("discovery") if isinstance(raw_provenance.get("discovery"), dict) else {}
-            discovery_fields = (
-                "story_id", "article_count", "source_count", "source_names", "rank_score",
-                "discovery_category", "first_seen_at", "last_seen_at", "representative_url",
-            )
-            provenance = {"discovery": {key: raw_discovery[key] for key in discovery_fields if key in raw_discovery}} if raw_discovery else {}
-            # Prefer Signal Service's durable local copy. A failed remote
-            # render must not send Home back to publisher-CDN hotlinking.
-            image_enrichment = item.get("image_enrichment") if isinstance(item.get("image_enrichment"), dict) else {}
-            cached_image_url = str(item.get("image_cache_url") or "")
-            enrichment_status = str(image_enrichment.get("status") or "")
-            display_image_url = cached_image_url
-            if not display_image_url and enrichment_status not in {"no_url_found", "remote_image_failed"}:
-                display_image_url = str(item.get("image_url") or "")
-            article_id = _news_article_id(item.get("article_id")) or _discovery_article_id_for_url(url) or ""
+            article_id = _news_article_id(item.get("article_id")) or ""
+            if not article_id or item.get("content_ready") != 1:
+                continue
+            relevance = {
+                key: item[key]
+                for key in ("rank_score", "briefing_score", "local_rank_score", "position", "interaction_state")
+                if key in item
+            }
             signals.append({
-                "signal_id": str(item.get("signal_id") or ""),
                 "article_id": article_id,
-                "article_context": "signal",
-                "article_cache": item.get("article_cache") if isinstance(item.get("article_cache"), dict) else {},
+                "article_context": "news",
+                "article_cache": {"status": "ready", "content_ready": 1},
+                "content_ready": 1,
                 "label": title,
                 "summary": summary,
                 "source": source,
                 "published_at": str(item.get("published_at") or item.get("updated_at") or ""),
-                "image_url": display_image_url,
-                "image_source_url": str(item.get("image_url") or ""),
-                "image_enrichment": image_enrichment,
+                "image_url": str(item.get("image_url") or ""),
                 "category": str(item.get("category") or ""),
-                "watchlist_matches": item.get("watchlist_matches") if isinstance(item.get("watchlist_matches"), list) else [],
-                "semantic_matches": item.get("semantic_matches") if isinstance(item.get("semantic_matches"), list) else [],
-                "why_appeared": str(item.get("why_appeared") or item.get("rank_reason") or "Curated from configured sources."),
-                "rank_score": item.get("rank_score"),
-                "provenance": provenance,
+                "why_appeared": "Local Ariadne ranking · " + ", ".join(
+                    f"{key}={value}" for key, value in relevance.items()
+                ) if relevance else "Local Ariadne ranking.",
+                "rank_score": item.get("local_rank_score", item.get("rank_score")),
+                "provenance": {"news": relevance},
                 "feedback": item.get("feedback") if isinstance(item.get("feedback"), dict) else None,
                 "detail": detail,
                 "tone": "quiet",
                 "url": url,
-                "stale": bool(briefing.get("stale")),
+                "stale": stale,
             })
     for service in health.get("services", []):
         if not isinstance(service, dict) or service.get("state") == "healthy":
@@ -5596,22 +5593,18 @@ def _discovery_article_id_for_url(value: object) -> str | None:
     return "article-" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:28]
 
 
-def _fetch_cached_signal_article(signal: dict[str, object]) -> tuple[str | None, dict[str, object]]:
-    """Return local-cache Markdown and retrieval metadata; never fetch publishers.
+def _fetch_cached_article_by_id(article_id: str) -> tuple[str | None, dict[str, object], dict[str, object]]:
+    """Read an already-materialized Hera article by stable ID only.
 
-    Signal cards come from Signal Service, but their source articles are indexed
-    by the Hera news backend. Keep the older isolated article-cache spike as a
-    compatibility fallback, but do not make it the primary cache for cards.
+    Both endpoints are cache reads. Neither path is allowed to follow a
+    publisher URL or perform a scrape; the retrieval contract is checked
+    before Markdown is accepted.
     """
-    article_id = _news_article_id(signal.get("article_id")) or _discovery_article_id_for_url(signal.get("url"))
     metadata: dict[str, object] = {
         "status": "miss", "label": "ARTICLE CACHE MISS", "article_id": article_id,
         "retrieval_ms": 0.0, "publisher_fetch_occurred": False,
         "storage": None, "network_fetch": None, "cache_backend": None,
     }
-    if not article_id:
-        metadata["error"] = "Signal URL could not be mapped to a Discovery article ID."
-        return None, metadata
     encoded_id = urllib.parse.quote(article_id, safe="")
     cache_urls = [
         (f"{NEWS_BRIEFING_CACHE.base_url}/articles/{encoded_id}", "hera-news-backend"),
@@ -5661,12 +5654,26 @@ def _fetch_cached_signal_article(signal: dict[str, object]) -> tuple[str | None,
                 "network_fetch": False, "cache_backend": backend,
                 "retrieval_ms": round((time.perf_counter() - started) * 1000, 3),
             })
-            return markdown, metadata
+            return markdown, metadata, article
         errors.append(f"{backend}: cache returned no verified local Markdown")
     metadata["retrieval_ms"] = round((time.perf_counter() - started) * 1000, 3)
     if errors:
         metadata["error"] = "; ".join(errors)[:500]
-    return None, metadata
+    return None, metadata, {}
+
+
+def _fetch_cached_signal_article(signal: dict[str, object]) -> tuple[str | None, dict[str, object]]:
+    """Return local-cache Markdown and retrieval metadata; never fetch publishers."""
+    article_id = _news_article_id(signal.get("article_id")) or _discovery_article_id_for_url(signal.get("url"))
+    if not article_id:
+        return None, {
+            "status": "miss", "label": "ARTICLE CACHE MISS", "article_id": None,
+            "retrieval_ms": 0.0, "publisher_fetch_occurred": False,
+            "storage": None, "network_fetch": None, "cache_backend": None,
+            "error": "Signal URL could not be mapped to a Discovery article ID.",
+        }
+    markdown, metadata, _article = _fetch_cached_article_by_id(article_id)
+    return markdown, metadata
 
 
 def _cached_signal_markdown(signal: dict[str, object], article_id: str, markdown: str) -> str:
@@ -7711,17 +7718,32 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 started = time.perf_counter()
                 try:
-                    result = _news_backend_request(article_id)
-                    article = result.get("article") if isinstance(result.get("article"), dict) else {}
-                    retrieval = result.get("retrieval") if isinstance(result.get("retrieval"), dict) else {}
-                    if not (
-                        result.get("ok") is True and article.get("article_id") == article_id
-                        and isinstance(result.get("markdown"), str) and str(result.get("markdown")).strip()
-                        and retrieval.get("storage") == "local_file"
-                        and retrieval.get("network_fetch") is False
-                        and retrieval.get("publisher_fetch_occurred") is False
-                    ):
-                        raise RuntimeError(str(result.get("error") or "Hera returned no verified local article Markdown."))
+                    try:
+                        result = _news_backend_request(article_id)
+                        article = result.get("article") if isinstance(result.get("article"), dict) else {}
+                        retrieval = result.get("retrieval") if isinstance(result.get("retrieval"), dict) else {}
+                        if not (
+                            result.get("ok") is True and article.get("article_id") == article_id
+                            and isinstance(result.get("markdown"), str) and str(result.get("markdown")).strip()
+                            and retrieval.get("storage") == "local_file"
+                            and retrieval.get("network_fetch") is False
+                            and retrieval.get("publisher_fetch_occurred") is False
+                        ):
+                            raise RuntimeError(str(result.get("error") or "Hera returned no verified local article Markdown."))
+                        markdown = str(result["markdown"])
+                    except (OSError, RuntimeError, ValueError):
+                        # Compatibility for the earlier Hera article-cache
+                        # sidecar. This remains a cache-only read by ID, never
+                        # a publisher fallback.
+                        markdown, retrieval, cached_article = _fetch_cached_article_by_id(article_id)
+                        if not markdown:
+                            raise RuntimeError(str(retrieval.get("error") or "Hera returned no verified local article Markdown."))
+                        article = cached_article
+                        if not article:
+                            local_cards = NEWS_BRIEFING_CACHE.snapshot().get("briefing", {}).get("articles", [])
+                            article = next((card for card in local_cards if isinstance(card, dict) and card.get("article_id") == article_id), {})
+                        if not article:
+                            raise RuntimeError("Hera returned Markdown without matching article metadata.")
                 except (OSError, RuntimeError, ValueError) as exc:
                     self.send_json({"ok": False, "article_id": article_id, "status": "unavailable",
                                     "publisher_fetch_occurred": False,
@@ -7736,7 +7758,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                         document = attach_document(
                             DOCUMENT_WORK_ROOT, active_chat_id,
                             f"news-article__{article_id}.md",
-                            _news_article_context_markdown(article, str(result["markdown"])),
+                            _news_article_context_markdown(article, markdown),
                         )
                     ready_ms = round((time.perf_counter() - started) * 1000, 3)
                 except (OSError, UnicodeError, ValueError) as exc:

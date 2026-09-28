@@ -14,7 +14,7 @@ import server  # noqa: E402
 
 
 class HomePresentationTests(unittest.TestCase):
-    def test_home_is_signals_first_and_keeps_chat_memory(self):
+    def test_home_is_local_news_first_and_keeps_chat_memory(self):
         html = Path(__file__).with_name("home.html").read_text(encoding="utf-8")
         css = Path(__file__).with_name("home.css").read_text(encoding="utf-8")
         self.assertIn('href="/" aria-label="Ariadne Home"', html)
@@ -103,7 +103,8 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("position:fixed", css)
         self.assertIn("const scrollTop = root.scrollTop", js)
         self.assertIn("root.scrollTop = Math.min(scrollTop", js)
-        self.assertIn("signal_id: item.signal_id || \"\"", render_today)
+        self.assertIn('signal_id: ""', render_today)
+        self.assertIn('article_context: item.article_id ? "news"', render_today)
         self.assertIn("article_id: item.article_id || \"\"", render_today)
         self.assertIn("sourceNames.join(\", \") || \"Original source\"", js)
         self.assertIn("generation-warning", css)

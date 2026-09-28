@@ -167,6 +167,43 @@ class NewsBriefingCacheTests(unittest.TestCase):
         restarted = NewsBriefingCache("http://127.0.0.1:1", cache_path=self.path)
         self.assertEqual(restarted.snapshot()["briefing"]["articles"][0]["feedback"]["value"], "interesting")
 
+    def test_background_sync_merges_by_article_id_and_retains_local_feedback(self):
+        first = briefing("hash-a")
+        first["articles"][0]["feedback"] = {"value": "useful", "updated_at": "2026-09-25T12:00:00Z"}
+        second = briefing("hash-b")
+        second["articles"] = [
+            {**first["articles"][0], "title": "Updated card title", "feedback": None},
+            {**first["articles"][0], "article_id": "article-test-2", "title": "New card", "feedback": None},
+        ]
+        client = NewsBriefingCache("http://hera.test:8791", cache_path=self.path)
+        with patch.object(client, "_request_briefing", return_value=first):
+            client.sync_once()
+        with patch.object(client, "_request_briefing", return_value=second):
+            result = client.sync_once()
+        self.assertEqual(result["state"], "updated")
+        articles = client.snapshot()["briefing"]["articles"]
+        self.assertEqual({article["article_id"] for article in articles}, {"article-test-1", "article-test-2"})
+        retained = next(article for article in articles if article["article_id"] == "article-test-1")
+        self.assertEqual(retained["title"], "Updated card title")
+        self.assertEqual(retained["feedback"]["value"], "useful")
+        self.assertTrue(all(article.get("local_ranked") for article in articles))
+
+    def test_local_ranking_applies_preferences_and_persists_final_order(self):
+        value = briefing("hash-a")
+        value["articles"] = [
+            {**value["articles"][0], "article_id": "article-test-1", "source": "Other"},
+            {**value["articles"][0], "article_id": "article-test-2", "source": "Preferred"},
+        ]
+        client = NewsBriefingCache("http://hera.test:8791", cache_path=self.path)
+        with patch.object(client, "_request_briefing", return_value=value):
+            client.sync_once()
+        preferences = {"sources": [{"label": "Preferred", "score": 1.0}]}
+        ranked = client.ranked_articles(preferences=preferences)
+        self.assertEqual([article["article_id"] for article in ranked], ["article-test-2", "article-test-1"])
+        self.assertGreater(ranked[0]["local_rank_score"], ranked[1]["local_rank_score"])
+        restarted = NewsBriefingCache("http://127.0.0.1:1", cache_path=self.path)
+        self.assertEqual(restarted.snapshot()["briefing"]["articles"][0]["article_id"], "article-test-2")
+
 
 if __name__ == "__main__":
     unittest.main()

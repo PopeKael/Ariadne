@@ -446,61 +446,70 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                 server.HOME_CHAT_STORE = original_store
                 server.SIGNAL_SERVICE_CLIENT = original_client
 
-    def test_today_renders_cached_signal_with_source_url(self):
-        fake_client = Mock()
-        fake_client.briefing.return_value = {"ok": True, "stale": True, "signals": [{"signal_id": "signal-1", "title": "A signal", "summary": "A concise summary with enough context for the card.", "source_name": "Example", "category": "AI Watch", "watchlist_matches": [{"topic_id": "watch-1", "topic": "A signal"}], "published_at": "2026-09-07T12:34:00+07:00", "url": "https://example.test/story", "image_url": "https://example.test/image.jpg", "provenance": {"discovery": {"story_id": "story-1", "article_count": 3, "source_count": 2, "source_names": ["Example", "Another Example"], "rank_score": 0.8123, "discovery_category": "Technology", "first_seen_at": "2026-09-07T12:30:00+07:00", "last_seen_at": "2026-09-07T12:35:00+07:00"}}, "feedback": {"value": "useful", "timestamp": "2026-09-07T12:35:00+07:00"}}]}
-        with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client):
+    def test_today_renders_local_news_card_with_article_id_and_source_url(self):
+        article_id = "article-0123456789abcdef0123456789ab"
+        cache = Mock()
+        cache.snapshot.return_value = {"available": True, "sync": {"state": "updated"}}
+        cache.ranked_articles.return_value = [{
+            "article_id": article_id, "title": "A cached article",
+            "summary": "A concise summary with enough context for the card.",
+            "source": "Example", "category": "AI Watch",
+            "published_at": "2026-09-07T12:34:00+07:00",
+            "canonical_url": "https://example.test/story",
+            "image_url": "https://example.test/image.jpg", "content_ready": 1,
+            "local_rank_score": 81.23, "position": 1,
+            "feedback": {"value": "useful", "updated_at": "2026-09-07T12:35:00+07:00"},
+        }]
+        with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
             result = server.home_today_payload({"services": []})
-        self.assertEqual(result[0]["label"], "A signal")
+        self.assertEqual(result[0]["label"], "A cached article")
         self.assertEqual(result[0]["url"], "https://example.test/story")
-        self.assertEqual(result[0]["summary"], "A concise summary with enough context for the card.")
-        self.assertEqual(result[0]["source"], "Example")
-        self.assertEqual(result[0]["article_id"], server._discovery_article_id_for_url("https://example.test/story"))
-        self.assertEqual(result[0]["article_context"], "signal")
-        self.assertEqual(result[0]["published_at"], "2026-09-07T12:34:00+07:00")
-        self.assertEqual(result[0]["signal_id"], "signal-1")
+        self.assertEqual(result[0]["article_id"], article_id)
+        self.assertEqual(result[0]["article_context"], "news")
+        self.assertNotIn("signal_id", result[0])
         self.assertEqual(result[0]["image_url"], "https://example.test/image.jpg")
-        self.assertEqual(result[0]["category"], "AI Watch")
-        self.assertEqual(result[0]["watchlist_matches"][0]["topic"], "A signal")
         self.assertEqual(result[0]["feedback"]["value"], "useful")
-        self.assertEqual(result[0]["provenance"]["discovery"]["source_count"], 2)
-        self.assertEqual(result[0]["provenance"]["discovery"]["rank_score"], 0.8123)
-        self.assertEqual(result[0]["provenance"]["discovery"]["first_seen_at"], "2026-09-07T12:30:00+07:00")
-        self.assertTrue(result[0]["detail"].startswith("Cached · Example"))
+        self.assertEqual(result[0]["provenance"]["news"]["position"], 1)
 
-    def test_today_prefers_signal_service_image_cache_and_suppresses_failed_hotlink(self):
-        cached_client = Mock()
-        cached_client.briefing.return_value = {"ok": True, "stale": False, "signals": [{
-            "signal_id": "signal-cached", "title": "Cached image", "summary": "A concise summary with enough context for the card.",
-            "source_name": "Example", "url": "https://example.test/story", "image_url": "https://cdn.example.test/story.jpg",
-            "image_cache_url": "http://192.168.1.200:8788/v1/images/image-abc.jpg",
-            "image_enrichment": {"status": "cached", "attempt_count": 1},
-        }]}
-        with patch.object(server, "SIGNAL_SERVICE_CLIENT", cached_client):
+    def test_home_uses_local_card_image_without_signal_service_briefing(self):
+        cache = Mock()
+        cache.snapshot.return_value = {"available": True, "sync": {"state": "updated"}}
+        cache.ranked_articles.return_value = [{
+            "article_id": "article-0123456789abcdef0123456789ab", "title": "Cached image",
+            "summary": "A concise summary with enough context for the card.",
+            "source": "Example", "canonical_url": "https://example.test/story",
+            "image_url": "https://cdn.example.test/story.jpg", "content_ready": 1,
+        }]
+        signal_client = Mock()
+        with patch.object(server, "NEWS_BRIEFING_CACHE", cache), patch.object(server, "SIGNAL_SERVICE_CLIENT", signal_client):
             result = server.home_today_payload({"services": []})
-        self.assertEqual(result[0]["image_url"], "http://192.168.1.200:8788/v1/images/image-abc.jpg")
+        self.assertEqual(result[0]["image_url"], "https://cdn.example.test/story.jpg")
+        signal_client.briefing.assert_not_called()
 
-        failed_client = Mock()
-        failed_client.briefing.return_value = {"ok": True, "stale": False, "signals": [{
-            "signal_id": "signal-failed", "title": "Failed image", "summary": "A concise summary with enough context for the card.",
-            "source_name": "Example", "url": "https://example.test/story", "image_url": "https://cdn.example.test/story.jpg",
-            "image_enrichment": {"status": "remote_image_failed", "attempt_count": 1},
-        }]}
-        with patch.object(server, "SIGNAL_SERVICE_CLIENT", failed_client):
-            result = server.home_today_payload({"services": []})
-        self.assertEqual(result[0]["image_url"], "")
+    def test_home_ranks_from_local_cache_with_learned_preferences(self):
+        cache = Mock()
+        cache.snapshot.return_value = {"available": True, "sync": {"state": "updated"}}
+        cache.ranked_articles.return_value = []
+        preferences = {"sources": [{"label": "Example", "score": 0.8}]}
+        health = {"services": [], "signal_service": {"learned_preferences": preferences}}
+        with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
+            server.home_today_payload(health)
+        cache.ranked_articles.assert_called_once_with(limit=100, preferences=preferences)
 
-    def test_home_requests_discover_sized_briefing(self):
-        fake_client = Mock()
-        fake_client.briefing.return_value = {"ok": True, "stale": False, "signals": []}
-        with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client):
-            server.home_today_payload({"services": []})
-        fake_client.briefing.assert_called_once_with(limit=100)
+    def test_today_ignores_unavailable_news_cache_without_breaking_local_status(self):
+        cache = Mock()
+        cache.snapshot.return_value = {"available": False, "sync": {"state": "unavailable"}}
+        cache.ranked_articles.return_value = []
+        with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
+            result = server.home_today_payload({"services": [{"name": "Ollama", "state": "offline", "detail": "Unavailable"}]})
+        self.assertEqual(result[0]["label"], "Ollama")
+        self.assertEqual(result[0]["tone"], "offline")
 
     def test_today_ignores_unavailable_signal_service_without_breaking_local_status(self):
-        fake_client = Mock()
-        fake_client.briefing.return_value = {"ok": False, "stale": True, "signals": []}
-        with patch.object(server, "SIGNAL_SERVICE_CLIENT", fake_client):
+        cache = Mock()
+        cache.snapshot.return_value = {"available": False, "sync": {"state": "unavailable"}}
+        cache.ranked_articles.return_value = []
+        with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
             result = server.home_today_payload({"services": [{"name": "Ollama", "state": "offline", "detail": "Unavailable"}]})
         self.assertEqual(result[0]["label"], "Ollama")
         self.assertEqual(result[0]["tone"], "offline")

@@ -1,8 +1,12 @@
 # Ariadne Discovery Engine
 
 This is the always-on collector beside the Ariadne Signal Service. It runs on
-Hera, retains its own SQLite state, and sends materialized story cards to the
-Signal Service intake. Ariadne Home only consumes the Signal Service briefing.
+Hera, retains its own SQLite state, materializes article Markdown before a card
+is published, and supplies stable `article_id` cards plus discovery relevance
+data to Ariadne's news backend. Ariadne Home reads its local
+`NewsBriefingCache`; Hera refreshes that cache in the background. Signal
+Service remains a source of general signal and preference data, not Home's
+authoritative card renderer.
 
 The service does not run an LLM. Every refresh is bounded and deterministic:
 
@@ -13,7 +17,8 @@ RSS/Atom sources + optional SearXNG
   -> rolling article store
   -> deterministic story clustering
   -> corroboration and diversity-aware ranking
-  -> Signal Service intake
+  -> materialized article cache + candidate briefing
+  -> Signal Service intake for general signal/relevance data
 ```
 
 ## Runtime contract

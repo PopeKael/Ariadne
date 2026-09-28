@@ -58,15 +58,19 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
                 server.NEWS_BRIEFING_CACHE = previous_cache
                 server.SIGNAL_SERVICE_CLIENT = previous_signal_client
 
-    def test_home_renders_signal_activity_feed_on_page_entry(self):
+    def test_home_renders_local_news_activity_feed_on_page_entry(self):
         source = (ROOT / "home.js").read_text(encoding="utf-8")
         self.assertIn('getJson("/api/news/briefing-snapshot")', source)
         self.assertIn('label: item.label || item.title || "Article"', source)
         self.assertIn('url: item.url || item.canonical_url || ""', source)
         self.assertIn("cards.forEach(item => grid.append(renderSignalCard(item)))", source)
         self.assertIn("if (Array.isArray(data.today)) renderToday(data.today);", source)
+        self.assertIn('signal_id: ""', source)
+        self.assertIn('article_context: item.article_id ? "news"', source)
+        self.assertIn("cached articles", source)
+        self.assertNotIn("Signal Service is the authoritative Home feed", source)
         home_load = source.split("async function loadHome(", 1)[1].split("\nfunction sessionLost", 1)[0]
-        self.assertNotIn("await loadNewsSnapshot()", home_load)
+        self.assertIn("void loadNewsSnapshot();", home_load)
         self.assertIn('const data = await getJson("/api/home/activity")', home_load)
         self.assertIn("loadHome({refreshNews: true})", source)
         self.assertIn("window.setInterval(loadHome, 15000)", source)

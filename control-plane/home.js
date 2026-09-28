@@ -752,20 +752,19 @@ function renderToday(items) {
   const count = document.querySelector("#signal-count");
   const scrollTop = root.scrollTop;
   root.replaceChildren();
-  const cards = (items || []).filter(item => item && typeof item === "object").map(item => ({
+  const cards = (items || []).filter(item => item && typeof item === "object" && item.content_ready === 1).map(item => ({
     ...item,
-    // Signal Service cards carry the identifiers needed for feedback, TLDR,
-    // and Think with Ariadne. Preserve them when adapting the payload instead
-    // of reducing the authoritative signal feed to a legacy article snapshot.
-    signal_id: item.signal_id || "",
+    // Home cards are the local NewsBriefingCache projection.  Keep the
+    // article_id contract explicit so ordinary reading cannot fall through to
+    // the legacy signal promotion path.
+    signal_id: "",
     article_id: item.article_id || "",
-    article_context: item.article_context || (item.signal_id ? "signal" : "news"),
+    article_context: item.article_id ? "news" : (item.article_context || "news"),
     label: item.label || item.title || "Article",
     url: item.url || item.canonical_url || "",
     source: item.source || item.source_name || "",
   }));
-  const signalCards = cards.some(item => item.signal_id && item.article_context !== "news");
-  if (count) count.textContent = `${cards.length} cached ${signalCards ? "signals" : "articles"}`;
+  if (count) count.textContent = `${cards.length} cached articles`;
   const grid = el("div", "signal-section-grid");
   cards.forEach(item => grid.append(renderSignalCard(item)));
   root.append(grid);
@@ -1920,11 +1919,14 @@ async function loadHome({refreshNews = false} = {}) {
     return;
   }
   if (state.contextMutationInFlight) return;
+  // Paint the last-known-good local card set immediately. The activity
+  // request below supplies health and the same locally ranked projection while
+  // Hera refresh continues in the cache's background poller.
+  void loadNewsSnapshot();
   try {
     const data = await getJson("/api/home/activity");
-    // Signal Service is the authoritative Home feed.  This keeps cached image
-    // URLs on the same path as the health/briefing response instead of
-    // reintroducing the legacy publisher-CDN snapshot.
+    // Home receives the local NewsBriefingCache projection.  Hera refreshes
+    // that cache in the background; opening a card remains article_id-only.
     if (Array.isArray(data.today)) renderToday(data.today);
     renderHealth(data.health);
     renderActivity(data.activity);
