@@ -8,6 +8,7 @@ image-name kill or wait for a model to load during application startup.
 from __future__ import annotations
 
 import ctypes
+import csv
 import json
 import os
 from pathlib import Path
@@ -20,7 +21,7 @@ import urllib.request
 from typing import Callable
 
 
-DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
+DEFAULT_ENDPOINT = "http://localhost:11434"
 DEFAULT_PROBE_TIMEOUT_SECONDS = 0.75
 DEFAULT_REPAIR_TIMEOUT_SECONDS = 4.0
 OLLAMA_PORT = 11434
@@ -174,6 +175,37 @@ def _ollama_listener_paths() -> list[tuple[int, str]]:
     return listeners
 
 
+def _ollama_desktop_supervisor_pids() -> list[int]:
+    """Return verified Ollama Desktop supervisor PIDs, if tasklist is available."""
+    if os.name != "nt":
+        return []
+    try:
+        completed = subprocess.run(
+            ["tasklist.exe", "/FI", "IMAGENAME eq ollama app.exe", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            timeout=1.5,
+            check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if completed.returncode != 0:
+        return []
+    pids: set[int] = set()
+    for row in csv.reader(completed.stdout.splitlines()):
+        if len(row) < 2 or row[0].strip().casefold() != "ollama app.exe":
+            continue
+        try:
+            pid = int(row[1])
+        except ValueError:
+            continue
+        image_path = _process_image_path(pid)
+        if image_path and Path(image_path).name.casefold() == "ollama app.exe":
+            pids.add(pid)
+    return sorted(pids)
+
+
 def _find_ollama_executable(listener_paths: list[tuple[int, str]]) -> str:
     for _, path in listener_paths:
         if path:
@@ -235,6 +267,7 @@ def startup_preflight(
     repair_timeout: float = DEFAULT_REPAIR_TIMEOUT_SECONDS,
     request_models: Callable[[str, float], list[str] | None] = _request_models,
     listener_paths: Callable[[], list[tuple[int, str]]] = _ollama_listener_paths,
+    supervisor_pids: Callable[[], list[int]] = _ollama_desktop_supervisor_pids,
     restart_ollama: Callable[[list[tuple[int, str]], str], tuple[bool, str]] = _restart_exact_ollama,
 ) -> dict[str, object]:
     """Validate Ollama quickly and repair a stale model-store process once."""
@@ -255,6 +288,9 @@ def startup_preflight(
     paths = listener_paths()
     if models is not None and not paths:
         return {"state": "degraded", "available": True, "repaired": False, "models": models, "store": store, "missing": missing, "detail": "Ollama answered, but its listener owner could not be verified; no process was changed."}
+    supervisors = supervisor_pids()
+    if supervisors:
+        return {"state": "degraded", "available": models is not None, "repaired": False, "models": models or [], "store": store, "missing": missing, "detail": f"Ollama Desktop supervisor(s) {', '.join(map(str, supervisors))} are running. Automatic listener restart was skipped because the supervisor can respawn with a different model catalogue."}
     restarted, restart_detail = restart_ollama(paths, store)
     if not restarted:
         return {"state": "degraded", "available": models is not None, "repaired": False, "models": models or [], "store": store, "missing": missing, "detail": restart_detail}

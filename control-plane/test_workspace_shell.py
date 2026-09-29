@@ -76,7 +76,7 @@ class WorkspaceShellTests(unittest.TestCase):
         self.assertIn(".create-page .image-card{grid-column:auto}", css)
         self.assertIn(".image-page .production-grid{grid-template-columns:minmax(0,1fr)}", css)
         self.assertIn(".sequence-dashboard{display:grid", css)
-        self.assertIn('href="http://127.0.0.1:8766/"', create)
+        self.assertIn('href="http://localhost:8766/"', create)
         self.assertNotIn('href="http://localhost:8766/"', create)
         self.assertNotIn("http://localhost:8766", (ROOT / "app.js").read_text(encoding="utf-8"))
         self.assertIn("Model Lab", workshop)
