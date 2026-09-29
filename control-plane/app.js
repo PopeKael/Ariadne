@@ -304,6 +304,10 @@ function render(data) {
 let vaultSessionId = null;
 let vaultHeartbeat = null;
 let vaultHeartbeatInFlight = false;
+let vaultJobLastOutput = null;
+let vaultJobLastOutputAt = 0;
+let vaultIngestionModel = null;
+let vaultSessionTransition = 0;
 
 async function postJson(url, payload, keepalive = false) {
   const response = await fetch(url, {
@@ -316,6 +320,22 @@ async function postJson(url, payload, keepalive = false) {
   const value = await response.json();
   if (!response.ok || value.ok === false) throw new Error(value.message || `HTTP ${response.status}`);
   return value;
+}
+
+async function requestVaultSession(surface, transition) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await postJson("/api/session/start", {surface});
+    } catch (error) {
+      const transient = /already active in another tab|models are still active|models remain protected|GPU workload is still active|another Ariadne model is active|Home model .* is still loading|could not clear resident/i.test(error.message || "");
+      if (!transient || attempt >= 10 || transition !== vaultSessionTransition) throw error;
+      const delaySeconds = Math.min(8, attempt + 1);
+      vaultSessionLabel(`Waiting for the current Ariadne GPU handoff to finish; retrying in ${delaySeconds}s…`, "starting");
+      await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
+      attempt += 1;
+    }
+  }
 }
 
 function vaultSessionLabel(text, state = "") {
@@ -361,42 +381,110 @@ function renderVaultJob(job) {
   if (!monitor || !title || !state || !output) return;
   monitor.hidden = false;
   title.textContent = job.action ? `Knowledge Vault · ${job.action}` : "Knowledge Vault operation";
-  state.textContent = job.stage ? `${job.state || "running"} · ${job.stage}` : (job.state || "running");
-  output.textContent = job.output || job.message || "Waiting for worker output…";
+  if (job.state === "starting") {
+    vaultJobLastOutput = null;
+    vaultJobLastOutputAt = Date.now();
+  }
+  if (typeof job.output === "string" && job.output !== vaultJobLastOutput) {
+    vaultJobLastOutput = job.output;
+    vaultJobLastOutputAt = Date.now();
+  }
+  const baseState = job.stage ? `${job.state || "running"} · ${job.stage}` : (job.state || "running");
+  const quietSeconds = job.state === "running" && vaultJobLastOutputAt
+    ? Math.floor((Date.now() - vaultJobLastOutputAt) / 1000)
+    : 0;
+  const quietAge = quietSeconds >= 60
+    ? ` · no worker output for ${Math.floor(quietSeconds / 60)}m ${String(quietSeconds % 60).padStart(2, "0")}s`
+    : quietSeconds >= 30 ? ` · no worker output for ${quietSeconds}s` : "";
+  const gpuDetail = job.gpu_state?.detail ? ` · ${job.gpu_state.detail}` : "";
+  if (job.gpu_state?.state === "cooldown") {
+    vaultSessionLabel(`Session active · ${job.gpu_state.detail || "Batch complete; normal VRAM policy applies."}`, "online");
+  }
+  state.textContent = `${baseState}${gpuDetail}${quietAge}`;
+  state.title = quietAge ? "No new worker output has arrived; the operation may still be working." : "";
+  state.classList.toggle("monitor-warning", job.state === "status unavailable" || job.state === "error");
+  state.classList.toggle("monitor-reconnecting", job.stage === "monitor reconnecting");
+  state.classList.toggle("monitor-stalled", quietSeconds >= 60 && !job.stage);
+  if (typeof job.output === "string") {
+    output.textContent = job.output || job.message || "Waiting for worker output…";
+  } else if (job.state === "starting" || !output.textContent) {
+    output.textContent = job.message || "Waiting for worker output…";
+  }
   output.scrollTop = output.scrollHeight;
 }
 
-async function startVaultSession() {
+function renderVaultJobStatusError(action, error) {
+  const message = error?.message || "Ariadne could not read the job status.";
+  const output = document.querySelector("#vault-job-output");
+  const previousOutput = output?.textContent?.trim();
+  const detail = `Job status unavailable: ${message}. The operation may still be running; check its saved run report before starting it again.`;
+  renderVaultJob({
+    action,
+    state: "status unavailable",
+    stage: "monitor error",
+    message: detail,
+    output: [previousOutput, detail].filter(Boolean).join("\n\n"),
+  });
+}
+
+function activateVaultSession(session, surface) {
+  if (vaultHeartbeat) clearInterval(vaultHeartbeat);
+  vaultHeartbeat = null;
+  vaultHeartbeatInFlight = false;
+  vaultSessionId = session.session_id;
+  vaultIngestionModel = session.gpu?.ingestion_model || null;
+  const gpuDetail = session.gpu?.detail ? ` · ${session.gpu.detail}` : "";
+  const homeModelDetail = session.home_model?.model
+    ? ` · Home model ${session.home_model.state}: ${session.home_model.model}`
+    : "";
+  vaultSessionLabel(`Session active${gpuDetail}${homeModelDetail}`, "online");
+  const badge = document.querySelector("#vault-session-state");
+  if (badge && session.home_model?.detail) badge.title = session.home_model.detail;
+  setVaultControlsDisabled(false);
+  updateSessionButtons();
+  const seconds = Math.max(3, Number(session.heartbeat_seconds || 5));
+  vaultHeartbeat = setInterval(async () => {
+    if (!vaultSessionId || vaultHeartbeatInFlight) return;
+    vaultHeartbeatInFlight = true;
+    try {
+      await postJson("/api/session/heartbeat", {session_id: vaultSessionId});
+    } catch (error) {
+      markVaultSessionLost("The session expired. Start it again to continue.");
+    } finally {
+      vaultHeartbeatInFlight = false;
+    }
+  }, seconds * 1000);
+}
+
+async function startVaultSession(surface = document.body.classList.contains("control-mode") ? "knowledge-vault" : "home") {
+  const transition = ++vaultSessionTransition;
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
   vaultHeartbeatInFlight = false;
   vaultSessionId = null;
-  vaultSessionLabel("Starting", "starting");
+  vaultSessionLabel(surface === "knowledge-vault"
+    ? `Preparing Knowledge Vault: checking GPU, clearing other Ariadne models, then loading the configured ingestion model…`
+    : "Starting Home session…", "starting");
+  setVaultControlsDisabled(true);
   updateSessionButtons();
   try {
-    const session = await postJson("/api/session/start", {});
-    vaultSessionId = session.session_id;
-    vaultSessionLabel("Session active", "online");
-    setVaultControlsDisabled(false);
-    updateSessionButtons();
-    const seconds = Math.max(3, Number(session.heartbeat_seconds || 5));
-    vaultHeartbeat = setInterval(async () => {
-      if (!vaultSessionId || vaultHeartbeatInFlight) return;
-      vaultHeartbeatInFlight = true;
-      try {
-        await postJson("/api/session/heartbeat", {session_id: vaultSessionId});
-      } catch (error) {
-        markVaultSessionLost("The session expired. Start it again to continue.");
-      } finally {
-        vaultHeartbeatInFlight = false;
-      }
-    }, seconds * 1000);
+    const session = await requestVaultSession(surface, transition);
+    if (transition !== vaultSessionTransition) {
+      postJson("/api/session/close", {session_id: session.session_id}).catch(() => {});
+      return;
+    }
+    activateVaultSession(session, surface);
   } catch (error) {
-    markVaultSessionLost(error.message);
+    if (transition === vaultSessionTransition) {
+      markVaultSessionLost(error.message);
+      const label = document.querySelector("#vault-session-state");
+      if (label) label.textContent = `Knowledge Vault not ready · ${error.message}`;
+    }
   }
 }
 
 function closeVaultSession() {
+  vaultSessionTransition += 1;
   const sessionId = vaultSessionId;
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
@@ -416,13 +504,61 @@ function closeVaultSession() {
   updateSessionButtons();
 }
 
+async function switchSessionSurface(surface) {
+  const transition = ++vaultSessionTransition;
+  const sessionId = vaultSessionId;
+  if (surface === "knowledge-vault" && sessionId) {
+    vaultSessionLabel("Preparing Knowledge Vault: releasing the Home model and loading the configured ingestion model…", "starting");
+    setVaultControlsDisabled(true);
+    try {
+      const session = await requestVaultSession(surface, transition);
+      if (transition !== vaultSessionTransition) {
+        postJson("/api/session/close", {session_id: session.session_id}).catch(() => {});
+        return;
+      }
+      activateVaultSession(session, surface);
+      try { await postJson("/api/session/close", {session_id: sessionId}); } catch (_error) {}
+    } catch (error) {
+      if (transition === vaultSessionTransition) {
+        vaultSessionLabel(`Knowledge Vault not ready · ${error.message}`, "offline");
+        setVaultControlsDisabled(true);
+      }
+    }
+    return;
+  }
+  if (vaultHeartbeat) clearInterval(vaultHeartbeat);
+  vaultHeartbeat = null;
+  vaultSessionId = null;
+  if (sessionId) {
+    try { await postJson("/api/session/close", {session_id: sessionId}); } catch (_error) {}
+  }
+  if (transition !== vaultSessionTransition) return;
+  await startVaultSession(surface);
+}
+
 window.addEventListener("pagehide", closeVaultSession, {once: true});
 
-async function waitForVaultJob(jobId, onUpdate) {
+async function waitForVaultJob(jobId, onUpdate, onReconnect) {
+  let consecutiveFailures = 0;
   while (true) {
-    const response = await fetch(`/api/vault/jobs/${encodeURIComponent(jobId)}?session_id=${encodeURIComponent(vaultSessionId)}`, {cache: "no-store"});
-    const payload = await response.json();
+    let response;
+    try {
+      response = await fetch(`/api/vault/jobs/${encodeURIComponent(jobId)}?session_id=${encodeURIComponent(vaultSessionId)}`, {cache: "no-store"});
+    } catch (error) {
+      consecutiveFailures += 1;
+      const retrySeconds = Math.min(15, Math.ceil(0.7 * (2 ** Math.min(consecutiveFailures - 1, 5))));
+      onReconnect?.(consecutiveFailures, retrySeconds, error);
+      await new Promise((resolve) => setTimeout(resolve, retrySeconds * 1000));
+      continue;
+    }
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("Ariadne returned an unreadable job status.");
+    }
     if (!response.ok) throw new Error(payload.message || "The vault job could not be read.");
+    consecutiveFailures = 0;
     onUpdate(payload);
     if (["complete", "error", "cancelled"].includes(payload.state)) return payload;
     await new Promise((resolve) => setTimeout(resolve, 700));
@@ -447,8 +583,14 @@ async function runVaultAction(button) {
   setVaultControlsDisabled(true);
   const status = document.querySelector("#vault-query-status");
   status.className = "vault-status";
-  status.textContent = `Starting ${button.closest(".vault-card").querySelector("h3").textContent}…`;
-  renderVaultJob({action: button.dataset.vaultAction || button.dataset.pluginAction, state: "starting", message: status.textContent});
+  const action = button.dataset.vaultAction || button.dataset.pluginAction;
+  const preparingIngestion = action === "ingest";
+  status.textContent = preparingIngestion
+    ? `GPU preparation: checking for competing Ariadne work, clearing idle models, then loading ${vaultIngestionModel || "the configured ingestion model"}. The file batch has not started yet.`
+    : `Starting ${button.closest(".vault-card").querySelector("h3").textContent}…`;
+  renderVaultJob({action, state: "starting", stage: preparingIngestion ? "GPU preparing" : "starting", message: status.textContent,
+    gpu_state: preparingIngestion ? {state: "preparing", model: vaultIngestionModel} : undefined});
+  let jobStarted = false;
   try {
     const pluginId = button.dataset.pluginId;
     const pluginAction = button.dataset.pluginAction;
@@ -457,7 +599,17 @@ async function runVaultAction(button) {
       ? {session_id: vaultSessionId, action: pluginAction, confirm: Boolean(button.dataset.confirm)}
       : {session_id: vaultSessionId, action: button.dataset.vaultAction};
     const started = await postJson(endpoint, request);
-    const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; renderVaultJob(job); });
+    jobStarted = true;
+    const action = button.dataset.vaultAction || button.dataset.pluginAction;
+    const finished = await waitForVaultJob(
+      started.job_id,
+      (job) => { status.textContent = job.message || "Working…"; renderVaultJob(job); },
+      (attempt, retrySeconds) => {
+        const message = `Lost contact with Ariadne’s job monitor; retrying status in ${retrySeconds}s (attempt ${attempt}).`;
+        status.textContent = message;
+        renderVaultJob({action, state: "running", stage: "monitor reconnecting", message});
+      },
+    );
     const detail = finished.output ? `${finished.message}\n${finished.output}` : finished.message;
     if (finished.state !== "complete") {
       status.className = "vault-status error";
@@ -469,6 +621,8 @@ async function runVaultAction(button) {
   } catch (error) {
     status.className = "vault-status error";
     status.textContent = error.message;
+    if (jobStarted) renderVaultJobStatusError(action, error);
+    else renderVaultJob({action, state: "error", stage: "GPU preparation failed", message: error.message, output: error.message});
   } finally {
     setVaultControlsDisabled(!vaultSessionId);
   }
@@ -485,15 +639,31 @@ async function runVaultQuery(mode) {
   status.className = "vault-status";
   status.textContent = mode === "answer" ? "Starting the local librarian…" : mode === "summary" ? "Retrieving evidence and preparing a summary…" : "Searching the vault…";
   renderVaultJob({action: `query · ${mode}`, state: "starting", message: status.textContent});
+  let jobStarted = false;
   try {
     const started = await postJson("/api/vault/query", {session_id: vaultSessionId, query, mode, limit: mode === "answer" ? 6 : 8});
-    const finished = await waitForVaultJob(started.job_id, (job) => { status.textContent = job.message || "Working…"; renderVaultJob(job); });
-    if (finished.state !== "complete") throw new Error(finished.message || "The vault query failed.");
+    jobStarted = true;
+    const finished = await waitForVaultJob(
+      started.job_id,
+      (job) => { status.textContent = job.message || "Working…"; renderVaultJob(job); },
+      (attempt, retrySeconds) => {
+        const message = `Lost contact with Ariadne’s job monitor; retrying status in ${retrySeconds}s (attempt ${attempt}).`;
+        status.textContent = message;
+        renderVaultJob({action: `query · ${mode}`, state: "running", stage: "monitor reconnecting", message});
+      },
+    );
+    if (finished.state !== "complete") {
+      status.className = "vault-status error";
+      status.textContent = finished.message || "The vault query failed.";
+      return;
+    }
     renderVaultResult(finished.result || {}, mode);
     status.textContent = mode === "search" ? `${finished.result?.match_count || 0} matching passages found.` : "Vault response ready.";
   } catch (error) {
     status.className = "vault-status error";
     status.textContent = error.message;
+    if (jobStarted) renderVaultJobStatusError(`query · ${mode}`, error);
+    else renderVaultJob({action: `query · ${mode}`, state: "error", message: error.message, output: error.message});
   } finally {
     setVaultControlsDisabled(!vaultSessionId);
   }
@@ -665,9 +835,11 @@ function setupProfileControls() {
 
 function setViewMode(mode) {
   const control = mode === "control";
+  const wasControl = document.body.classList.contains("control-mode");
   document.body.classList.toggle("control-mode", control);
   history.replaceState(null, "", control ? "#knowledge-vault" : window.location.pathname);
   window.scrollTo(0, 0);
+  if (control !== wasControl) switchSessionSurface(control ? "knowledge-vault" : "home");
   if (!control) refresh();
 }
 
@@ -773,6 +945,6 @@ setupViewModes();
 setupProfileControls();
 setupVaultControls();
 setupResourceControls();
-startVaultSession();
+if (!document.body.classList.contains("control-mode")) startVaultSession("home");
 refresh();
 setInterval(refresh, 5000);

@@ -181,6 +181,7 @@ Reports/rebuild-v1-*
 
 # Control-plane local state
 runtime/
+/model-residency-trace.jsonl
 secrets/
 credentials/
 private/

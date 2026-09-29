@@ -29,7 +29,11 @@ async function openFreshChat({prompt = "", signalId = "", tldrStartedAt = "", ar
   const vaultMode = document.querySelector("#knowledge-mode")?.value || "auto";
   const toolIds = Array.from(state.selectedToolIds);
   const destination = chatUrl({chatId, prompt, signalId, tldrStartedAt, articleId, articleAction, articleStartedAt, vaultMode, toolIds});
-  closeSession();
+  // A popup chat is a second live Ariadne page, not a replacement for Home.
+  // Keep Home's heartbeat/session alive so last-session cleanup does not run
+  // during the handoff. Same-tab navigation still closes this session before
+  // leaving Home.
+  if (!newTabWindow) closeSession();
   if (newTabWindow) newTabWindow.location.replace(destination);
   else window.location.assign(destination);
   return true;

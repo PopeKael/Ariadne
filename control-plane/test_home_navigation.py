@@ -37,6 +37,14 @@ class HomeNavigationTests(unittest.TestCase):
         self.assertIn("newTabWindow});", function)
         self.assertIn("newTabWindow.location.replace(destination)", source)
 
+    def test_opening_chat_in_new_tab_keeps_home_session_alive(self):
+        start = self.source.index("async function openFreshChat")
+        end = self.source.index("function el(", start)
+        function = self.source[start:end]
+
+        self.assertIn("if (!newTabWindow) closeSession();", function)
+        self.assertLess(function.index("if (!newTabWindow) closeSession();"), function.index("newTabWindow.location.replace(destination)"))
+
 
 if __name__ == "__main__":
     unittest.main()

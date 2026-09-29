@@ -466,8 +466,16 @@ RESOURCE_STATUS_REFRESH_IN_FLIGHT = False
 MODEL_ACTIVITY_LOCK = threading.RLock()
 MODEL_IN_FLIGHT: dict[str, int] = {}
 MODEL_LAST_USED: dict[str, float] = {}
+MODEL_RESIDENCY_TRACE_PATH = Path(os.environ.get(
+    "ARIADNE_MODEL_RESIDENCY_TRACE_PATH", str(PROJECT_ROOT / "model-residency-trace.jsonl")
+))
+MODEL_RESIDENCY_TRACE_LOCK = threading.Lock()
+MODEL_RESIDENCY_TRACE_INTERVAL_SECONDS = max(
+    0.5, float(os.environ.get("ARIADNE_MODEL_RESIDENCY_TRACE_INTERVAL", "1"))
+)
 HOME_MODEL_PRELOAD_LOCK = threading.Lock()
 HOME_MODEL_PRELOAD_THREAD: threading.Thread | None = None
+HOME_MODEL_PRELOAD_STATUS: dict[str, object] = {"state": "unknown", "model": HOME_CHAT_MODEL, "detail": "Home model residency has not been checked."}
 MODEL_SWITCH_LOCK = threading.Lock()
 GPU_ARBITRATION_LOCK = threading.RLock()
 GPU_OWNER = "NONE"
@@ -476,6 +484,7 @@ GPU_TRANSITION_STATE = "IDLE"
 GPU_TRANSITION_DETAIL = "GPU is available to the next approved workload."
 GPU_TRANSITION_OPERATION: str | None = None
 GPU_TRANSITION_STARTED_AT: float | None = None
+GPU_VAULT_RESERVATION: str | None = None
 GPU_ADMISSION_WAIT_SECONDS = max(5.0, float(os.environ.get("ARIADNE_GPU_ADMISSION_WAIT", "45")))
 RENDERER_START_THREAD: threading.Thread | None = None
 RENDERER_STOP_THREAD: threading.Thread | None = None
@@ -1423,6 +1432,89 @@ def gpu_owner_status() -> dict[str, object]:
         }
 
 
+def _model_residency_snapshot() -> dict[str, object]:
+    """Capture Windows GPU allocation and Ollama residency for model diagnostics."""
+    gpu = gpu_status()
+    catalog = ollama_catalog()
+    with MODEL_ACTIVITY_LOCK:
+        in_flight = {name: count for name, count in MODEL_IN_FLIGHT.items() if count > 0}
+    return {
+        "gpu": gpu,
+        "gpu_owner": gpu_owner_status(),
+        "ollama_available": bool(catalog.get("available")),
+        "ollama_loaded": catalog.get("loaded_details", []),
+        "ollama_loaded_vram_bytes": catalog.get("loaded_vram_bytes"),
+        "model_in_flight": in_flight,
+    }
+
+
+def record_model_residency_event(event: str, *, request_id: str | None = None,
+                                 model: str | None = None, reason: str | None = None,
+                                 detail: dict[str, object] | None = None,
+                                 include_snapshot: bool = False) -> None:
+    """Append private, content-free model/GPU lifecycle diagnostics as JSONL."""
+    now = datetime.now().astimezone()
+    row: dict[str, object] = {
+        "timestamp_local": now.isoformat(timespec="milliseconds"),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+        "monotonic_ns": time.monotonic_ns(),
+        "pid": os.getpid(),
+        "event": str(event),
+    }
+    if request_id:
+        row["request_id"] = request_id
+    if model:
+        row["model"] = model
+    if reason:
+        row["reason"] = reason
+    if detail:
+        row["detail"] = detail
+    if include_snapshot:
+        try:
+            row["snapshot"] = _model_residency_snapshot()
+        except Exception as exc:
+            row["snapshot_error"] = f"{type(exc).__name__}: {str(exc)[:240]}"
+    try:
+        with MODEL_RESIDENCY_TRACE_LOCK:
+            MODEL_RESIDENCY_TRACE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with MODEL_RESIDENCY_TRACE_PATH.open("a", encoding="utf-8", newline="\n") as handle:
+                handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
+    except OSError as exc:
+        print(f"[{now.strftime('%H:%M:%S')}] Model residency trace was not recorded: {exc}", flush=True)
+
+
+@contextmanager
+def model_residency_trace(request_id: str, model: str, reason: str, *,
+                          interval_seconds: float | None = None,
+                          join_timeout_seconds: float = 0.05):
+    """Sample GPU and Ollama residency through one bounded model workflow."""
+    interval = max(0.25, float(interval_seconds or MODEL_RESIDENCY_TRACE_INTERVAL_SECONDS))
+    stop = threading.Event()
+    record_model_residency_event("trace_started", request_id=request_id, model=model,
+                                 reason=reason)
+
+    def sample() -> None:
+        while not stop.is_set():
+            record_model_residency_event("trace_sample", request_id=request_id,
+                                         model=model, reason=reason, include_snapshot=True)
+            if stop.wait(interval):
+                break
+
+    sampler = threading.Thread(target=sample, name=f"model-trace-{request_id[:8]}", daemon=True)
+    sampler.start()
+    try:
+        yield
+    except Exception as exc:
+        record_model_residency_event("trace_failed", request_id=request_id, model=model,
+                                     reason=reason, detail={"error_type": type(exc).__name__})
+        raise
+    finally:
+        stop.set()
+        sampler.join(timeout=max(0.0, join_timeout_seconds))
+        record_model_residency_event("trace_completed", request_id=request_id, model=model,
+                                     reason=reason)
+
+
 def ai_gpu_work_in_flight() -> dict[str, object]:
     with GPU_ARBITRATION_LOCK:
         admissions = GPU_AI_ADMISSIONS
@@ -1440,6 +1532,8 @@ def ai_gpu_work_in_flight() -> dict[str, object]:
 def ensure_ai_gpu_access() -> None:
     global GPU_OWNER
     with GPU_ARBITRATION_LOCK:
+        if GPU_VAULT_RESERVATION:
+            raise RuntimeError("GPU is reserved for Knowledge Vault ingestion.")
         if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
             raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {GPU_TRANSITION_DETAIL}")
         GPU_OWNER = "AI"
@@ -1458,6 +1552,8 @@ def ai_gpu_admission():
     deadline = time.monotonic() + GPU_ADMISSION_WAIT_SECONDS
     while True:
         with GPU_ARBITRATION_LOCK:
+            if GPU_VAULT_RESERVATION:
+                raise RuntimeError("GPU is reserved for Knowledge Vault ingestion.")
             if GPU_OWNER == "RENDERER" and GPU_TRANSITION_STATE == "IDLE":
                 raise RuntimeError(f"GPU is reserved for renderer: {GPU_TRANSITION_DETAIL}")
             if GPU_TRANSITION_STATE == "IDLE":
@@ -1559,11 +1655,15 @@ def ollama_status() -> dict[str, object]:
     }
 
 
-def unload_ollama_model(name: str) -> bool:
+def unload_ollama_model(name: str, *, reason: str = "explicit") -> bool:
+    record_model_residency_event("model_unload_requested", model=name, reason=reason)
     try:
         post_json(f"{OLLAMA_URL}/api/generate", {"model": name, "keep_alive": 0}, timeout=8.0)
+        record_model_residency_event("model_unload_completed", model=name, reason=reason)
         return True
-    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
+    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        record_model_residency_event("model_unload_failed", model=name, reason=reason,
+                                     detail={"error_type": type(exc).__name__})
         return False
 
 
@@ -1575,6 +1675,27 @@ def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object]
         return {"unloaded": [], "protected": [], "remaining": [], "available": False}
     policy = policy or model_residency_policy()
     now = time.monotonic()
+    idle_limit = float(policy.get("idle_seconds", 900))
+    expired_vault_pins: list[str] = []
+    with MODEL_ACTIVITY_LOCK:
+        last_used_snapshot = dict(MODEL_LAST_USED)
+    with SESSION_LOCK:
+        for session in SESSIONS.values():
+            model = str(session.get("ingestion_model") or "")
+            if (session.get("surface") == "knowledge-vault" and model
+                    and session.get("ingestion_model_protected") and session.get("ingestion_model_cooldown")
+                    and now - last_used_snapshot.get(model, now) >= idle_limit):
+                session["ingestion_model_protected"] = False
+                session["ingestion_model_cooldown"] = False
+                expired_vault_pins.append(model)
+    if expired_vault_pins:
+        with MODEL_ACTIVITY_LOCK:
+            for model in expired_vault_pins:
+                remaining = MODEL_IN_FLIGHT.get(model, 1) - 1
+                if remaining > 0:
+                    MODEL_IN_FLIGHT[model] = remaining
+                else:
+                    MODEL_IN_FLIGHT.pop(model, None)
     with MODEL_ACTIVITY_LOCK:
         protected = set(MODEL_IN_FLIGHT)
         last_used = dict(MODEL_LAST_USED)
@@ -1596,7 +1717,7 @@ def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object]
         idle_seconds = now - last_used.get(name, now)
         limit = float(policy["preferred_idle_seconds"] if name in preferred else policy["idle_seconds"])
         if force or pressure or idle_seconds >= limit:
-            if unload_ollama_model(name):
+            if unload_ollama_model(name, reason="residency_governor"):
                 unloaded.append(name)
     return {"unloaded": unloaded, "protected": blocked, "remaining": [], "available": True}
 
@@ -1604,7 +1725,7 @@ def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object]
 def monitor_ollama_models() -> dict[str, object]:
     """Release idle resident models without deleting their installed files."""
     with GPU_ARBITRATION_LOCK:
-        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+        if GPU_VAULT_RESERVATION or GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
             return {"state": "deferred", "unloaded": [], "detail": "GPU arbitration is handling a workload transition."}
     catalog = ollama_catalog()
     if not catalog.get("available"):
@@ -1647,7 +1768,8 @@ def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, obj
 
 
 def preload_ollama_model(model: str | None = None, *, options: dict[str, object] | None = None,
-                         thinking: str | None = None, keep_alive: int | str | None = None) -> dict[str, object]:
+                         thinking: str | None = None, keep_alive: int | str | None = None,
+                         reason: str = "explicit") -> dict[str, object]:
     selected_model = (model or OLLAMA_CHAT_MODEL).strip() or OLLAMA_CHAT_MODEL
     selected_keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE if keep_alive is None else keep_alive
     if keep_alive is None and OLLAMA_PRELOAD_KEEP_ALIVE.casefold() == "adaptive":
@@ -1663,43 +1785,72 @@ def preload_ollama_model(model: str | None = None, *, options: dict[str, object]
         payload["options"] = dict(options)
     if thinking is not None:
         payload["think"] = False if thinking == "off" else thinking
+    record_model_residency_event("model_load_requested", model=selected_model, reason=reason,
+                                 detail={"keep_alive": selected_keep_alive})
     try:
         response = post_json(f"{OLLAMA_URL}/api/generate", payload, timeout=300.0)
         load_duration = response.get("load_duration")
         detail = f"{selected_model} is loaded in memory"
         if isinstance(load_duration, int):
             detail += f" · load {load_duration / 1_000_000_000:.1f}s"
+        record_model_residency_event(
+            "model_load_completed", model=selected_model, reason=reason,
+            detail={"keep_alive": selected_keep_alive, "load_duration_ns": load_duration},
+        )
         return {"ok": True, "model": selected_model, "detail": detail, "response": response}
     except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        record_model_residency_event("model_load_failed", model=selected_model, reason=reason,
+                                     detail={"error_type": type(exc).__name__})
         return {"ok": False, "model": selected_model, "detail": f"Model preload failed: {exc}"}
 
 
 def _preload_home_chat_model_worker(model: str) -> None:
-    global HOME_MODEL_PRELOAD_THREAD
+    global HOME_MODEL_PRELOAD_THREAD, HOME_MODEL_PRELOAD_STATUS
+    record_model_residency_event("home_model_preload_started", model=model, reason="home_session_start")
     try:
         with ai_gpu_admission():
             catalog = ollama_catalog()
             loaded = {str(name) for name in catalog.get("loaded", [])}
-            if not catalog.get("available") or model in loaded:
+            if not catalog.get("available"):
+                HOME_MODEL_PRELOAD_STATUS = {"state": "unavailable", "model": model,
+                                             "detail": str(catalog.get("detail") or "Ollama is unavailable.")}
+                return
+            if model in loaded:
+                HOME_MODEL_PRELOAD_STATUS = {"state": "resident", "model": model, "detail": f"{model} is resident."}
+                record_model_residency_event("home_model_preload_already_resident", model=model,
+                                             reason="home_session_start")
                 return
             with model_activity(model):
-                preload_ollama_model(model, keep_alive=HOME_MODEL_KEEP_ALIVE)
-    except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError):
-        pass
+                result = preload_ollama_model(model, keep_alive=HOME_MODEL_KEEP_ALIVE,
+                                              reason="home_session_preload")
+            if not result.get("ok"):
+                raise RuntimeError(str(result.get("detail") or "Home model preload failed."))
+            verified = ollama_catalog()
+            if not verified.get("available") or model not in {str(name) for name in verified.get("loaded", [])}:
+                raise RuntimeError(f"Ollama did not confirm {model} resident after preload.")
+            HOME_MODEL_PRELOAD_STATUS = {"state": "resident", "model": model, "detail": f"{model} loaded and verified resident."}
+    except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
+        HOME_MODEL_PRELOAD_STATUS = {"state": "error", "model": model, "detail": str(exc)}
     finally:
+        record_model_residency_event(
+            "home_model_preload_finished", model=model, reason="home_session_start",
+            detail={"state": HOME_MODEL_PRELOAD_STATUS.get("state")},
+        )
         with HOME_MODEL_PRELOAD_LOCK:
             HOME_MODEL_PRELOAD_THREAD = None
 
 
 def start_home_chat_model_preload() -> dict[str, object]:
     """Schedule the selected Home model without delaying page startup."""
-    global HOME_MODEL_PRELOAD_THREAD
+    global HOME_MODEL_PRELOAD_THREAD, HOME_MODEL_PRELOAD_STATUS
     model = str(HOME_CHAT_MODEL or "").strip()
     if not model:
         return {"ok": False, "state": "skipped", "detail": "No Home chat model is configured."}
     with HOME_MODEL_PRELOAD_LOCK:
         if HOME_MODEL_PRELOAD_THREAD is not None and HOME_MODEL_PRELOAD_THREAD.is_alive():
             return {"ok": True, "model": model, "state": "loading", "detail": "Home model preload is already in progress."}
+        HOME_MODEL_PRELOAD_STATUS = {"state": "loading", "model": model, "detail": f"Verifying {model} residency."}
+        record_model_residency_event("home_model_preload_scheduled", model=model, reason="home_session_start")
         thread = threading.Thread(
             target=_preload_home_chat_model_worker,
             args=(model,),
@@ -1727,6 +1878,7 @@ def model_control_payload() -> dict[str, object]:
         "loaded_details": catalog.get("loaded_details", []),
         "gpu_owner": gpu_owner_status(),
         "in_flight": ai_gpu_work_in_flight(),
+        "home_model_residency": dict(HOME_MODEL_PRELOAD_STATUS),
         "detail": catalog.get("detail", "Installed Ollama models are available to Ariadne."),
     }
 
@@ -2286,12 +2438,14 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
         loaded = {str(name) for name in catalog.get("loaded", [])}
         for old_model in {HOME_CHAT_MODEL, PLANNER_MODEL}:
             if old_model and old_model != requested and old_model in loaded:
-                unload_ollama_model(old_model)
+                unload_ollama_model(old_model, reason="selected_model_switch")
 
-        preload = preload_ollama_model(requested, keep_alive=HOME_MODEL_KEEP_ALIVE)
+        preload = preload_ollama_model(requested, keep_alive=HOME_MODEL_KEEP_ALIVE,
+                                       reason="selected_model_switch")
         if not preload.get("ok"):
             if previous_model and previous_model != requested:
-                preload_ollama_model(previous_model, keep_alive=HOME_MODEL_KEEP_ALIVE)
+                preload_ollama_model(previous_model, keep_alive=HOME_MODEL_KEEP_ALIVE,
+                                     reason="selected_model_switch_rollback")
             return {"ok": False, "message": str(preload.get("detail") or "The selected model could not be loaded.")}, 503
 
         saved = save_configuration(inference=_inference_configuration_for_model(requested))
@@ -4021,10 +4175,26 @@ def _close_session(session_id: str) -> bool:
         with SESSION_LOCK:
             job["state"] = "cancelled"
             job["message"] = "Cancelled when the Ariadne page closed."
+        gpu_release = _release_vault_ingestion_gpu(job)
+        if gpu_release:
+            job["gpu_state"] = gpu_release
         if isinstance(presenter, CoreActivityPresenter):
             presenter.cancelled("Cleanup activity cancelled when the Ariadne page closed.")
+    if session.get("surface") == "knowledge-vault":
+        model = str(session.get("ingestion_model") or "")
+        if model and session.pop("ingestion_model_protected", False):
+            with MODEL_ACTIVITY_LOCK:
+                remaining = MODEL_IN_FLIGHT.get(model, 1) - 1
+                if remaining > 0:
+                    MODEL_IN_FLIGHT[model] = remaining
+                else:
+                    MODEL_IN_FLIGHT.pop(model, None)
+                MODEL_LAST_USED[model] = time.monotonic()
+            unload_ollama_model(model, reason="knowledge_vault_page_exit")
     if last_session:
         shutdown_idle_workloads()
+    if session.get("surface") == "knowledge-vault":
+        start_home_chat_model_preload()
     return True
 
 
@@ -4053,9 +4223,38 @@ def _session_processing(session_id: str) -> bool:
         return bool(session and session.get("processing"))
 
 
+def _wait_for_home_model_preload(timeout_seconds: float = 300.0) -> dict[str, object]:
+    """Let an already-running Home preload finish before transferring the GPU."""
+    with HOME_MODEL_PRELOAD_LOCK:
+        thread = HOME_MODEL_PRELOAD_THREAD
+    if thread is None or not thread.is_alive():
+        return {"ok": True, "state": "idle"}
+    model = str(HOME_CHAT_MODEL or "the Home model")
+    thread.join(max(0.0, timeout_seconds))
+    if thread.is_alive():
+        return {"ok": False, "state": "busy",
+                "detail": f"Home model {model} is still loading. Knowledge Vault has not started; wait for Home loading to finish and retry."}
+    return {"ok": True, "state": "settled", "detail": f"Home model {model} preload finished; Knowledge Vault can now take the GPU."}
+
+
+def _start_vault_session_model_cooldown(session_id: object, model: str) -> bool:
+    """Keep the model pinned for one idle window; the shared governor expires it."""
+    if not isinstance(session_id, str) or not session_id or not model:
+        return False
+    with SESSION_LOCK:
+        session = SESSIONS.get(session_id)
+        if not session or not session.get("ingestion_model_protected"):
+            return False
+        session["ingestion_model_cooldown"] = True
+    with MODEL_ACTIVITY_LOCK:
+        MODEL_LAST_USED[model] = time.monotonic()
+    return True
+
+
 def _start_process(command: list[str], cwd: Path) -> subprocess.Popen:
     child_environment = os.environ.copy()
     child_environment["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
+    child_environment["ARIADNE_CHAT_MODEL"] = str(OLLAMA_CHAT_MODEL)
     return subprocess.Popen(
         command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace",
@@ -4128,6 +4327,95 @@ def _structured_organiser_summary(payload: dict[str, object], fallback: dict[str
     return {key: int(value) for key, value in summary.items() if isinstance(value, (int, float))}
 
 
+def _acquire_vault_ingestion_gpu(job_id: str) -> dict[str, object]:
+    """Reserve the shared GPU arbiter and pin the configured ingestion model."""
+    global GPU_OWNER, GPU_VAULT_RESERVATION
+    model = str(OLLAMA_CHAT_MODEL or "").strip()
+    if not model:
+        raise RuntimeError("No Knowledge Vault ingestion model is configured.")
+    admission = ai_gpu_admission()
+    admission.__enter__()
+    activity = model_activity(model)
+    activity_entered = False
+    try:
+        activity.__enter__()
+        activity_entered = True
+        with GPU_ARBITRATION_LOCK:
+            if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER == "RENDERER":
+                raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold()}: {GPU_TRANSITION_DETAIL}")
+            if GPU_AI_ADMISSIONS != 1 or GPU_VAULT_RESERVATION:
+                raise RuntimeError("Another Ariadne workload is using the GPU. Wait for it to finish before ingestion.")
+            GPU_VAULT_RESERVATION = job_id
+            GPU_OWNER = "VAULT"
+        with MODEL_ACTIVITY_LOCK:
+            other_models = set(MODEL_IN_FLIGHT) - {model}
+        if other_models:
+            raise RuntimeError(f"Another Ariadne model is active: {', '.join(sorted(other_models))}.")
+        catalog = ollama_catalog()
+        if not catalog.get("available"):
+            raise RuntimeError(str(catalog.get("detail") or "Ollama is unavailable; ingestion was not started."))
+        released = release_idle_ollama_models(force=True, preserve_models={model})
+        if not released.get("available"):
+            raise RuntimeError("Could not verify Ollama model residency; ingestion was not started.")
+        remaining_models = ollama_catalog()
+        if not remaining_models.get("available"):
+            raise RuntimeError("Ollama became unavailable while clearing competing resident models.")
+        unexpected = {str(name) for name in remaining_models.get("loaded", [])} - {model}
+        if unexpected:
+            raise RuntimeError(f"Could not release competing resident models: {', '.join(sorted(unexpected))}.")
+        preload = preload_ollama_model(model, keep_alive=-1, reason="vault_ingestion_preflight")
+        if not preload.get("ok"):
+            raise RuntimeError(str(preload.get("detail") or "The ingestion model could not be loaded."))
+        catalog = ollama_catalog()
+        if not catalog.get("available") or model not in {str(name) for name in catalog.get("loaded", [])}:
+            raise RuntimeError(f"Ollama did not report {model} resident after preload; ingestion was not started.")
+        return {"state": "resident", "model": model, "detail": f"{model} loaded and protected for this batch.",
+                "_activity": activity, "_admission": admission}
+    except Exception:
+        _release_vault_ingestion_gpu({"gpu_reservation_id": job_id, "gpu_activity": activity if activity_entered else None,
+                                      "gpu_admission": admission, "gpu_model": model})
+        raise
+
+
+def _release_vault_ingestion_gpu(job: dict[str, object]) -> dict[str, object] | None:
+    """Release batch arbitration while leaving residency to the normal idle governor."""
+    global GPU_OWNER, GPU_VAULT_RESERVATION
+    job_id = job.get("gpu_reservation_id")
+    if not job_id:
+        return None
+    with GPU_ARBITRATION_LOCK:
+        if job.get("gpu_released"):
+            return None
+        job["gpu_released"] = True
+        owns_reservation = GPU_VAULT_RESERVATION == job_id
+    model = str(job.get("gpu_model") or "")
+    activity = job.get("gpu_activity")
+    admission = job.get("gpu_admission")
+    try:
+        if activity is not None:
+            activity.__exit__(None, None, None)
+    finally:
+        if admission is not None:
+            admission.__exit__(None, None, None)
+        with GPU_ARBITRATION_LOCK:
+            if GPU_VAULT_RESERVATION == job_id:
+                GPU_VAULT_RESERVATION = None
+                GPU_OWNER = "AI" if GPU_AI_ADMISSIONS else "NONE"
+    catalog = ollama_catalog() if model and owns_reservation else {"available": False, "loaded": []}
+    resident = bool(catalog.get("available") and model in {str(name) for name in catalog.get("loaded", [])})
+    policy = model_residency_policy()
+    idle_minutes = int(float(policy.get("idle_seconds") or 900) / 60)
+    verified = bool(catalog.get("available"))
+    if not verified:
+        detail = f"Batch arbitration is released, but {model} residency could not be verified. Check local Ollama status before the next batch."
+    elif resident:
+        detail = f"{model} remains resident and protected for a {idle_minutes}-minute idle cooldown; the normal VRAM governor takes over after that. Closing this page unloads it immediately."
+    else:
+        detail = f"{model} is no longer resident; it will be verified and loaded before the next batch."
+    return {"state": "cooldown", "model": model, "resident": resident, "verified": verified,
+            "idle_seconds": policy.get("idle_seconds"), "unloaded": False, "detail": detail}
+
+
 def _watch_action(job_id: str, process: subprocess.Popen) -> None:
     output: list[str] = []
     if process.stdout:
@@ -4155,7 +4443,8 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
         structured_result = _read_structured_organiser_result(result_path) or _structured_organiser_result_from_output(raw_output)
     with SESSION_LOCK:
         job = JOBS.get(job_id)
-        if not job or job.get("state") == "cancelled":
+        if not job or job.get("state") in {"cancelled", "releasing"}:
+            _release_vault_ingestion_gpu(job or {})
             return
         job["state"] = "complete" if return_code == 0 else "error"
         job["message"] = "Operation complete." if return_code == 0 else f"Operation exited with code {return_code}."
@@ -4168,6 +4457,13 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
         presenter = job.get("activity_presenter")
         config_path = job.get("config_runtime_path")
         result_path = job.get("result_runtime_path")
+    gpu_release = _release_vault_ingestion_gpu(job)
+    if gpu_release:
+        with SESSION_LOCK:
+            if JOBS.get(job_id) is job:
+                job["gpu_state"] = gpu_release
+    if job.get("action") == "ingest":
+        _start_vault_session_model_cooldown(job.get("session_id"), str(job.get("gpu_model") or ""))
     if isinstance(presenter, CoreActivityPresenter):
         if return_code == 0:
             presenter.completed("Cleanup operation completed.")
@@ -4199,11 +4495,23 @@ def _timeout_job(job_id: str) -> None:
     with SESSION_LOCK:
         job = JOBS.get(job_id)
         if job and job.get("state") == "running":
-            job["state"] = "error"
-            job["message"] = f"Worker timed out and was terminated after {int(timeout_seconds // 60)} minutes."
+            job["state"] = "releasing" if job.get("gpu_reservation_id") else "error"
+            job["message"] = ("Batch timed out; releasing the ingestion model…" if job.get("gpu_reservation_id")
+                               else f"Worker timed out and was terminated after {int(timeout_seconds // 60)} minutes.")
             presenter = job.get("activity_presenter")
+            timed_out_job = job
         else:
             presenter = None
+            timed_out_job = None
+    if timed_out_job:
+        gpu_release = _release_vault_ingestion_gpu(timed_out_job)
+        _start_vault_session_model_cooldown(timed_out_job.get("session_id"), str(timed_out_job.get("gpu_model") or ""))
+        with SESSION_LOCK:
+            if JOBS.get(job_id) is timed_out_job:
+                timed_out_job["state"] = "error"
+                timed_out_job["message"] = f"Worker timed out and was terminated after {int(timeout_seconds // 60)} minutes."
+                if gpu_release:
+                    timed_out_job["gpu_state"] = gpu_release
     if isinstance(presenter, CoreActivityPresenter):
         presenter.failed("Cleanup worker timed out and was terminated.")
 
@@ -4215,14 +4523,30 @@ def start_vault_action(session_id: str, action: str) -> str:
     shell = shutil.which("pwsh.exe") or shutil.which("powershell.exe")
     if not shell:
         raise RuntimeError("PowerShell is not available.")
-    process = _start_process(
-        [shell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script_path), *arguments],
-        VAULT_ROOT,
-    )
     job_id = uuid.uuid4().hex
+    gpu_state = None
+    if action == "ingest":
+        gpu_state = _acquire_vault_ingestion_gpu(job_id)
+    try:
+        process = _start_process(
+            [shell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script_path), *arguments],
+            VAULT_ROOT,
+        )
+    except Exception:
+        if gpu_state:
+            _release_vault_ingestion_gpu({"gpu_reservation_id": job_id,
+                                          "gpu_activity": gpu_state.get("_activity"),
+                                          "gpu_admission": gpu_state.get("_admission"),
+                                          "gpu_model": gpu_state["model"]})
+        raise
+    gpu_public_state = {key: value for key, value in gpu_state.items() if not key.startswith("_")} if gpu_state else None
     job = {"session_id": session_id, "kind": "action", "process": process, "started": time.monotonic(),
            "state": "running", "message": "Starting…", "output": "", "action": action,
-           "timeout_seconds": VAULT_ACTION_TIMEOUT_SECONDS.get(action, JOB_TIMEOUT_SECONDS)}
+           "timeout_seconds": VAULT_ACTION_TIMEOUT_SECONDS.get(action, JOB_TIMEOUT_SECONDS),
+           "gpu_state": gpu_public_state}
+    if gpu_state:
+        job.update(gpu_reservation_id=job_id, gpu_model=gpu_state["model"],
+                   gpu_activity=gpu_state["_activity"], gpu_admission=gpu_state["_admission"])
     with SESSION_LOCK:
         JOBS[job_id] = job
         SESSIONS[session_id].setdefault("jobs", set()).add(job_id)
@@ -4476,7 +4800,7 @@ def job_payload(job_id: str) -> dict[str, object] | None:
         if isinstance(process, subprocess.Popen) and process.poll() is not None and job.get("state") == "running":
             job["state"] = "error"
             job["message"] = "Worker exited before reporting a result."
-        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "cancel_event", "config_runtime_path", "result_runtime_path"}}
+        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "cancel_event", "config_runtime_path", "result_runtime_path", "gpu_reservation_id", "gpu_model", "gpu_activity", "gpu_admission", "gpu_released"}}
         status_path = job.get("status_path")
         if isinstance(status_path, Path) and status_path.is_file():
             try:
@@ -4494,6 +4818,85 @@ def vault_session_status() -> dict[str, object]:
         jobs = sum(1 for job in JOBS.values() if job.get("state") == "running")
     return {"available": vault_control_available(), "active_sessions": active, "active_jobs": jobs,
             "detail": "Integrated Knowledge Vault controls" if vault_control_available() else "Vault unavailable"}
+
+
+def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object]:
+    """Verify the local Ariadne GPU is idle before opening the Vault workspace."""
+    global GPU_OWNER, GPU_VAULT_RESERVATION
+    home_preload = _wait_for_home_model_preload()
+    if not home_preload.get("ok"):
+        return home_preload
+    with GPU_ARBITRATION_LOCK:
+        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+            return {"ok": False, "state": "busy", "detail": f"GPU is reserved for {GPU_OWNER.casefold()}: {GPU_TRANSITION_DETAIL}"}
+        if GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
+            return {"ok": False, "state": "busy", "detail": "An Ariadne GPU workload is still active. Wait for it to finish before opening Knowledge Vault."}
+    with MODEL_ACTIVITY_LOCK:
+        active_models = sorted(name for name, count in MODEL_IN_FLIGHT.items() if count > 0)
+    if active_models:
+        return {"ok": False, "state": "busy", "detail": f"Ariadne models are still active: {', '.join(active_models)}."}
+    with GPU_ARBITRATION_LOCK:
+        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
+            return {"ok": False, "state": "busy", "detail": "A GPU workload started during Knowledge Vault preflight. Wait for it to finish and retry."}
+        reservation_id = f"vault-preflight-{uuid.uuid4().hex}"
+        GPU_VAULT_RESERVATION = reservation_id
+        GPU_OWNER = "VAULT"
+    preflight_succeeded = False
+    ingestion_model_loaded = False
+    ingestion_model_protected = False
+    try:
+        with MODEL_ACTIVITY_LOCK:
+            active_models = sorted(name for name, count in MODEL_IN_FLIGHT.items() if count > 0)
+        if active_models:
+            return {"ok": False, "state": "busy", "detail": f"Ariadne models became active during preflight: {', '.join(active_models)}."}
+        catalog = ollama_catalog()
+        if not catalog.get("available"):
+            return {"ok": False, "state": "unverified", "detail": str(catalog.get("detail") or "Ollama residency could not be verified.")}
+        release = release_idle_ollama_models(force=True)
+        if release.get("protected"):
+            return {"ok": False, "state": "busy", "detail": f"Ariadne models remain protected: {', '.join(release['protected'])}."}
+        after_release = ollama_catalog()
+        if not after_release.get("available"):
+            return {"ok": False, "state": "unverified", "detail": "Ollama became unavailable while verifying model release."}
+        remaining = [str(name) for name in after_release.get("loaded", [])]
+        if remaining:
+            return {"ok": False, "state": "busy", "detail": f"Could not clear resident Ariadne models: {', '.join(remaining)}."}
+        ingestion_model = str(OLLAMA_CHAT_MODEL or "").strip()
+        if not ingestion_model:
+            return {"ok": False, "state": "unconfigured", "detail": "Knowledge Vault ingestion model is not configured."}
+        ingestion_model_loaded = True
+        loaded = preload_ollama_model(ingestion_model, keep_alive=-1,
+                                      reason="vault_ingestion_page_entry")
+        if not loaded.get("ok"):
+            return {"ok": False, "state": "model_load_failed",
+                    "detail": str(loaded.get("detail") or f"Could not load {ingestion_model} for Knowledge Vault.")}
+        resident = ollama_catalog()
+        if not resident.get("available") or ingestion_model not in [str(name) for name in resident.get("loaded", [])]:
+            return {"ok": False, "state": "model_residency_unverified",
+                    "detail": f"Knowledge Vault model {ingestion_model} did not appear in the resident model list after loading."}
+        with MODEL_ACTIVITY_LOCK:
+            MODEL_IN_FLIGHT[ingestion_model] = MODEL_IN_FLIGHT.get(ingestion_model, 0) + 1
+            MODEL_LAST_USED[ingestion_model] = time.monotonic()
+            ingestion_model_protected = True
+        preflight_succeeded = True
+        return {"ok": True, "state": "ready", "detail": f"Ariadne GPU is clear; ingestion model {ingestion_model} is resident and protected for this page session.",
+                "models_released": release.get("unloaded", []), "ingestion_model": OLLAMA_CHAT_MODEL}
+    finally:
+        if not preflight_succeeded:
+            if ingestion_model_protected:
+                with MODEL_ACTIVITY_LOCK:
+                    remaining = MODEL_IN_FLIGHT.get(OLLAMA_CHAT_MODEL, 1) - 1
+                    if remaining > 0:
+                        MODEL_IN_FLIGHT[OLLAMA_CHAT_MODEL] = remaining
+                    else:
+                        MODEL_IN_FLIGHT.pop(OLLAMA_CHAT_MODEL, None)
+            if ingestion_model_loaded:
+                unload_ollama_model(str(OLLAMA_CHAT_MODEL or "").strip(),
+                                    reason="vault_ingestion_preflight_recovery")
+        with GPU_ARBITRATION_LOCK:
+            if GPU_VAULT_RESERVATION == reservation_id:
+                GPU_VAULT_RESERVATION = None
+                GPU_OWNER = "AI" if GPU_AI_ADMISSIONS else "NONE"
 
 def parse_wsl(raw: str) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
@@ -6454,6 +6857,7 @@ def _home_world_state_context(world_state: object) -> str:
 def _home_model_chat(mcp: object, messages: list[dict[str, str]], timing: dict[str, object],
                      on_delta: Callable[[str], None] | None = None) -> str:
     """Use Home's explicit generation budget without changing its context budget."""
+    request_id = str(timing.get("trace_request_id") or "") or None
     arguments = {
         "model": HOME_CHAT_MODEL,
         "context_tokens": HOME_CONTEXT_TOKENS,
@@ -6463,7 +6867,27 @@ def _home_model_chat(mcp: object, messages: list[dict[str, str]], timing: dict[s
     }
     if on_delta is not None:
         arguments["on_delta"] = on_delta
-    return mcp.ollama_chat(messages, **arguments)
+    record_model_residency_event(
+        "home_model_request_started", request_id=request_id, model=HOME_CHAT_MODEL,
+        reason="home_chat_generation",
+        detail={"keep_alive": HOME_MODEL_KEEP_ALIVE, "message_count": len(messages)},
+    )
+    try:
+        answer = mcp.ollama_chat(messages, **arguments)
+    except Exception as exc:
+        record_model_residency_event(
+            "home_model_request_failed", request_id=request_id, model=HOME_CHAT_MODEL,
+            reason="home_chat_generation", detail={"error_type": type(exc).__name__},
+        )
+        raise
+    calls = timing.get("ollama_calls") if isinstance(timing.get("ollama_calls"), list) else []
+    record_model_residency_event(
+        "home_model_request_completed", request_id=request_id, model=HOME_CHAT_MODEL,
+        reason="home_chat_generation",
+        detail={"keep_alive": HOME_MODEL_KEEP_ALIVE, "ollama_call_count": len(calls),
+                "ollama_calls": calls},
+    )
+    return answer
 
 
 def _generation_status(timing: dict[str, object]) -> str:
@@ -6495,6 +6919,23 @@ def _is_verified_hera_article_attachment(attachments: list[dict[str, object]]) -
 def home_chat_payload(query: str, history: object, vault_mode: str = "auto", chat_id: str | None = None,
                       tool_ids: object = None, on_event: Callable[[dict[str, object]], None] | None = None,
                       article_tldr: bool = False) -> dict[str, object]:
+    request_id = uuid.uuid4().hex
+    if not article_tldr:
+        return _home_chat_payload_impl(
+            query, history, vault_mode, chat_id, tool_ids, on_event,
+            article_tldr=article_tldr, request_id=request_id,
+        )
+    with model_residency_trace(request_id, HOME_CHAT_MODEL, "home_tldr"):
+        return _home_chat_payload_impl(
+            query, history, vault_mode, chat_id, tool_ids, on_event,
+            article_tldr=article_tldr, request_id=request_id,
+        )
+
+
+def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "auto",
+                            chat_id: str | None = None, tool_ids: object = None,
+                            on_event: Callable[[dict[str, object]], None] | None = None,
+                            article_tldr: bool = False, request_id: str | None = None) -> dict[str, object]:
     query = query.strip()
     if not query:
         raise ValueError("A non-empty question is required.")
@@ -6506,14 +6947,25 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
     publish_home_activity(chat_id, "thinking", "Preparing the Home response.")
     selected_tools = {str(item) for item in tool_ids if isinstance(item, str)} if isinstance(tool_ids, list) else set()
     request_started = time.perf_counter()
-    request_id = uuid.uuid4().hex
     def emit_stream_event(event: dict[str, object]) -> None:
         if on_event is not None:
             on_event(event)
     def emit_activity(label: str, stage: str) -> None:
+        record_model_residency_event(
+            "home_chat_stage", request_id=request_id, model=HOME_CHAT_MODEL,
+            detail={"stage": stage, "label": label},
+        )
         emit_stream_event({"type": "activity", "stage": stage, "label": label})
+    first_delta_logged = False
     def emit_delta(delta: str) -> None:
+        nonlocal first_delta_logged
         if delta:
+            if not first_delta_logged:
+                first_delta_logged = True
+                record_model_residency_event(
+                    "home_chat_first_delta", request_id=request_id, model=HOME_CHAT_MODEL,
+                    detail={"stage": "generation"},
+                )
             emit_stream_event({"type": "delta", "text": delta})
     turn_id: str | None = None
     assistant_message_id: str | None = None
@@ -6556,6 +7008,8 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "auto", cha
             f"confidence={planner_plan.get('confidence')}",
         )
     timing: dict[str, object] = {"planner": planner_telemetry}
+    if article_tldr:
+        timing["trace_request_id"] = request_id
     evidence_decision = decide_evidence(
         query,
         planner_result=planner_result,
@@ -7458,6 +7912,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
         self.send_bytes(b"Not found", "text/plain; charset=utf-8", 404)
 
     def do_POST(self) -> None:  # noqa: N802
+        global IDLE_SHUTDOWN_DONE
         _expire_sessions()
         path = urlparse(self.path).path
         try:
@@ -7693,6 +8148,29 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "message": f"Could not accept the music: {exc}"}, 500)
                 return
             if path == "/api/session/start":
+                surface = str(body.get("surface") or "home").strip().casefold()
+                if surface == "knowledge-vault":
+                    with SESSION_LOCK:
+                        existing_vault_session = any(item.get("surface") == "knowledge-vault" for item in SESSIONS.values())
+                    if existing_vault_session:
+                        self.send_json({"ok": False, "message": "A Knowledge Vault session is already active in another tab."}, 409)
+                        return
+                    session_id = uuid.uuid4().hex
+                    preflight = vault_gpu_entry_preflight(session_id)
+                    if not preflight.get("ok"):
+                        self.send_json({"ok": False, "message": preflight.get("detail"), "gpu": preflight}, 409)
+                        return
+                    IDLE_SHUTDOWN_DONE = False
+                    with SESSION_LOCK:
+                        SESSIONS[session_id] = {
+                            "last_seen": time.monotonic(), "jobs": set(), "used_ollama": False,
+                            "processing": False, "surface": "knowledge-vault", "gpu_entry": preflight,
+                            "ingestion_model": preflight.get("ingestion_model"),
+                            "ingestion_model_protected": True,
+                        }
+                    self.send_json({"ok": True, "session_id": session_id, "surface": surface,
+                                    "gpu": preflight, "heartbeat_seconds": 5})
+                    return
                 expire_home_chats()
                 requested_chat_id = body.get("chat_id")
                 fresh_home_session = body.get("fresh") is True
@@ -7711,12 +8189,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     requested_chat_id, home_identity_kernel_metadata()
                 )
                 session_id = uuid.uuid4().hex
-                global IDLE_SHUTDOWN_DONE
                 IDLE_SHUTDOWN_DONE = False
                 with SESSION_LOCK:
                     SESSIONS[session_id] = {
                         "last_seen": time.monotonic(), "jobs": set(), "used_ollama": False,
-                        "chat_id": chat["chat_id"], "processing": False,
+                        "chat_id": chat["chat_id"], "processing": False, "surface": "home",
                     }
                 lifecycle = "chat_resumed" if resumed else "chat_started"
                 if recovered_context_chat and resumed:
@@ -7726,6 +8203,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     "conversation_attached", conversation_id=chat["chat_id"],
                     data={"resumed": resumed, "surface": "home"},
                 )
+                home_model = start_home_chat_model_preload()
                 self.send_json({
                     "ok": True,
                     "session_id": session_id,
@@ -7734,13 +8212,15 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     "title": chat.get("title"),
                     "messages": chat.get("messages", []),
                     "documents": list_documents(DOCUMENT_WORK_ROOT, chat["chat_id"]),
+                    "home_model": home_model,
                     "heartbeat_seconds": 5,
                 })
                 return
             if path in {"/api/session/heartbeat", "/api/session/close"}:
                 session_id = body.get("session_id")
                 if path.endswith("heartbeat"):
-                    if not _session(session_id):
+                    session = _session(session_id)
+                    if not session:
                         self.send_json({"ok": False, "message": "Ariadne session is not active."}, 404)
                     else:
                         self.send_json({"ok": True, "session": vault_session_status()})
@@ -8249,7 +8729,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 if not isinstance(action, str) or action not in VAULT_ACTIONS:
                     self.send_json({"ok": False, "message": "Unknown Knowledge Vault operation."}, 400)
                     return
-                self.send_json({"ok": True, "job_id": start_vault_action(session_id, action)})
+                try:
+                    self.send_json({"ok": True, "job_id": start_vault_action(session_id, action)})
+                except RuntimeError as exc:
+                    self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
                 return
             if path == "/api/vault/query":
                 query = body.get("query")

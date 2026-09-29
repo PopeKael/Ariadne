@@ -54,6 +54,8 @@ class HomeModelPreloadTests(unittest.TestCase):
                 events.append("closed")
 
         with patch.dict(server.os.environ, {"ARIADNE_ALLOW_UNSUPERVISED_CORE": "1"}), \
+             patch.object(server.NEWS_BRIEFING_CACHE, "start_background_sync"), \
+             patch.object(server, "start_news_image_sync"), \
              patch.object(server, "expire_home_chats"), \
              patch.object(server, "ThreadingHTTPServer", FakeHTTPServer), \
              patch.object(server, "start_lifecycle_watchdog", side_effect=lambda: events.append("watchdog")), \
@@ -67,7 +69,7 @@ class HomeModelPreloadTests(unittest.TestCase):
         started = threading.Event()
         release = threading.Event()
 
-        def blocking_preload(model, *, keep_alive):
+        def blocking_preload(model, *, keep_alive, reason):
             started.set()
             release.wait(2)
             return {"ok": True, "model": model, "keep_alive": keep_alive}
@@ -81,7 +83,8 @@ class HomeModelPreloadTests(unittest.TestCase):
             self.assertLess(elapsed, 0.5)
             self.assertEqual(result["state"], "scheduled")
             self.assertTrue(started.wait(1))
-            preload.assert_called_once_with("home-model", keep_alive=server.HOME_MODEL_KEEP_ALIVE)
+            preload.assert_called_once_with("home-model", keep_alive=server.HOME_MODEL_KEEP_ALIVE,
+                                            reason="home_session_preload")
             release.set()
 
     def test_home_preload_uses_indefinite_ollama_residency(self):
@@ -115,6 +118,19 @@ class HomeModelPreloadTests(unittest.TestCase):
 
         self.assertEqual(result["state"], "scheduled")
         preload.assert_not_called()
+
+    def test_home_model_handoff_verifies_residency(self):
+        original_status = dict(server.HOME_MODEL_PRELOAD_STATUS)
+        try:
+            with patch.object(server, "ollama_catalog", side_effect=[
+                {"available": True, "loaded": []},
+                {"available": True, "loaded": ["home-model"]},
+            ]), patch.object(server, "preload_ollama_model", return_value={"ok": True}):
+                server._preload_home_chat_model_worker("home-model")
+            self.assertEqual(server.HOME_MODEL_PRELOAD_STATUS["state"], "resident")
+            self.assertIn("verified resident", server.HOME_MODEL_PRELOAD_STATUS["detail"])
+        finally:
+            server.HOME_MODEL_PRELOAD_STATUS = original_status
 
     def test_home_and_chat_do_not_trigger_preload(self):
         js = Path(__file__).with_name("home.js").read_text(encoding="utf-8")
