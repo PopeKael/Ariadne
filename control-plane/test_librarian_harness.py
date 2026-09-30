@@ -74,6 +74,30 @@ class LibrarianHarnessTests(unittest.TestCase):
         self.assertEqual(result["plan"]["tools"], [])
         self.assertIn("current_source_unavailable", result["capability_gaps"])
 
+    def test_all_sources_routes_current_information_to_live_search(self):
+        result = resolve_policy(
+            semantic(needs_current_information=True),
+            context(
+                active_knowledge_source="all",
+                available_tools=[{"tool_id": "external-research", "enabled": True}],
+                capabilities={"vault_available": True, "external_research_available": True, "external_research_allowed": True},
+            ),
+        )
+        self.assertEqual(result["plan"]["tools"], ["external-research"])
+        self.assertNotIn("current_source_unavailable", result["capability_gaps"])
+
+    def test_local_only_is_an_explicit_live_search_restriction(self):
+        result = resolve_policy(
+            semantic(needs_current_information=True),
+            context(
+                active_knowledge_source="local",
+                available_tools=[],
+                capabilities={"vault_available": True, "external_research_available": True, "external_research_allowed": False},
+            ),
+        )
+        self.assertEqual(result["plan"]["tools"], [])
+        self.assertIn("current_source_restricted", result["capability_gaps"])
+
     def test_attachment_route_depends_on_runtime_state(self):
         attached = resolve_policy(
             semantic(needs_attachment=True),

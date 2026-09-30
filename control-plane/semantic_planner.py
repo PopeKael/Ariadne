@@ -170,7 +170,8 @@ def fallback_plan(
     reason: str,
 ) -> dict[str, Any]:
     """Preserve the existing safe behaviour when semantic planning is unavailable."""
-    use_vault = vault_mode == "always" or (vault_mode == "auto" and legacy_use_vault)
+    mode = vault_mode if vault_mode in {"all", "auto", "local", "always", "never"} else "all"
+    use_vault = mode == "always" or (mode in {"all", "auto", "local"} and legacy_use_vault)
     can_use_documents = has_attachments and (
         not selected_tool_ids or "document-analysis" in selected_tool_ids
     )
@@ -231,8 +232,8 @@ def plan_request(
     system = (
         "You are Ariadne's semantic request planner. Decide the controller route; do not answer the user. "
         "Use only the supplied runtime facts. The date, timezone, attachments, available tools, and knowledge mode are authoritative. "
-        "Controller precedence: mode 'always' requires the source/capability where operationally possible; mode 'never' forbids it and sets the related request field false; mode 'auto' lets you decide. "
-        "The controller constraint overrides your semantic preference, so never contradict always/never in use_vault, needs_current_information, or tools. A forbidden Vault route must not use primary_source 'vault'. "
+        "Controller precedence: mode 'always' requires Vault where operationally possible; mode 'never' forbids Vault and automatic web search, but an explicitly selected web search is allowed; mode 'local' allows Vault and attachments but forbids web; modes 'all' and legacy 'auto' allow every configured source as appropriate. "
+        "The controller constraint overrides your semantic preference: never use Vault in mode 'never', never use external research in mode 'local', and never select unavailable tools. The explicit selected-tool and runtime capability fields decide whether web search is permitted this turn. A forbidden Vault route must not use primary_source 'vault'. "
         "Choose the cheapest sufficient route. First identify the user's actual need; then decide personal/project history, live information, attachment evidence, and reasoning complexity. "
         "Use Vault only for personal or project history, prior discussions, decisions, plans, tests, notes, or explicit Vault requests; general facts are not Vault requests. "
         "Use current information only for genuinely live or time-sensitive answers such as latest news, current reporting, today's rate/weather, current support, or current office-holder; dates or technology names alone do not make a request current. A tomorrow/date calculation from the supplied runtime date is not external current information. Phrases such as 'still current' and 'what is the go with' a changing service require the current-information decision. If live information is needed, primary_source remains 'external' even when no external tool is available. "

@@ -30,6 +30,25 @@ class EvidenceFirstTests(unittest.TestCase):
         self.assertFalse(result.use_vault)
         self.assertFalse(result.external_search)
 
+    def test_all_sources_uses_web_for_current_information_when_available(self):
+        result = decide(
+            "Check the latest Bangkok Post coverage of flooding in Thailand.",
+            planner_result={"semantic": {"needs_personal_history": False, "needs_current_information": True, "confidence": 0.95}},
+            vault_mode="all", vault_available=True, search_available=True,
+        )
+        self.assertTrue(result.use_vault)
+        self.assertTrue(result.external_search)
+        self.assertTrue(external_search_needed(result, vault_source_count=5))
+
+    def test_local_only_keeps_vault_and_blocks_live_search(self):
+        result = decide(
+            "Check the latest Bangkok Post coverage of flooding in Thailand.",
+            planner_result={"semantic": {"needs_personal_history": False, "needs_current_information": True, "confidence": 0.95}},
+            vault_mode="local", vault_available=True, search_available=True,
+        )
+        self.assertTrue(result.use_vault)
+        self.assertFalse(result.external_search)
+
     def test_unattached_story_reference_does_not_fall_back_to_unrelated_vault(self):
         result = decide(
             "Lets break down this story",
@@ -102,6 +121,24 @@ class EvidenceFirstTests(unittest.TestCase):
         self.assertEqual(len(result["results"]), 1)
         self.assertTrue(result["results"][0]["fetched"])
         self.assertEqual(registry.snapshot()["providers"][0]["health"], "healthy")
+
+    def test_default_provider_prefers_local_searxng_over_public_fallbacks(self):
+        with patch("search_providers._saved_search_providers", return_value=[]), patch.dict("search_providers.os.environ", {"ARIADNE_SEARCH_ENDPOINT": ""}):
+            registry = SearchProviderRegistry()
+        self.assertEqual(registry.route().provider_id, "searxng")
+        self.assertEqual([item.provider_id for item in registry.compatible()[:3]], ["searxng", "wikipedia-api", "bing-html"])
+
+    def test_searxng_html_search_results_are_parsed(self):
+        provider = SearchProvider("searxng", "searxng", "http://search.test/search", "test config", ("search", "fetch"), "nas", True, 1)
+        registry = SearchProviderRegistry([provider])
+        search_html = b'''<article class="result result-default category-general"><h3><a href="https://www.bangkokpost.com/floods">Water levels still rising - Bangkok Post</a></h3><p class="content">Latest flood update in Thailand.</p></article>'''
+        fetched_html = b"<html><title>Water levels</title><article><p>Flood waters remain elevated.</p></article></html>"
+        with patch("search_providers._request", side_effect=[(search_html, "utf-8"), (fetched_html, "utf-8")]):
+            result = registry.search("Bangkok Post flooding")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["provider"], "searxng")
+        self.assertEqual(result["results"][0]["url"], "https://www.bangkokpost.com/floods")
+        self.assertIn("Latest flood update", result["results"][0]["snippet"])
 
     def test_failed_verification_blocks_model_guess(self):
         class EmptyMcp:

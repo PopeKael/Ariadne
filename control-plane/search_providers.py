@@ -88,9 +88,13 @@ def default_search_providers() -> list[SearchProvider]:
             10,
         )]
     # A configured endpoint always wins.  This public fallback keeps a clean
-    # install useful while allowing SearXNG or any other provider to replace it
-    # through configuration without changing Home or the model route.
+    # install useful. Prefer Ariadne's available local SearXNG instance; public
+    # fallbacks remain available if it is offline.
     return [
+        SearchProvider(
+            "searxng", "searxng", "http://192.168.1.200:8082/search",
+            "built-in local SearXNG", ("search", "fetch"), "nas", True, 10,
+        ),
         SearchProvider(
             "wikipedia-api", "json", "https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=8&srsearch={query}",
             "built-in public fallback", ("search", "fetch"), "cloud", True, 80,
@@ -151,6 +155,24 @@ def _bing_results(content: str) -> list[dict[str, str]]:
             continue
         title = re.sub(r"\s+", " ", html.unescape(re.sub(r"<.*?>", "", match.group(2)))).strip()
         snippet_match = re.search(r'<p[^>]*>(.*?)</p>', block, re.IGNORECASE | re.DOTALL)
+        snippet = re.sub(r"\s+", " ", html.unescape(re.sub(r"<.*?>", "", snippet_match.group(1)))).strip() if snippet_match else ""
+        results.append({"title": title or url, "url": url, "snippet": snippet})
+    return results
+
+
+def _searxng_results(content: str) -> list[dict[str, str]]:
+    """Extract standard SearXNG HTML result cards when JSON output is disabled."""
+    results: list[dict[str, str]] = []
+    for match in re.finditer(r'<article\b[^>]*class=["\'][^"\']*\bresult\b[^"\']*["\'][^>]*>(.*?)</article>', content, re.IGNORECASE | re.DOTALL):
+        block = match.group(1)
+        title_match = re.search(r'<h3\b[^>]*>\s*<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', block, re.IGNORECASE | re.DOTALL)
+        if not title_match:
+            continue
+        url = html.unescape(title_match.group(1)).strip()
+        if not url.startswith(("http://", "https://")):
+            continue
+        title = re.sub(r"\s+", " ", html.unescape(re.sub(r"<.*?>", "", title_match.group(2)))).strip()
+        snippet_match = re.search(r'<p\b[^>]*class=["\'][^"\']*\bcontent\b[^"\']*["\'][^>]*>(.*?)</p>', block, re.IGNORECASE | re.DOTALL)
         snippet = re.sub(r"\s+", " ", html.unescape(re.sub(r"<.*?>", "", snippet_match.group(1)))).strip() if snippet_match else ""
         results.append({"title": title or url, "url": url, "snippet": snippet})
     return results
@@ -241,6 +263,8 @@ class SearchProviderRegistry:
                     parsed = None
                 if parsed is not None:
                     results = _json_results(parsed)
+                elif provider.provider_type == "searxng" or provider.provider_id == "searxng":
+                    results = _searxng_results(decoded)
                 elif provider.provider_id == "bing-html" or "b_algo" in decoded:
                     results = _bing_results(decoded)
                 else:

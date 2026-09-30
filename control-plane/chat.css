@@ -1,7 +1,6 @@
 /* Canonical flowing chat: keep the shared Ariadne palette and backdrop, but let the document own scrolling. */
-html.chat-page, body.chat-page { height:auto; min-height:100%; overflow-x:hidden; }
-html.chat-page { overflow-y:auto; }
-body.chat-page { overflow-y:auto; }
+html.chat-page { height:auto; min-height:100%; overflow-x:clip; overflow-y:auto; }
+body.chat-page { height:auto; min-height:100%; overflow-x:clip; overflow-y:visible; }
 .chat-shell { width:min(100% - 42px,1480px); min-height:calc(100dvh - 66px); margin:0 auto; padding:18px 0 14px; display:flex; flex-direction:column; }
 .chat-layout { --chat-sidebar-width:290px; min-height:calc(100dvh - 98px); display:grid; grid-template-columns:minmax(0,var(--chat-sidebar-width)) 8px minmax(0,1fr); align-items:start; gap:0 12px; padding-top:0; }
 .chat-sidebar { position:sticky; top:78px; align-self:start; min-width:0; }
@@ -41,6 +40,9 @@ body.chat-page { overflow-y:auto; }
 .message-body { min-width:0; max-width:100%; color:#e3eeee; font-size:15px; line-height:1.7; overflow-wrap:anywhere; word-break:break-word; }
 .message.user .message-body { color:#f1fbfb; }
 .message-meta { gap:8px; margin-top:12px; }
+.message .source-item { display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:8px; }
+.message .source-item .source-number { grid-column:1; grid-row:1 / span 2; color:#69d5d2; font-size:13px; font-weight:850; }
+.message .source-item strong,.message .source-item > span:not(.source-number) { grid-column:2; }
 .ask-form { position:fixed; z-index:7; left:calc(max(21px,(100vw - 1480px)/2) + var(--chat-sidebar-width) + 32px); right:max(21px,calc((100vw - 1480px)/2 + 21px)); bottom:0; width:auto; margin:0; padding:18px 18px 12px; border:0; background:linear-gradient(180deg,rgba(3,10,18,0),rgba(3,10,18,.86) 20%,rgba(3,10,18,.96)); }
 .composer-box { padding:10px 12px 9px; border:1px solid rgba(72,131,144,.74); border-radius:17px; background:rgba(5,19,29,.96); box-shadow:0 14px 44px rgba(0,0,0,.32),0 0 0 1px rgba(105,213,210,.035); backdrop-filter:blur(18px); }
 .chat-panel .ask-input-row { align-items:flex-end; gap:10px; }

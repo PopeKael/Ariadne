@@ -24,12 +24,12 @@ CANONICAL_ACTIVITY_STATES = (
     "error",
 )
 ACTIVITY_LABELS = {
-    "idle": "Ready",
-    "reading": "Reading source article",
+    "idle": "Idle",
+    "reading": "Reading sources",
     "searching": "Searching",
     "thinking": "Thinking",
     "answering": "Answering",
-    "complete": "Complete",
+    "complete": "Idle",
     "error": "Error",
 }
 # These are the established host/asset states.  The operational stream stays
@@ -40,10 +40,7 @@ AVATAR_STATE_FOR_ACTIVITY = {
     "searching": "searching_vault",
     "thinking": "thinking",
     "answering": "speaking",
-    # The host's existing speaking hold returns the avatar to idle.  Sending
-    # another idle event here would cancel that hold, so completion is a
-    # status-stream terminal state rather than a second avatar transition.
-    "complete": None,
+    "complete": "idle",
     "error": "error",
 }
 
@@ -74,18 +71,18 @@ class ActivityStateStream:
     def __init__(
         self,
         *,
-        emit_avatar_state: Callable[[str], bool] | None = None,
-        emit_avatar_status: Callable[[str], bool] | None = None,
+        emit_avatar_state: Callable[[str, str], bool] | None = None,
         executor: Executor | None = None,
     ) -> None:
         self._emit_avatar_state = emit_avatar_state
-        self._emit_avatar_status = emit_avatar_status
         self._executor = executor or ThreadPoolExecutor(max_workers=1, thread_name_prefix="activity-avatar")
         self._owns_executor = executor is None
         self._lock = threading.RLock()
         self._snapshots: dict[str, ActivitySnapshot] = {}
+        self._current_snapshot: ActivitySnapshot | None = None
         self._sequence = 0
-        self._last_avatar_state: dict[str, str] = {}
+        self._last_avatar_state: str | None = None
+        self._last_avatar_status: str | None = None
 
     def publish(self, chat_id: str, state: str, message: str = "") -> ActivitySnapshot:
         if state not in CANONICAL_ACTIVITY_STATES:
@@ -98,22 +95,20 @@ class ActivityStateStream:
                 sequence=self._sequence, changed_at=now, message=str(message or ""),
             )
             self._snapshots[str(chat_id)] = snapshot
+            self._current_snapshot = snapshot
             avatar_state = AVATAR_STATE_FOR_ACTIVITY[state]
-            should_emit = bool(avatar_state and avatar_state != self._last_avatar_state.get(str(chat_id)))
-            if should_emit:
-                self._last_avatar_state[str(chat_id)] = str(avatar_state)
             status_text = str(message or ACTIVITY_LABELS[state]).strip()
-            should_emit_status = bool(self._emit_avatar_status and status_text)
+            should_emit = bool(
+                avatar_state
+                and (avatar_state != self._last_avatar_state or status_text != self._last_avatar_status)
+            )
+            if should_emit:
+                self._last_avatar_state = str(avatar_state)
+                self._last_avatar_status = status_text
         if should_emit and self._emit_avatar_state is not None:
             # Submission is intentionally not awaited.  The native host has
             # its own 800 ms minimum-dwell/coalescing policy.
-            self._executor.submit(self._deliver_avatar_state, str(avatar_state))
-        if should_emit_status:
-            # Keep the host's status bubble aligned with the same ordered
-            # activity stream as the avatar pose.  Otherwise an unrelated
-            # media message can remain visible while Home is reading a
-            # document or answering a question.
-            self._executor.submit(self._deliver_avatar_status, status_text)
+            self._executor.submit(self._deliver_avatar_state, str(avatar_state), status_text)
         return snapshot
 
     def snapshot(self, chat_id: str) -> ActivitySnapshot:
@@ -123,16 +118,17 @@ class ActivityStateStream:
                 sequence=0, changed_at=time.time(), message="",
             )
 
-    def _deliver_avatar_state(self, state: str) -> None:
-        try:
-            self._emit_avatar_state(state)
-        except Exception:
-            # Avatar presentation is optional and never part of request work.
-            return
+    def current_snapshot(self) -> ActivitySnapshot:
+        """Return the current application-wide state shown by the Rust host."""
+        with self._lock:
+            return self._current_snapshot or ActivitySnapshot(
+                chat_id="", state="idle", label=ACTIVITY_LABELS["idle"],
+                sequence=0, changed_at=time.time(), message=ACTIVITY_LABELS["idle"],
+            )
 
-    def _deliver_avatar_status(self, status: str) -> None:
+    def _deliver_avatar_state(self, state: str, status: str) -> None:
         try:
-            self._emit_avatar_status(status)
+            self._emit_avatar_state(state, status)
         except Exception:
             # Avatar presentation is optional and never part of request work.
             return

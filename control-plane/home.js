@@ -1,7 +1,7 @@
 const HOME_REQUEST_TIMEOUT_MS = 240000;
 const TLDR_PROMPT = "Give me a clear, plain-English summary of this article in 200 to 300 words. Focus on what happened, why it matters, and any important uncertainty.";
 const CHAT_PAGE = document.body.classList.contains("chat-page");
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, lastActivitySequence: 0, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
 
 function chatUrl({chatId = "", prompt = "", signalId = "", tldrStartedAt = "", articleId = "", articleAction = "", articleStartedAt = "", vaultMode = "", toolIds = []} = {}) {
   const url = new URL("/chat", window.location.origin);
@@ -26,7 +26,7 @@ async function openFreshChat({prompt = "", signalId = "", tldrStartedAt = "", ar
   const chatId = result.chat && result.chat.chat_id;
   if (!chatId) throw new Error("The local service did not return a new chat.");
   rememberChat(chatId);
-  const vaultMode = document.querySelector("#knowledge-mode")?.value || "auto";
+  const vaultMode = document.querySelector("#knowledge-mode")?.value || "all";
   const toolIds = Array.from(state.selectedToolIds);
   const destination = chatUrl({chatId, prompt, signalId, tldrStartedAt, articleId, articleAction, articleStartedAt, vaultMode, toolIds});
   // A popup chat is a second live Ariadne page, not a replacement for Home.
@@ -117,23 +117,22 @@ function renderTools(tools) {
 function updateWebSearchControl() {
   const button = document.querySelector("#web-search-toggle");
   if (!button) return;
-  const tool = state.tools.find(item => item && item.tool_id === "external-research");
-  const available = Boolean(tool && tool.enabled !== false);
-  const selected = state.selectedToolIds.has("external-research");
-  button.disabled = !available || state.processing;
-  button.setAttribute("aria-pressed", String(selected));
-  button.classList.toggle("selected", selected);
-  button.textContent = selected ? "Web search on" : "Search web";
-  button.title = available
-    ? "Search configured live sources for this message"
-    : (tool?.availability_detail || "No live search provider is configured.");
+  const sourceMode = document.querySelector("#knowledge-mode")?.value || "all";
+  const restricted = sourceMode === "local";
+  button.disabled = state.processing;
+  button.setAttribute("aria-pressed", String(restricted));
+  button.classList.toggle("selected", restricted);
+  button.textContent = "Local only";
+  button.title = restricted
+    ? "Local only is active. Turn this off to restore All Sources."
+    : "All Sources is the default. Turn on Local only to restrict this chat to Vault and attachments.";
 }
 
 function syncChatLaunchStateToUrl() {
   if (!CHAT_PAGE) return;
   const url = new URL(window.location.href);
   if (state.chatId) url.searchParams.set("chat_id", state.chatId);
-  const mode = document.querySelector("#knowledge-mode")?.value || "auto";
+  const mode = document.querySelector("#knowledge-mode")?.value || "all";
   if (mode) url.searchParams.set("vault_mode", mode);
   else url.searchParams.delete("vault_mode");
   const toolIds = Array.from(state.selectedToolIds);
@@ -1269,7 +1268,7 @@ async function selectRecentChat(chatId) {
     rememberChat(result.chat.chat_id);
     restoreMessages(result.chat.messages || []);
     renderAttachments(result.documents || []);
-    document.querySelector("#ask-status").textContent = "Restored the selected local chat.";
+    await refreshChatActivity();
     renderRecentChats((await getJson("/api/home/chats")).chats || []);
   } catch (error) {
     document.querySelector("#ask-status").textContent = "Could not restore that chat: " + error.message;
@@ -1294,6 +1293,11 @@ async function startNewChat() {
     rememberChat(result.chat.chat_id);
     restoreMessages(result.chat.messages || []);
     renderAttachments(result.documents || []);
+    const sourceMode = document.querySelector("#knowledge-mode");
+    if (sourceMode) sourceMode.value = "all";
+    state.selectedToolIds.clear();
+    updateWebSearchControl();
+    syncChatLaunchStateToUrl();
     status.textContent = "New chat started. The previous conversation was archived.";
     await loadRecentChats();
   } catch (error) {
@@ -1431,7 +1435,23 @@ function safeMarkdownUrl(value) {
     return "";
   }
 }
-function renderInlineMarkdown(value, codeBlocks) {
+const SUPERSCRIPT_DIGITS = {"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
+function superscriptNumber(value) {
+  return String(value).replace(/\d/g, digit => SUPERSCRIPT_DIGITS[digit]);
+}
+function citationSourceNumberMap(sources) {
+  const numbers = new Map();
+  let displayNumber = 0;
+  for (const source of Array.isArray(sources) ? sources : []) {
+    if (!source || typeof source !== "object") continue;
+    displayNumber += 1;
+    const type = String(source.source_type || "").toLowerCase();
+    const number = Number(source.source_number || 0);
+    if (["vault", "live"].includes(type) && number > 0) numbers.set(`${type}:${number}`, displayNumber);
+  }
+  return numbers;
+}
+function renderInlineMarkdown(value, codeBlocks, citationNumbers = new Map()) {
   let text = escapeHtml(value);
   const inlineCode = [];
   text = text.replace(/`([^`\n]+)`/g, (_, code) => {
@@ -1451,7 +1471,11 @@ function renderInlineMarkdown(value, codeBlocks) {
   text = text.replace(/__([^_]+)__/g, "<strong>$1</strong>");
   text = text.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
   text = text.replace(/_([^_\n]+)_/g, "<em>$1</em>");
-  text = text.replace(/\[((?:Vault|Live) Source \d+)\]/g, '<span class="citation">[$1]</span>');
+  text = text.replace(/\[(Vault|Live) Source (\d+)\]/gi, (_, type, number) => {
+    const key = `${String(type).toLowerCase()}:${number}`;
+    return superscriptNumber(citationNumbers.get(key) || number);
+  });
+  text = text.replace(/\[(\d+)\](?!\()/g, (_, number) => superscriptNumber(number));
   text = text.replace(/\u0000INLINE(\d+)\u0000/g, (_, index) => inlineCode[Number(index)] || "");
   text = text.replace(/\u0000CODE(\d+)\u0000/g, (_, index) => codeBlocks[Number(index)] || "");
   return text;
@@ -1459,8 +1483,9 @@ function renderInlineMarkdown(value, codeBlocks) {
 function markdownTableCells(line) {
   return String(line || "").trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(cell => cell.trim());
 }
-function renderMarkdown(markdown) {
+function renderMarkdown(markdown, sources = []) {
   const codeBlocks = [];
+  const citationNumbers = citationSourceNumberMap(sources);
   const source = String(markdown || "").replace(/```([\w+-]*)\s*\n?([\s\S]*?)```/g, (_, language, code) => {
     const className = language ? ` class="language-${escapeHtml(language)}"` : "";
     const token = `\u0000CODE${codeBlocks.length}\u0000`;
@@ -1472,7 +1497,7 @@ function renderMarkdown(markdown) {
   let paragraph = [];
   const flushParagraph = () => {
     if (paragraph.length) {
-      blocks.push(`<p>${renderInlineMarkdown(paragraph.join("\n"), codeBlocks).replace(/\n/g, "<br>")}</p>`);
+      blocks.push(`<p>${renderInlineMarkdown(paragraph.join("\n"), codeBlocks, citationNumbers).replace(/\n/g, "<br>")}</p>`);
       paragraph = [];
     }
   };
@@ -1480,8 +1505,8 @@ function renderMarkdown(markdown) {
     const line = lines[index];
     if (!line.trim()) { flushParagraph(); continue; }
     const heading = line.match(/^#{1,3}\s+(.+)$/);
-    if (heading) { flushParagraph(); blocks.push(`<h${heading[0].indexOf(" ")}>${renderInlineMarkdown(heading[1], codeBlocks)}</h${heading[0].indexOf(" ")}>`); continue; }
-    if (line.startsWith(">")) { flushParagraph(); blocks.push(`<blockquote>${renderInlineMarkdown(line.replace(/^>\s?/, ""), codeBlocks)}</blockquote>`); continue; }
+    if (heading) { flushParagraph(); blocks.push(`<h${heading[0].indexOf(" ")}>${renderInlineMarkdown(heading[1], codeBlocks, citationNumbers)}</h${heading[0].indexOf(" ")}>`); continue; }
+    if (line.startsWith(">")) { flushParagraph(); blocks.push(`<blockquote>${renderInlineMarkdown(line.replace(/^>\s?/, ""), codeBlocks, citationNumbers)}</blockquote>`); continue; }
     if (/^\s*[-*+]\s+/.test(line) || /^\s*\d+[.)]\s+/.test(line)) {
       flushParagraph();
       const ordered = /^\s*\d+[.)]\s+/.test(line);
@@ -1490,7 +1515,7 @@ function renderMarkdown(markdown) {
         items.push(lines[index].replace(ordered ? /^\s*\d+[.)]\s+/ : /^\s*[-*+]\s+/, "")); index += 1;
       }
       index -= 1;
-      blocks.push(`<${ordered ? "ol" : "ul"}>${items.map(item => `<li>${renderInlineMarkdown(item, codeBlocks)}</li>`).join("")}</${ordered ? "ol" : "ul"}>`);
+      blocks.push(`<${ordered ? "ol" : "ul"}>${items.map(item => `<li>${renderInlineMarkdown(item, codeBlocks, citationNumbers)}</li>`).join("")}</${ordered ? "ol" : "ul"}>`);
       continue;
     }
     if (line.includes("|") && index + 1 < lines.length && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[index + 1])) {
@@ -1498,10 +1523,10 @@ function renderMarkdown(markdown) {
       const headers = markdownTableCells(line); index += 2; const rows = [];
       while (index < lines.length && lines[index].includes("|") && lines[index].trim()) { rows.push(markdownTableCells(lines[index])); index += 1; }
       index -= 1;
-      blocks.push(`<table><thead><tr>${headers.map(cell => `<th>${renderInlineMarkdown(cell, codeBlocks)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_, column) => `<td>${renderInlineMarkdown(row[column] || "", codeBlocks)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      blocks.push(`<table><thead><tr>${headers.map(cell => `<th>${renderInlineMarkdown(cell, codeBlocks, citationNumbers)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${headers.map((_, column) => `<td>${renderInlineMarkdown(row[column] || "", codeBlocks, citationNumbers)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
       continue;
     }
-    if (/^\u0000CODE\d+\u0000$/.test(line.trim())) { flushParagraph(); blocks.push(renderInlineMarkdown(line.trim(), codeBlocks)); continue; }
+    if (/^\u0000CODE\d+\u0000$/.test(line.trim())) { flushParagraph(); blocks.push(renderInlineMarkdown(line.trim(), codeBlocks, citationNumbers)); continue; }
     paragraph.push(line);
   }
   flushParagraph();
@@ -1515,29 +1540,53 @@ function updateChatLayout() {
 }
 function showChatActivity() {
   const details = document.querySelector("#chat-activity");
-  const list = document.querySelector("#chat-activity-list");
-  if (!details || !list) return;
+  if (!details) return;
   details.hidden = false;
   details.open = true;
-  list.replaceChildren();
-  document.querySelector("#chat-activity-summary").textContent = "Working";
 }
-function pushChatActivity(event) {
+function applyChatActivity(activity, {record = false} = {}) {
+  if (!activity || typeof activity !== "object") return;
+  const sequence = Number(activity.sequence || 0);
+  if (sequence < state.lastActivitySequence) return;
+  const changed = sequence > state.lastActivitySequence;
+  state.lastActivitySequence = Math.max(state.lastActivitySequence, sequence);
+  const label = String(activity.message || activity.label || "Idle");
+  const changedAt = Number(activity.changed_at || 0) * 1000;
+  const elapsed = changedAt ? formatClock(Math.max(0, Date.now() - changedAt)) : "0.0s";
+  const status = document.querySelector("#ask-status");
+  if (status) status.textContent = label + " · " + elapsed;
+  const pendingBody = document.querySelector("#chat-log .message.assistant.activity-placeholder .message-body");
+  if (pendingBody) {
+    pendingBody.textContent = label;
+    pendingBody.dataset.activitySequence = String(sequence);
+  }
   const list = document.querySelector("#chat-activity-list");
   const summary = document.querySelector("#chat-activity-summary");
-  if (!list) return;
-  list.querySelector(".quiet")?.remove();
-  list.querySelectorAll(".current").forEach(item => item.classList.remove("current"));
-  const item = el("div", "chat-activity-item current", event.label || event.message || "Working");
-  list.append(item);
-  if (summary) summary.textContent = event.label || event.message || "Working";
-}
-function finishChatActivity(label = "Completed") {
-  const details = document.querySelector("#chat-activity");
-  const summary = document.querySelector("#chat-activity-summary");
-  const list = document.querySelector("#chat-activity-list");
+  if (changed && record && list) {
+    list.querySelector(".quiet")?.remove();
+    list.querySelectorAll(".current").forEach(item => { item.classList.remove("current"); item.classList.add("complete"); });
+    const item = el("div", "chat-activity-item current", label);
+    item.dataset.sequence = String(sequence);
+    item.dataset.state = String(activity.state || "");
+    list.append(item);
+  }
   if (summary) summary.textContent = label;
-  list?.querySelectorAll(".current").forEach(item => { item.classList.remove("current"); item.classList.add("complete"); });
+}
+function pushChatActivity(activity) {
+  applyChatActivity(activity, {record: true});
+}
+async function refreshChatActivity() {
+  if (!state.sessionId || !state.chatId) return;
+  try {
+    const query = new URLSearchParams({session_id: state.sessionId, chat_id: state.chatId});
+    const payload = await getJson("/api/home/activity-state?" + query.toString());
+    applyChatActivity(payload.activity, {record: true});
+  } catch (_) {
+    // Status polling must never delay or fail the chat request.
+  }
+}
+function finishChatActivity() {
+  const details = document.querySelector("#chat-activity");
   if (details) details.open = false;
 }
 async function streamHomeChat(payload, onEvent, options = {}) {
@@ -1685,9 +1734,12 @@ function addMessage(role, content, metadata) {
   document.querySelector(".empty-chat")?.remove();
   const message = el("article", "message " + role);
   message.append(el("span", "message-label", role === "user" ? "YOU" : "ARIADNE"));
-  const displayContent = content || (metadata && metadata.state === "pending" ? "Response pending…" : metadata && metadata.state === "interrupted" ? "Response interrupted; no complete response was recorded." : "");
+  const isActivityPlaceholder = role === "assistant" && metadata && metadata.state === "pending";
+  if (isActivityPlaceholder) message.classList.add("activity-placeholder");
+  const displayContent = content || (metadata && metadata.state === "interrupted" ? "Response interrupted; no complete response was recorded." : "");
   const messageBody = el("div", "message-body");
-  messageBody.innerHTML = renderMarkdown(displayContent);
+  if (isActivityPlaceholder) messageBody.setAttribute("aria-live", "polite");
+  messageBody.innerHTML = renderMarkdown(displayContent, metadata?.sources);
   message.append(messageBody);
   if (role === "assistant" && metadata && !["pending", "interrupted"].includes(metadata.state)) {
     const meta = el("div", "message-meta");
@@ -1749,10 +1801,10 @@ function addMessage(role, content, metadata) {
       const details = el("details", "sources");
       const citationCounts = summarizeCitations(metadata.sources);
       details.append(el("summary", "", `${citationCounts.sourceCount} source${citationCounts.sourceCount === 1 ? "" : "s"} · ${citationCounts.passageCount} cited passage${citationCounts.passageCount === 1 ? "" : "s"}`));
-      for (const source of metadata.sources.slice(0, 8)) {
+      for (const [index, source] of metadata.sources.entries()) {
         const item = el("div", "source-item");
         const citation = source.citation_text || (source.citation && source.citation.display) || source.chunk_id || "";
-        item.append(el("strong", "", source.title || "Knowledge Vault passage"), el("span", "", citation));
+        item.append(el("span", "source-number", superscriptNumber(index + 1)), el("strong", "", source.title || "Knowledge Vault passage"), el("span", "", citation));
         details.append(item);
       }
       message.append(details);
@@ -1762,8 +1814,6 @@ function addMessage(role, content, metadata) {
   log.append(message);
   if (role === "assistant") {
     window.requestAnimationFrame(() => message.scrollIntoView({block: "start", inline: "nearest", behavior: "auto"}));
-  } else {
-    log.scrollTop = log.scrollHeight;
   }
   updateChatLayout();
   return message;
@@ -2006,32 +2056,16 @@ function formatTiming(timing) {
   if (total > 0) parts.push("total " + formatClock(total));
   return parts.join(" · ");
 }
-function beginRequestStatus(status) {
+function beginRequestStatus() {
   state.requestStarted = performance.now();
   if (state.activityTimer) window.clearInterval(state.activityTimer);
-  status.textContent = "Opening discussion · 0.0s";
-  const refresh = async () => {
-    if (!state.sessionId || !state.chatId) return;
-    try {
-      const query = new URLSearchParams({session_id: state.sessionId, chat_id: state.chatId});
-      const payload = await getJson("/api/home/activity-state?" + query.toString());
-      const activity = payload.activity || {};
-      const changedAt = Number(activity.changed_at || 0) * 1000;
-      const elapsed = changedAt ? formatClock(Math.max(0, Date.now() - changedAt)) : "0.0s";
-      status.textContent = (activity.message || activity.label || "Working") + " · " + elapsed;
-    } catch (_) {
-      // The request remains authoritative; a transient status poll failure
-      // must not alter or delay the Home generation.
-    }
-  };
-  refresh();
-  state.requestTimer = window.setInterval(() => {
-    refresh();
-  }, 200);
+  refreshChatActivity();
+  state.requestTimer = window.setInterval(refreshChatActivity, 200);
 }
 function endRequestStatus() {
   if (state.requestTimer) window.clearInterval(state.requestTimer);
   state.requestTimer = null;
+  refreshChatActivity();
 }
 async function loadNewsSnapshot() {
   const started = performance.now();
@@ -2111,6 +2145,7 @@ async function startSession() {
       const status = document.querySelector("#ask-status");
       if (status) status.textContent = "Recovered the durable local chat.";
     }
+    await refreshChatActivity();
     state.heartbeat = window.setInterval(async () => {
       if (!state.sessionId) return;
        try { await postJson("/api/session/heartbeat", {session_id: state.sessionId}); } catch (error) {
@@ -2178,7 +2213,7 @@ async function ask(event) {
   submit.disabled = true;
   setContextMutationState(true);
   showChatActivity();
-  beginRequestStatus(status);
+  beginRequestStatus();
   const controller = new AbortController();
   state.requestAbortController = controller;
   state.requestTimeout = window.setTimeout(() => controller.abort(), HOME_REQUEST_TIMEOUT_MS);
@@ -2191,13 +2226,12 @@ async function ask(event) {
       chat_id: state.chatId,
       message: message,
       history: history,
-      vault_mode: document.querySelector("#knowledge-mode").value,
+      vault_mode: document.querySelector("#knowledge-mode").value || "all",
       tool_ids: Array.from(state.selectedToolIds),
       article_tldr: articleTldr
     }, event => {
       if (event.type === "activity") {
-        pushChatActivity(event);
-        status.textContent = event.label || event.message || "Working";
+        pushChatActivity(event.activity);
       } else if (event.type === "delta") {
         streamedAnswer += String(event.text || "");
         if (streamingBody) streamingBody.innerHTML = renderMarkdown(streamedAnswer);
@@ -2217,7 +2251,7 @@ async function ask(event) {
       ? "Response stopped at the output limit. Continue is available."
       : "Complete.";
     if (timing) status.textContent += " · " + timing;
-    finishChatActivity(result.generation_truncated ? "Completed with output limit" : "Completed");
+    finishChatActivity();
     loadHome();
     loadRecentChats();
   } catch (error) {
@@ -2227,8 +2261,7 @@ async function ask(event) {
       ? "The local Home request exceeded 4 minutes without returning an answer. Check the chat before retrying."
       : "I could not complete that locally: " + error.message;
     addMessage("assistant", message);
-    finishChatActivity(timedOut ? "Timed out" : "Could not complete");
-    status.textContent = timedOut ? "Timed out: no answer was returned." : "Error: the local request failed.";
+    finishChatActivity();
   } finally {
     if (state.requestTimeout) window.clearTimeout(state.requestTimeout);
     state.requestTimeout = null;
@@ -2262,7 +2295,7 @@ async function initializeChatPage() {
   const requestedTools = String(params.get("tools") || "").split(",").map(value => value.trim()).filter(Boolean);
   requestedTools.forEach(toolId => state.selectedToolIds.add(toolId));
   const mode = params.get("vault_mode");
-  if (mode && document.querySelector("#knowledge-mode")) document.querySelector("#knowledge-mode").value = mode;
+  if (mode && document.querySelector("#knowledge-mode")) document.querySelector("#knowledge-mode").value = mode === "auto" ? "all" : mode;
   const signalId = params.get("signal_id");
   const articleId = params.get("article_id");
   const articleAction = params.get("article_action") || "discussion_opened";
@@ -2411,14 +2444,19 @@ window.addEventListener("keydown", event => {
 
 const webSearchToggle = document.querySelector("#web-search-toggle");
 if (webSearchToggle) webSearchToggle.addEventListener("click", () => {
-  const available = state.tools.some(item => item && item.tool_id === "external-research" && item.enabled !== false);
-  if (!available || state.processing) return;
-  if (state.selectedToolIds.has("external-research")) state.selectedToolIds.delete("external-research");
-  else state.selectedToolIds.add("external-research");
+  if (state.processing) return;
+  const sourceMode = document.querySelector("#knowledge-mode");
+  if (!sourceMode) return;
+  sourceMode.value = sourceMode.value === "local" ? "all" : "local";
+  if (sourceMode.value === "local") state.selectedToolIds.delete("external-research");
   updateWebSearchControl();
   syncChatLaunchStateToUrl();
 });
-document.querySelector("#knowledge-mode")?.addEventListener("change", syncChatLaunchStateToUrl);
+document.querySelector("#knowledge-mode")?.addEventListener("change", () => {
+  if (document.querySelector("#knowledge-mode").value === "local") state.selectedToolIds.delete("external-research");
+  updateWebSearchControl();
+  syncChatLaunchStateToUrl();
+});
 initializeChatSidebar();
 const askForm = document.querySelector("#ask-form");
 if (askForm) askForm.addEventListener("submit", ask);

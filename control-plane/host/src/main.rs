@@ -130,6 +130,7 @@ struct HostMessage {
     #[serde(rename = "type")]
     kind: String,
     state: Option<String>,
+    status: Option<String>,
     text: Option<String>,
     x: Option<i32>,
     y: Option<i32>,
@@ -956,6 +957,7 @@ struct AvatarOverlay {
     drag: Option<AvatarDrag>,
     state: String,
     status_text: Option<String>,
+    activity_status: Option<String>,
     status_is_dialogue: bool,
     pending_presentation_states: VecDeque<String>,
     presentation_generation: u64,
@@ -1128,6 +1130,7 @@ impl AvatarOverlay {
             drag: None,
             state: "idle".into(),
             status_text: None,
+            activity_status: None,
             status_is_dialogue: false,
             pending_presentation_states: VecDeque::new(),
             presentation_generation: 0,
@@ -1401,9 +1404,21 @@ impl AvatarOverlay {
         });
     }
 
-    fn request_state(&mut self, state: &str, message_hwnd: HWND) {
+    fn request_state(&mut self, state: &str, status: Option<&str>, message_hwnd: HWND) {
         if !canonical_state(state) {
             log_line(format!("ignored unknown avatar state: {}", state));
+            return;
+        }
+
+        let status = status.map(str::trim).filter(|value| !value.is_empty()).map(str::to_string);
+        let status_changed = self.activity_status != status;
+        self.activity_status = status;
+        if status_changed {
+            self.status_text = self.activity_status.clone().or_else(|| state_status(&self.state).map(str::to_string));
+            self.status_is_dialogue = false;
+            self.render_current_state();
+        }
+        if self.state == state {
             return;
         }
 
@@ -1412,9 +1427,6 @@ impl AvatarOverlay {
         if presentation_timing(state) == PresentationTiming::Priority {
             self.cancel_presentation("priority-state");
             self.apply_state(state);
-            return;
-        }
-        if self.state == state {
             return;
         }
         if self.presentation_hold_active {
@@ -1803,6 +1815,7 @@ impl AvatarOverlay {
 
     fn set_state(&mut self, state: &str) {
         self.cancel_presentation("direct-state");
+        self.activity_status = None;
         self.apply_state(state);
     }
 
@@ -1825,8 +1838,8 @@ impl AvatarOverlay {
         };
         let has_dialogue = dialogue.is_some();
         self.state = state.to_string();
-        self.status_text = dialogue.or_else(|| state_status(state).map(str::to_string));
-        self.status_is_dialogue = state == "speaking" && has_dialogue;
+        self.status_text = self.activity_status.clone().or(dialogue).or_else(|| state_status(state).map(str::to_string));
+        self.status_is_dialogue = self.activity_status.is_none() && state == "speaking" && has_dialogue;
         log_line(format!(
             "avatar bubble requested: source=state, state={}, chars={}",
             state,
@@ -2395,8 +2408,8 @@ fn process_events(
             UiEvent::Pipe(message) => match message.kind.as_str() {
                 "state" => {
                     if let Some(state) = message.state.as_deref() {
-                        log_line(format!("avatar state event received: {}", state));
-                        avatar.request_state(state, message_hwnd);
+                        log_line(format!("avatar state event received: {} · {}", state, message.status.as_deref().unwrap_or("")));
+                        avatar.request_state(state, message.status.as_deref(), message_hwnd);
                         if state == "speaking" {
                             avatar.begin_final_hold(message_hwnd);
                         }

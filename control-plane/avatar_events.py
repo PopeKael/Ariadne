@@ -72,10 +72,13 @@ def emit(message_type: str, **fields: Any) -> bool:
         return False
 
 
-def emit_state(state: str) -> bool:
+def emit_state(state: str, status: str | None = None) -> bool:
     if state not in AVATAR_STATES:
         return False
-    return emit("state", state=state)
+    fields: dict[str, Any] = {"state": state}
+    if isinstance(status, str) and status.strip():
+        fields["status"] = status[:500]
+    return emit("state", **fields)
 
 
 def reload_avatar() -> bool:

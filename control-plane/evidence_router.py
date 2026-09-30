@@ -207,7 +207,7 @@ def decide(
         )
     personal = bool(classification["personal_context"])
     personal = personal or bool(re.search(r"\b(my|our|we|wazza|warren|chanya|ariadne|vault|prior|remember|discussed)\b", query.casefold()))
-    mode = vault_mode if vault_mode in {"auto", "always", "never"} else "auto"
+    mode = vault_mode if vault_mode in {"all", "auto", "local", "always", "never"} else "all"
     if mode == "always":
         use_vault = vault_available
     elif mode == "never":
@@ -225,7 +225,7 @@ def decide(
         classification["verification_required"]
         and not classification["personal_fact_verification"]
         and search_available
-        and mode != "never"
+        and mode not in {"local", "never"}
     )
     quiet_personal_context = bool(
         personal

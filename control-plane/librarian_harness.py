@@ -203,8 +203,8 @@ def interpret_request(
 
 def resolve_policy(semantic: dict[str, Any], runtime_context: dict[str, Any]) -> dict[str, Any]:
     """Resolve modes, capabilities, tools, and execution fields deterministically."""
-    mode = str(runtime_context.get("active_knowledge_source") or "auto").casefold()
-    mode = mode if mode in {"auto", "always", "never"} else "auto"
+    mode = str(runtime_context.get("active_knowledge_source") or "all").casefold()
+    mode = mode if mode in {"all", "auto", "local", "always", "never"} else "all"
     available = _available_tool_ids(runtime_context)
     selected = {str(item) for item in runtime_context.get("selected_tool_ids", []) if isinstance(item, str)}
     attachments = runtime_context.get("attachments")
@@ -242,12 +242,13 @@ def resolve_policy(semantic: dict[str, Any], runtime_context: dict[str, Any]) ->
         overrides.append("document_tool_not_selected")
 
     needs_current = bool(semantic["needs_current_information"])
+    external_search_allowed = bool(capabilities.get("external_research_allowed", mode != "local"))
     if needs_current and "external-research" not in available:
-        gaps.append("current_source_unavailable")
+        gaps.append("current_source_restricted" if not external_search_allowed else "current_source_unavailable")
     tools: list[str] = []
     if use_documents:
         tools.append("document-analysis")
-    if needs_current and "external-research" in available and (not selected or "external-research" in selected):
+    if needs_current and external_search_allowed and "external-research" in available and (not selected or "external-research" in selected):
         tools.append("external-research")
     if selected:
         tools = [tool for tool in tools if tool in selected]
