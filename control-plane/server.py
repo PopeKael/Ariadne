@@ -61,7 +61,7 @@ from librarian_harness import (
     interpret_and_resolve,
     request_needs_personal_context,
 )
-from ollama_runtime import startup_preflight
+from ollama_runtime import start_owned_ollama, stop_owned_ollama
 from evidence_router import decide as decide_evidence, external_search_needed
 from search_providers import SearchProviderRegistry
 from plugin_activity import PluginActivityStream
@@ -80,7 +80,7 @@ PROJECT_ROOT = ROOT.parent
 HOST = os.environ.get("ARIADNE_BIND_ADDRESS", "127.0.0.1")
 PORT = int(os.environ.get("ARIADNE_PORT", "8765"))
 LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
-OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_URL = "http://127.0.0.1:11434"
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 HOME_MODEL_KEEP_ALIVE = -1
@@ -393,6 +393,7 @@ SESSION_TTL_SECONDS = max(30, int(os.environ.get("ARIADNE_SESSION_TTL_SECONDS", 
 JOB_TIMEOUT_SECONDS = max(30, int(os.environ.get("ARIADNE_JOB_TIMEOUT_SECONDS", "300")))
 VAULT_ACTION_TIMEOUT_SECONDS = {
     "ingest": max(300, int(os.environ.get("ARIADNE_INGEST_TIMEOUT_SECONDS", "7200"))),
+    "full_rebuild": max(3600, int(os.environ.get("ARIADNE_FULL_REBUILD_TIMEOUT_SECONDS", "86400"))),
     "embedding_rebuild": max(300, int(os.environ.get("ARIADNE_EMBEDDING_REBUILD_TIMEOUT_SECONDS", "3600"))),
     "retrieval_evaluation": max(300, int(os.environ.get("ARIADNE_EVALUATION_TIMEOUT_SECONDS", "1800"))),
     "regression_tests": max(300, int(os.environ.get("ARIADNE_TEST_TIMEOUT_SECONDS", "1800"))),
@@ -507,6 +508,7 @@ VAULT_ACTIONS = {
     "downloads_apply": ("Organize-Downloads.ps1", []),
     "audit_failures": ("Audit-Failed-Ingestion.ps1", []),
     "embedding_rebuild": ("Build-Embeddings.ps1", ["-Rebuild"]),
+    "full_rebuild": ("Full-Vault-Rebuild.ps1", []),
 }
 
 
@@ -4137,7 +4139,10 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
         if IMAGE_ENGINE_PROCESS is not None:
             _terminate_process(IMAGE_ENGINE_PROCESS)
         IMAGE_ENGINE_PROCESS = None
-        _unload_ollama_models()
+        try:
+            _unload_ollama_models()
+        finally:
+            stop_owned_ollama()
         release_workloads(force=True)
         ACTIVE_PROFILE = "RUN"
         ACTIVE_DEPLOYMENT_MODE = "RUN"
@@ -8785,20 +8790,23 @@ def main() -> None:
             )
             print(message, file=sys.stderr)
             return
-    # Disk is loaded when NEWS_BRIEFING_CACHE is constructed. Start Hera sync
-    # asynchronously so neither startup nor the local snapshot API waits on it.
-    NEWS_BRIEFING_CACHE.start_background_sync()
-    # Refresh cached image metadata separately; Home's local card snapshot and
-    # final Ariadne ranking remain immediate and do not wait on Signal Service.
-    start_news_image_sync()
-    ollama_startup = startup_preflight(
+    # Ariadne owns its local Ollama process. Replace any desktop-managed server,
+    # force the durable F: model store, and verify the full catalogue before
+    # starting other work or accepting browser requests.
+    ollama_startup = start_owned_ollama(
         OLLAMA_URL,
         tuple(dict.fromkeys((HOME_CHAT_MODEL, PLANNER_MODEL))),
     )
     print(
-        "Ariadne Ollama startup preflight: "
+        "Ariadne Ollama ownership: "
         f"{ollama_startup.get('state')} · {ollama_startup.get('detail')}"
     )
+    # Disk is loaded when NEWS_BRIEFING_CACHE is constructed. Start Hera sync
+    # asynchronously after the owned local model service has passed validation.
+    NEWS_BRIEFING_CACHE.start_background_sync()
+    # Refresh cached image metadata separately; Home's local card snapshot and
+    # final Ariadne ranking remain immediate and do not wait on Signal Service.
+    start_news_image_sync()
     expire_home_chats()
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
     HTTP_SERVER = httpd

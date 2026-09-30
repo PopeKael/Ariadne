@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import sys
+import os
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_rebuild_pilot import final_content, model_request
@@ -28,6 +30,12 @@ class OllamaAdapterTests(unittest.TestCase):
         content, thinking = final_content({"message": {"content": '{"answer":"Cerberus"}', "thinking": "brief reasoning"}})
         self.assertEqual(content, '{"answer":"Cerberus"}')
         self.assertEqual(thinking, "brief reasoning")
+
+    def test_model_request_uses_configured_ingestion_model(self) -> None:
+        record = {"stable_source_id": "sha256:test", "title": "Test", "source_type": "markdown"}
+        with patch.dict(os.environ, {"ARIADNE_CHAT_MODEL": "configured-ingest-model"}):
+            request = model_request(record, "source text", ["Infrastructure"])
+        self.assertEqual(request["model"], "configured-ingest-model")
 
 
 if __name__ == "__main__":

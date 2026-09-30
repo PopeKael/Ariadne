@@ -115,7 +115,7 @@ def model_request(record: dict[str, Any], text: str, domains: list[str]) -> dict
     # GPT-OSS always reasons, so reserve a larger context and bound its
     # reasoning level/output. Without this, the default 4096-token window can
     # be consumed entirely by thinking before structured content is emitted.
-    return {"model": "gpt-oss:20b", "messages": [{"role": "user", "content": prompt}], "stream": False,
+    return {"model": os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b"), "messages": [{"role": "user", "content": prompt}], "stream": False,
             "think": ENRICHMENT_THINK, "format": output_schema,
             "options": {"temperature": 0, "seed": 42, "num_ctx": ENRICHMENT_CONTEXT_TOKENS,
                          "num_predict": ENRICHMENT_OUTPUT_TOKENS}}
