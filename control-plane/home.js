@@ -83,9 +83,10 @@ function renderTools(tools) {
   const root = document.querySelector("#tools-palette");
   if (!root) return;
   root.replaceChildren();
-  const available = state.tools.filter(tool => tool && tool.enabled !== false);
+  const available = state.tools.filter(tool => tool && tool.enabled !== false && tool.tool_id !== "external-research");
   if (!available.length) {
-    root.append(el("small", "quiet", "No tools are currently available."));
+    root.append(el("small", "quiet", "No additional tools are currently available."));
+    updateWebSearchControl();
     return;
   }
   for (const tool of available) {
@@ -97,6 +98,7 @@ function renderTools(tools) {
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) state.selectedToolIds.add(tool.tool_id);
       else state.selectedToolIds.delete(tool.tool_id);
+      syncChatLaunchStateToUrl();
       const palette = document.querySelector("#tools-palette");
       const button = document.querySelector("#tools-button");
       if (palette && button) {
@@ -109,6 +111,35 @@ function renderTools(tools) {
     label.append(checkbox, copy);
     root.append(label);
   }
+  updateWebSearchControl();
+}
+
+function updateWebSearchControl() {
+  const button = document.querySelector("#web-search-toggle");
+  if (!button) return;
+  const tool = state.tools.find(item => item && item.tool_id === "external-research");
+  const available = Boolean(tool && tool.enabled !== false);
+  const selected = state.selectedToolIds.has("external-research");
+  button.disabled = !available || state.processing;
+  button.setAttribute("aria-pressed", String(selected));
+  button.classList.toggle("selected", selected);
+  button.textContent = selected ? "Web search on" : "Search web";
+  button.title = available
+    ? "Search configured live sources for this message"
+    : (tool?.availability_detail || "No live search provider is configured.");
+}
+
+function syncChatLaunchStateToUrl() {
+  if (!CHAT_PAGE) return;
+  const url = new URL(window.location.href);
+  if (state.chatId) url.searchParams.set("chat_id", state.chatId);
+  const mode = document.querySelector("#knowledge-mode")?.value || "auto";
+  if (mode) url.searchParams.set("vault_mode", mode);
+  else url.searchParams.delete("vault_mode");
+  const toolIds = Array.from(state.selectedToolIds);
+  if (toolIds.length) url.searchParams.set("tools", toolIds.join(","));
+  else url.searchParams.delete("tools");
+  window.history.replaceState({}, "", url.pathname + url.search + url.hash);
 }
 function renderAttachments(documents) {
   state.attachments = Array.isArray(documents) ? documents : [];
@@ -172,6 +203,7 @@ function setContextMutationState(processing) {
   document.querySelectorAll(".think-button, .attachment-remove, .add-article-button").forEach(button => {
     button.disabled = processing;
   });
+  updateWebSearchControl();
 }
 async function loadTools() {
   try {
@@ -1480,8 +1512,6 @@ function updateChatLayout() {
   const meaningful = Boolean(document.querySelector("#chat-log .message"));
   document.body.classList.toggle("chat-active", meaningful);
   document.body.classList.toggle("chat-empty", !meaningful);
-  const collapse = document.querySelector("#collapse-chat");
-  if (collapse) collapse.hidden = !meaningful;
 }
 function showChatActivity() {
   const details = document.querySelector("#chat-activity");
@@ -1496,6 +1526,7 @@ function pushChatActivity(event) {
   const list = document.querySelector("#chat-activity-list");
   const summary = document.querySelector("#chat-activity-summary");
   if (!list) return;
+  list.querySelector(".quiet")?.remove();
   list.querySelectorAll(".current").forEach(item => item.classList.remove("current"));
   const item = el("div", "chat-activity-item current", event.label || event.message || "Working");
   list.append(item);
@@ -1542,19 +1573,111 @@ async function streamHomeChat(payload, onEvent, options = {}) {
   if (!finalResult) throw new Error("The local response stream ended before completion.");
   return finalResult;
 }
+function codeFileExtension(language) {
+  const known = {bash:"sh", sh:"sh", shell:"sh", powershell:"ps1", ps:"ps1", python:"py", py:"py", javascript:"js", js:"js", typescript:"ts", ts:"ts", jsx:"jsx", tsx:"tsx", html:"html", css:"css", json:"json", yaml:"yml", yml:"yml", rust:"rs", rs:"rs", sql:"sql", markdown:"md", md:"md", xml:"xml", java:"java", csharp:"cs", cs:"cs", go:"go", ruby:"rb", rb:"rb"};
+  const key = String(language || "").trim().toLowerCase().replace(/[^a-z0-9+#.-]/g, "");
+  return known[key] || "txt";
+}
+
+function showCodeWorkbench(blocks, title = "Generated code") {
+  const root = document.querySelector("#workbench-content");
+  if (!root || !blocks.length) return false;
+  const workspace = el("div", "code-workspace");
+  workspace.append(el("div", "workbench-output-heading", title));
+  const toolbar = el("div", "code-workspace-toolbar");
+  const select = el("select");
+  select.setAttribute("aria-label", "Code block");
+  const filename = el("input");
+  filename.type = "text";
+  filename.setAttribute("aria-label", "Download filename");
+  const copy = el("button", "", "Copy");
+  copy.type = "button";
+  const download = el("button", "", "Download");
+  download.type = "button";
+  toolbar.append(select, filename, copy, download);
+  const editor = el("textarea", "code-workspace-editor");
+  editor.setAttribute("aria-label", "Editable generated code");
+  editor.spellcheck = false;
+  editor.autocapitalize = "off";
+  editor.wrap = "off";
+  const status = el("div", "code-workspace-status");
+  status.setAttribute("role", "status");
+  const stateForEditor = {index: 0};
+  const safeFilename = (index) => {
+    const extension = codeFileExtension(blocks[index]?.language);
+    const suggested = `ariadne-${index + 1}.${extension}`;
+    const value = filename.value.trim();
+    return value && /^[\w .()-]+\.[A-Za-z0-9]{1,10}$/.test(value) ? value.replace(/[ .]+$/g, "") : suggested;
+  };
+  const saveCurrentBlock = () => {
+    if (blocks[stateForEditor.index]) blocks[stateForEditor.index].code = editor.value;
+  };
+  const loadBlock = (index) => {
+    saveCurrentBlock();
+    stateForEditor.index = index;
+    const block = blocks[index];
+    editor.value = block?.code || "";
+    filename.value = `ariadne-${index + 1}.${codeFileExtension(block?.language)}`;
+    status.textContent = `${block?.language || "text"} · ${editor.value.split("\n").length} lines`;
+  };
+  blocks.forEach((block, index) => {
+    const option = el("option", "", `${index + 1}. ${block.language || "code"}`);
+    option.value = String(index);
+    select.append(option);
+  });
+  select.addEventListener("change", () => loadBlock(Number(select.value)));
+  editor.addEventListener("input", () => {
+    saveCurrentBlock();
+    status.textContent = `Edited · ${editor.value.split("\n").length} lines`;
+  });
+  copy.addEventListener("click", async () => {
+    saveCurrentBlock();
+    try {
+      await navigator.clipboard.writeText(editor.value);
+      status.textContent = "Code copied to clipboard.";
+    } catch (_) {
+      editor.focus();
+      editor.select();
+      status.textContent = "Clipboard access was denied. Code is selected for copying.";
+    }
+  });
+  download.addEventListener("click", () => {
+    saveCurrentBlock();
+    const blob = new Blob([editor.value], {type: "text/plain;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = safeFilename(stateForEditor.index);
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    status.textContent = `Downloaded ${safeFilename(stateForEditor.index)}.`;
+  });
+  workspace.append(toolbar, editor, status);
+  root.replaceChildren(workspace);
+  loadBlock(0);
+  return true;
+}
+
 function showInWorkbench(content, title = "Conversation output") {
   const panel = document.querySelector("#workbench");
   const root = document.querySelector("#workbench-content");
-  const toggle = document.querySelector("#workbench-toggle");
   if (!panel || !root) return;
-  root.replaceChildren();
-  const heading = el("div", "workbench-output-heading", title);
-  const output = el("div", "workbench-output");
-  output.innerHTML = renderMarkdown(content);
-  root.append(heading, output);
-  panel.hidden = false;
-  document.body.classList.add("workbench-open");
-  if (toggle) toggle.setAttribute("aria-expanded", "true");
+  const source = String(content || "");
+  const blocks = [];
+  const pattern = /```([^\n`]*)\n?([\s\S]*?)```/g;
+  let match;
+  while ((match = pattern.exec(source))) blocks.push({language: match[1].trim(), code: match[2].replace(/\n$/, "")});
+  if (blocks.length) showCodeWorkbench(blocks, title);
+  else {
+    root.replaceChildren();
+    const heading = el("div", "workbench-output-heading", title);
+    const output = el("div", "workbench-output");
+    output.innerHTML = renderMarkdown(source);
+    root.append(heading, output);
+  }
+  setWorkbenchOpen(true);
 }
 function addMessage(role, content, metadata) {
   const log = document.querySelector("#chat-log");
@@ -1615,9 +1738,10 @@ function addMessage(role, content, metadata) {
     readButton.addEventListener("click", () => readAnswer(messageBody, readButton));
     meta.append(readButton);
     if (String(content || "").includes("```") || /!\[[^\]]*\]\([^)]*\)/.test(String(content || ""))) {
-      const workbenchButton = el("button", "read-button", "Open in Workbench");
+      const hasCode = String(content || "").includes("```");
+      const workbenchButton = el("button", "read-button", hasCode ? "Open code" : "Open in Workbench");
       workbenchButton.type = "button";
-      workbenchButton.addEventListener("click", () => showInWorkbench(String(content || ""), "Conversation output"));
+      workbenchButton.addEventListener("click", () => showInWorkbench(String(content || ""), hasCode ? "Generated code" : "Conversation output"));
       meta.append(workbenchButton);
     }
     message.append(meta);
@@ -1653,6 +1777,12 @@ function summarizeCitations(sources) {
   }
   return {sourceCount: identities.size, passageCount: Array.isArray(sources) ? sources.length : 0};
 }
+function scrollChatToLatest() {
+  if (!CHAT_PAGE) return;
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+    window.scrollTo({top: document.documentElement.scrollHeight, behavior: "auto"});
+  }));
+}
 function restoreMessages(messages) {
   state.messages = [];
   const log = document.querySelector("#chat-log");
@@ -1668,6 +1798,7 @@ function restoreMessages(messages) {
     addMessage(item.role, content, item);
   }
   updateChatLayout();
+  if (meaningful) scrollChatToLatest();
 }
 function selectReadableAnswer(node) {
   const selection = window.getSelection();
@@ -2038,10 +2169,10 @@ async function ask(event) {
   }
   const history = state.messages.slice(-8);
   document.body.classList.add("chat-expanded");
-  document.querySelector("#collapse-chat").hidden = false;
   state.messages.push({role: "user", content: message});
   addMessage("user", message);
   const streamingMessage = addMessage("assistant", "", {state: "pending"});
+  scrollChatToLatest();
   const streamingBody = streamingMessage?.querySelector(".message-body");
   input.value = "";
   submit.disabled = true;
@@ -2070,8 +2201,9 @@ async function ask(event) {
       } else if (event.type === "delta") {
         streamedAnswer += String(event.text || "");
         if (streamingBody) streamingBody.innerHTML = renderMarkdown(streamedAnswer);
-        const log = document.querySelector("#chat-log");
-        if (log) log.scrollTop = log.scrollHeight;
+        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 220) {
+          window.scrollTo({top: document.documentElement.scrollHeight, behavior: "auto"});
+        }
       }
     }, {signal: controller.signal});
     result.timing = result.timing || fallbackTiming(result.answer);
@@ -2176,25 +2308,118 @@ async function initializeChatPage() {
     }
   }
 }
-const collapseButton = document.querySelector("#collapse-chat");
-if (collapseButton) collapseButton.addEventListener("click", () => {
-  if (CHAT_PAGE) window.location.assign("/");
-  else {
-    document.body.classList.remove("chat-expanded");
-    collapseButton.hidden = true;
-  }
-});
 const workbenchToggle = document.querySelector("#workbench-toggle");
 const workbenchClose = document.querySelector("#workbench-close");
+const diagnosticsToggle = document.querySelector("#diagnostics-toggle");
+const diagnosticsClose = document.querySelector("#diagnostics-close");
+const sidebarToggle = document.querySelector("#sidebar-toggle");
+const sidebarResize = document.querySelector("#sidebar-resize");
+
+function setSidebarWidth(width, persist = true) {
+  const layout = document.querySelector(".chat-layout");
+  if (!layout) return;
+  const safeWidth = Math.max(220, Math.min(420, Math.round(width)));
+  layout.style.setProperty("--chat-sidebar-width", `${safeWidth}px`);
+  if (sidebarResize) sidebarResize.setAttribute("aria-valuenow", String(safeWidth));
+  if (persist) {
+    try { localStorage.setItem("ariadne.chat.sidebar_width", String(safeWidth)); } catch (_) {}
+  }
+}
+
+function setSidebarCollapsed(collapsed, persist = true) {
+  document.body.classList.toggle("chat-sidebar-collapsed", collapsed);
+  if (sidebarToggle) {
+    sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    sidebarToggle.textContent = collapsed ? "Show history" : "Hide history";
+  }
+  if (persist) {
+    try { localStorage.setItem("ariadne.chat.sidebar_collapsed", String(collapsed)); } catch (_) {}
+  }
+}
+
+function initializeChatSidebar() {
+  if (!CHAT_PAGE) return;
+  try {
+    const width = Number(localStorage.getItem("ariadne.chat.sidebar_width"));
+    if (Number.isFinite(width) && width > 0) setSidebarWidth(width, false);
+    setSidebarCollapsed(localStorage.getItem("ariadne.chat.sidebar_collapsed") === "true", false);
+  } catch (_) {}
+  sidebarToggle?.addEventListener("click", () => {
+    setSidebarCollapsed(!document.body.classList.contains("chat-sidebar-collapsed"));
+  });
+  if (!sidebarResize) return;
+  let dragging = false;
+  sidebarResize.addEventListener("pointerdown", event => {
+    if (window.innerWidth <= 620) return;
+    dragging = true;
+    sidebarResize.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+  sidebarResize.addEventListener("pointermove", event => {
+    if (!dragging) return;
+    const layout = document.querySelector(".chat-layout");
+    if (layout) setSidebarWidth(event.clientX - layout.getBoundingClientRect().left);
+  });
+  const endDrag = () => { dragging = false; };
+  sidebarResize.addEventListener("pointerup", endDrag);
+  sidebarResize.addEventListener("pointercancel", endDrag);
+  sidebarResize.addEventListener("keydown", event => {
+    const current = Number(sidebarResize.getAttribute("aria-valuenow")) || 290;
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      setSidebarWidth(current + (event.key === "ArrowRight" ? 16 : -16));
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setSidebarWidth(220);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setSidebarWidth(420);
+    }
+  });
+}
+
+function setOptionalDrawer(drawerId, open) {
+  const workbench = drawerId === "workbench";
+  const target = document.querySelector(workbench ? "#workbench" : "#diagnostics-drawer");
+  const other = document.querySelector(workbench ? "#diagnostics-drawer" : "#workbench");
+  const targetToggle = workbench ? workbenchToggle : diagnosticsToggle;
+  const otherToggle = workbench ? diagnosticsToggle : workbenchToggle;
+  if (!target) return;
+  if (other) {
+    other.hidden = true;
+    other.setAttribute("aria-hidden", "true");
+  }
+  otherToggle?.setAttribute("aria-expanded", "false");
+  target.hidden = !open;
+  target.setAttribute("aria-hidden", String(!open));
+  targetToggle?.setAttribute("aria-expanded", String(open));
+  document.body.classList.toggle("workbench-open", workbench && open);
+}
+
 function setWorkbenchOpen(open) {
-  const panel = document.querySelector("#workbench");
-  if (!panel) return;
-  panel.hidden = !open;
-  document.body.classList.toggle("workbench-open", open);
-  if (workbenchToggle) workbenchToggle.setAttribute("aria-expanded", String(open));
+  setOptionalDrawer("workbench", open);
 }
 if (workbenchToggle) workbenchToggle.addEventListener("click", () => setWorkbenchOpen(workbenchToggle.getAttribute("aria-expanded") !== "true"));
 if (workbenchClose) workbenchClose.addEventListener("click", () => setWorkbenchOpen(false));
+if (diagnosticsToggle) diagnosticsToggle.addEventListener("click", () => setOptionalDrawer("diagnostics", diagnosticsToggle.getAttribute("aria-expanded") !== "true"));
+if (diagnosticsClose) diagnosticsClose.addEventListener("click", () => setOptionalDrawer("diagnostics", false));
+window.addEventListener("keydown", event => {
+  if (event.key !== "Escape") return;
+  if (workbenchToggle?.getAttribute("aria-expanded") === "true") { setWorkbenchOpen(false); workbenchToggle.focus(); }
+  else if (diagnosticsToggle?.getAttribute("aria-expanded") === "true") { setOptionalDrawer("diagnostics", false); diagnosticsToggle.focus(); }
+});
+
+const webSearchToggle = document.querySelector("#web-search-toggle");
+if (webSearchToggle) webSearchToggle.addEventListener("click", () => {
+  const available = state.tools.some(item => item && item.tool_id === "external-research" && item.enabled !== false);
+  if (!available || state.processing) return;
+  if (state.selectedToolIds.has("external-research")) state.selectedToolIds.delete("external-research");
+  else state.selectedToolIds.add("external-research");
+  updateWebSearchControl();
+  syncChatLaunchStateToUrl();
+});
+document.querySelector("#knowledge-mode")?.addEventListener("change", syncChatLaunchStateToUrl);
+initializeChatSidebar();
 const askForm = document.querySelector("#ask-form");
 if (askForm) askForm.addEventListener("submit", ask);
 const documentInput = document.querySelector("#document-input");

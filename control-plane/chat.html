@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="chat-page">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,11 +12,11 @@
 <body class="ariadne-page chat-page chat-empty">
   <a href="/" aria-label="Ariadne Home" class="sr-only">Ariadne Home</a>
   <div class="chat-shell">
-    <main class="chat-layout">
-      <aside class="chat-sidebar">
-        <section class="panel chat-sidebar-panel">
-          <div class="panel-heading compact"><div><span class="eyebrow">CHAT MEMORY</span><h2>Recent Chats</h2><p>Local conversations, kept for seven days.</p></div></div>
-          <button id="new-chat" class="new-chat-button chat-new-button" type="button">+ New Chat</button>
+    <main class="chat-layout" aria-label="Ariadne conversation">
+      <aside class="chat-sidebar" aria-label="Chat history">
+        <section class="chat-sidebar-panel">
+          <div class="sidebar-heading"><div><span class="eyebrow">CHAT MEMORY</span><h2>Chats</h2><p>Recent conversations · 7 days</p></div></div>
+          <button id="new-chat" class="new-chat-button chat-new-button" type="button">+ New chat</button>
           <div class="chat-actions" aria-label="Current chat actions">
             <button id="save-chat" class="chat-action" type="button">Save to Inbox</button>
             <button id="export-chat" class="chat-action" type="button">Export Markdown</button>
@@ -25,28 +25,38 @@
           <div id="recent-chat-list" class="recent-chat-list" aria-live="polite"><div class="loading-row">Reading recent chats…</div></div>
         </section>
       </aside>
-      <section class="panel chat-panel" aria-labelledby="chat-heading">
-        <div class="panel-heading compact chat-panel-heading">
-          <div><span class="eyebrow">CONVERSATION</span><h1 id="chat-heading">Ask Ariadne</h1><p id="chat-subtitle">A focused local conversation workspace.</p></div>
-          <div class="chat-heading-tools"><div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div><button id="workbench-toggle" class="chat-collapse" type="button" aria-expanded="false" aria-controls="workbench">Workbench</button><button id="collapse-chat" class="chat-collapse" type="button" hidden>Back to Home</button></div>
-        </div>
-        <details id="chat-activity" class="chat-activity" hidden>
-          <summary><span id="chat-activity-summary">Activity</span><span class="activity-chevron">⌄</span></summary>
-          <div id="chat-activity-list" class="chat-activity-list" aria-live="polite"></div>
-        </details>
-        <div id="chat-log" class="chat-log" aria-live="polite"><p class="empty-chat quiet">This is a clean local chat. Ask a question to begin.</p></div>
+      <button id="sidebar-resize" class="sidebar-resize" type="button" role="separator" aria-label="Resize chat history sidebar" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="420" aria-valuenow="290" tabindex="0"></button>
+      <section class="chat-panel" aria-labelledby="chat-heading">
+        <header class="chat-panel-heading">
+          <div class="chat-title-block"><span class="eyebrow">CONVERSATION</span><h1 id="chat-heading">Ask Ariadne</h1><p id="chat-subtitle">A focused local conversation workspace.</p></div>
+          <div class="chat-heading-tools">
+            <button id="sidebar-toggle" class="chat-utility-button" type="button" aria-expanded="true" aria-controls="chat-sidebar">Hide history</button>
+            <button id="diagnostics-toggle" class="chat-utility-button" type="button" aria-expanded="false" aria-controls="diagnostics-drawer">Diagnostics</button>
+            <button id="workbench-toggle" class="chat-utility-button" type="button" aria-expanded="false" aria-controls="workbench">Workbench</button>
+            <div class="model-note"><span class="status-dot"></span><span><strong id="model-name">qwen3.5:9b-q4_K_M</strong><small id="model-context">16K context · local Ollama</small></span></div>
+          </div>
+        </header>
+        <div id="chat-log" class="chat-log" aria-live="polite" aria-relevant="additions text"><p class="empty-chat quiet">This is a clean local chat. Ask a question to begin.</p></div>
         <form id="ask-form" class="ask-form">
           <label class="sr-only" for="ask-input">Ask Ariadne a question</label>
-          <div class="ask-input-row"><textarea id="ask-input" rows="2" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea><button id="ask-submit" class="primary-button" type="submit">Ask <span>↗</span></button></div>
-          <div class="tool-row"><label class="attach-button" for="document-input">+ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
-          <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet ask-status" role="status">Ready.</span></div>
+          <div class="composer-box"><div class="ask-input-row"><textarea id="ask-input" rows="2" maxlength="8000" placeholder="Ask Ariadne anything…" required></textarea><button id="ask-submit" class="primary-button" type="submit">Ask <span>↗</span></button></div>
+            <div class="tool-row"><label class="attach-button" for="document-input">＋ Attach</label><input id="document-input" type="file" accept=".md,.txt,text/markdown,text/plain" multiple hidden><button id="web-search-toggle" class="tool-button web-search-toggle" type="button" aria-pressed="false" title="Search configured live sources for this message">Search web</button><div class="tools-wrap"><button id="tools-button" class="tool-button" type="button" aria-expanded="false" aria-controls="tools-palette">Tools</button><div id="tools-palette" class="tools-palette" hidden></div></div><div id="attachment-list" class="attachment-list" aria-live="polite"></div></div>
+            <div class="ask-controls"><label class="mode-label" for="knowledge-mode">Knowledge source <select id="knowledge-mode"><option value="auto">Use Vault when relevant</option><option value="always">Always use my Vault</option><option value="never">Conversation only</option></select></label><span id="ask-status" class="quiet ask-status" role="status">Ready.</span></div>
+          </div>
         </form>
       </section>
-      <aside id="workbench" class="panel workbench-panel" aria-labelledby="workbench-heading" hidden>
-        <div class="workbench-heading"><div><span class="eyebrow">OPTIONAL SURFACE</span><h2 id="workbench-heading">Workbench</h2></div><button id="workbench-close" class="icon-button" type="button" aria-label="Close Workbench">×</button></div>
-        <div id="workbench-content" class="workbench-content"><div class="workbench-empty"><span class="workbench-mark">◇</span><strong>Nothing open yet</strong><p>Code, images, documents and other wide outputs can appear here when a conversation produces them.</p></div></div>
-      </aside>
     </main>
+    <aside id="workbench" class="chat-drawer workbench-panel" aria-labelledby="workbench-heading" aria-hidden="true" hidden>
+      <div class="workbench-heading"><div><span class="eyebrow">SIDE WORKSPACE</span><h2 id="workbench-heading">Workbench</h2></div><button id="workbench-close" class="icon-button" type="button" aria-label="Close Workbench">×</button></div>
+      <div id="workbench-content" class="workbench-content"><div class="workbench-empty"><span class="workbench-mark">◇</span><strong>Nothing open yet</strong><p>Open a code answer here to edit it, copy it, or download it as a file.</p></div></div>
+    </aside>
+    <aside id="diagnostics-drawer" class="chat-drawer diagnostics-drawer" aria-labelledby="diagnostics-heading" aria-hidden="true" hidden>
+      <div class="workbench-heading"><div><span class="eyebrow">OPTIONAL DETAILS</span><h2 id="diagnostics-heading">Diagnostics</h2></div><button id="diagnostics-close" class="icon-button" type="button" aria-label="Close Diagnostics">×</button></div>
+      <div class="diagnostics-content"><p class="drawer-hint">Request activity and per-response model, timing, source, and Vault details.</p>
+        <details id="chat-activity" class="chat-activity"><summary><span id="chat-activity-summary">No request activity yet</span><span class="activity-chevron">⌄</span></summary><div id="chat-activity-list" class="chat-activity-list" aria-live="polite"><p class="quiet">Activity appears here while Ariadne works.</p></div></details>
+        <p class="drawer-hint">Each answer also has its own timing and evidence details in the conversation.</p>
+      </div>
+    </aside>
     <footer class="home-footer-note"><span class="shield">✓</span><span><strong>Private by design.</strong> This conversation stays on this computer.</span><a href="/system-details">Open the detailed console →</a></footer>
   </div>
   <script src="/page-shell.js"></script>
