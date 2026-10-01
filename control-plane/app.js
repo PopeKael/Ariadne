@@ -306,6 +306,8 @@ let vaultHeartbeat = null;
 let vaultHeartbeatInFlight = false;
 let vaultJobLastOutput = null;
 let vaultJobLastOutputAt = 0;
+let vaultActiveJobId = null;
+let vaultActiveJobAction = null;
 let vaultIngestionModel = null;
 let vaultSessionTransition = 0;
 
@@ -318,7 +320,11 @@ async function postJson(url, payload, keepalive = false) {
     cache: "no-store",
   });
   const value = await response.json();
-  if (!response.ok || value.ok === false) throw new Error(value.message || `HTTP ${response.status}`);
+  if (!response.ok || value.ok === false) {
+    const error = new Error(value.message || `HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
   return value;
 }
 
@@ -357,6 +363,12 @@ function setVaultControlsDisabled(disabled) {
   document.querySelectorAll("[data-vault-action], [data-plugin-action], #vault-query-form button").forEach((button) => {
     button.disabled = disabled;
   });
+  if (!vaultSessionId) {
+    vaultActiveJobId = null;
+    vaultActiveJobAction = null;
+    const controls = document.querySelector("#vault-job-controls");
+    if (controls) controls.hidden = true;
+  }
 }
 
 function markVaultSessionLost(message = "Start an Ariadne session first.") {
@@ -380,6 +392,22 @@ function renderVaultJob(job) {
   const output = document.querySelector("#vault-job-output");
   if (!monitor || !title || !state || !output) return;
   monitor.hidden = false;
+  if (job.job_id) vaultActiveJobId = job.job_id;
+  if (job.action) vaultActiveJobAction = job.action;
+  const controls = document.querySelector("#vault-job-controls");
+  if (controls) {
+    controls.hidden = !job.controllable;
+    const paused = job.state === "paused";
+    const stopped = job.state === "stopped";
+    controls.querySelector('[data-vault-control="pause"]').disabled = !["running"].includes(job.state);
+    controls.querySelector('[data-vault-control="resume"]').disabled = !(paused || stopped);
+    controls.querySelector('[data-vault-control="stop"]').disabled = !["running", "paused", "pausing"].includes(job.state);
+    const note = document.querySelector("#vault-job-control-note");
+    note.textContent = job.state === "pausing" || job.state === "stopping"
+      ? "Waiting for the current model call to save its segment…"
+      : paused || stopped ? "Checkpoint saved. Resume keeps accepted work."
+      : "Pause or Stop saves the current segment before taking effect.";
+  }
   title.textContent = job.action ? `Knowledge Vault · ${job.action}` : "Knowledge Vault operation";
   if (job.state === "starting") {
     vaultJobLastOutput = null;
@@ -443,13 +471,22 @@ function activateVaultSession(session, surface) {
   setVaultControlsDisabled(false);
   updateSessionButtons();
   const seconds = Math.max(3, Number(session.heartbeat_seconds || 5));
+  let heartbeatFailures = 0;
   vaultHeartbeat = setInterval(async () => {
     if (!vaultSessionId || vaultHeartbeatInFlight) return;
     vaultHeartbeatInFlight = true;
     try {
       await postJson("/api/session/heartbeat", {session_id: vaultSessionId});
+      heartbeatFailures = 0;
     } catch (error) {
-      markVaultSessionLost("The session expired. Start it again to continue.");
+      heartbeatFailures += 1;
+      if (error.status === 404 || heartbeatFailures >= 3) {
+        const lostId = vaultSessionId;
+        markVaultSessionLost(error.status === 404
+          ? "The session expired. Start it again to continue."
+          : "The session connection failed repeatedly. Start it again to continue.");
+        postJson("/api/session/close", {session_id: lostId}).catch(() => {});
+      }
     } finally {
       vaultHeartbeatInFlight = false;
     }
@@ -560,7 +597,7 @@ async function waitForVaultJob(jobId, onUpdate, onReconnect) {
     if (!response.ok) throw new Error(payload.message || "The vault job could not be read.");
     consecutiveFailures = 0;
     onUpdate(payload);
-    if (["complete", "error", "cancelled"].includes(payload.state)) return payload;
+    if (["complete", "error", "cancelled", "stopped"].includes(payload.state)) return payload;
     await new Promise((resolve) => setTimeout(resolve, 700));
   }
 }
@@ -611,6 +648,11 @@ async function runVaultAction(button) {
       },
     );
     const detail = finished.output ? `${finished.message}\n${finished.output}` : finished.message;
+    if (finished.state === "stopped") {
+      status.className = "vault-status";
+      status.textContent = "Stopped safely. Checkpoint saved; use Resume to continue.";
+      return;
+    }
     if (finished.state !== "complete") {
       status.className = "vault-status error";
       status.textContent = detail || "The vault operation failed.";
@@ -625,6 +667,34 @@ async function runVaultAction(button) {
     else renderVaultJob({action, state: "error", stage: "GPU preparation failed", message: error.message, output: error.message});
   } finally {
     setVaultControlsDisabled(!vaultSessionId);
+  }
+}
+
+async function controlVaultJob(button) {
+  if (!vaultSessionId || !vaultActiveJobId) return;
+  const status = document.querySelector("#vault-query-status");
+  button.disabled = true;
+  try {
+    const previousId = vaultActiveJobId;
+    const result = await postJson("/api/vault/control", {
+      session_id: vaultSessionId, job_id: previousId, command: button.dataset.vaultControl,
+    });
+    status.textContent = result.message;
+    if (result.job_id !== previousId) {
+      vaultActiveJobId = result.job_id;
+      setVaultControlsDisabled(true);
+      const finished = await waitForVaultJob(result.job_id, (job) => {
+        status.textContent = job.message || "Working…";
+        renderVaultJob(job);
+      });
+      status.className = finished.state === "error" ? "vault-status error" : "vault-status";
+      status.textContent = finished.message;
+      setVaultControlsDisabled(!vaultSessionId);
+    }
+  } catch (error) {
+    status.className = "vault-status error";
+    status.textContent = error.message;
+    button.disabled = false;
   }
 }
 
@@ -888,6 +958,7 @@ function setupViewModes() {
 
 function setupVaultControls() {
   document.querySelectorAll("[data-vault-action]").forEach((button) => button.addEventListener("click", () => runVaultAction(button)));
+  document.querySelectorAll("[data-vault-control]").forEach((button) => button.addEventListener("click", () => controlVaultJob(button)));
   document.querySelector("#vault-query-form")?.addEventListener("submit", (event) => { event.preventDefault(); runVaultQuery("search"); });
   document.querySelector("#vault-summary-button")?.addEventListener("click", () => runVaultQuery("summary"));
   document.querySelector("#vault-librarian-button")?.addEventListener("click", () => runVaultQuery("answer"));

@@ -138,6 +138,12 @@
     </div>
     <div class="vault-job-monitor" id="vault-job-monitor" hidden>
       <div class="vault-job-monitor-head"><strong id="vault-job-title">Vault operation</strong><span id="vault-job-state">Waiting</span></div>
+      <div class="vault-job-controls" id="vault-job-controls" hidden>
+        <button data-vault-control="pause">Pause</button>
+        <button data-vault-control="resume" disabled>Resume</button>
+        <button data-vault-control="stop">Stop</button>
+        <span id="vault-job-control-note">Pause or Stop saves the current segment before taking effect.</span>
+      </div>
       <pre id="vault-job-output" aria-live="polite"></pre>
     </div>
     <div class="vault-query">

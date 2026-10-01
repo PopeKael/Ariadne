@@ -3,6 +3,7 @@ import time
 import json
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -19,7 +20,10 @@ class VaultV2ControlTests(unittest.TestCase):
                    "regression_tests": ("Run-Rebuild-Tests.ps1", [])}
         page = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
         for action, (script, arguments) in actions.items():
-            with self.subTest(action=action), patch.object(server, "VAULT_SYSTEM", system), \
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as temporary, \
+                    patch.object(server, "VAULT_JOB_ROOT", Path(temporary)), \
+                    patch.object(server, "_vault_ingest_recovery", return_value=None), \
+                    patch.object(server, "VAULT_SYSTEM", system), \
                     patch.object(server, "VAULT_ROOT", system.parent), \
                     patch.object(server, "JOBS", {}), \
                     patch.object(server, "SESSIONS", {"test": {"last_seen": time.monotonic(), "jobs": set()}}), \
@@ -32,7 +36,12 @@ class VaultV2ControlTests(unittest.TestCase):
                 job_id = server.start_vault_action("test", action)
                 command, cwd = start.call_args.args
                 self.assertEqual(command[command.index("-File") + 1], str(system / script))
-                self.assertEqual(command[command.index("-File") + 2:], arguments)
+                actual_arguments = command[command.index("-File") + 2:]
+                if action in {"ingest", "full_rebuild"}:
+                    self.assertEqual(actual_arguments[0], "-ControlFile")
+                    self.assertNotIn("-Background", actual_arguments)
+                else:
+                    self.assertEqual(actual_arguments, arguments)
                 self.assertEqual(cwd, system.parent)
                 self.assertEqual(server.JOBS[job_id]["action"], action)
 

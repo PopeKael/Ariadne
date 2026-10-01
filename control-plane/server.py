@@ -4449,7 +4449,8 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
         if not job or job.get("state") in {"cancelled", "releasing"}:
             _release_vault_ingestion_gpu(job or {})
             return
-        job["state"] = "complete" if return_code == 0 else "error"
+        terminal_state = "complete" if return_code == 0 else "error"
+        job["state"] = "releasing" if job.get("gpu_reservation_id") else terminal_state
         job["message"] = "Operation complete." if return_code == 0 else f"Operation exited with code {return_code}."
         technical_output = "\n".join(line for line in output if not line.startswith("ARIADNE_RESULT_JSON:"))
         job["output"] = technical_output[-8000:]
@@ -4465,6 +4466,9 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
         with SESSION_LOCK:
             if JOBS.get(job_id) is job:
                 job["gpu_state"] = gpu_release
+    with SESSION_LOCK:
+        if JOBS.get(job_id) is job and job.get("state") == "releasing":
+            job["state"] = terminal_state
     if job.get("action") == "ingest":
         _start_vault_session_model_cooldown(job.get("session_id"), str(job.get("gpu_model") or ""))
     if isinstance(presenter, CoreActivityPresenter):
@@ -4487,6 +4491,10 @@ def _watch_action(job_id: str, process: subprocess.Popen) -> None:
 def _timeout_job(job_id: str) -> None:
     with SESSION_LOCK:
         initial_job = JOBS.get(job_id)
+        # Foreground ingestion may span an arbitrarily large source or remain
+        # deliberately paused. Its cooperative controls own the lifecycle.
+        if initial_job and initial_job.get("controllable") and initial_job.get("action") in {"ingest", "full_rebuild"}:
+            return
         timeout_seconds = float(initial_job.get("timeout_seconds", JOB_TIMEOUT_SECONDS)) if initial_job else JOB_TIMEOUT_SECONDS
     time.sleep(timeout_seconds)
     with SESSION_LOCK:
@@ -4518,7 +4526,60 @@ def _timeout_job(job_id: str) -> None:
     if isinstance(presenter, CoreActivityPresenter):
         presenter.failed("Cleanup worker timed out and was terminated.")
 
-def start_vault_action(session_id: str, action: str) -> str:
+def _vault_ingest_recovery() -> Path | None:
+    base = VAULT_ROOT / "00_System/Data/vault-v2"
+    candidates = [base / "daily-current", *sorted((base / "daily").glob("*"), reverse=True)]
+    for directory in candidates:
+        if not (directory / "state.json").is_file() or (directory / "completion-report.json").exists():
+            continue
+        manifest_path = directory / "source-manifest.json"
+        if not manifest_path.is_file():
+            continue
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+        state = json.loads((directory / "state.json").read_text(encoding="utf-8-sig"))
+        if manifest.get("records") and all((VAULT_ROOT / state.get("integrated_paths", {}).get(row["stable_source_id"], row["relative_path"])).is_file() for row in manifest["records"]):
+            return directory
+    return None
+
+
+def _vault_control_status(job: dict) -> dict:
+    path = job.get("control_status_path")
+    if isinstance(path, Path) and path.is_file():
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    return {}
+
+
+def control_vault_action(session_id: str, job_id: str, command: str) -> dict:
+    if command not in {"pause", "resume", "stop"}:
+        raise ValueError("Unknown ingest control.")
+    with SESSION_LOCK:
+        job = JOBS.get(job_id)
+        if not job or job.get("session_id") != session_id or not job.get("control_path"):
+            raise RuntimeError("No controllable ingest belongs to this session.")
+        status = _vault_control_status(job)
+        process = job.get("process")
+        exited = process.poll() is not None
+        if exited:
+            if command != "resume" or status.get("state") not in {"stopped", "paused"}:
+                raise RuntimeError("This ingest has already ended.")
+            run_dir = Path(status["run_dir"]).resolve()
+            run_dir.relative_to(VAULT_ROOT.resolve() / "00_System/Data")
+            action = str(job["action"])
+        else:
+            control_path = job["control_path"]
+            control_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = Path(str(control_path) + ".request.tmp")
+            temporary.write_text(json.dumps({"command": "run" if command == "resume" else command}), encoding="utf-8")
+            os.replace(temporary, control_path)
+            job["control_requested"] = command
+            job["message"] = ("Resuming saved segments…" if command == "resume" else
+                              f"{command.title()} requested; waiting for the current model call to checkpoint.")
+            return {"ok": True, "job_id": job_id, "message": job["message"]}
+    return {"ok": True, "job_id": start_vault_action(session_id, action, resume_run=run_dir),
+            "message": "Resuming the saved ingest; accepted work is retained."}
+
+
+def start_vault_action(session_id: str, action: str, *, resume_run: Path | None = None) -> str:
     script_name, arguments = VAULT_ACTIONS[action]
     script_path = VAULT_SYSTEM / script_name
     if not script_path.is_file():
@@ -4527,6 +4588,21 @@ def start_vault_action(session_id: str, action: str) -> str:
     if not shell:
         raise RuntimeError("PowerShell is not available.")
     job_id = uuid.uuid4().hex
+    arguments = list(arguments)
+    control_path = None
+    if action in {"ingest", "full_rebuild"}:
+        with SESSION_LOCK:
+            if any(job.get("action") in {"ingest", "full_rebuild"} and
+                   job.get("process") and job["process"].poll() is None for job in JOBS.values()):
+                raise RuntimeError("An ingest is already running or paused. Use its Pause, Resume or Stop controls.")
+        VAULT_JOB_ROOT.mkdir(parents=True, exist_ok=True)
+        control_path = VAULT_JOB_ROOT / f"{job_id}.control.json"
+        control_path.write_text('{"command":"run"}', encoding="utf-8")
+        arguments += ["-ControlFile", str(control_path)]
+        if action == "ingest":
+            resume_run = resume_run or _vault_ingest_recovery()
+            if resume_run:
+                arguments += ["-ResumeRun", str(resume_run)]
     gpu_state = None
     if action == "ingest":
         gpu_state = _acquire_vault_ingestion_gpu(job_id)
@@ -4547,6 +4623,8 @@ def start_vault_action(session_id: str, action: str) -> str:
            "state": "running", "message": "Starting…", "output": "", "action": action,
            "timeout_seconds": VAULT_ACTION_TIMEOUT_SECONDS.get(action, JOB_TIMEOUT_SECONDS),
            "gpu_state": gpu_public_state}
+    if control_path:
+        job.update(control_path=control_path, control_status_path=Path(str(control_path) + ".status.json"), controllable=True)
     if gpu_state:
         job.update(gpu_reservation_id=job_id, gpu_model=gpu_state["model"],
                    gpu_activity=gpu_state["_activity"], gpu_admission=gpu_state["_admission"])
@@ -4800,10 +4878,19 @@ def job_payload(job_id: str) -> dict[str, object] | None:
         if not job:
             return None
         process = job.get("process")
-        if isinstance(process, subprocess.Popen) and process.poll() is not None and job.get("state") == "running":
+        if isinstance(process, subprocess.Popen) and process.poll() is not None and job.get("state") == "running" and not job.get("controllable"):
             job["state"] = "error"
             job["message"] = "Worker exited before reporting a result."
-        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "cancel_event", "config_runtime_path", "result_runtime_path", "gpu_reservation_id", "gpu_model", "gpu_activity", "gpu_admission", "gpu_released"}}
+        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "cancel_event", "config_runtime_path", "result_runtime_path", "gpu_reservation_id", "gpu_model", "gpu_activity", "gpu_admission", "gpu_released", "control_path", "control_status_path"}}
+        control_status = _vault_control_status(job)
+        if control_status and (control_status.get("state") in {"paused", "stopped"} or job.get("state") == "running"):
+            result.update(control_status)
+        if result.get("state") == "stopped" and job.get("state") in {"running", "releasing"}:
+            result["state"] = "stopping"
+            result["message"] = "Checkpoint saved; waiting for the worker to release its resources…"
+        if job.get("control_requested") in {"pause", "stop"} and result.get("state") == "running":
+            result["state"] = "pausing" if job["control_requested"] == "pause" else "stopping"
+            result["message"] = job["message"]
         status_path = job.get("status_path")
         if isinstance(status_path, Path) and status_path.is_file():
             try:
@@ -8782,6 +8869,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": True, "job_id": start_vault_action(session_id, action)})
                 except RuntimeError as exc:
                     self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
+                return
+            if path == "/api/vault/control":
+                try:
+                    self.send_json(control_vault_action(session_id, str(body.get("job_id") or ""), str(body.get("command") or "")))
+                except (RuntimeError, ValueError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
                 return
             if path == "/api/vault/query":
                 query = body.get("query")

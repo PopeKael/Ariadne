@@ -1,8 +1,8 @@
 [CmdletBinding()]
-param([switch]$DryRun)
+param([switch]$DryRun, [switch]$Pause, [string]$ResumeRun, [string]$ControlFile, [switch]$Background)
 
 $ErrorActionPreference = 'Stop'
-& (Join-Path $PSScriptRoot 'Invoke-VaultV2.ps1') -Workflow 'Daily-Ingest.ps1' -WorkflowParameters @{ DryRun = $DryRun }
+& (Join-Path $PSScriptRoot 'Invoke-VaultV2.ps1') -Workflow 'Daily-Ingest.ps1' -WorkflowParameters @{ DryRun = $DryRun; Pause = $Pause; ResumeRun = $ResumeRun; ControlFile = $ControlFile; Background = $Background }
 exit $LASTEXITCODE
 
 # Historical implementation below is unreachable; current operations delegate above.
