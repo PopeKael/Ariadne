@@ -1,5 +1,7 @@
 # Checkpointed rebuild runner
 
+> Historical v1 runner documentation. The current Full Vault Rebuild uses the maintained external `full_vault_rebuild.py` v2 entrypoint. Process Inbox and regression-test wrappers also forward to that Vault. See [current v2 operational controls](../../KnowledgeVault/docs/Vault-v2-Operations.md).
+
 `00_System/run_rebuild.py` is the review-only, resumable runner for rebuild-v1. It reads canonical source Markdown and writes only beneath `00_System/Data/rebuild-v1/`.
 
 Start or resume the full rebuild:

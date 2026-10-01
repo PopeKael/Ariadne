@@ -13,6 +13,11 @@ param(
     [switch]$NoBrowser
 )
 
+$ErrorActionPreference = 'Stop'
+& (Join-Path $PSScriptRoot 'Invoke-VaultV2.ps1') -Workflow 'Start-AriadneControl.ps1' -WorkflowParameters @{ Port = $Port; NoBrowser = $NoBrowser }
+exit $LASTEXITCODE
+
+# Historical implementation below is unreachable; current operations delegate above.
 $Vault = Split-Path $PSScriptRoot -Parent
 $MenuPath = Join-Path $PSScriptRoot 'Ariadne-Control.html'
 $QueryPagePath = Join-Path $PSScriptRoot 'Ariadne-Query.html'

@@ -1,5 +1,7 @@
 # Supported Knowledge Vault commands
 
+> Historical v1 command documentation retained for context. Current Knowledge Vault controls dispatch to the configured external v2 Vault. The PowerShell compatibility entrypoints in this repository forward there; they do not run the local v1 implementation. See [current v2 operational controls](../../KnowledgeVault/docs/Vault-v2-Operations.md).
+
 This is the operational command surface for rebuild-v1. Commands not listed
 below are either internal helpers, one-off migration tools, or legacy writers.
 Do not use them for ordinary intake, graph maintenance, publishing, retries, or

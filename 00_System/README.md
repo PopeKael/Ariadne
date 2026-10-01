@@ -39,7 +39,7 @@ Search results carry a structured citation with the document and chunk identity,
 
 ## Control menu
 
-`Start-AriadneControl.ps1` is the loopback-only rebuild-v1 command menu. Its allow-list is limited to daily ingestion, index status/rebuild, retrieval evaluation, rebuild regression tests, and read-only failure audit. The definitive command surface is documented in [Supported Commands](../docs/Supported-Commands.md).
+`Start-AriadneControl.ps1` forwards to the configured external Knowledge Vault's current v2 menu. Process Inbox, Failure Audit, Rebuild Embeddings, Full Vault Rebuild and Regression Tests also forward to the maintained external workflows. Local v1 implementations remain historical compatibility evidence; current paths are documented in [Vault v2 Operations](../../KnowledgeVault/docs/Vault-v2-Operations.md).
 
 ## Ariadne identity and query context
 

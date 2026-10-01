@@ -2,6 +2,12 @@
 param()
 
 $ErrorActionPreference = 'Stop'
+& (Join-Path $PSScriptRoot 'Invoke-VaultV2.ps1') -Workflow 'Run-Rebuild-Tests.ps1'
+exit $LASTEXITCODE
+
+# Historical implementation below is unreachable; current operations delegate above.
+
+$ErrorActionPreference = 'Stop'
 $Vault = Split-Path -Parent $PSScriptRoot
 Push-Location $PSScriptRoot
 try {
