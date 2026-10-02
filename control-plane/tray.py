@@ -19,7 +19,7 @@ import pystray
 import server
 
 
-URL = f"http://{server.HOST}:{server.PORT}/"
+URL = server.PUBLIC_ORIGIN + "/"
 TRAY_MUTEX_NAME = "Local\\AriadneControlPlaneTray"
 
 

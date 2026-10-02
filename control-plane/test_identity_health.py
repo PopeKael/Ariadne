@@ -124,6 +124,22 @@ class IdentityHealthTests(unittest.TestCase):
         identity_service = next(item for item in fallback["services"] if item["name"] == "Identity kernel")
         self.assertEqual(identity_service["state"], "attention")
 
+    def test_vault_index_does_not_mask_signal_matching_failure(self):
+        for semantic, service_state, expected in [
+            ({"state": "unavailable", "error": "Embedding provider is unavailable."}, "attention", "attention"),
+            ({"state": "healthy"}, "healthy", "healthy"),
+            ({}, "healthy", "attention"),
+            ({"state": "healthy"}, "offline", "attention"),
+        ]:
+            with self.subTest(semantic=semantic, service_state=service_state), \
+                 patch.object(server.SIGNAL_SERVICE_CLIENT, "health", return_value={"state": service_state, "semantic": semantic}):
+                payload = self.health_with_metadata({"version": "1.1.0", "source": "test"})
+            services = {item["name"]: item for item in payload["services"]}
+            self.assertEqual(services["Semantic index"]["state"], "healthy")
+            self.assertEqual(services["Signal matching"]["state"], expected)
+            if semantic.get("error"):
+                self.assertEqual(services["Signal matching"]["detail"], semantic["error"])
+
     def test_health_metadata_matches_home_prompt_and_persisted_chat_metadata(self):
         metadata = {
             "id": "ariadne", "version": "1.1.0",

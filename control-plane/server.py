@@ -35,6 +35,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, parse_qsl, unquote, urlencode, urlparse, urlsplit, urlunsplit
 
 
+from workspace_proxy import proxy_workspace
 from home_chat_store import ChatStore, title_from_document
 from home_information import home_information_payload
 from core_interactions import CoreInteractionStream
@@ -62,6 +63,8 @@ from librarian_harness import (
     request_needs_personal_context,
 )
 from ollama_runtime import start_owned_ollama, stop_owned_ollama
+from tls_transport import client_context, server_context
+from https_gateway import load_gateway, start_gateway
 from evidence_router import decide as decide_evidence, external_search_needed
 from search_providers import SearchProviderRegistry
 from plugin_activity import PluginActivityStream
@@ -80,6 +83,7 @@ PROJECT_ROOT = ROOT.parent
 HOST = os.environ.get("ARIADNE_BIND_ADDRESS", "127.0.0.1")
 PORT = int(os.environ.get("ARIADNE_PORT", "8765"))
 LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
+PUBLIC_ORIGIN = "https://ariadne.dia.net.au"
 OLLAMA_URL = "http://127.0.0.1:11434"
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
@@ -1353,7 +1357,7 @@ def gpu_status() -> dict[str, object]:
 
 def probe_http(url: str, timeout: float = 2.5) -> bool:
     try:
-        context = ssl._create_unverified_context() if url.startswith("https://") else None
+        context = client_context() if url.startswith("https://") else None
         with urllib.request.urlopen(url, timeout=timeout, context=context) as response:
             return 200 <= response.status < 500
     except (OSError, urllib.error.URLError):
@@ -1362,7 +1366,7 @@ def probe_http(url: str, timeout: float = 2.5) -> bool:
 
 def json_http(url: str, timeout: float = 2.5) -> dict[str, object]:
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    context = ssl._create_unverified_context() if url.startswith("https://") else None
+    context = client_context() if url.startswith("https://") else None
     with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -2518,7 +2522,7 @@ def lmstudio_status() -> dict[str, object]:
 
 def interactive_ai_status() -> dict[str, object]:
     wan2gp = wan2gp_status()
-    wan2gp["url"] = f"{VIDEO_RENDERER_URL}/"
+    wan2gp["url"] = PUBLIC_ORIGIN + "/workspaces/video/"
     image = image_engine_status()
     process_running = INTERACTIVE_PROCESS is not None and INTERACTIVE_PROCESS.poll() is None
     wsl_running = any(item.get("name") == "Ubuntu-24.04" and item.get("state") == "Running" for item in parse_wsl(run_readonly(["wsl.exe", "--list", "--verbose"])))
@@ -3341,7 +3345,7 @@ def image_engine_status() -> dict[str, object]:
             "lifecycle_state": "BUSY" if busy else "READY",
             "detail": "ComfyUI image engine · GPU backend ready" if not busy else "ComfyUI is rendering an image.",
             "engine": "ComfyUI",
-            "url": f"{IMAGE_ENGINE_URL}/",
+            "url": PUBLIC_ORIGIN + "/image",
             "system": system,
             "models": models,
             "sizes": image_sizes_payload(),
@@ -3354,7 +3358,7 @@ def image_engine_status() -> dict[str, object]:
                 "lifecycle_state": "STARTING_BACKEND",
                 "detail": "ComfyUI image engine is starting.",
                 "engine": "ComfyUI",
-                "url": f"{IMAGE_ENGINE_URL}/",
+                "url": PUBLIC_ORIGIN + "/image",
                 "models": models,
                 "sizes": image_sizes_payload(),
                 "gpu": gpu_owner_status(),
@@ -3364,7 +3368,7 @@ def image_engine_status() -> dict[str, object]:
             "lifecycle_state": "STOPPED",
             "detail": "ComfyUI image engine is stopped - port 8188 is not listening",
             "engine": "ComfyUI",
-            "url": f"{IMAGE_ENGINE_URL}/",
+            "url": PUBLIC_ORIGIN + "/image",
             "models": models,
             "sizes": image_sizes_payload(),
             "gpu": gpu_owner_status(),
@@ -5150,25 +5154,14 @@ def read_home_events(limit: int = 12, *, visible_only: bool = True) -> list[dict
 
 
 def home_index_status() -> dict[str, object]:
-    path = VAULT_SYSTEM / "Data" / "embedding-index.json"
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        entries = payload.get("entries", {}) if isinstance(payload, dict) else {}
-        count = len(entries) if isinstance(entries, dict) else 0
-        updated = payload.get("updated_at") if isinstance(payload, dict) else None
-        return {
-            "state": "healthy" if count else "attention",
-            "detail": f"{count:,} semantic passages indexed" if count else "Semantic index exists but contains no passages",
-            "entries": count,
-            "updated_at": updated,
-        }
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        return {
-            "state": "attention",
-            "detail": "Semantic index has not been built on this machine.",
-            "entries": 0,
-            "updated_at": None,
-        }
+    counts = vault_counts()
+    count = int(counts.get("embedding_chunks", 0))
+    return {
+        "state": "healthy" if count else "attention",
+        "detail": f"{count:,} semantic passages indexed" if count else "Semantic index has not been built on this machine.",
+        "entries": count,
+        "updated_at": counts.get("embedding_updated_at"),
+    }
 
 
 def configured_ollama_store() -> str:
@@ -5621,6 +5614,13 @@ def home_health_payload() -> dict[str, object]:
     add("Semantic index", str(index["state"]), str(index["detail"]))
     signal_health = SIGNAL_SERVICE_CLIENT.health()
     signal_state = str(signal_health.get("state") or "attention")
+    semantic = signal_health.get("semantic") or {}
+    semantic_state = str(semantic.get("state") or "unknown").casefold()
+    add(
+        "Signal matching",
+        "healthy" if semantic_state == "healthy" and signal_state != "offline" else "attention",
+        str(semantic.get("error") or ("Hera semantic matching is healthy." if semantic_state == "healthy" else "Hera semantic matching has not reported healthy status.")),
+    )
     add(
         "Signal Service",
         "healthy" if signal_state == "healthy" else "offline" if signal_state == "offline" else "attention",
@@ -7682,9 +7682,30 @@ class AriadneHandler(BaseHTTPRequestHandler):
             raise ValueError("Request body must be a JSON object.")
         return value
 
+    def workspace_request(self) -> bool:
+        for prefix, origin in (("/workspaces/video/", VIDEO_RENDERER_URL), ("/workspaces/gods-eye-view/", GODS_EYE_VIEW_URL)):
+            if self.path.startswith(prefix):
+                if self.headers.get("X-Forwarded-Proto") != "https":
+                    self.send_redirect(PUBLIC_ORIGIN + self.path)
+                else:
+                    proxy_workspace(self, prefix, origin)
+                return True
+        return False
+
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
+        if path == "/api/core/ready":
+            self.send_json({"ok": True, "public_origin": PUBLIC_ORIGIN})
+            return
+        # Browser entry points must retain the canonical secure origin. The
+        # owned TLS gateway marks its loopback requests to avoid a redirect loop.
+        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/create", "/image", "/system", "/system-details", "/details", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html"}
+                and self.headers.get("X-Forwarded-Proto") != "https"):
+            self.send_redirect(PUBLIC_ORIGIN + self.path)
+            return
+        if self.workspace_request():
+            return
         if path == "/api/news/briefing-snapshot":
             snapshot = _news_snapshot_with_cached_images(NEWS_BRIEFING_CACHE.snapshot())
             self.send_json(snapshot, 200 if snapshot["available"] else 503)
@@ -7781,7 +7802,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/launch/gods-eye-view":
             result = _start_gods_eye_view()
             if result.get("ok") or _gods_eye_view_probe():
-                self.send_redirect(f"{GODS_EYE_VIEW_URL}/")
+                self.send_redirect(PUBLIC_ORIGIN + "/workspaces/gods-eye-view/")
             else:
                 self.send_json(result, 409)
             return
@@ -8049,6 +8070,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         global IDLE_SHUTDOWN_DONE
+        if self.workspace_request():
+            return
         _expire_sessions()
         path = urlparse(self.path).path
         try:
@@ -8913,6 +8936,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
 
 def main() -> None:
     global HTTP_SERVER
+    # Reject missing/invalid TLS configuration before starting owned workloads.
+    tls = server_context()
+    gateway = load_gateway(PROJECT_ROOT / "Data" / "tls" / "https-gateway.json")
     if os.name == "nt" and os.environ.get("ARIADNE_ALLOW_UNSUPERVISED_CORE") != "1":
         deadline = time.monotonic() + 8.0
         while time.monotonic() < deadline:
@@ -8946,15 +8972,26 @@ def main() -> None:
     start_news_image_sync()
     expire_home_chats()
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
+    if tls is not None:
+        try:
+            httpd.socket = tls.wrap_socket(httpd.socket, server_side=True)
+        except Exception:
+            httpd.server_close()
+            raise
     HTTP_SERVER = httpd
     start_lifecycle_watchdog()
     start_home_chat_model_preload()
-    print(f"Ariadne listening at http://{HOST}:{PORT}")
+    print(f"Ariadne listening at {'https' if tls is not None else 'http'}://{HOST}:{PORT}")
+    gateway_worker = start_gateway(gateway) if gateway is not None else None
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        if gateway is not None:
+            gateway.shutdown()
+            gateway.server_close()
+            gateway_worker.join(timeout=3)
         shutdown_all_workloads(stop_server=False)
         httpd.server_close()
         HTTP_SERVER = None

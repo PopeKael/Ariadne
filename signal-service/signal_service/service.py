@@ -298,6 +298,7 @@ class SignalService:
         self.item_limit = max(1, min(int(item_limit), 100))
         self.briefing_pool_limit = max(40, min(int(os.environ.get("SIGNAL_SERVICE_BRIEFING_POOL", "240")), 300))
         self._lock = threading.RLock()
+        self._semantic_lock = threading.RLock()
         self._last_attempt_at: str | None = None
         self._last_success_at: str | None = None
         self._last_collection_ok: bool | None = None
@@ -385,6 +386,10 @@ class SignalService:
         return product / (norm_left * norm_right) if norm_left and norm_right else 0.0
 
     def _semantic_enrich(self, signals: Iterable[Signal] | None = None) -> dict[str, Any]:
+        with self._semantic_lock:
+            return self._semantic_enrich_impl(signals)
+
+    def _semantic_enrich_impl(self, signals: Iterable[Signal] | None = None) -> dict[str, Any]:
         selected_provider = self.inference.route("embedding")
         if selected_provider is None:
             self._semantic_status = {"state": "unavailable", "provider_id": None, "model_id": None, "embedded_signals": 0, "embedded_interests": 0, "match_count": 0, "error": "No compatible embedding provider is configured."}
@@ -538,6 +543,11 @@ class SignalService:
         return {"accepted": accepted, "duplicates": duplicates, "rejected": rejected, "errors": errors, "briefing": briefing}
 
     def refresh(self) -> dict[str, Any]:
+        if not self.feeds:
+            # Hera is intake-only. An empty local collection is not a failed
+            # Discovery intake and must not overwrite the last success state.
+            cached = self.store.latest_briefing()
+            return {"ok": bool(cached), "intake_only": True, "briefing": cached}
         # Hera receives candidates from Discovery/n8n rather than collecting
         # local RSS feeds. A scheduled refresh still runs for that deployment,
         # but an empty feed set is an intentional intake-only mode, not a
@@ -646,7 +656,7 @@ class SignalService:
         semantic_state = dict(self._semantic_status)
         if semantic_state.get("state") in {"unavailable", "missing"} and state == "healthy":
             state = "attention"
-        return {"ok": True, "service": "ariadne-signal-service", "version": "0.2.0", "environment": os.environ.get("ARIADNE_ENVIRONMENT", "unknown"), "instance": os.environ.get("ARIADNE_INSTANCE", "signal"), "build_sha": os.environ.get("ARIADNE_BUILD_SHA", "unknown"), "state": state, "feeds": [{"name": feed.name, "url": feed.url} for feed in self.feeds], "sources": self.store.list_sources(), "last_attempt_at": attempt, "last_success_at": last_success, "last_success_age_seconds": _iso_age_seconds(last_success), "last_collection_ok": collection_ok, "refresh_running": running, "source_status": source_status, "errors": errors, "cached_briefing": bool(latest), "semantic": semantic_state, "inference": self.inference.snapshot(), "learned_preferences": self.store.learned_preferences(), "active_interests": self.store.list_interests(active_only=True)}
+        return {"ok": True, "service": "ariadne-signal-service", "version": "0.2.0", "environment": os.environ.get("ARIADNE_ENVIRONMENT", "unknown"), "instance": os.environ.get("ARIADNE_INSTANCE", "signal"), "build_sha": os.environ.get("ARIADNE_BUILD_SHA", "unknown"), "state": state, "feeds": [{"name": feed.name, "url": feed.url} for feed in self.feeds], "sources": self.store.list_sources(), "last_attempt_at": attempt, "last_success_at": last_success, "last_success_age_seconds": _iso_age_seconds(last_success), "last_collection_ok": collection_ok, "refresh_running": running, "source_status": source_status, "errors": errors, "cached_briefing": bool(latest), "semantic": semantic_state, "inference": self.inference.snapshot(probe=False), "learned_preferences": self.store.learned_preferences(), "active_interests": self.store.list_interests(active_only=True)}
 
     def record_feedback(self, signal_id: str, value: str, recorded_at: str | None = None) -> dict[str, Any]:
         if value not in {"useful", "interesting", "not_useful"}:
@@ -696,16 +706,39 @@ class SignalService:
         interval = max(60.0, float(interval_seconds if interval_seconds is not None else os.environ.get("SIGNAL_SERVICE_REFRESH_SECONDS", "900")))
 
         def loop() -> None:
+            next_refresh = 0.0
             while True:
                 try:
-                    self.refresh()
+                    if time.monotonic() >= next_refresh:
+                        self.refresh()
+                        next_refresh = time.monotonic() + interval
+                    self.recover_semantics()
                 except Exception:
                     pass
-                time.sleep(interval)
+                time.sleep(min(30.0, interval))
 
         worker = threading.Thread(target=loop, name="ariadne-signal-refresh", daemon=True)
         worker.start()
         return worker
+
+    def recover_semantics(self) -> bool:
+        """Retry cached matching after the desktop returns, without feed intake."""
+        if self._semantic_status.get("state") not in {"pending", "unavailable", "missing", "error"}:
+            return False
+        cached = self.store.latest_briefing()
+        if not cached:
+            return False
+        with self._lock:
+            if self._refresh_running:
+                return False
+        status = self._semantic_enrich()
+        if status.get("state") != "healthy":
+            return False
+        collection = dict(cached.get("collection") or {})
+        collection["semantic_recovered_at"] = utc_now()
+        self._build_cached_briefing(collection)
+        emit_diagnostic("semantic_recovered", match_count=status.get("match_count"))
+        return True
 
 
 def extract_intake_candidates(payload: object) -> tuple[list[object], dict[str, Any]]:

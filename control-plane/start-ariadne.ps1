@@ -42,7 +42,8 @@ Write-Host "Ariadne Vault root: $vaultRoot" -ForegroundColor Cyan
 Write-Host ("Catalogue: {0:N0} records | Embeddings: {1:N0} documents / {2:N0} chunks" -f $catalogueCount, $embeddingDocuments, $embeddingChunks) -ForegroundColor Cyan
 $hostExe = Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'
 $tray = Join-Path $controlPlane 'tray.py'
-$url = 'http://localhost:8765/'
+$url = 'https://ariadne.dia.net.au/'
+$healthUrl = 'http://127.0.0.1:8765/api/core/ready'
 
 function Show-AriadneStartupFailure {
     param([string]$Message)
@@ -64,10 +65,10 @@ function Wait-ForAriadneResidentHost {
     while ([DateTime]::UtcNow -lt $deadline) {
         try {
             if ($HostProcess.HasExited) { return $false }
-            $response = Invoke-WebRequest -Uri ($url + 'api/status') -UseBasicParsing -TimeoutSec 1
+            $response = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 1
             if ($response.StatusCode -eq 200) {
                 $payload = $response.Content | ConvertFrom-Json
-                if ($payload.rust_host.state -eq 'online') { return $true }
+                if ($payload.ok -eq $true) { return $true }
             }
         }
         catch { }

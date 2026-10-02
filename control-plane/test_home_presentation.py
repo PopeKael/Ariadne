@@ -28,7 +28,9 @@ class HomePresentationTests(unittest.TestCase):
         js = Path(__file__).with_name("home.js").read_text(encoding="utf-8")
         self.assertIn("Coverage", js)
         render_today = js.split("function renderToday(items) {", 1)[1].split("\nfunction renderAdaptive", 1)[0]
-        self.assertIn("cards.forEach(item => grid.append(renderSignalCard(item)))", render_today)
+        self.assertIn("grid.append(card)", render_today)
+        self.assertIn("seen.has(key)", render_today)
+        self.assertNotIn("root.replaceChildren", render_today)
         self.assertNotIn("SIGNAL_SECTIONS", render_today)
         self.assertNotIn("INITIAL_SIGNALS_PER_SECTION", render_today)
         self.assertIn("signal-image-placeholder", js)

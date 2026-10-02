@@ -105,6 +105,7 @@ class InferenceRegistry:
         self.path = Path(path or os.environ.get("SIGNAL_SERVICE_INFERENCE_CONFIG", "")) if (path or os.environ.get("SIGNAL_SERVICE_INFERENCE_CONFIG")) else None
         self.providers: list[Provider] = []
         self.routes: dict[str, str] = {}
+        self._observed_states: dict[tuple, str] = {}
         self._load()
 
     def _load(self) -> None:
@@ -142,7 +143,7 @@ class InferenceRegistry:
             key=lambda provider: (provider.priority, provider.provider_id),
         )
 
-    def route(self, task: str) -> Provider | None:
+    def route(self, task: str, *, probe: bool = True) -> Provider | None:
         selected = self.routes.get(task)
         compatible = self.compatible(task)
         if selected:
@@ -151,10 +152,18 @@ class InferenceRegistry:
             return None
         # An explicit route remains authoritative so its unavailable state is
         # visible. Without one, prefer a provider that is currently usable.
-        configured = [provider for provider in compatible if self.state(provider) == "Configured"]
+        configured = [provider for provider in compatible if self.state(provider, probe=probe) == "Configured"]
         return configured[0] if configured else compatible[0]
 
-    def state(self, provider: Provider) -> str:
+    def state(self, provider: Provider, *, probe: bool = True) -> str:
+        key = (provider.provider_id, provider.endpoint, provider.model_id, provider.enabled, credential_state(provider))
+        if not probe and provider.enabled and credential_state(provider) != "Missing" and provider.provider_type == "ollama":
+            return self._observed_states.get(key, "Unknown")
+        observed = self._probe_state(provider)
+        self._observed_states[key] = observed
+        return observed
+
+    def _probe_state(self, provider: Provider) -> str:
         if not provider.enabled:
             return "Unavailable"
         if credential_state(provider) == "Missing":
@@ -162,7 +171,10 @@ class InferenceRegistry:
         if provider.provider_type == "ollama":
             try:
                 request = urllib.request.Request(provider.endpoint + "/api/tags", headers={"Accept": "application/json"})
-                with urllib.request.urlopen(request, timeout=1.5) as response:
+                # A cold TLS connection through the NAS proxy can exceed the
+                # former local-HTTP deadline even while the provider is healthy.
+                probe_timeout = 10 if urllib.parse.urlparse(provider.endpoint).scheme == "https" else 1.5
+                with urllib.request.urlopen(request, timeout=probe_timeout) as response:
                     payload = json.loads(response.read(5_000_000).decode("utf-8"))
                 models = payload.get("models") if isinstance(payload, dict) else None
                 if not isinstance(models, list) or not any(
@@ -185,20 +197,20 @@ class InferenceRegistry:
             or (":" not in configured_name and available_name == configured_name + ":latest")
         ))
 
-    def snapshot(self) -> dict[str, Any]:
+    def snapshot(self, *, probe: bool = True) -> dict[str, Any]:
         routes: dict[str, Any] = {}
         for task in TASK_CAPABILITIES:
-            provider = self.route(task)
+            provider = self.route(task, probe=probe)
             routes[task] = {
                 "provider_id": provider.provider_id if provider else None,
                 "model_id": provider.model_id if provider else None,
                 "location": provider.location if provider else None,
-                "state": self.state(provider) if provider else "Unavailable",
+                "state": self.state(provider, probe=probe) if provider else "Unavailable",
                 "compatible_provider_ids": [item.provider_id for item in self.compatible(task)],
             }
         return {
             "version": 1,
-            "providers": [dict(provider.as_dict(include_runtime=True), state=self.state(provider)) for provider in self.providers],
+            "providers": [dict(provider.as_dict(include_runtime=True), state=self.state(provider, probe=probe)) for provider in self.providers],
             "routes": routes,
             "config_path": str(self.path) if self.path else None,
         }

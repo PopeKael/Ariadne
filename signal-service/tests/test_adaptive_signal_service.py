@@ -28,7 +28,7 @@ class FakeInference:
                 vectors.append([0.0, 1.0])
         return vectors
 
-    def snapshot(self):
+    def snapshot(self, *, probe=True):
         return {"version": 1, "providers": [dict(self.provider.as_dict(), state="Configured", credential_state="Configured")], "routes": {"embedding": {"provider_id": self.provider.provider_id, "model_id": self.provider.model_id, "location": "nas", "state": "Configured", "compatible_provider_ids": [self.provider.provider_id]}}}
 
 
@@ -44,6 +44,28 @@ class BoundedInference(FakeInference):
 
 
 class AdaptiveSignalServiceTests(unittest.TestCase):
+    def test_semantics_recovers_after_provider_returns_without_new_intake(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeInference()
+            service = SignalService(Path(temporary) / "signals.sqlite3", feeds=[], inference=fake)
+            try:
+                service.upsert_interest({"name": "Local AI hardware", "description": "AMD Strix Halo"})
+                service.ingest_candidates([{"title": "Compact silicon", "url": "https://example.test/recovery", "summary": "Compact silicon for local models."}], default_source_name="Example")
+                calls_before = len(fake.calls)
+                with patch.object(fake, "state", return_value="Unavailable"):
+                    service._semantic_enrich()
+                    self.assertFalse(service.recover_semantics())
+                self.assertTrue(service.recover_semantics())
+                self.assertEqual(service.health()["semantic"]["state"], "healthy")
+                self.assertEqual(len(fake.calls), calls_before)
+                service.refresh()
+                self.assertEqual(service.health()["state"], "healthy")
+                self.assertEqual(len(service.store.recent(limit=10)), 1)
+                self.assertFalse(service.recover_semantics())
+            finally:
+                service.close()
+
     def test_builtin_source_migration_is_idempotent_and_preserves_history(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "signals.sqlite3"

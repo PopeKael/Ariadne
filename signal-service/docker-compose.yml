@@ -3,10 +3,13 @@ services:
     build:
       context: .
       args:
-        ARIADNE_RUNTIME_BUILD: 20260927-og-cache-4
-    image: ariadne-signal-service:20260927-og-cache-4
+        ARIADNE_RUNTIME_BUILD: 20261002-private-https-4
+    image: ariadne-signal-service:20261002-private-https-4
+    pull_policy: build
     container_name: ariadne-signal-service
     restart: unless-stopped
+    extra_hosts:
+      - "ariadne.dia.net.au:192.168.1.200"
     ports:
       - "8788:8788"
     environment:

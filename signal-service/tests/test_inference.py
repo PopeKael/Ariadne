@@ -63,6 +63,17 @@ class InferenceRegistryTests(unittest.TestCase):
                 self.registry.embed_many(["semantic test"], self.provider)
         self.assertEqual(urlopen.call_count, 1)
 
+    def test_health_snapshot_never_probes_and_does_not_reuse_changed_provider_state(self):
+        self.registry.providers = [self.provider]
+        with patch("signal_service.inference.urllib.request.urlopen", return_value=_Response({"models": [{"name": "nomic-embed-text:latest"}]})):
+            self.assertEqual(self.registry.state(self.provider), "Configured")
+        with patch("signal_service.inference.urllib.request.urlopen", side_effect=AssertionError("Health must not contact providers")):
+            snapshot = self.registry.snapshot(probe=False)
+            self.assertEqual(snapshot["routes"]["embedding"]["state"], "Configured")
+            changed = Provider.from_dict({**self.provider.as_dict(), "endpoint": "https://different.example/internal/ollama"})
+            self.registry.providers = [changed]
+            self.assertEqual(self.registry.snapshot(probe=False)["routes"]["embedding"]["state"], "Unknown")
+
 
 if __name__ == "__main__":
     unittest.main()

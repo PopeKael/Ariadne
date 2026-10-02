@@ -92,8 +92,8 @@ const BUBBLE_CORNER_RADIUS: u32 = 6;
 // Pixels remain alpha-bearing so the layered overlay keeps its transparency.
 const BUBBLE_BACKGROUND_BGRA: [u8; 4] = [59, 48, 19, 220];
 const MAX_SOURCE_DIMENSION: u32 = 4096;
-const DASHBOARD_URL: &str = "http://localhost:8765/";
-const DASHBOARD_URL_W: PCWSTR = w!("http://localhost:8765/");
+const DASHBOARD_URL: &str = "https://ariadne.dia.net.au/";
+const DASHBOARD_URL_W: PCWSTR = w!("https://ariadne.dia.net.au/");
 const NIN_SELECT_EVENT: u32 = 0x0400;
 const NIN_KEYSELECT_EVENT: u32 = 0x0401;
 
@@ -295,7 +295,7 @@ fn health_check() -> bool {
     };
     let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
     if stream
-        .write_all(b"GET / HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        .write_all(b"GET /api/core/ready HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n")
         .is_err()
     {
         return false;

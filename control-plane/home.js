@@ -266,7 +266,7 @@ function renderHealth(payload) {
     modeBadge.classList.toggle("dev-mode", deployment.mode === "DEV");
   }
   root.replaceChildren();
-  const compactNames = {"Ariadne backend":"Backend", "Knowledge Vault":"Vault", "MCP / retrieval":"MCP", "Ollama":"Ollama", "Semantic index":"Semantic", "Signal Service":"Signals"};
+  const compactNames = {"Ariadne backend":"Backend", "Knowledge Vault":"Vault", "MCP / retrieval":"MCP", "Ollama":"Ollama", "Semantic index":"Vault index", "Signal Service":"Signals"};
   for (const [index, service] of (payload.services || []).entries()) {
     const stateName = service.state || "attention";
     const stateLabel = stateName.charAt(0).toUpperCase() + stateName.slice(1);
@@ -786,7 +786,6 @@ function renderToday(items) {
   const root = document.querySelector("#today-list");
   const count = document.querySelector("#signal-count");
   const scrollTop = root.scrollTop;
-  root.replaceChildren();
   const cards = (items || []).filter(item => item && typeof item === "object" && item.content_ready === 1).map(item => ({
     ...item,
     // Home cards are the local NewsBriefingCache projection.  Keep the
@@ -799,10 +798,23 @@ function renderToday(items) {
     url: item.url || item.canonical_url || "",
     source: item.source || item.source_name || "",
   }));
-  if (count) count.textContent = `${cards.length} cached articles`;
-  const grid = el("div", "signal-section-grid");
-  cards.forEach(item => grid.append(renderSignalCard(item)));
-  root.append(grid);
+  // Keep the reading session stable: polling only appends unseen articles.
+  // A page reload creates a new grid and applies the latest server ranking.
+  let grid = root.querySelector(".signal-section-grid");
+  if (!grid) {
+    grid = el("div", "signal-section-grid");
+    root.append(grid);
+  }
+  const seen = new Set(Array.from(grid.children, card => card.dataset.discoveryKey));
+  cards.forEach(item => {
+    const key = item.article_id || item.url;
+    if (!key || seen.has(key)) return;
+    const card = renderSignalCard(item);
+    card.dataset.discoveryKey = key;
+    grid.append(card);
+    seen.add(key);
+  });
+  if (count) count.textContent = `${grid.children.length} cached articles`;
   root.scrollTop = Math.min(scrollTop, Math.max(0, root.scrollHeight - root.clientHeight));
 }
 function renderAdaptive(payload) {

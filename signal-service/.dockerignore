@@ -6,3 +6,6 @@ README.md
 compose.example.yml
 .git/
 .gitignore
+data/
+**/*.before-*.py
+docker-compose.before-*.yml
