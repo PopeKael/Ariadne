@@ -1,0 +1,162 @@
+{
+  "provenance": "Captured pre-follow-up context from the diagnosed chat; planner decision reproduced unchanged. External results are mocked by the regression.",
+  "chat_id": "08e15e7d1a4748ecbd8fa930c913d87c",
+  "messages": [
+    {
+      "message_id": "943b0510f30d4b31b0cccb2a69463185",
+      "turn_id": "6103469d7a9347e183ca6785bce50031",
+      "role": "user",
+      "content": "Give me a clear, plain-English summary of this article in 200 to 300 words. Focus on what happened, why it matters, and any important uncertainty.",
+      "created_at": "2026-10-02T03:53:34.741722Z",
+      "state": "complete",
+      "response_state": "submitted"
+    },
+    {
+      "message_id": "b3a13c5dde204aefa6ec658aa15d72c6",
+      "turn_id": "6103469d7a9347e183ca6785bce50031",
+      "role": "assistant",
+      "content": "**What happened:**\nSouth Korea's President Lee Jae Myung has threatened unspecified \"further action\" against Ukraine unless Kyiv issues a public apology. The dispute stems from Ukraine's Foreign Minister, Andrii Sybiha, revealing at the UN that two North Korean soldiers were transferred to South Korea. This disclosure angered Seoul, which had requested the move remain secret to protect the POWs' families and avoid criticism regarding potential prisoner exchanges. While Kyiv claims there was no confidentiality agreement, Lee argues the secrecy was vital for dignity and regional stability. The situation has escalated into a diplomatic row, with Lee accusing Ukraine of attempting to \"provoke a war on the Korean Peninsula.\"\n\n**Why it matters:**\nThis incident highlights a significant strain in an otherwise sympathetic relationship between Seoul and Kyiv. South Korea maintains a strict policy against providing lethal weapons to active combatants, yet this diplomatic friction threatens that goodwill. Domestically, President Lee faces heavy criticism from his own opposition party, who accuse him of covering up the transfer to appease North Korea (Pyongyang). The core issue is not just the soldiers' safety, but the perception of national dignity and whether Kyiv's actions inadvertently destabilize the delicate security balance on the Korean Peninsula.\n\n**Important uncertainty:**\nThe article explicitly states that Lee has threatened \"unspecified\" further action. We do not know if this involves sanctions, a suspension of aid, or diplomatic expulsions. Additionally, while Foreign Minister Sybiha hopes for a resolution soon, there is no timeline for when an apology might be issued or what specific concessions Ukraine might make to de-escalate the situation before relations deteriorate further.",
+      "created_at": "2026-10-02T03:53:34.741722Z",
+      "state": "complete",
+      "response_state": "completed"
+    }
+  ],
+  "document_workspace": {
+    "schema_version": 1,
+    "chat_id": "08e15e7d1a4748ecbd8fa930c913d87c",
+    "documents": [
+      {
+        "document_id": "453de926b79642a091ab3fdbc085bab0",
+        "filename": "news-article__article-e90781a58b70bd0cd2e9fef23b9f.md",
+        "metadata": {
+          "type": "source-article",
+          "article_id": "article-e90781a58b70bd0cd2e9fef23b9f",
+          "title": "Seoul warns 'further action' if Ukraine does not apologise over prisoner-of-war row",
+          "source": "BBC World",
+          "source_url": "https://www.bbc.co.uk/news/articles/cm1dld14weero?at_medium=RSS&at_campaign=rss",
+          "published_at": "2026-10-02T03:09:13+00:00",
+          "article_status": "ready",
+          "article_cache": "hera-news-backend"
+        },
+        "size_bytes": 3396,
+        "content_chars": 3394,
+        "content_hash": "8a46e9c86031886ef3a13d8df2e98c350ca7564e194c5dab14a0adc91d040a70",
+        "handling": "direct",
+        "created_at": 1790913214.5972886,
+        "chunks": [
+          {
+            "heading": "Seoul warns 'further action' if Ukraine does not apologise over prisoner-of-war row",
+            "content": "# Seoul warns 'further action' if Ukraine does not apologise over prisoner-of-war row",
+            "line_start": 1,
+            "line_end": 1
+          },
+          {
+            "heading": "Article facts",
+            "content": "## Article facts",
+            "line_start": 3,
+            "line_end": 3
+          },
+          {
+            "heading": "Seoul warns 'further action' if Ukraine does not apologise over prisoner-of-war row",
+            "content": "# Seoul warns 'further action' if Ukraine does not apologise over prisoner-of-war row\n\n**Source:** BBC World\n\n**Published:** 2026-10-02T03:09:13+00:00\n\n**URL:** https://www.bbc.co.uk/news/articles/cm1dld14weero?at_medium=RSS&at_campaign=rss\n\nImage caption, President Lee Jae Myung also accused Kyiv of \"attempting to provoke a war on the Korean Peninsula\"\n\nSouth Korea's President Lee Jae Myung has threatened to take unspecified \"further action\" if Ukraine does not issue a public apology for revealing that two North Korean prisoners of war had been sent to the South.\n\nUkraine's leader Volodymyr Zelensky made the disclosure to the UN general assembly last week, angering Seoul, who said the move was meant to stay secret.\n\nUkraine's Foreign Minister Andrii Sybiha on Thursday described the situation as a \"diplomatic misunderstanding\", adding that Kyiv was \"working\" to resolve it.\n\nLee rejected this characterisation on X, saying it concerned \"the dignity of the Korean people and the nation\".\n\nLee's office said last week that it was Ukraine that requested for the move to be kept secret, partly to protect the North Koreans' families, and also because Kyiv wanted to avoid criticism that it had given up an opportunity to exchange the soldiers for Ukrainian prisoners of war.\n\nZelensky's office responded, saying the two countries had no such agreement to keep the move confidential, further escalating the situation.\n\nLee himself faced heavy criticism at home after Zelensky's disclosure, with the South Korean opposition accusing him of covering up the transfer to appease Pyongyang.",
+            "line_start": 5,
+            "line_end": 27
+          },
+          {
+            "heading": "Seoul warns 'further action' if Ukraine does not apologise over prisoner-of-war row",
+            "content": "The two soldiers, who were among thousands of North Koreans supporting Russia in the Ukraine war, had earlier told local media they wanted to be sent to South Korea.\n\nSpeaking to Ukrainian media on Thursday, Sybiha, the foreign minister, said he \"hopes that this situation will be resolved in the very near future\".\n\n\"We are working on it. For us, South Korea is an important country. And I really hope for momentum, continuation, and concrete results that we are truly achieving with them,\" he said.\n\nLee, in response, accused Kyiv of \"attempting to provoke a war on the Korean Peninsula\".\n\n\"We express serious regret that, instead of acknowledging the facts of the agreement and apologising, they are talking about an imminent military clash between the North and South,\" he said in an X post.\n\nSeoul has been sympathetic to Ukraine since Russia's full-scale invasion, but has adhered to its longstanding policy of not providing lethal weapons to any country engaged in active war.",
+            "line_start": 29,
+            "line_end": 39
+          },
+          {
+            "heading": "Related topics",
+            "content": "## Related topics\n\n- North Korea–South Korea relations",
+            "line_start": 41,
+            "line_end": 43
+          },
+          {
+            "heading": "Ariadne inference boundary",
+            "content": "## Ariadne inference boundary",
+            "line_start": 45,
+            "line_end": 45
+          }
+        ]
+      }
+    ]
+  },
+  "followup": "Okay, Ari, we need to dive deeper into this article. Search the web on related information and see where this is going.",
+  "planner_result": {
+    "semantic": {
+      "intent": "search_related_information",
+      "needs_personal_history": false,
+      "needs_current_information": true,
+      "needs_attachment": false,
+      "reasoning_complexity": "medium",
+      "ambiguity": "low",
+      "confidence": 0.95
+    },
+    "plan": {
+      "intent": "search_related_information",
+      "primary_source": "vault",
+      "tools": [
+        "external-research"
+      ],
+      "use_vault": true,
+      "needs_current_information": true,
+      "use_heavy_model": false,
+      "tasks": [
+        "retrieve relevant personal or project history",
+        "obtain genuinely current information"
+      ],
+      "confidence": 0.95
+    },
+    "world_state": {},
+    "fallback": false,
+    "telemetry": {}
+  },
+  "irrelevant_search_results": [
+    {
+      "title": "Seoul - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Seoul",
+      "snippet": "Seoul, [b] officially Seoul Special Metropolitan City, [c] is the capital and largest city of South Korea, and the largest city in the whole …"
+    },
+    {
+      "title": "Official Website of the Seoul Metropolitan Government",
+      "url": "https://english.seoul.go.kr/",
+      "snippet": "The Official Website of Seoul. You can view a wealth of information about the city, including the main policies, history, culture, …"
+    },
+    {
+      "title": "Welcome to Seoul - Visit Seoul | The Official Travel Guide to Seoul",
+      "url": "https://www.visitseoul.net/",
+      "snippet": "Gather various information on Seoul with Visit Seoul: Attractions, food alleys, accommodations, and other information. 한국어 · …"
+    },
+    {
+      "title": "20 Best Things to Do in Seoul",
+      "url": "https://www.lonelyplanet.com/articles/top-things-to-do-in-seoul",
+      "snippet": "The top spots in Seoul transport visitors from ancient palaces all the way up to the latest K-Pop sensations, with serene temples for …"
+    },
+    {
+      "title": "17 Fun Things to do in Seoul, South Korea (First Timer’s Guide)",
+      "url": "https://www.livelikeitstheweekend.com/things-to-do-in-seoul/",
+      "snippet": "Your ultimate guide to the most fun things to do in Seoul whether you're a foodie, into K-beauty, or want to feel like a local."
+    }
+  ],
+  "relevant_search_results": [
+    {
+      "title": "S Korea demands Ukraine apology over disclosure of N Korea's POW transfer",
+      "url": "https://www.aljazeera.com/news/2026/9/27/south-korea-ukraine-relations-sour-over-north-korean-pow-transfer",
+      "snippet": "South Korea's presidential office has demanded an official explanation and apology from Ukraine after accusing Kyiv of disclosing the transfer of two North Korean prisoners of war."
+    },
+    {
+      "title": "South Korea's Lee threatens action against Ukraine over transfer of North Korean prisoners",
+      "url": "https://www.reuters.com/world/asia-pacific/south-koreas-lee-threatens-action-against-ukraine-over-transfer-north-korean-2026-10-02/",
+      "snippet": "President Lee Jae Myung threatened unspecified measures unless Kyiv acknowledged what Seoul says was a confidentiality agreement covering the transfer of two captured North Korean soldiers."
+    },
+    {
+      "title": "South Korea demands an apology over Zelenskyy's POW reveal",
+      "url": "https://apnews.com/article/south-korea-ukraine-prisoners-of-war-russia-17df235a34d773c7dcf20a6b73f2b997",
+      "snippet": "Seoul has demanded an apology after Ukrainian President Volodymyr Zelenskyy revealed what it says was supposed to be a secret transfer of two North Korean prisoners of war to South Korea."
+    }
+  ],
+  "search_fixture_provenance": "Irrelevant titles/URLs/snippets copied from the latest repeated turn. Relevant search-result examples captured during the diagnostic replay; network responses are mocked in regression tests."
+}

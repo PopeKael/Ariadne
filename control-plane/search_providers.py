@@ -20,6 +20,89 @@ SEARCH_TIMEOUT_SECONDS = max(2.0, min(float(os.environ.get("ARIADNE_SEARCH_TIMEO
 MAX_RESULT_CHARS = 8_000
 DEFAULT_RESULT_LIMIT = 5
 
+# Shared by source-query construction and result validation. Conversation and
+# recency words must not count as evidence that a result covers the subject.
+SEARCH_STOP_WORDS = set("""
+a an and are as at be been being but by can could did do does for from had has
+have he her his how i if in into is it its may me my not of on or our s she so
+that the their them there these they this those to was we were what when where
+which who will with would you your okay ari article search web related
+information see going need deeper dive please current latest recent news
+developments background implications analysis explain compare coverage update
+updates further action actions warns warned warning row take unspecified
+president public issue two over announces announced new
+""".split())
+
+
+def _subject_tokens(text: str) -> set[str]:
+    text = re.sub(r"\b(?:prisoners?[-\s]+of[-\s]+war|captured(?:[-\s]+[A-Za-z]+){0,3}[-\s]+soldiers?|pows?)\b", "pow", text, flags=re.I)
+    text = re.sub(r"\b(?:apolog(?:is|iz)(?:e|ed|es|ing)|apolog(?:y|ies))\b", "apology", text, flags=re.I)
+    tokens = set()
+    for word in re.findall(r"[A-Za-z][A-Za-z0-9]*", text):
+        word = word.casefold()
+        if word in SEARCH_STOP_WORDS:
+            continue
+        if len(word) > 6 and word.endswith("ing"):
+            word = word[:-3]
+        elif len(word) > 4 and word.endswith("s") and not word.endswith("ss"):
+            word = word[:-1]
+        tokens.add(word)
+    return tokens
+
+
+def compact_source_query(title: str, lead: str, intent: str) -> str:
+    """Bounded, deterministic source entities + event words + research intent."""
+    source = title + " " + lead
+    entities = []
+    seen = set()
+    for match in re.finditer(r"\b[A-Z][A-Za-z0-9]*(?:[ -]+[A-Z][A-Za-z0-9]*){0,4}\b", source):
+        words = [word for word in match.group().split() if word.casefold() not in SEARCH_STOP_WORDS]
+        entity = " ".join(words)
+        if (entity and entity.casefold() not in seen
+                and not _subject_tokens(entity).issubset(_subject_tokens(" ".join(entities)))):
+            entities.append(entity)
+            seen.add(entity.casefold())
+    entity_tokens = _subject_tokens(" ".join(entities))
+    normalized = re.sub(r"\b(?:prisoners?[-\s]+of[-\s]+war|pows?)\b", "POW", source, flags=re.I)
+    topics = []
+    for word in re.findall(r"[A-Za-z][A-Za-z0-9]*", normalized):
+        folded = word.casefold()
+        if folded not in SEARCH_STOP_WORDS and not _subject_tokens(word).issubset(entity_tokens) and folded not in seen:
+            topics.append("POW" if folded == "pow" else folded)
+            seen.add(folded)
+        # Two core event terms avoid reintroducing the body paragraph's many
+        # incidental verbs as mandatory search terms.
+        if len(topics) >= 2:
+            break
+    intent_words = []
+    if re.search(r"\b(?:latest|current|recent|today|now|going)\b", intent, re.I):
+        intent_words.extend(["latest", "developments"])
+    if re.search(r"\b(?:deeper|background|related|research)\b", intent, re.I):
+        intent_words.append("background")
+    if re.search(r"\b(?:going|implications|outlook|next)\b", intent, re.I):
+        intent_words.append("implications")
+    suffix = " ".join(intent_words)
+    # Keep complete terms and leave room for intent within a 200-character cap.
+    terms = []
+    for part in [*entities, *topics]:
+        if len(" ".join([*terms, part, suffix])) <= 200:
+            terms.append(part)
+    return " ".join([*terms, suffix]).strip()
+
+
+def _topical_result(query: str, item: dict[str, str]) -> bool:
+    subject = _subject_tokens(query)
+    if not subject:
+        return False
+    evidence = _subject_tokens(item.get("title", "") + " " + item.get("snippet", ""))
+    # Require meaningful subject coverage, not a single leading place name.
+    required = min(4, max(1, (len(subject) * 3 + 9) // 10))
+    if len(subject & evidence) < required:
+        return False
+    entity_words = _subject_tokens(" ".join(re.findall(r"\b[A-Z][A-Za-z0-9]*\b", query)))
+    topics = (subject - entity_words) | (subject & {"pow"})
+    return not topics or bool(topics & evidence)
+
 
 @dataclass(frozen=True)
 class SearchProvider:
@@ -272,6 +355,8 @@ class SearchProviderRegistry:
                 unique: list[dict[str, str]] = []
                 seen: set[str] = set()
                 for item in results:
+                    if not _topical_result(query, item):
+                        continue
                     canonical = _canonical_url(item["url"])
                     if not canonical or canonical in seen:
                         continue

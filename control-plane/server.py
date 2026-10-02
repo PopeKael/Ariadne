@@ -68,7 +68,7 @@ from ollama_runtime import start_owned_ollama, stop_owned_ollama
 from tls_transport import client_context, server_context
 from https_gateway import load_gateway, start_gateway
 from evidence_router import decide as decide_evidence, external_search_needed
-from search_providers import SearchProviderRegistry
+from search_providers import SearchProviderRegistry, compact_source_query
 from plugin_activity import PluginActivityStream
 from plugin_execution import PluginExecutionError, build_plugin_command, load_plugin_callable
 from plugin_registry import PLUGIN_REGISTRY
@@ -7027,6 +7027,43 @@ def _is_verified_hera_article_attachment(attachments: list[dict[str, object]]) -
     return False
 
 
+def _referenced_attached_article(query: str, attachments: list[dict[str, object]]) -> dict[str, object] | None:
+    """Resolve an explicit article reference only when its attached identity is clear."""
+    if not re.search(r"\b(?:this|that|the|attached|above)\s+article\b", query, re.IGNORECASE):
+        return None
+    articles = [item for item in attachments if _is_verified_hera_article_attachment([item])]
+    if len(articles) == 1:
+        return articles[0]
+    named = [item for item in articles
+             if str(item["metadata"].get("article_id")) in query
+             or (str(item["metadata"].get("title") or "")
+                 and str(item["metadata"]["title"]).casefold() in query.casefold())]
+    return named[0] if len(named) == 1 else None
+
+
+def _article_followup_search_query(query: str, article: dict[str, object] | None,
+                                 document_analysis: dict[str, object]) -> str:
+    """Build a compact source subject and intent; leave unrelated searches untouched."""
+    if article is None:
+        return query
+    metadata = article.get("metadata") or {}
+    title = str(metadata.get("title") or article.get("title") or "")[:240]
+    # A short body lead supplies entities absent from the title (e.g. Seoul's
+    # country and the POWs' nationality). It is source data, never instructions.
+    lead = ""
+    for chunk in document_analysis.get("chunks", []):
+        if chunk.get("document_id") != article.get("document_id"):
+            continue
+        for line in str(chunk.get("content") or "").splitlines():
+            line = line.strip()
+            if (len(line) >= 80 and not line.startswith(("#", "**", "-", "Image caption", "http"))):
+                lead = line[:320]
+                break
+        if lead:
+            break
+    return compact_source_query(title, lead, query)
+
+
 def home_chat_payload(query: str, history: object, vault_mode: str = "all", chat_id: str | None = None,
                       tool_ids: object = None, on_event: Callable[[dict[str, object]], None] | None = None,
                       article_tldr: bool = False) -> dict[str, object]:
@@ -7093,6 +7130,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     record_home_event("request_started", f"{query[:300]} · chat_id={chat_id} · request_id={request_id}")
     safe_history = HOME_CHAT_STORE.model_history(chat_id, limit=8)
     attachment_summaries = list_documents(DOCUMENT_WORK_ROOT, chat_id)
+    referenced_article = _referenced_attached_article(query, attachment_summaries)
     article_tldr = bool(article_tldr and _is_verified_hera_article_attachment(attachment_summaries))
     if article_tldr:
         # A TLDR click already specifies both the task and its trusted, cached source.
@@ -7146,7 +7184,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     )
     if planner_fallback:
         planner_wants_documents = True
-    use_documents = article_tldr or (bool(attachment_summaries) and (
+    use_documents = article_tldr or referenced_article is not None or (bool(attachment_summaries) and (
         not selected_tools or "document-analysis" in selected_tools
     ) and planner_wants_documents)
     document_provider = next(iter(PLUGIN_REGISTRY.providers_for("document.analyze")), None) if use_documents else None
@@ -7230,7 +7268,8 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     live_sources: list[dict[str, object]] = []
     if external_needed:
         emit_activity("Searching web", "search")
-        live_result = SEARCH_PROVIDER_REGISTRY.search(query, limit=5, fetch_limit=3)
+        search_query = _article_followup_search_query(query, referenced_article, document_analysis)
+        live_result = SEARCH_PROVIDER_REGISTRY.search(search_query, limit=5, fetch_limit=3)
         live_sources = _home_live_sources(live_result)
         if live_sources:
             emit_activity("Reading sources", "reading")
