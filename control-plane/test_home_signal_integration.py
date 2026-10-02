@@ -16,6 +16,17 @@ from home_chat_store import ChatStore  # noqa: E402
 
 
 class HomeSignalIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.journal_temp = tempfile.TemporaryDirectory()
+        self.journal = server.NewsRecommendations(Path(self.journal_temp.name) / "journal.sqlite3")
+        self.journal_patch = patch.object(server, "NEWS_RECOMMENDATIONS", self.journal)
+        self.journal_patch.start()
+
+    def tearDown(self):
+        self.journal_patch.stop()
+        self.journal.db.close()
+        self.journal_temp.cleanup()
+
     def test_discovery_article_id_uses_discovery_canonical_url_rule(self):
         self.assertEqual(
             server._discovery_article_id_for_url("https://WWW.Example.test/story/?utm_source=mail&id=7#top"),
@@ -460,6 +471,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
             "local_rank_score": 81.23, "position": 1,
             "feedback": {"value": "useful", "updated_at": "2026-09-07T12:35:00+07:00"},
         }]
+        cache.snapshot.return_value["briefing"] = {"articles": cache.ranked_articles.return_value}
         with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
             result = server.home_today_payload({"services": []})
         self.assertEqual(result[0]["label"], "A cached article")
@@ -481,6 +493,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
             "image_url": "https://cdn.example.test/story.jpg", "content_ready": 1,
         }]
         signal_client = Mock()
+        cache.snapshot.return_value["briefing"] = {"articles": cache.ranked_articles.return_value}
         with patch.object(server, "NEWS_BRIEFING_CACHE", cache), patch.object(server, "SIGNAL_SERVICE_CLIENT", signal_client):
             result = server.home_today_payload({"services": []})
         self.assertEqual(result[0]["image_url"], "https://cdn.example.test/story.jpg")
@@ -492,14 +505,17 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         cache.ranked_articles.return_value = []
         preferences = {"sources": [{"label": "Example", "score": 0.8}]}
         health = {"services": [], "signal_service": {"learned_preferences": preferences}}
+        cache.snapshot.return_value["briefing"] = {"articles": cache.ranked_articles.return_value}
         with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
             server.home_today_payload(health)
-        cache.ranked_articles.assert_called_once_with(limit=100, preferences=preferences)
+        cache.ranked_articles.assert_not_called()
+        self.assertEqual(self.journal.profile()["owner"], "local_news_journal")
 
     def test_today_ignores_unavailable_news_cache_without_breaking_local_status(self):
         cache = Mock()
         cache.snapshot.return_value = {"available": False, "sync": {"state": "unavailable"}}
         cache.ranked_articles.return_value = []
+        cache.snapshot.return_value["briefing"] = {"articles": cache.ranked_articles.return_value}
         with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
             result = server.home_today_payload({"services": [{"name": "Ollama", "state": "offline", "detail": "Unavailable"}]})
         self.assertEqual(result[0]["label"], "Ollama")
@@ -509,6 +525,7 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         cache = Mock()
         cache.snapshot.return_value = {"available": False, "sync": {"state": "unavailable"}}
         cache.ranked_articles.return_value = []
+        cache.snapshot.return_value["briefing"] = {"articles": cache.ranked_articles.return_value}
         with patch.object(server, "NEWS_BRIEFING_CACHE", cache):
             result = server.home_today_payload({"services": [{"name": "Ollama", "state": "offline", "detail": "Unavailable"}]})
         self.assertEqual(result[0]["label"], "Ollama")

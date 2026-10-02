@@ -19,6 +19,17 @@ from news_briefing_cache import NewsBriefingCache  # noqa: E402
 
 
 class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.journal_temp = tempfile.TemporaryDirectory()
+        self.journal = server.NewsRecommendations(Path(self.journal_temp.name) / "journal.sqlite3")
+        self.journal_patch = patch.object(server, "NEWS_RECOMMENDATIONS", self.journal)
+        self.journal_patch.start()
+
+    def tearDown(self):
+        self.journal_patch.stop()
+        self.journal.db.close()
+        self.journal_temp.cleanup()
+
     def test_snapshot_route_is_local_and_bypasses_home_session_and_signal_work(self):
         cards = [
             {"article_id": "article-a", "title": "First", "canonical_url": "https://example.test/a"},
@@ -63,7 +74,7 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
         self.assertIn('getJson("/api/news/briefing-snapshot")', source)
         self.assertIn('label: item.label || item.title || "Article"', source)
         self.assertIn('url: item.url || item.canonical_url || ""', source)
-        self.assertIn("cards.forEach(item => grid.append(renderSignalCard(item)))", source)
+        self.assertIn("card.dataset.discoveryKey = key;", source)
         self.assertIn("if (Array.isArray(data.today)) renderToday(data.today);", source)
         self.assertIn('signal_id: ""', source)
         self.assertIn('article_context: item.article_id ? "news"', source)
@@ -78,13 +89,13 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
     def test_home_news_actions_are_article_id_only_and_stay_out_of_startup(self):
         source = (ROOT / "home.js").read_text(encoding="utf-8")
         self.assertIn('if (item.article_id)', source)
-        self.assertIn('["useful", "Useful"], ["interesting", "Interesting"], ["not_useful", "Not useful"]', source)
+        self.assertIn('["useful", "Useful", "👍"], ["interesting", "More like this", "❤️"], ["not_useful", "Not interested", "👎"]', source)
         self.assertIn('"/api/home/news/feedback"', source)
         self.assertIn('"/api/home/news/article-context"', source)
         self.assertIn('params.get("article_id")', source)
         self.assertIn('state.articleTldrPending = articleAction === "tldr_opened"', source)
         self.assertIn("article_tldr: articleTldr", source)
-        self.assertIn('showArticleLaunchState(newTabWindow, action === "tldr_opened" ? "Preparing TLDR · Ariadne" : "Preparing article · Ariadne")', source)
+        self.assertIn('showArticleLaunchState(newTabWindow, action === "tldr_opened" ? "Preparing TLDR · Ariadne" : "Preparing article · Ariadne");', source)
         news_open = source.split("async function openNewsArticle", 1)[1].split("async function submitSignalFeedback", 1)[0]
         self.assertIn("articleId, articleAction: action", news_open)
         self.assertNotIn("signal_id", news_open)
@@ -122,8 +133,10 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
         original_sessions = server.SESSIONS
         original_cache = server.NEWS_BRIEFING_CACHE
         original_signal = server.SIGNAL_SERVICE_CLIENT
+        original_recommendations = server.NEWS_RECOMMENDATIONS
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            server.NEWS_RECOMMENDATIONS = server.NewsRecommendations(root / "reactions.sqlite3")
             cache_path = root / "runtime" / "news-briefing.json"
             cache = NewsBriefingCache("http://127.0.0.1:1", cache_path=cache_path)
             seed = {"ok": True, "briefing_id": "top100", "input_hash": "a", "result_hash": "b",
@@ -188,18 +201,30 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
                     self.assertEqual(document["metadata"]["article_id"], article_id)
                     context_file = root / "contexts" / f"{started['chat_id']}.json"
                     status, feedback = post("/api/home/news/feedback", {
-                        "session_id": session_id, "article_id": article_id, "feedback": "interesting",
+                        "session_id": session_id, "article_id": article_id, "feedback": "interesting", "event_id": "test-rating",
                     })
                     self.assertEqual(status, 200)
-                    self.assertTrue(feedback["persisted_to_hera"])
-                    self.assertTrue(feedback["local_snapshot_updated"])
+                    self.assertTrue(feedback["persisted_locally"])
+                    self.assertTrue(feedback["seen"])
+                    status, cleared = post("/api/home/news/feedback", {
+                        "session_id": session_id, "article_id": article_id, "feedback": "", "event_id": "test-clear",
+                    })
+                    self.assertEqual(status, 200)
+                    self.assertEqual(cleared["feedback"], "")
+                    status, retried = post("/api/home/news/feedback", {
+                        "session_id": session_id, "article_id": article_id, "feedback": "interesting", "event_id": "test-rating",
+                    })
+                    self.assertEqual(status, 200)
+                    self.assertEqual(retried["feedback"], "")
+                    self.assertTrue(retried["seen"])
+                    self.assertEqual(server.NEWS_RECOMMENDATIONS.profile()["rated_articles"], 0)
                     self.assertTrue(interaction_done.wait(1.0))
-                    self.assertCountEqual(api_log, [(article_id, "interactions"), (article_id, ""), (article_id, "feedback")])
+                    self.assertCountEqual(api_log, [(article_id, "interactions"), (article_id, "")])
                 signal_client.briefing.assert_not_called()
                 self.assertTrue(context_file.is_file())
                 self.assertIn("Ariadne inference boundary", context_file.read_text(encoding="utf-8"))
                 reloaded = NewsBriefingCache("http://127.0.0.1:1", cache_path=cache_path)
-                self.assertEqual(reloaded.snapshot()["briefing"]["articles"][0]["feedback"]["value"], "interesting")
+                self.assertEqual(server.NEWS_RECOMMENDATIONS.records()[0]["reaction"], "")
             finally:
                 httpd.shutdown()
                 httpd.server_close()
@@ -209,6 +234,8 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
                 server.SESSIONS = original_sessions
                 server.NEWS_BRIEFING_CACHE = original_cache
                 server.SIGNAL_SERVICE_CLIENT = original_signal
+                server.NEWS_RECOMMENDATIONS.db.close()
+                server.NEWS_RECOMMENDATIONS = original_recommendations
 
 
 if __name__ == "__main__":

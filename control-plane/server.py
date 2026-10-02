@@ -36,6 +36,8 @@ from urllib.parse import parse_qs, parse_qsl, unquote, urlencode, urlparse, urls
 
 
 from workspace_proxy import proxy_workspace
+from news_recommendations import NewsRecommendations
+import sqlite3
 from home_chat_store import ChatStore, title_from_document
 from home_information import home_information_payload
 from core_interactions import CoreInteractionStream
@@ -320,6 +322,7 @@ SIGNAL_SERVICE_CLIENTS = {
     for mode, config in DEPLOYMENT_MODE_CONFIG.items()
 }
 SIGNAL_SERVICE_CLIENT = SIGNAL_SERVICE_CLIENTS["RUN"]
+NEWS_RECOMMENDATIONS = NewsRecommendations(ROOT / "runtime" / "news-recommendations.sqlite3")
 NEWS_BRIEFING_CACHE = NewsBriefingCache(
     cache_path=Path(os.environ.get(
         "ARIADNE_NEWS_BRIEFING_CACHE_PATH", str(ROOT / "runtime" / "news-briefing.json")
@@ -5682,7 +5685,7 @@ def home_adaptive_payload() -> dict[str, object]:
         "inference": INFERENCE_REGISTRY.snapshot(inference_health),
         "signal_inference": signal_health.get("inference", {}),
         "interests": interest_payload.get("interests", []) if interest_payload.get("ok") and isinstance(interest_payload.get("interests"), list) else signal_health.get("active_interests", []),
-        "learned_preferences": signal_health.get("learned_preferences", {}),
+        "learned_preferences": NEWS_RECOMMENDATIONS.profile(signal_health.get("active_interests", [])),
         "response_preferences": HOME_CHAT_STORE.response_preferences(),
         "sources": source_payload.get("sources", []) if isinstance(source_payload, dict) else [],
         "source_registry_mode": "legacy_health_projection" if source_payload.get("legacy_projection") else "registry",
@@ -5774,21 +5777,28 @@ def start_news_image_sync() -> None:
     NEWS_IMAGE_SYNC_THREAD.start()
 
 
-def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
+def home_today_payload(health: dict[str, object], *, seen_only: bool = False) -> list[dict[str, object]]:
     signals: list[dict[str, object]] = []
     local_snapshot = NEWS_BRIEFING_CACHE.snapshot()
     signal_health = health.get("signal_service") if isinstance(health.get("signal_service"), dict) else {}
-    learned_preferences = signal_health.get("learned_preferences") if isinstance(signal_health, dict) else {}
     # This is deliberately local-only.  The background NewsBriefingCache
     # poller owns Hera refresh; Home must render its last-known-good cards
     # without waiting on Signal Service or a publisher.
-    cards = NEWS_BRIEFING_CACHE.ranked_articles(limit=100, preferences=learned_preferences if isinstance(learned_preferences, dict) else None)
+    cards = (NEWS_RECOMMENDATIONS.seen_cards() if seen_only
+             else (local_snapshot.get("briefing") or {}).get("articles", []))
     image_metadata = _cached_news_image_metadata()
     if image_metadata:
         cards = [
             {**item, **image_metadata.get(str(item.get("article_id") or ""), {})}
             for item in cards
         ]
+    cached_signals = SIGNAL_SERVICE_CLIENT.cached_briefing() or {}
+    if not isinstance(cached_signals, dict):
+        cached_signals = {}
+    matches = {str(item.get("article_id") or _discovery_article_id_for_url(item.get("url"))): item.get("semantic_matches", [])
+               for item in cached_signals.get("signals", []) if isinstance(item, dict)}
+    cards = [{**item, "semantic_matches": matches.get(str(item.get("article_id")), item.get("semantic_matches", []))} for item in cards]
+    cards = NEWS_RECOMMENDATIONS.rank(cards, signal_health.get("active_interests", []))
     stale = not local_snapshot.get("available") or local_snapshot.get("sync", {}).get("state") == "unavailable"
     for item in cards:
         if not isinstance(item, dict):
@@ -5830,9 +5840,7 @@ def home_today_payload(health: dict[str, object]) -> list[dict[str, object]]:
                 "image_cache_url": str(item.get("image_cache_url") or ""),
                 "image_enrichment": item.get("image_enrichment") if isinstance(item.get("image_enrichment"), dict) else {},
                 "category": str(item.get("category") or ""),
-                "why_appeared": "Local Ariadne ranking · " + ", ".join(
-                    f"{key}={value}" for key, value in relevance.items()
-                ) if relevance else "Local Ariadne ranking.",
+                "why_appeared": " · ".join(item.get("recommendation_reasons", [])),
                 "rank_score": item.get("local_rank_score", item.get("rank_score")),
                 "provenance": {"news": relevance},
                 "feedback": item.get("feedback") if isinstance(item.get("feedback"), dict) else None,
@@ -6014,7 +6022,7 @@ def home_adaptive_context() -> dict[str, object]:
     """Return a bounded, inspectable profile projection for Home prompts."""
     health = SIGNAL_SERVICE_CLIENT.health()
     interest_payload = SIGNAL_SERVICE_CLIENT.interests()
-    profile = health.get("learned_preferences", {}) if isinstance(health, dict) else {}
+    profile = NEWS_RECOMMENDATIONS.profile(health.get("active_interests", []))
     active_interests = interest_payload.get("interests", []) if interest_payload.get("ok") and isinstance(interest_payload.get("interests"), list) else health.get("active_interests", [])
     response = HOME_CHAT_STORE.response_preferences()
     return {
@@ -7708,7 +7716,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/news/briefing-snapshot":
             snapshot = _news_snapshot_with_cached_images(NEWS_BRIEFING_CACHE.snapshot())
+            snapshot["today"] = home_today_payload({})
             self.send_json(snapshot, 200 if snapshot["available"] else 503)
+            return
+        if path == "/api/home/news/seen":
+            self.send_json({"ok": True, "today": home_today_payload({}, seen_only=True)})
             return
         _expire_sessions()
         if path == "/api/home/tools":
@@ -8424,20 +8436,19 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 if not article_id:
                     self.send_json({"ok": False, "message": "A valid article_id is required."}, 400)
                     return
-                if value not in {"useful", "interesting", "not_useful"}:
+                if not isinstance(value, str) or value not in {"useful", "interesting", "not_useful", ""}:
                     self.send_json({"ok": False, "message": "Feedback must be useful, interesting, or not useful."}, 400)
                     return
                 try:
-                    result = _news_backend_request(article_id, "feedback", {"value": value})
-                except (OSError, RuntimeError, ValueError) as exc:
-                    self.send_json({"ok": False, "message": f"News feedback was not saved to Hera: {str(exc)[:240]}"}, 502)
+                    NEWS_RECOMMENDATIONS.observe(NEWS_BRIEFING_CACHE.snapshot().get("briefing", {}).get("articles", []))
+                    result = NEWS_RECOMMENDATIONS.react(article_id, value, body.get("event_id"))
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
                     return
-                feedback = result.get("feedback") if isinstance(result.get("feedback"), dict) else {}
-                updated_at = str(feedback.get("updated_at") or (result.get("event") or {}).get("created_at") or "")
-                local_updated = NEWS_BRIEFING_CACHE.update_article_feedback(article_id, str(value), updated_at)
-                self.send_json({"ok": True, "article_id": article_id, "feedback": value,
-                                "updated_at": updated_at, "persisted_to_hera": True,
-                                "local_snapshot_updated": local_updated})
+                except (OSError, sqlite3.Error) as exc:
+                    self.send_json({"ok": False, "message": f"Local reaction journal could not save: {str(exc)[:240]}"}, 500)
+                    return
+                self.send_json(result)
                 return
             if path == "/api/home/news/article-context":
                 article_id = _news_article_id(body.get("article_id"))
@@ -8501,6 +8512,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
                                     "publisher_fetch_occurred": False,
                                     "message": f"Cached article was retrieved but could not be attached: {str(exc)[:240]}"}, 500)
                     return
+                NEWS_RECOMMENDATIONS.observe([article])
+                NEWS_RECOMMENDATIONS.opened(article_id)
                 threading.Thread(
                     target=_record_news_interaction_async, args=(article_id, action),
                     name="news-article-interaction", daemon=True,
@@ -8511,6 +8524,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                                 "document": document, "documents": list_documents(DOCUMENT_WORK_ROOT, active_chat_id),
                                 "status": "ready", "retrieval": retrieval,
                                 "document_ready_ms": ready_ms, "interaction_persisted": None,
+                                "seen_persisted_locally": True,
                                 "interaction_queued": True,
                                 "publisher_fetch_occurred": False,
                                 "message": f"Cached article attached · {ready_ms:.1f} ms"})

@@ -408,3 +408,19 @@ body:not(.chat-expanded) .ask-panel:has(#chat-log:empty) .ask-form textarea { mi
   .signal-card { grid-template-columns:88px minmax(0,1fr); min-height:0; }
   .signal-image { width:88px; height:88px; }
 }
+.news-reaction { font-size:17px; min-width:34px; min-height:34px; padding:4px; }
+.news-reaction:focus-visible { outline:2px solid var(--teal); outline-offset:3px; }
+.news-card-actions { flex-wrap:nowrap; align-items:center; }
+.news-card-actions .signal-feedback { flex:0 0 auto; flex-wrap:nowrap; }
+.news-card-actions .signal-promotion { flex:0 0 auto; flex-wrap:nowrap; }
+.news-card-actions .think-button { white-space:nowrap; }
+.news-card-actions .feedback-status { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+.signals-panel { container-type:inline-size; }
+@container (max-width:650px) { .signal-section-grid { grid-template-columns:1fr; } }
+.signals-heading-meta { flex-wrap:wrap; }
+@media (max-width:400px) {
+  .news-card-actions { gap:4px; }
+  .news-card-actions .signal-feedback { gap:3px; }
+  .news-reaction { min-width:24px; min-height:28px; padding:2px; font-size:15px; }
+  .news-card-actions .think-button { max-width:90px; padding:3px 5px; font-size:9px; overflow:hidden; text-overflow:ellipsis; }
+}

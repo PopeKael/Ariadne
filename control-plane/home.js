@@ -623,7 +623,7 @@ function renderSignalCard(item) {
     ? semanticMatches.slice(0, 2).map(match => `${match.interest} · semantic ${Number(match.semantic_score || 0).toFixed(2)}`).join(" · ")
     : item.why_appeared;
   addDetail("Why this appeared", why);
-  if (Number.isFinite(rankScore)) addDetail("Rank score", rankScore.toFixed(3));
+  if (!item.article_id && Number.isFinite(rankScore)) addDetail("Rank score", rankScore.toFixed(3));
   addDetail("Original source", sourceNames.join(", ") || item.source || "Ariadne Discovery Engine");
   if (item.article_id) addDetail("Article reference", item.article_id);
   if (Number.isFinite(sourceCount) && sourceCount > 0) addDetail("Coverage", `${sourceCount} source${sourceCount === 1 ? "" : "s"}`);
@@ -710,18 +710,19 @@ function renderSignalCard(item) {
   }
   const newsArticleCard = item.article_context === "news" || (!item.signal_id && item.article_id);
   if (newsArticleCard) {
-    const actions = el("div", "signal-card-actions");
+    const actions = el("div", "signal-card-actions news-card-actions");
     const feedback = el("div", "signal-feedback");
-    feedback.append(el("span", "feedback-label", "Your take"));
-    const feedbackValues = [["useful", "Useful"], ["interesting", "Interesting"], ["not_useful", "Not useful"]];
-    for (const [value, label] of feedbackValues) {
-      const button = el("button", "feedback-button", label);
+    const feedbackValues = [["useful", "Useful", "👍"], ["interesting", "More like this", "❤️"], ["not_useful", "Not interested", "👎"]];
+    for (const [value, label, emoji] of feedbackValues) {
+      const button = el("button", "feedback-button news-reaction", emoji);
       button.type = "button";
       button.dataset.value = value;
       button.setAttribute("aria-label", `${label} article`);
+      button.title = `${label} · click again to remove`;
+      button.setAttribute("aria-pressed", String(item.feedback?.value === value));
       if (item.feedback && item.feedback.value === value) button.classList.add("selected");
       button.addEventListener("click", () => {
-        if (!button.classList.contains("selected")) submitNewsFeedback(item.article_id, value, card, feedback);
+        submitNewsFeedback(item.article_id, button.classList.contains("selected") ? "" : value, card, feedback);
       });
       feedback.append(button);
     }
@@ -783,6 +784,7 @@ function renderSignalCard(item) {
 }
 
 function renderToday(items) {
+  if (typeof state !== "undefined" && state.newsHistoryView && !state.renderingHistory) return;
   const root = document.querySelector("#today-list");
   const count = document.querySelector("#signal-count");
   const scrollTop = root.scrollTop;
@@ -802,6 +804,7 @@ function renderToday(items) {
   // A page reload creates a new grid and applies the latest server ranking.
   let grid = root.querySelector(".signal-section-grid");
   if (!grid) {
+    root.querySelector(".loading-row")?.remove?.();
     grid = el("div", "signal-section-grid");
     root.append(grid);
   }
@@ -834,7 +837,7 @@ function renderAdaptive(payload) {
       row.append(el("strong", "", entry.label || "Preference"), el("span", "", `${entry.state || "evidence"} · ${entry.evidence_count || 0} signal${entry.evidence_count === 1 ? "" : "s"}`));
       root.append(row);
     }
-  } else root.append(el("p", "quiet", interests.length ? `${interests.length} active interest${interests.length === 1 ? "" : "s"}; feedback will build the evidence profile.` : "No learned preferences yet. Your signal feedback will teach Ariadne gradually."));
+  } else root.append(el("p", "quiet", interests.length ? `${interests.length} active interest${interests.length === 1 ? "" : "s"}; reactions will build the evidence profile.` : "No learned preferences yet. Your news reactions will teach Ariadne gradually."));
   const response = payload?.response_preferences || {};
   const ratings = response.ratings || {};
   const ratingTotal = Object.values(ratings).reduce((total, value) => total + Number(value || 0), 0);
@@ -848,14 +851,20 @@ async function submitNewsFeedback(articleId, value, card, feedbackRoot) {
   if (status) status.textContent = "Saving…";
   try {
     const result = await postWithSessionRecovery("/api/home/news/feedback", {
-      session_id: state.sessionId, article_id: articleId, feedback: value,
+      session_id: state.sessionId, article_id: articleId, feedback: value, event_id: crypto.randomUUID(),
     });
-    if (!result.ok || !result.persisted_to_hera) throw new Error(result.message || "Hera did not confirm saving feedback.");
-    buttons.forEach(button => button.classList.toggle("selected", button.dataset.value === value));
-    if (status) status.textContent = "Saved";
+    if (!result.ok || !result.persisted_locally) throw new Error(result.message || "The local journal did not confirm saving.");
+    buttons.filter(button => button.dataset.value).forEach(button => {
+      const selected = button.dataset.value === result.feedback;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    feedbackRoot.title = "";
+    if (status) status.textContent = result.feedback ? "Seen · saved" : "Removed · still seen";
+    void getJson("/api/home/adaptive").then(renderAdaptive).catch(() => {});
   } catch (error) {
     if (status) status.textContent = "Not saved";
-    feedbackRoot.title = error.message || "Feedback could not be saved to Hera.";
+    feedbackRoot.title = error.message || "Feedback could not be saved locally.";
   } finally {
     buttons.forEach(button => { button.disabled = false; });
   }
@@ -2083,7 +2092,7 @@ async function loadNewsSnapshot() {
   const started = performance.now();
   try {
     const result = await getJson("/api/news/briefing-snapshot");
-    const cards = result && result.available && result.briefing && result.briefing.articles;
+    const cards = result && result.available && result.today;
     if (!Array.isArray(cards)) return false;
     renderToday(cards);
     const elapsedMs = Math.round((performance.now() - started) * 1000) / 1000;
@@ -2493,6 +2502,25 @@ if (exportButton) exportButton.addEventListener("click", exportCurrentChat);
 const purgeButton = document.querySelector("#purge-chat");
 if (purgeButton) purgeButton.addEventListener("click", purgeCurrentChat);
 const informationRefresh = document.querySelector("#information-refresh");
+const newsSeenButton = document.querySelector("#news-seen");
+if (newsSeenButton) newsSeenButton.addEventListener("click", async () => {
+  newsSeenButton.disabled = true;
+  try {
+    const history = !state.newsHistoryView;
+    const response = await fetch(history ? "/api/home/news/seen" : "/api/news/briefing-snapshot");
+    if (!response.ok) throw new Error("News view unavailable");
+    const data = await response.json();
+    state.newsHistoryView = history;
+    document.querySelector("#today-list").replaceChildren();
+    state.renderingHistory = true;
+    renderToday(data.today || []);
+    newsSeenButton.textContent = history ? "Back to Discover" : "Seen";
+    newsSeenButton.setAttribute("aria-pressed", String(history));
+    document.querySelector("#today-heading").textContent = history ? "Seen stories" : "Discover";
+  } catch (error) { newsSeenButton.title = error.message; }
+  finally { state.renderingHistory = false; newsSeenButton.disabled = false; }
+});
+document.querySelector("#news-refresh")?.addEventListener("click", () => window.location.reload());
 if (informationRefresh) informationRefresh.addEventListener("click", () => loadInformation(true));
 window.addEventListener("beforeunload", closeSession);
 loadTools();
