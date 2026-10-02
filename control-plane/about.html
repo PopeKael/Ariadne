@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" class="ariadne-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About · Ariadne</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/page-shell.css">
+  <link rel="stylesheet" href="/about.css">
+</head>
+<body class="ariadne-page about-page">
+  <main class="about-shell">
+    <header class="about-hero">
+      <span class="eyebrow">THE THREAD THROUGH THE LABYRINTH</span>
+      <h1>Ariadne</h1>
+      <p class="hero-line">Knowledge that stays.<br>AI that works alongside you.</p>
+      <p class="hero-intro">A personal workspace for remembering, understanding and making things. Built by Warren “Wazza” Gerdes through practical human–AI collaboration, one tested idea at a time.</p>
+      <div class="hero-tags"><span>Local first</span><span>Durable memory</span><span>Connected tools</span></div>
+    </header>
+
+    <section class="about-intro panel" aria-labelledby="purpose-heading">
+      <div><span class="eyebrow">WHY WE’RE BUILDING IT</span><h2 id="purpose-heading">A useful companion.<br>A memory of your own.</h2></div>
+      <div class="intro-copy"><p>Ariadne began with a simple ambition: keep knowledge beyond any single conversation, and make it available to the AI you choose. The Knowledge Vault holds the notes and evidence; Ariadne brings that memory together with chat, tools and creative work.</p><p>The approach is practical: preserve the source, show the evidence, keep control of the work, and test whether an idea helps in everyday use.</p><p class="signature">“Take AI into the garage and see if it actually works.”<span>Garage Alchemy / Pope Kael TV</span></p></div>
+    </section>
+
+    <section aria-labelledby="building-heading">
+      <div class="section-heading"><div><span class="eyebrow">THE SYSTEM TAKING SHAPE</span><h2 id="building-heading">Four parts. One workspace.</h2></div><span class="section-note">Memory · connections · capabilities · interface</span></div>
+      <div class="parcel-grid">
+        <article class="panel parcel"><span class="parcel-number">01 / MEMORY</span><h3>Knowledge Vault</h3><p>Durable Markdown knowledge, linked context and retrieval evidence. A second brain that can travel with you.</p></article>
+        <article class="panel parcel"><span class="parcel-number">02 / CONNECTIONS</span><h3>MCP</h3><p>A shared way for different AI systems to reach the Vault and its capabilities, without handing them ownership of your memory.</p></article>
+        <article class="panel parcel"><span class="parcel-number">03 / CAPABILITIES</span><h3>Toolshed</h3><p>Controlled tools for research, local services and production. Explicit actions, visible progress and inspectable results.</p></article>
+        <article class="panel parcel"><span class="parcel-number">04 / INTERFACE</span><h3>The workspace</h3><p>Chat, cached news, creative work and model controls, brought together in a browser with the system’s state in view.</p></article>
+      </div>
+    </section>
+
+    <div class="about-columns">
+      <section class="panel journal" aria-labelledby="journal-heading">
+        <span class="eyebrow">NOTES FROM THE BUILD</span><h2 id="journal-heading">The thread so far</h2><p class="section-description">A few milestones, kept as the project grows.</p>
+        <!-- Add new milestones here, newest first. Keep planned work labelled. -->
+        <ol class="timeline">
+          <li><time datetime="2026-10-02">02 OCT 2026</time><h3>A steadier place to read</h3><p>News cards now stay in place while background updates arrive. HTTPS launches, faster health reporting and recovery of Signal matching form the checkpoint before personal recommendations.</p></li>
+          <li><time datetime="2026-10-01">01 OCT 2026</time><h3>The Vault’s work becomes visible</h3><p>Visible ingestion controls and session recovery make long-running Vault work easier to follow and manage.</p></li>
+          <li><time datetime="2026-09-30">30 SEP 2026</time><h3>Follow the evidence</h3><p>Chat activity and source routing come together, making research progress and the sources behind an answer easier to follow.</p></li>
+          <li><time datetime="2026-09-28">28 SEP 2026</time><h3>News, ready when you are</h3><p>Cached articles and images give Home a dependable local starting point for reading and discussion.</p></li>
+          <li><time datetime="2026-08-15">15 AUG 2026</time><h3>One name for the wider system</h3><p>The project’s four parts—Vault, MCP, Toolshed and workspace—are documented together under Ariadne.</p></li>
+        </ol>
+      </section>
+      <aside class="about-side">
+        <section class="panel next-chapter" aria-labelledby="next-heading"><span class="eyebrow">ON THE DRAWING BOARD</span><h2 id="next-heading">A feed that learns,<br>and stays curious.</h2><p>The next news chapter: three simple reactions, gradual learning and room for discovery. Useful stories should lead to better future suggestions, while wider news remains in reach.</p><span class="status-label">Design agreed · implementation ahead</span></section>
+        <section class="panel principles" aria-labelledby="principles-heading"><span class="eyebrow">WORKING PRINCIPLES</span><h2 id="principles-heading">Keep it grounded</h2><ul><li>Keep knowledge portable.</li><li>Make actions and evidence visible.</li><li>Respect the boundaries of each tool.</li><li>Build incrementally. Verify real results.</li></ul></section>
+      </aside>
+    </div>
+
+    <section class="panel acknowledgements" aria-labelledby="credits-heading">
+      <div class="section-heading"><div><span class="eyebrow">A TIP OF THE HAT</span><h2 id="credits-heading">Ideas worth building on</h2></div><span class="section-note">People, projects and shared knowledge</span></div>
+      <p class="credits-intro">Good projects grow through other people’s work. These references have helped shape our thinking; their role here is design inspiration, with credit to the teams behind them.</p>
+      <div class="credit-grid">
+        <article><h3><a href="https://github.com/Informfully/Recommenders" target="_blank" rel="noopener noreferrer">Informfully Recommenders <span aria-hidden="true">↗</span></a></h3><p>For treating variety as part of a good news feed, and for ways to balance relevance with diversity across the whole reading list.</p><span class="credit-context">Reference for upcoming news recommendations</span></article>
+        <article><h3><a href="https://github.com/VowpalWabbit/vowpal_wabbit" target="_blank" rel="noopener noreferrer">Vowpal Wabbit <span aria-hidden="true">↗</span></a></h3><p>For incremental learning and controlled exploration: responding to feedback while leaving space to discover new interests.</p><span class="credit-context">Reference for upcoming news recommendations</span></article>
+        <article><h3><a href="https://github.com/recommenders-team/recommenders" target="_blank" rel="noopener noreferrer">Recommenders <span aria-hidden="true">↗</span></a></h3><p>Originally developed at Microsoft. For practical recommendation examples, evaluation tools, and the distinction between lasting and passing interests.</p><span class="credit-context">Reference for upcoming news recommendations</span></article>
+      </div>
+      <!-- Original Knowledge Vault inspiration: add the name and source once Warren confirms attribution. -->
+      <p class="credits-footnote">Acknowledgements will grow alongside the project. Any incorporated third-party code keeps its own licence and attribution requirements.</p>
+    </section>
+    <footer class="about-footer"><span>ARIADNE · AN ONGOING BUILD</span><a href="https://github.com/PopeKael/Ariadne" target="_blank" rel="noopener noreferrer">Explore the project on GitHub ↗</a></footer>
+  </main>
+  <script src="/page-shell.js"></script>
+</body>
+</html>

@@ -7700,7 +7700,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         # Browser entry points must retain the canonical secure origin. The
         # owned TLS gateway marks its loopback requests to avoid a redirect loop.
-        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/create", "/image", "/system", "/system-details", "/details", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html"}
+        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/create", "/image", "/system", "/system-details", "/details", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html", "/about"}
                 and self.headers.get("X-Forwarded-Proto") != "https"):
             self.send_redirect(PUBLIC_ORIGIN + self.path)
             return
@@ -7966,6 +7966,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/model-lab":
             self.send_asset("model-lab.html", "text/html; charset=utf-8")
+            return
+        if path == "/about":
+            self.send_asset("about.html", "text/html; charset=utf-8")
+            return
+        if path == "/about.css":
+            self.send_asset("about.css", "text/css; charset=utf-8")
             return
         if path == "/configuration/avatar":
             self.send_asset("configuration-avatar.html", "text/html; charset=utf-8")
