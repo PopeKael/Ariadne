@@ -266,10 +266,15 @@ def _canonical_url(value: str) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
 
 
-def _request(url: str, *, max_bytes: int = 2_000_000) -> tuple[bytes, str]:
+def _request(url: str, *, max_bytes: int = 2_000_000, diagnostics: dict[str, Any] | None = None) -> tuple[bytes, str]:
     request = Request(url, headers={"Accept": "application/json,text/html;q=0.9", "User-Agent": "Ariadne/1.0 evidence-search"})
     with urlopen(request, timeout=SEARCH_TIMEOUT_SECONDS) as response:
+        if diagnostics is not None:
+            diagnostics["http_status"] = response.status
+            diagnostics["content_type"] = response.headers.get_content_type()[:90]
         raw = response.read(max(10_000, min(int(max_bytes), 2_000_000)))
+        if diagnostics is not None:
+            diagnostics["response_bytes"] = len(raw)
         return raw, response.headers.get_content_charset() or "utf-8"
 
 
@@ -331,11 +336,27 @@ class SearchProviderRegistry:
     def search(self, query: str, *, limit: int = DEFAULT_RESULT_LIMIT, fetch_limit: int = 3) -> dict[str, Any]:
         providers = self.compatible()
         if not providers:
-            return {"ok": False, "provider": None, "results": [], "error": "No enabled search provider is configured."}
+            return {"ok": False, "provider": None, "results": [], "error": "No enabled search provider is configured.", "attempts": []}
         errors: list[str] = []
+        attempts: list[dict[str, Any]] = []
         for provider in providers:
+            attempt: dict[str, Any] = {
+                "provider_id": provider.provider_id, "http_status": None,
+                "response_classification": "request_error", "parsed_candidate_count": 0,
+                "evaluated_candidate_count": 0, "accepted_result_count": 0,
+                "rejection_counts": {}, "rejections": [],
+            }
+            attempts.append(attempt)
+            def reject(item: dict[str, str], reason: str) -> None:
+                counts = attempt["rejection_counts"]
+                counts[reason] = counts.get(reason, 0) + 1
+                if len(attempt["rejections"]) < 8:
+                    attempt["rejections"].append({
+                        "reason": reason, "title": item.get("title", "")[:160],
+                        "url": item.get("url", "")[:240],
+                    })
             try:
-                raw, charset = _request(_search_url(provider.endpoint, query, provider.provider_type))
+                raw, charset = _request(_search_url(provider.endpoint, query, provider.provider_type), diagnostics=attempt)
                 try:
                     decoded = raw.decode(charset, errors="replace")
                 except LookupError:
@@ -345,6 +366,7 @@ class SearchProviderRegistry:
                 except (ValueError, json.JSONDecodeError):
                     parsed = None
                 if parsed is not None:
+                    attempt["response_classification"] = "json"
                     results = _json_results(parsed)
                 elif provider.provider_type == "searxng" or provider.provider_id == "searxng":
                     results = _searxng_results(decoded)
@@ -352,18 +374,32 @@ class SearchProviderRegistry:
                     results = _bing_results(decoded)
                 else:
                     results = _DuckDuckGoParser().parse(decoded)
+                if parsed is None:
+                    classification = "html" if re.search(r"<(?:html|article|li|body)\b", decoded, re.I) else "text"
+                    if "no results were found" in decoded.casefold():
+                        classification = "html_no_results"
+                    elif not results and re.search(r"captcha|too many requests|rate.limit", decoded, re.I):
+                        classification = "html_challenge_or_rate_limit"
+                    attempt["response_classification"] = classification
+                attempt["parsed_candidate_count"] = len(results)
                 unique: list[dict[str, str]] = []
                 seen: set[str] = set()
                 for item in results:
+                    attempt["evaluated_candidate_count"] += 1
                     if not _topical_result(query, item):
+                        reject(item, "topical_mismatch")
                         continue
                     canonical = _canonical_url(item["url"])
                     if not canonical or canonical in seen:
+                        reject(item, "duplicate_url" if canonical else "invalid_url")
                         continue
                     seen.add(canonical)
                     unique.append({**item, "url": canonical, "source_id": canonical, "source_type": "live"})
                     if len(unique) >= max(1, min(int(limit), 8)):
                         break
+                attempt["accepted_result_count"] = len(unique)
+                attempt["outcome"] = ("accepted" if unique else "zero_parsed_results" if not results
+                                      else "no_accepted_results")
                 for item in unique[:max(0, min(int(fetch_limit), len(unique)))]:
                     try:
                         fetch_url = item["url"]
@@ -391,12 +427,17 @@ class SearchProviderRegistry:
                 self.providers = [provider.__class__(**{**item.__dict__, "health": "healthy"}) if item.provider_id == provider.provider_id else item for item in self.providers]
                 if unique:
                     current_provider = next((item for item in self.providers if item.provider_id == provider.provider_id), provider)
-                    return {"ok": True, "provider": provider.provider_id, "provider_metadata": current_provider.as_dict(), "results": unique, "query": query}
+                    return {"ok": True, "provider": provider.provider_id, "provider_metadata": current_provider.as_dict(), "results": unique, "query": query, "attempts": attempts}
                 errors.append(f"{provider.provider_id}: no usable results")
             except (OSError, ValueError, TypeError, UnicodeError, LookupError, json.JSONDecodeError) as exc:
+                if isinstance(getattr(exc, "code", None), int):
+                    attempt["http_status"] = exc.code
+                    attempt["response_classification"] = "http_error"
+                attempt["outcome"] = "request_or_processing_error"
+                attempt["error"] = str(exc)[:240]
                 self.providers = [provider.__class__(**{**item.__dict__, "health": "unavailable"}) if item.provider_id == provider.provider_id else item for item in self.providers]
                 errors.append(f"{provider.provider_id}: {str(exc)[:240]}")
-        return {"ok": False, "provider": providers[0].provider_id, "provider_metadata": self.route().as_dict() if self.route() else providers[0].as_dict(), "results": [], "query": query, "error": "; ".join(errors)[:420]}
+        return {"ok": False, "provider": providers[0].provider_id, "provider_metadata": self.route().as_dict() if self.route() else providers[0].as_dict(), "results": [], "query": query, "error": "; ".join(errors)[:420], "attempts": attempts}
 
 
 __all__ = ["SearchProvider", "SearchProviderRegistry", "default_search_providers"]

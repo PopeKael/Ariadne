@@ -258,6 +258,93 @@ class HomeSourceRoutingTests(unittest.TestCase):
         self.assertIs(server._referenced_attached_article(
             "Search related information about this article: " + article["metadata"]["title"], [article, other]), article)
 
+    def test_pow_zero_search_does_not_recycle_stale_assistant_claims(self):
+        fixture = json.loads((ROOT / "test-fixtures" /
+            "article-followup-08e15e7d1a4748ecbd8fa930c913d87c.json").read_text(encoding="utf-8"))
+        stale = ("Article analysis still matters.\n\n**Web search context:**\n"
+                 "The live web search results ([Live Source 1]–[5]) focus on Seoul's geography, "
+                 "tourism, and government services rather than the current diplomatic dispute.")
+        chat_id = fixture["chat_id"]
+        record = server.HOME_CHAT_STORE.create()
+        (server.HOME_CHAT_STORE.root / (record["chat_id"] + ".json")).unlink()
+        messages = [dict(message) for message in fixture["messages"]]
+        messages[-1]["content"] = stale
+        record.update(chat_id=chat_id, messages=messages)
+        (server.HOME_CHAT_STORE.root / (chat_id + ".json")).write_text(json.dumps(record), encoding="utf-8")
+        server.DOCUMENT_WORK_ROOT.mkdir(exist_ok=True)
+        (server.DOCUMENT_WORK_ROOT / (chat_id + ".json")).write_text(
+            json.dumps(fixture["document_workspace"]), encoding="utf-8")
+        planner_history = []
+        def planner(query, history, *args, **kwargs):
+            planner_history.extend(history)
+            return fixture["planner_result"]
+        server.home_planner_request = planner
+        diagnostics = [{"provider_id": "searxng", "http_status": 200,
+                        "response_classification": "html_no_results", "parsed_candidate_count": 0,
+                        "accepted_result_count": 0, "rejections": []}]
+        self.search.search = lambda *args, **kwargs: {
+            "ok": False, "provider": "searxng", "results": [],
+            "error": "searxng: no usable results", "attempts": diagnostics}
+        # Simulate a model repeating the known stale paragraph despite the prompt.
+        def model(messages, **kwargs):
+            self.mcp.chat_calls.append(messages)
+            if kwargs.get("on_delta"):
+                kwargs["on_delta"](stale)
+            return stale
+        self.mcp.ollama_chat = model
+        events = []
+        with patch.object(server.PLUGIN_REGISTRY, "providers_for", return_value=[]):
+            result = server.home_chat_payload(fixture["followup"], [], "all", chat_id, [], on_event=events.append)
+        prompt = self.mcp.chat_calls[-1]
+        self.assertIn(server._NO_CURRENT_LIVE_SOURCES, prompt[0]["content"])
+        self.assertIn("Article analysis still matters.", prompt[2]["content"])
+        self.assertNotIn("tourism", "\n".join(m["content"] for m in prompt))
+        self.assertNotIn("[Live Source 1]", "\n".join(m["content"] for m in prompt))
+        self.assertEqual(planner_history[-1]["content"], stale)
+        self.assertEqual(result["runtime_source_state"]["attachment_chunks_used"], 6)
+        self.assertEqual(result["runtime_source_state"]["web_search_result_count"], 0)
+        self.assertEqual(result["answer"], server._NO_CURRENT_LIVE_SOURCES)
+        self.assertEqual(result["retrieval"]["live_search"]["attempts"], diagnostics)
+        stored = json.loads((server.HOME_CHAT_STORE.root / (chat_id + ".json")).read_text(encoding="utf-8"))
+        self.assertEqual(stored["messages"][1]["content"], stale)
+        self.assertEqual(stored["messages"][-1]["content"], result["answer"])
+        self.assertEqual(stored["messages"][-1]["retrieval"]["live_search"]["attempts"], diagnostics)
+        self.assertFalse(any("tourism" in event.get("text", "") or "[Live Source 1]" in event.get("text", "") for event in events))
+
+    def test_zero_source_output_guard_covers_citation_variants_and_no_search(self):
+        for citation in ("[Live Source 1]", "[live source 12]", "[ Live Source 3 ]", "[Live Sources 1–5]"):
+            with self.subTest(citation=citation):
+                unsafe = "Earlier results prove this. " + citation
+                self.assertNotRegex(server._home_current_source_answer(unsafe, 0, True), server._LIVE_SOURCE_CITATION)
+                self.assertNotRegex(server._home_current_source_answer(unsafe, 0, False), server._LIVE_SOURCE_CITATION)
+                self.assertEqual(server._home_current_source_answer(unsafe, 1, True), unsafe)
+        safe = "From the attached article, further action remains unspecified."
+        self.assertEqual(server._home_current_source_answer(safe, 0, True), safe)
+
+    def test_no_search_cannot_emit_citations_but_current_sources_still_stream(self):
+        unsafe = "The supplied live source reports flooding. [Live Source 1]"
+        def model(messages, **kwargs):
+            self.mcp.chat_calls.append(messages)
+            if kwargs.get("on_delta"):
+                kwargs["on_delta"](unsafe)
+            return unsafe
+        self.mcp.ollama_chat = model
+        for query, tools, has_sources in (("Say hello.", [], False),
+                ("Check the latest flooding coverage.", ["external-research"], True)):
+            with self.subTest(has_sources=has_sources):
+                chat = server.HOME_CHAT_STORE.create()
+                events = []
+                result = server.home_chat_payload(query, [], "never", chat["chat_id"], tools, on_event=events.append)
+                deltas = "".join(e.get("text", "") for e in events if e.get("type") == "delta")
+                if has_sources:
+                    self.assertEqual(result["answer"], unsafe)
+                    self.assertEqual(deltas, unsafe)
+                else:
+                    self.assertFalse(result["runtime_source_state"]["web_search_attempted"])
+                    self.assertNotRegex(result["answer"], server._LIVE_SOURCE_CITATION)
+                    self.assertNotRegex(deltas, server._LIVE_SOURCE_CITATION)
+                    self.assertNotIn("Search was attempted", result["answer"])
+
     def test_pow_provider_validation_controls_final_model_context(self):
         from search_providers import SearchProviderRegistry, default_search_providers
 
