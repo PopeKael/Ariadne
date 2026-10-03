@@ -25,7 +25,8 @@ LEGACY_SOURCE_CATEGORIES = {
 
 
 class SignalServiceClient:
-    def __init__(self, base_url: str | None = None, *, timeout: float | None = None, diagnostics_path: str | Path | None = None, cache_path: str | Path | None = None):
+    def __init__(self, base_url: str | None = None, *, timeout: float | None = None, diagnostics_path: str | Path | None = None, cache_path: str | Path | None = None, startup_trace=None):
+        self._startup_trace = startup_trace
         self.base_url = (base_url or os.environ.get("ARIADNE_SIGNAL_SERVICE_URL", "http://192.168.1.200:8788")).rstrip("/")
         # Signal intake and briefing rebuilds can briefly take a few seconds
         # on the NAS. Keep the deadline bounded, but do not fail normal LAN
@@ -86,7 +87,11 @@ class SignalServiceClient:
             self._last_successful_briefing = None
 
     def _get(self, path: str) -> dict[str, Any]:
+        if self._startup_trace:
+            self._startup_trace.connection("signal", "start", endpoint=self.base_url)
         if not self.base_url.startswith(("http://", "https://")):
+            if self._startup_trace:
+                self._startup_trace.connection("signal", "failed", error_type="invalid_url")
             self._diagnostics.emit(
                 "SIGNAL_SERVICE_REQUEST_FAILED",
                 data={"path": path, "url": self.base_url + path, "error_type": "invalid_url", "message": "Signal Service URL is not HTTP(S)."},
@@ -104,6 +109,8 @@ class SignalServiceClient:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 value = json.loads(response.read(2_000_000).decode("utf-8"))
             result = value if isinstance(value, dict) else {"ok": False, "message": "Signal Service returned a non-object response."}
+            if self._startup_trace:
+                self._startup_trace.connection("signal", "ready" if result.get("ok", True) else "failed")
             self._diagnostics.emit(
                 "SIGNAL_SERVICE_REQUEST_SUCCEEDED" if result.get("ok", True) else "SIGNAL_SERVICE_REQUEST_FAILED",
                 request_id=request_id,
@@ -112,6 +119,8 @@ class SignalServiceClient:
             )
             return result
         except (OSError, urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            if self._startup_trace:
+                self._startup_trace.connection("signal", "failed", error_type=type(exc).__name__)
             self._diagnostics.emit(
                 "SIGNAL_SERVICE_REQUEST_FAILED",
                 request_id=request_id,

@@ -36,7 +36,7 @@ class EvidenceFirstTests(unittest.TestCase):
             planner_result={"semantic": {"needs_personal_history": False, "needs_current_information": True, "confidence": 0.95}},
             vault_mode="all", vault_available=True, search_available=True,
         )
-        self.assertTrue(result.use_vault)
+        self.assertFalse(result.use_vault)
         self.assertTrue(result.external_search)
         self.assertTrue(external_search_needed(result, vault_source_count=5))
 

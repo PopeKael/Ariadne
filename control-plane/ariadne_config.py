@@ -45,6 +45,7 @@ DEFAULT_STORAGE = {
     "intake_root": r"D:\Downloads",
 }
 DEFAULT_PERSONALITY = {
+    "intensity": {"factual": 10, "normal": 60, "creative": 80, "diagnostics": 25},
     "relationship": "Practical thinking partner and knowledge navigator.",
     "style": "Warm, direct, calm, curious, and practical.",
     "humour": "Dry intelligent humour only when the moment can carry it.",
@@ -299,6 +300,8 @@ def save_configuration(
     selected_personality.update(current_personality)
     if personality is not None:
         selected_personality.update(personality)
+    from conversation_orchestration import normalize_intensity
+    selected_personality["intensity"] = normalize_intensity(selected_personality.get("intensity"))
     selected_avatar.setdefault("state_assets", current_avatar.get("state_assets", {}))
     storage_errors = validate_storage(selected_storage)
     avatar_errors = validate_avatar(selected_avatar)

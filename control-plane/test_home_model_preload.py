@@ -54,6 +54,9 @@ class HomeModelPreloadTests(unittest.TestCase):
                 events.append("closed")
 
         with patch.dict(server.os.environ, {"ARIADNE_ALLOW_UNSUPERVISED_CORE": "1"}), \
+             patch.object(server, "start_owned_ollama", return_value={"state": "online"}), \
+             patch.object(server, "server_context", return_value=None), \
+             patch.object(server, "load_gateway", return_value=None), \
              patch.object(server.NEWS_BRIEFING_CACHE, "start_background_sync"), \
              patch.object(server, "start_news_image_sync"), \
              patch.object(server, "expire_home_chats"), \

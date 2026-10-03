@@ -185,8 +185,10 @@ class NewsBriefingCache:
         cache_path: str | Path | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         refresh_seconds: int = DEFAULT_REFRESH_SECONDS,
+        startup_trace=None,
     ) -> None:
         self.base_url = (base_url or DEFAULT_URL).rstrip("/")
+        self._startup_trace = startup_trace
         self.cache_path = Path(cache_path) if cache_path is not None else DEFAULT_CACHE_PATH
         self.timeout = max(0.2, float(timeout))
         self.refresh_seconds = max(15, int(refresh_seconds))
@@ -349,9 +351,13 @@ class NewsBriefingCache:
         started = time.perf_counter()
         with self._sync_lock:
             try:
+                if self._startup_trace:
+                    self._startup_trace.connection("news", "start", endpoint=self.base_url)
                 remote = _validated_card_snapshot(self._request_briefing())
                 if remote is None:
                     raise ValueError("Hera returned an invalid or unsuccessful briefing.")
+                if self._startup_trace:
+                    self._startup_trace.connection("news", "ready", endpoint=self.base_url)
                 with self._lock:
                     previous = self._briefing or {}
                     merged = dict(remote)
@@ -379,6 +385,8 @@ class NewsBriefingCache:
                         "generated_at": remote.get("generated_at"),
                     }
             except (OSError, urllib.error.URLError, TimeoutError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                if self._startup_trace:
+                    self._startup_trace.connection("news", "failed", error_type=type(exc).__name__)
                 with self._lock:
                     result = {
                         "state": "unavailable", "ok": False, "changed": False,
@@ -399,6 +407,8 @@ class NewsBriefingCache:
             def poll() -> None:
                 while not self._stop.is_set():
                     self.sync_once()
+                    if self._startup_trace:
+                        self._startup_trace.worker_done("news", self._last_sync.get("ok", False))
                     if self._stop.wait(self.refresh_seconds):
                         return
 

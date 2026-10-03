@@ -158,6 +158,56 @@ class HomeSourceRoutingTests(unittest.TestCase):
         self.assertIn("AUTHORITATIVE PER-TURN SOURCE STATE", self.mcp.chat_calls[-1][0]["content"])
         self.assertIn('"web_search_available":true', self.mcp.chat_calls[-1][0]["content"])
 
+    def test_web_first_skips_generic_vault_and_measures_generation(self):
+        chat = server.HOME_CHAT_STORE.create()
+        result = server.home_chat_payload("Check the latest flooding coverage.", [], "all", chat["chat_id"])
+        self.assertEqual(self.mcp.retrieve_calls, [])
+        metrics = result["timing"]["orchestration"]
+        self.assertEqual(metrics["route"], "web_first")
+        self.assertFalse(metrics["vault"]["used"])
+        self.assertTrue(metrics["web"]["used"])
+        self.assertGreaterEqual(metrics["before_generation_ms"], 0)
+        self.assertGreater(metrics["context"]["total"]["characters"], 0)
+        self.assertEqual(metrics["personality_percentage"], 60)
+        stored = server.HOME_CHAT_STORE.get(chat["chat_id"])["messages"][-1]
+        self.assertEqual(stored["timing"]["orchestration"], metrics)
+
+    def test_optional_personal_vault_runs_after_web(self):
+        chat = server.HOME_CHAT_STORE.create()
+        order = []
+        original_search = self.search.search
+        self.search.search = lambda *a, **kw: (order.append("web"), original_search(*a, **kw))[1]
+        original_vault = server._home_vault_retrieval
+        with patch.object(server, "_home_vault_retrieval", side_effect=lambda *a, **kw: (order.append("vault"), original_vault(*a, **kw))[1]):
+            server.home_chat_payload("Research the latest AI for my project.", [], "all", chat["chat_id"])
+        self.assertEqual(order, ["web", "vault"])
+
+    def test_focus_anchors_planning_search_and_generation(self):
+        chat = server.HOME_CHAT_STORE.create()
+        chat_id = chat["chat_id"]
+        for number in range(5):
+            server.home_chat_payload(f"Say hello {number}.", [], "never", chat_id)
+        source = server.HOME_CHAT_STORE.get(chat_id)["messages"][-1]
+        focus = {"text": "reported coverage", "source_turn_id": source["turn_id"]}
+        with patch.object(server, "configuration_snapshot", return_value={"personality": {"intensity": {"normal": 37}}}):
+            result = server.home_chat_payload("Research the latest details.", [], "all", chat_id, focus=focus)
+        self.assertIn("reported", self.search.calls[-1][0])
+        self.assertLessEqual(len(self.search.calls[-1][0]), 200)
+        prompt = self.mcp.chat_calls[-1]
+        content = prompt[-1]["content"]
+        self.assertLess(content.index("Current Focus"), content.index("New instruction"))
+        self.assertLess(content.index("New instruction"), content.index("Relevant evidence"))
+        self.assertLess(content.index("Relevant evidence"), content.index("Recent conversation"))
+        self.assertNotIn("Say hello 0", content)
+        self.assertEqual(len(prompt), 2)
+        self.assertIn("personality intensity 37%", prompt[0]["content"])
+        self.assertEqual(result["timing"]["orchestration"]["context"]["older_context"]["characters"], 0)
+        other = server.HOME_CHAT_STORE.create()
+        with self.assertRaises(ValueError):
+            server.home_chat_payload("Explain", [], "never", other["chat_id"], focus=focus)
+        with self.assertRaises(ValueError):
+            server.home_chat_payload("Explain", [], "never", chat_id, focus={**focus, "text": "invented passage"})
+
     def test_fresh_all_sources_turn_automatically_searches_for_current_information(self):
         chat = server.HOME_CHAT_STORE.create()
         query = "Check the latest Bangkok Post coverage of flooding in Thailand."

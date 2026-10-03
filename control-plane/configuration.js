@@ -159,6 +159,14 @@ function renderInference(payload) {
 
 function renderPersonality(payload) {
   const personality = payload.personality || {};
+  for (const [key, fallback] of Object.entries({factual: 10, normal: 60, creative: 80, diagnostics: 25})) {
+    const slider = document.querySelector(`#intensity-${key}`);
+    const output = document.querySelector(`#intensity-${key}-value`);
+    if (!slider) continue;
+    if (document.activeElement !== slider) slider.value = personality.intensity?.[key] ?? fallback;
+    output.value = `${slider.value}%`;
+    slider.oninput = () => { output.value = `${slider.value}%`; };
+  }
   for (const [id, key] of [["personality-relationship", "relationship"], ["personality-style", "style"], ["personality-directness", "directness"], ["personality-verbosity", "verbosity"], ["personality-avoid", "avoid"]]) {
     const node = document.querySelector(`#${id}`);
     if (node && document.activeElement !== node) node.value = personality[key] || "";
@@ -222,7 +230,7 @@ function formInference() {
 }
 
 function formPersonality() {
-  return {relationship: document.querySelector("#personality-relationship")?.value.trim() || "", style: document.querySelector("#personality-style")?.value.trim() || "", directness: document.querySelector("#personality-directness")?.value.trim() || "", verbosity: document.querySelector("#personality-verbosity")?.value.trim() || "", avoid: document.querySelector("#personality-avoid")?.value.trim() || ""};
+  return {intensity: Object.fromEntries(["factual", "normal", "creative", "diagnostics"].map(key => [key, Number(document.querySelector(`#intensity-${key}`).value)])), relationship: document.querySelector("#personality-relationship")?.value.trim() || "", style: document.querySelector("#personality-style")?.value.trim() || "", directness: document.querySelector("#personality-directness")?.value.trim() || "", verbosity: document.querySelector("#personality-verbosity")?.value.trim() || "", avoid: document.querySelector("#personality-avoid")?.value.trim() || ""};
 }
 
 function renderAvatar(payload) {

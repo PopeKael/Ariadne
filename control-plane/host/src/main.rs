@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod idle_webm;
+mod startup_trace;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -389,18 +390,26 @@ fn spawn_core(
         .unwrap_or(python.clone());
     let command_text = format!("{} {}", launcher.display(), server.display());
     log_line(format!("launching Python core: {}", command_text));
+    startup_trace::mark("core_spawn_start", "started", serde_json::json!({}));
     let mut command = Command::new(&launcher);
+    if let Some(run_id) = startup_trace::run_id() {
+        command.env("ARIADNE_STARTUP_RUN_ID", run_id);
+    }
     command
         .arg(&server)
         .current_dir(project_root)
         .creation_flags(CREATE_NO_WINDOW_FLAGS);
     let Ok(mut child) = command.spawn() else {
+        startup_trace::mark("core_spawn_failed", "error", serde_json::json!({}));
         log_line("Python core failed to launch; core is offline");
         ui.push(UiEvent::CoreUnavailable(
             "Python core failed to launch.".into(),
         ));
         return None;
     };
+    startup_trace::mark("core_spawn_end", "ready", serde_json::json!({"pid": child.id()}));
+    let core_pid = child.id();
+    let core_started = Instant::now();
     let job = match create_core_job(&child) {
         Ok(job) => job,
         Err(error) => {
@@ -443,6 +452,7 @@ fn spawn_core(
     thread::spawn(move || {
         let mut available = false;
         let mut first_check = true;
+        let mut startup_ready_recorded = false;
         let mut failed_checks = 0u8;
         loop {
             if readiness_stop_thread.load(Ordering::Relaxed) {
@@ -452,6 +462,10 @@ fn spawn_core(
                 failed_checks = 0;
                 if !available {
                     log_line("core available");
+                    if !startup_ready_recorded {
+                        startup_trace::mark("core_ready", "ready", serde_json::json!({"pid": core_pid, "duration_ms": core_started.elapsed().as_secs_f64() * 1000.0}));
+                        startup_ready_recorded = true;
+                    }
                     available = true;
                 }
                 // Re-announce readiness so a delayed/stale IPC state event
@@ -1113,7 +1127,10 @@ impl AvatarOverlay {
             Some(instance),
             None,
         )?;
+        let config_started = Instant::now();
+        startup_trace::mark("config_load_start", "started", serde_json::json!({"scope": "host avatar configuration"}));
         let settings = load_avatar_settings(&executable, &project_root);
+        startup_trace::mark("config_load_end", "ready", serde_json::json!({"duration_ms": config_started.elapsed().as_secs_f64() * 1000.0}));
         let (position, position_saved) = load_position();
         Ok(Self {
             hwnd,
@@ -2470,7 +2487,7 @@ fn process_events(
     let _ = supervisor;
 }
 
-fn run() -> Result<(), String> {
+fn run(origin: Instant) -> Result<(), String> {
     unsafe {
         let mutex = windows::Win32::System::Threading::CreateMutexW(None, false, HOST_MUTEX)
             .map_err(|_| "could not create host mutex".to_string())?;
@@ -2478,6 +2495,7 @@ fn run() -> Result<(), String> {
             let _ = CloseHandle(mutex);
             return Ok(());
         }
+        startup_trace::init(origin);
         log_line("host start");
         let exe = env::current_exe().map_err(|error| error.to_string())?;
         let project_root = find_project_root(&exe);
@@ -2636,7 +2654,9 @@ fn run() -> Result<(), String> {
 }
 
 fn main() {
-    if let Err(error) = run() {
+    let origin = Instant::now();
+    if let Err(error) = run(origin) {
+        startup_trace::mark("startup_failed", "error", serde_json::json!({"error": error}));
         log_line(format!("host fatal error: {}", error));
     }
 }

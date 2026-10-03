@@ -1749,6 +1749,49 @@ function showInWorkbench(content, title = "Conversation output") {
   }
   setWorkbenchOpen(true);
 }
+let currentFocus = null;
+function showFocus(focus) {
+  currentFocus = focus;
+  document.querySelector("#selection-focus")?.remove();
+  if (!focus) {
+    const status = document.querySelector("#ask-status");
+    if (status?.textContent.startsWith("Focus selected.")) status.textContent = "Focus cleared.";
+    return;
+  }
+  const panel = el("div", "selection-focus");
+  panel.id = "selection-focus";
+  panel.append(el("span", "", `Focus: ${focus.text.slice(0, 160)}`));
+  const clear = el("button", "read-button", "Clear Focus");
+  clear.type = "button";
+  clear.addEventListener("click", () => showFocus(null));
+  panel.append(clear);
+  document.querySelector("#ask-form")?.prepend(panel);
+  // The normal composer supplies the short follow-up instruction.
+  const input = document.querySelector("#ask-input");
+  input.focus();
+  document.querySelector("#ask-status").textContent = "Focus selected. Enter a follow-up instruction.";
+}
+function wireSelectionFocus(body, metadata) {
+  if (!CHAT_PAGE || !metadata?.turn_id) return;
+  const button = el("button", "read-button selection-focus-action", "Focus");
+  button.type = "button";
+  button.hidden = true;
+  let selectedText = "";
+  const update = () => {
+    const selection = window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    selectedText = range && body.contains(range.startContainer) && body.contains(range.endContainer) ? selection.toString().trim() : "";
+    button.hidden = !selectedText || selectedText.length > 8000;
+  };
+  body.addEventListener("mouseup", update);
+  body.addEventListener("keyup", update);
+  button.addEventListener("mousedown", event => event.preventDefault());
+  button.addEventListener("click", () => {
+    showFocus({text: selectedText, source_turn_id: metadata.turn_id});
+    button.hidden = true;
+  });
+  body.after(button);
+}
 function addMessage(role, content, metadata) {
   const log = document.querySelector("#chat-log");
   if (!log) return;
@@ -1763,6 +1806,7 @@ function addMessage(role, content, metadata) {
   messageBody.innerHTML = renderMarkdown(displayContent, metadata?.sources);
   message.append(messageBody);
   if (role === "assistant" && metadata && !["pending", "interrupted"].includes(metadata.state)) {
+    wireSelectionFocus(messageBody, metadata);
     const meta = el("div", "message-meta");
     if (metadata.model) meta.append(el("span", "", metadata.model));
     const evidence = metadata.evidence_summary && typeof metadata.evidence_summary === "object" ? metadata.evidence_summary : null;
@@ -1855,6 +1899,7 @@ function scrollChatToLatest() {
   }));
 }
 function restoreMessages(messages) {
+  showFocus(null);
   state.messages = [];
   const log = document.querySelector("#chat-log");
   const meaningful = (messages || []).some(item => item && ["user", "assistant"].includes(item.role) && String(item.content || "").trim());
@@ -2088,6 +2133,14 @@ function endRequestStatus() {
   state.requestTimer = null;
   refreshChatActivity();
 }
+let startupSessionRendered = false;
+let startupSnapshotAttempted = false;
+let startupRenderReported = false;
+function reportStartupRender() {
+  if (startupRenderReported || !startupSessionRendered || (!CHAT_PAGE && !startupSnapshotAttempted)) return;
+  startupRenderReported = true;
+  window.AriadneStartup?.report(CHAT_PAGE ? "chat" : "home");
+}
 async function loadNewsSnapshot() {
   const started = performance.now();
   try {
@@ -2101,6 +2154,9 @@ async function loadNewsSnapshot() {
   } catch (_) {
     // Keep already-rendered cards intact if the local snapshot endpoint is unavailable.
     return false;
+  } finally {
+    startupSnapshotAttempted = true;
+    reportStartupRender();
   }
 }
 async function loadHome({refreshNews = false} = {}) {
@@ -2158,6 +2214,8 @@ async function startSession() {
     try { localStorage.setItem("ariadne.home.chat_id", state.chatId); } catch (_) {}
     restoreMessages(result.messages || []);
     renderAttachments(result.documents || []);
+    startupSessionRendered = true;
+    reportStartupRender();
     // Sidebar history is noncritical and can load while article context opens.
     // Keep its disk scan off the click-to-document-ready path.
     const openingArticle = CHAT_PAGE && new URLSearchParams(window.location.search).has("article_id");
@@ -2249,6 +2307,7 @@ async function ask(event) {
       history: history,
       vault_mode: document.querySelector("#knowledge-mode").value || "all",
       tool_ids: Array.from(state.selectedToolIds),
+      focus: currentFocus,
       article_tldr: articleTldr
     }, event => {
       if (event.type === "activity") {
@@ -2261,6 +2320,7 @@ async function ask(event) {
         }
       }
     }, {signal: controller.signal});
+    showFocus(null);
     result.timing = result.timing || fallbackTiming(result.answer);
     status.textContent = "Answering…";
     const answer = String(result.answer || streamedAnswer || "").trim();

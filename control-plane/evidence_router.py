@@ -96,6 +96,10 @@ def _personal_fact_verification(query: str, personal_context: bool, explicit_ver
     folded = query.casefold()
     words = set(_words(query))
     if explicit_verification:
+        # Current research enriched by project context is not verification of
+        # a personal act, decision, or history.
+        if words.intersection(CURRENT_WORDS) and words.intersection({"project", "setup", "channel", "workflow"}) and not words.intersection(PERSONAL_FACT_WORDS | PERSONAL_HISTORY_WORDS):
+            return False
         return True
     if not words.intersection(PERSONAL_FACT_WORDS):
         return False
@@ -117,7 +121,7 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
     semantic = planner.get("semantic") if isinstance(planner.get("semantic"), dict) else {}
     reasons: list[str] = []
 
-    explicit = bool(word_set.intersection(VERIFY_WORDS)) or bool(re.search(r"\blook\s+up\b|\bfind\s+out\b", query.casefold()))
+    explicit = bool(re.search(r"\b(?:search|browse)\b.*\b(?:web|internet|online)\b|\bweb\s+(?:search|research)\b", query.casefold())) or bool(word_set.intersection(VERIFY_WORDS)) or bool(re.search(r"\blook\s+up\b|\bfind\s+out\b", query.casefold()))
     conversational_greeting = bool(re.search(r"\bhow\s+(are|is)\s+you\b|\bhow'?s\s+it\s+going\b", query.casefold()))
     current = (bool(word_set.intersection(CURRENT_WORDS)) or bool(re.search(r"\b20\d{2}\b|\bthis\s+(month|week|year)\b", query.casefold()))) and not conversational_greeting
     precise = bool(word_set.intersection(PRECISION_WORDS))
@@ -213,10 +217,14 @@ def decide(
     elif mode == "never":
         use_vault = False
     else:
-        # Verification requests get a Vault pass before going outside.  This
-        # is intentionally broader than personal history: a local note may be
-        # the cheapest and most authoritative answer available.
-        use_vault = vault_available and (personal or classification["verification_required"] or bool(attachments_present and semantic.get("needs_attachment")))
+        # Current/web research starts outside; retain local evidence precedence
+        # for other verification and explicit personal/planner context.
+        web_first = mode not in {"local", "never"} and (classification["current_information"] or classification["explicit_verification"])
+        plan = planner_result.get("plan", {}) if isinstance(planner_result, dict) else {}
+        planner_memory = bool(semantic.get("needs_personal_history") or (
+            plan.get("use_vault") and plan.get("primary_source") == "vault"))
+        use_vault = vault_available and (personal or planner_memory or (
+            not web_first and (classification["verification_required"] or bool(attachments_present and semantic.get("needs_attachment")))))
 
     # Personal-fact verification belongs to the Vault. A web provider cannot
     # establish whether Chanya saw, said, or decided something, so do not turn
