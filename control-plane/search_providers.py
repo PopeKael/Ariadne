@@ -50,8 +50,17 @@ def _subject_tokens(text: str) -> set[str]:
     return tokens
 
 
-def compact_source_query(title: str, lead: str, intent: str) -> str:
+def compact_source_query(title: str, lead: str, intent: str, *, task_query: str = "") -> str:
     """Bounded, deterministic source entities + event words + research intent."""
+    if task_query.strip():
+        # The existing interpreter already resolved the subject and task. Preserve
+        # its substantive terms instead of applying the article's two-topic budget.
+        terms = []
+        for term in task_query.split()[:30]:
+            if len(" ".join([*terms, term])) > 200:
+                break
+            terms.append(term)
+        return " ".join(terms)
     source = title + " " + lead
     entities = []
     seen = set()
@@ -95,11 +104,19 @@ def _topical_result(query: str, item: dict[str, str]) -> bool:
     if not subject:
         return False
     evidence = _subject_tokens(item.get("title", "") + " " + item.get("snippet", ""))
+    # Long snippets can coincidentally contain many query words (e.g. a biography
+    # returned for business insurance). Require the result's subject to match too.
+    if not subject.intersection(_subject_tokens(item.get("title", ""))):
+        return False
     # Require meaningful subject coverage, not a single leading place name.
     required = min(4, max(1, (len(subject) * 3 + 9) // 10))
     if len(subject & evidence) < required:
         return False
     entity_words = _subject_tokens(" ".join(re.findall(r"\b[A-Z][A-Za-z0-9]*\b", query)))
+    # A shared topic is insufficient when the requested place/entity is absent:
+    # insurance claims in India cannot establish insurance practice in Thailand.
+    if entity_words and not entity_words.intersection(evidence):
+        return False
     topics = (subject - entity_words) | (subject & {"pow"})
     return not topics or bool(topics & evidence)
 

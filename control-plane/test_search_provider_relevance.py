@@ -80,6 +80,36 @@ class SearchProviderRelevanceTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["results"], [])
 
+    def test_incidental_query_words_in_a_biography_do_not_establish_its_subject(self):
+        query = "Thailand flood insurance commercial buildings"
+        biography = {"title": "Jackie Chan", "url": "https://en.wikipedia.org/wiki/Jackie_Chan",
+            "snippet": "His foundation supports flood relief in Thailand; commercial buildings and insurance were mentioned in his career."}
+        relevant = {"title": "Commercial flood insurance in Thailand", "url": "https://example.test/insurance",
+                    "snippet": "Property insurance for commercial buildings covers specified flood damage."}
+        with patch("search_providers._request", return_value=(json.dumps({"results": [biography, relevant]}).encode(), "utf-8")):
+            result = self.registry.search(query, fetch_limit=0)
+        self.assertEqual([r["url"] for r in result["results"]], [relevant["url"]])
+        self.assertEqual(result["attempts"][0]["rejection_counts"], {"topical_mismatch": 1})
+
+    def test_wrong_country_topic_matches_continue_to_next_provider(self):
+        query = "Thailand business flood insurance coverage claims process"
+        wrong = [
+            {"title": "Vehicle insurance", "url": "https://en.wikipedia.org/wiki/Vehicle_insurance",
+             "snippet": "The claims of auto insurance in India can be accidental, theft claims or third party claims."},
+            {"title": "2015 South India floods", "url": "https://en.wikipedia.org/wiki/2015_South_India_floods",
+             "snippet": "Flood claims and insurance losses in Chennai were reported by insurers."},
+        ]
+        relevant = {"title": "Business flood insurance", "url": "https://example.test/property",
+                    "snippet": "Thailand commercial property insurance covers specified flood damage and business interruption claims."}
+        with patch("search_providers._request", side_effect=[
+                (b'<html>No results found</html>', 'utf-8'),
+                (json.dumps({'results': wrong}).encode(), 'utf-8'),
+                (result_html([relevant], 'bing-html'), 'utf-8')]):
+            result = self.registry.search(query, fetch_limit=0)
+        self.assertEqual(result['provider'], 'bing-html')
+        self.assertEqual([r['url'] for r in result['results']], [relevant['url']])
+        self.assertEqual(result['attempts'][1]['rejection_counts'], {'topical_mismatch': 2})
+
     def test_diagnostics_distinguish_empty_response_from_relevance_rejection(self):
         bodies = [b'<html><body>No results were found. Google: CAPTCHA</body></html>',
                   json.dumps({"results": self.irrelevant}).encode(),
@@ -143,6 +173,16 @@ class SearchProviderRelevanceTests(unittest.TestCase):
         for term in ("Microsoft", "London", "battery", "recycling", "latest developments", "background"):
             self.assertIn(term, other)
         self.assertLessEqual(len(other), 200)
+
+    def test_interpreted_query_preserves_task_terms_and_has_existing_bounds(self):
+        query = "Thailand commercial property flood insurance business interruption coverage"
+        self.assertEqual(compact_source_query("Unrelated article title", "", "Why like this?", task_query=query), query)
+        comparison = "Chiang Mai versus other northern Thailand cities technology business location advantages"
+        self.assertEqual(compact_source_query("New investment", "", "Why there?", task_query=comparison), comparison)
+        bounded = compact_source_query("", "", "", task_query="word " * 100)
+        self.assertLessEqual(len(bounded), 200)
+        self.assertLessEqual(len(bounded.split()), 30)
+        self.assertNotIn("\n", compact_source_query("", "", "", task_query="flood\ninsurance"))
 
 
 if __name__ == "__main__":

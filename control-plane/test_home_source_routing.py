@@ -308,6 +308,108 @@ class HomeSourceRoutingTests(unittest.TestCase):
         self.assertIs(server._referenced_attached_article(
             "Search related information about this article: " + article["metadata"]["title"], [article, other]), article)
 
+    def test_spoken_insurance_followup_searches_interpreted_task_and_generates_from_evidence(self):
+        from search_providers import SearchProviderRegistry, default_search_providers
+        from librarian_harness import resolve_policy
+        chat = server.HOME_CHAT_STORE.create()
+        query = "Are projects and foundations or buildings like this enterprises like this in Thailand? Don't they have insurance against things like this?"
+        task_query = "Thailand commercial property flood insurance business interruption coverage"
+        previous = "The owner of Siam Amazing Park is considering a sale after severe flood damage. The article does not specify insurance coverage."
+        chat["messages"] = [{"role": "user", "content": "Summarise this article.", "turn_id": "previous"},
+                            {"role": "assistant", "content": previous, "state": "complete", "turn_id": "previous"}]
+        (server.HOME_CHAT_STORE.root / (chat["chat_id"] + ".json")).write_text(json.dumps(chat), encoding="utf-8")
+        server.attach_document(server.DOCUMENT_WORK_ROOT, chat["chat_id"], "article.md",
+            "---\ntype: source-article\narticle_cache: hera-news-backend\narticle_status: ready\n"
+            "article_id: article-" + "c" * 28 + "\ntitle: Siam Amazing Park flood damage\n---\n\n" + previous)
+        interpretations = []
+        def planner(request, history, attachments, mode, tools, **kwargs):
+            interpretations.append(request)
+            self.assertEqual(history[-1]["content"], previous)
+            self.assertEqual(len(attachments), 1)
+            value = {"intent": "business flood insurance", "needs_personal_history": False,
+                "needs_current_information": True, "needs_attachment": False,
+                "reasoning_complexity": "medium", "ambiguity": "low", "confidence": .95,
+                "turn": {"types": ["clarification"], "subject": "Insurance for enterprises in Thailand",
+                    "objective": "Explain flood insurance availability and limits without assuming this park's coverage.",
+                    "search_query": task_query, "response_objective": "answer", "changes": []}}
+            policy = resolve_policy(value, server.home_planner_context(request, history, attachments, mode, set(tools)))
+            return {"semantic": value, "plan": policy["plan"], "policy": policy,
+                    "fallback": False, "world_state": {}, "telemetry": {}}
+        server.home_planner_request = planner
+        server.SEARCH_PROVIDER_REGISTRY = SearchProviderRegistry(default_search_providers())
+        evidence = "Commercial property insurance in Thailand can cover flood damage and business interruption, subject to policy terms and limits."
+        relevant = {"title": "All Risks and Business Interruption - AIG Thailand", "snippet": evidence,
+            "url": "https://www.aig.co.th/en/home/risk-solutions/business/property/all-risk-and-business-interruption"}
+        irrelevant = {"title": "Zoho Projects management software", "snippet": "Manage projects and teams.",
+                      "url": "https://www.zoho.com/projects/"}
+        requests = []
+        def request(url, **kwargs):
+            requests.append(url)
+            if "search?" in url:
+                self.assertIn("Thailand+commercial+property+flood+insurance", url)
+                return json.dumps({"results": [irrelevant, relevant]}).encode(), "utf-8"
+            self.assertEqual(url, relevant["url"])
+            return ("<html><body><p>" + evidence + "</p></body></html>").encode(), "utf-8"
+        with patch("search_providers._request", side_effect=request):
+            result = server.home_chat_payload(query, [], "all", chat["chat_id"])
+        self.assertEqual(interpretations, [query])
+        self.assertEqual(len(requests), 2)  # one search, one accepted-source fetch
+        self.assertEqual(self.mcp.retrieve_calls, [])
+        self.assertEqual(len(self.mcp.chat_calls), 1)
+        prompt = "\n".join(m["content"] for m in self.mcp.chat_calls[0])
+        self.assertIn(evidence, prompt)
+        self.assertIn(previous, prompt)
+        self.assertNotIn("Zoho", prompt)
+        self.assertIn("cite material claims as [Live Source N]", self.mcp.chat_calls[0][0]["content"])
+        self.assertIn("older reporting is not a current event", self.mcp.chat_calls[0][0]["content"])
+        self.assertIn("state unknown details", self.mcp.chat_calls[0][0]["content"])
+        self.assertEqual(result["generation_status"], "complete")
+        self.assertEqual(result["retrieval"]["live_search"]["query"], task_query)
+        recipe = result["timing"]["context_recipe"]
+        self.assertEqual(recipe["web"]["query"], task_query)
+        self.assertEqual(recipe["web"]["query_origin"], "semantic_interpretation")
+        self.assertEqual(recipe["generation"]["status"], "complete")
+        self.assertEqual(result["retrieval"]["live_search"]["attempts"][0]["rejection_counts"], {"topical_mismatch": 1})
+
+    def test_research_query_preserves_new_comparison_task_and_old_fallback(self):
+        task = "Chiang Mai versus other northern Thailand cities technology business location advantages"
+        planner = {"semantic": {"turn": {"search_query": task}}, "fallback": False}
+        query, origin = server._home_research_query("Why there rather than other suitable locations?", planner, None, {}, None)
+        self.assertEqual(query, task)
+        self.assertEqual(origin, "semantic_interpretation")
+        year = str(server.datetime.now(server.timezone.utc).year)
+        dated = {"semantic": {"turn": {"search_query": "Thailand flood insurance " + year}}}
+        self.assertEqual(server._home_research_query("Don't businesses have insurance?", dated, None, {}, None)[0], "Thailand flood insurance")
+        self.assertEqual(server._home_research_query("Check current insurance rules.", dated, None, {}, None)[0], "Thailand flood insurance " + year)
+        self.assertEqual(server._home_research_query("Insurance in " + year, dated, None, {}, None)[0], "Thailand flood insurance " + year)
+        original = "Check the latest Bangkok Post flooding coverage."
+        self.assertEqual(server._home_research_query(original, {"semantic": {}}, None, {}, None),
+                         (original, "original_request_fallback"))
+        self.assertEqual(server._home_research_query(original, {**planner, "fallback": True}, None, {}, None),
+                         (original, "original_request_fallback"))
+
+    def test_web_first_followup_uses_article_as_background_without_forcing_a_resummary(self):
+        chat = server.HOME_CHAT_STORE.create()
+        server.attach_document(server.DOCUMENT_WORK_ROOT, chat["chat_id"], "article.md",
+            "# Article\n\nThe business suffered flood damage. Its insurance policy is not disclosed.")
+        server.home_planner_request = lambda *args, **kwargs: {
+            "plan": {"intent": "flood insurance", "tools": ["document-analysis", "external-research"],
+                     "primary_source": "attachment", "use_vault": False, "needs_current_information": True},
+            "semantic": {"intent": "flood insurance", "needs_personal_history": False,
+                "needs_current_information": True, "needs_attachment": True,
+                "reasoning_complexity": "medium", "ambiguity": "low", "confidence": .95,
+                "turn": {"types": ["question"], "subject": "Thailand flood insurance",
+                    "objective": "Explain coverage without assuming the business's policy.",
+                    "search_query": "Thailand flood insurance commercial property", "response_objective": "answer", "changes": []}},
+            "fallback": False, "world_state": {}, "telemetry": {}}
+        result = server.home_chat_payload("Don't they have insurance for things like this?", [], "all", chat["chat_id"])
+        self.assertTrue(result["used_documents"])
+        self.assertEqual(result["timing"]["orchestration"]["route"], "web_first")
+        system = self.mcp.chat_calls[-1][0]["content"]
+        self.assertIn("answer the latest question from live evidence first", system)
+        self.assertNotIn("Use an 'Article facts' section", system)
+        self.assertIn("silence in an article does not establish what happened", self.mcp.chat_calls[-1][-1]["content"])
+
     def test_pow_zero_search_does_not_recycle_stale_assistant_claims(self):
         fixture = json.loads((ROOT / "test-fixtures" /
             "article-followup-08e15e7d1a4748ecbd8fa930c913d87c.json").read_text(encoding="utf-8"))
@@ -359,7 +461,8 @@ class HomeSourceRoutingTests(unittest.TestCase):
         self.assertEqual(stored["messages"][1]["content"], stale)
         self.assertEqual(stored["messages"][-1]["content"], result["answer"])
         self.assertEqual(stored["messages"][-1]["retrieval"]["live_search"]["attempts"], diagnostics)
-        self.assertFalse(any("tourism" in event.get("text", "") or "[Live Source 1]" in event.get("text", "") for event in events))
+        self.assertEqual([event["text"] for event in events if event.get("type") == "delta"], [stale])
+        self.assertTrue(result["timing"]["context_recipe"]["generation"]["source_guard_rejected"])
 
     def test_zero_source_output_guard_covers_citation_variants_and_no_search(self):
         for citation in ("[Live Source 1]", "[live source 12]", "[ Live Source 3 ]", "[Live Sources 1–5]"):
@@ -371,29 +474,69 @@ class HomeSourceRoutingTests(unittest.TestCase):
         safe = "From the attached article, further action remains unspecified."
         self.assertEqual(server._home_current_source_answer(safe, 0, True), safe)
 
-    def test_no_search_cannot_emit_citations_but_current_sources_still_stream(self):
-        unsafe = "The supplied live source reports flooding. [Live Source 1]"
-        def model(messages, **kwargs):
-            self.mcp.chat_calls.append(messages)
-            if kwargs.get("on_delta"):
-                kwargs["on_delta"](unsafe)
-            return unsafe
-        self.mcp.ollama_chat = model
-        for query, tools, has_sources in (("Say hello.", [], False),
-                ("Check the latest flooding coverage.", ["external-research"], True)):
-            with self.subTest(has_sources=has_sources):
+    def test_no_search_tldr_and_current_sources_stream_before_model_returns(self):
+        for query, tools, attach, article_tldr, has_sources in (
+                ("TLDR: explain a hash table.", [], False, False, False),
+                ("TLDR this article.", [], True, False, False),
+                ("TLDR this article.", [], True, True, False),
+                ("Check the latest flooding coverage.", ["external-research"], False, False, True)):
+            with self.subTest(query=query, attach=attach, article_tldr=article_tldr):
                 chat = server.HOME_CHAT_STORE.create()
+                if attach:
+                    server.attach_document(server.DOCUMENT_WORK_ROOT, chat["chat_id"], "article.md",
+                        "---\ntype: source-article\narticle_cache: hera-news-backend\n"
+                        "article_status: ready\narticle_id: article-" + "a" * 28
+                        + "\n---\n\n# Local test\n\nThe attached article explains a successful local test.")
                 events = []
-                result = server.home_chat_payload(query, [], "never", chat["chat_id"], tools, on_event=events.append)
-                deltas = "".join(e.get("text", "") for e in events if e.get("type") == "delta")
-                if has_sources:
-                    self.assertEqual(result["answer"], unsafe)
-                    self.assertEqual(deltas, unsafe)
-                else:
-                    self.assertFalse(result["runtime_source_state"]["web_search_attempted"])
-                    self.assertNotRegex(result["answer"], server._LIVE_SOURCE_CITATION)
-                    self.assertNotRegex(deltas, server._LIVE_SOURCE_CITATION)
-                    self.assertNotIn("Search was attempted", result["answer"])
+                pieces = ["A short ", "summary."] if not has_sources else ["Flooding update. ", "[Live Source 1]"]
+                def model(messages, **kwargs):
+                    self.mcp.chat_calls.append(messages)
+                    self.assertTrue(callable(kwargs.get("on_delta")))
+                    for index, piece in enumerate(pieces):
+                        kwargs["on_delta"](piece)
+                        self.assertEqual([e["text"] for e in events if e.get("type") == "delta"],
+                                         pieces[:index + 1])
+                    return "".join(pieces)
+                self.mcp.ollama_chat = model
+                result = server.home_chat_payload(query, [], "never", chat["chat_id"], tools,
+                    on_event=events.append, article_tldr=article_tldr)
+                self.assertEqual(result["runtime_source_state"]["web_search_attempted"], has_sources)
+                self.assertEqual(result["answer"], "".join(pieces))
+                self.assertEqual([e["text"] for e in events if e.get("type") == "delta"], pieces)
+                self.assertEqual(result["used_documents"], attach)
+                if article_tldr:
+                    self.assertEqual(result["timing"]["orchestration"]["route"], "verified_hera_article_tldr")
+
+    def test_zero_source_web_search_streams_draft_then_returns_checked_answer(self):
+        self.search.search = lambda *args, **kwargs: {"ok": False, "results": [], "error": "No results"}
+        for answer in ("The article leaves this unspecified.", "Web evidence proves it. [Live Source 1]"):
+            with self.subTest(answer=answer):
+                chat = server.HOME_CHAT_STORE.create()
+                server.attach_document(server.DOCUMENT_WORK_ROOT, chat["chat_id"], "article.md",
+                    "---\ntype: source-article\narticle_cache: hera-news-backend\n"
+                    "article_status: ready\narticle_id: article-" + "b" * 28
+                    + "\n---\n\n# Local test\n\nThe attached article leaves the result unspecified.")
+                events = []
+                pieces = [answer[:12], answer[12:]]
+                def model(messages, **kwargs):
+                    self.assertTrue(callable(kwargs.get("on_delta")))
+                    for index, piece in enumerate(pieces):
+                        kwargs["on_delta"](piece)
+                        self.assertEqual([e["text"] for e in events if e.get("type") == "delta"],
+                                         pieces[:index + 1])
+                    return answer
+                self.mcp.ollama_chat = model
+                result = server.home_chat_payload("Research this article.", [], "never", chat["chat_id"],
+                    ["document-analysis", "external-research"], on_event=events.append)
+                self.assertTrue(result["runtime_source_state"]["web_search_attempted"])
+                self.assertTrue(result["used_documents"])
+                self.assertEqual(result["runtime_source_state"]["web_search_result_count"], 0)
+                self.assertEqual([e["text"] for e in events if e.get("type") == "delta"], pieces)
+                self.assertNotRegex(result["answer"], server._LIVE_SOURCE_CITATION)
+                stored = server.HOME_CHAT_STORE.get(chat["chat_id"])["messages"][-1]
+                self.assertEqual(stored["content"], result["answer"])
+                self.assertEqual(stored["context_recipe"]["generation"]["source_guard_rejected"],
+                                 answer != result["answer"])
 
     def test_pow_provider_validation_controls_final_model_context(self):
         from search_providers import SearchProviderRegistry, default_search_providers

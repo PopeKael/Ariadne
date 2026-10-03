@@ -272,7 +272,8 @@ class ChatStore:
             return history[-max(1, limit):]
 
     def begin_turn(self, chat_id: str, message: str, model: str,
-                   identity_kernel: dict[str, Any], title: str | None = None) -> tuple[str, dict[str, Any]]:
+                   identity_kernel: dict[str, Any], title: str | None = None,
+                   semantic: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         with _process_lock(self.lock_path):
             record = self._load_locked(chat_id)
             if not record or record.get("status") != "active":
@@ -282,6 +283,9 @@ class ChatStore:
             turn_id = uuid.uuid4().hex
             user_message_id = uuid.uuid4().hex
             assistant_message_id = uuid.uuid4().hex
+            from conversation_orchestration import assemble_turn
+            job = assemble_turn(semantic or {}, message, record, turn_id)
+            record["conversation_state"] = job["state"]
             if not record.get("messages") and title:
                 record["title"] = _clean_title(title, 80)
             record["last_activity_at"] = timestamp
@@ -308,10 +312,21 @@ class ChatStore:
                     "response_state": "generating",
                     "model": model,
                     "identity_kernel": identity_kernel,
+                    "turn_assembly": job,
                 },
             ])
             self._write_locked(record)
             return turn_id, record
+
+    def record_context_recipe(self, chat_id: str, turn_id: str, recipe: dict[str, Any]) -> None:
+        """Persist the prepared receipt before transport; retain it on interruption."""
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record:
+                raise ValueError("Durable Home chat disappeared before recipe recording.")
+            message = self._find_assistant_locked(record, turn_id)
+            message["context_recipe"] = recipe
+            self._write_locked(record)
 
     def _title_first_exchange_locked(self, record: dict[str, Any]) -> None:
         if record.get("title"):

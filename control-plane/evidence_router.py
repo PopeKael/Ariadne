@@ -183,6 +183,15 @@ def decide(
 ) -> EvidenceDecision:
     classification = classify_request(query, planner_result)
     semantic = planner_result.get("semantic") if isinstance(planner_result, dict) and isinstance(planner_result.get("semantic"), dict) else {}
+    policy = planner_result.get("policy", {}) if isinstance(planner_result, dict) else {}
+    # A grounded update is supplied evidence, not a request to verify whether
+    # the user's correction is true. Preserve explicit verification/research.
+    if (policy.get("conversation_update_sufficient") and not classification["explicit_verification"]
+            and not semantic.get("needs_current_information")):
+        classification["verification_required"] = False
+        classification["personal_fact_verification"] = False
+        classification["current_information"] = False
+        classification["reason_codes"] = ["current_conversation_update_sufficient"]
     query_words = set(_words(query))
     references_missing_context = (
         not attachments_present
@@ -210,7 +219,7 @@ def decide(
             failure_message="I don't have the referenced story attached to this Home chat. Please select the article again and retry.",
         )
     personal = bool(classification["personal_context"])
-    personal = personal or bool(re.search(r"\b(my|our|we|wazza|warren|chanya|ariadne|vault|prior|remember|discussed)\b", query.casefold()))
+    personal = personal or bool(re.search(r"\b(vault|remember|discussed|decided)\b", query.casefold()))
     mode = vault_mode if vault_mode in {"all", "auto", "local", "always", "never"} else "all"
     if mode == "always":
         use_vault = vault_available
@@ -224,7 +233,9 @@ def decide(
         planner_memory = bool(semantic.get("needs_personal_history") or (
             plan.get("use_vault") and plan.get("primary_source") == "vault"))
         use_vault = vault_available and (personal or planner_memory or (
-            not web_first and (classification["verification_required"] or bool(attachments_present and semantic.get("needs_attachment")))))
+            mode == "local" and classification["verification_required"]))
+        if policy.get("conversation_update_sufficient"):
+            use_vault = False
 
     # Personal-fact verification belongs to the Vault. A web provider cannot
     # establish whether Chanya saw, said, or decided something, so do not turn
