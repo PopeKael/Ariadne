@@ -98,7 +98,7 @@ class DiscoveryEngine:
         candidates = []
         for story in stories:
             evidence_lines = "\n".join(f"- {item.get('source_name')}: {item.get('title')} ({item.get('url')})" for item in story.get("evidence", [])[:12])
-            candidates.append({"title": story["title"], "url": story["url"], "article_id": story.get("article_id") or stable_article_id(story.get("url")), "article_cache": story.get("article_cache", {}), "summary": story["summary"], "content": story["summary"] + ("\n\nReports found:\n" + evidence_lines if evidence_lines else ""), "source_name": "Ariadne Discovery Engine", "source_url": self.signal_service_url, "category": _signal_category(story), "published_at": story.get("published_at"), "image_url": story.get("image_url", ""), "provenance": {"discovery": {"story_id": story["story_id"], "article_count": story.get("article_count", 0), "source_count": story.get("source_count", 0), "source_names": story.get("source_names", []), "source_domains": story.get("source_domains", []), "evidence": story.get("evidence", []), "rank_score": story.get("rank_score", 0), "discovery_category": story.get("category", "Main News Feed"), "first_seen_at": story.get("first_seen_at", ""), "last_seen_at": story.get("last_seen_at", ""), "representative_url": story.get("representative_url", story["url"])}}})
+            candidates.append({"title": story["title"], "url": story["url"], "article_id": story.get("article_id") or stable_article_id(story.get("url")), "article_cache": story.get("article_cache", {}), "prepared_article": story.get("prepared_article", {}), "summary": story["summary"], "content": story["summary"] + ("\n\nReports found:\n" + evidence_lines if evidence_lines else ""), "source_name": "Ariadne Discovery Engine", "source_url": self.signal_service_url, "category": _signal_category(story), "published_at": story.get("published_at"), "image_url": story.get("image_url", ""), "provenance": {"discovery": {"story_id": story["story_id"], "article_count": story.get("article_count", 0), "source_count": story.get("source_count", 0), "source_names": story.get("source_names", []), "source_domains": story.get("source_domains", []), "evidence": story.get("evidence", []), "rank_score": story.get("rank_score", 0), "discovery_category": story.get("category", "Main News Feed"), "first_seen_at": story.get("first_seen_at", ""), "last_seen_at": story.get("last_seen_at", ""), "representative_url": story.get("representative_url", story["url"])}}})
         accepted = 0
         duplicates = 0
         failed_batches = 0
@@ -156,11 +156,13 @@ class DiscoveryEngine:
         try:
             with urllib.request.urlopen(request, timeout=self.article_cache_timeout) as response:
                 result = json.loads(response.read(200_000).decode("utf-8"))
-            if not isinstance(result, dict) or result.get("ok") is not True or not result.get("content_ready"):
+            if not isinstance(result, dict) or result.get("ok") is not True:
                 raise RuntimeError(str(result.get("error") if isinstance(result, dict) else "Article cache returned an invalid response.")[:400])
-            return {"status": "ready", "backend": "hera-article-cache", "article_id": article_id, "cached": bool(result.get("cached")), "fetched": bool(result.get("fetched"))}
+            return {"status": "ready", "backend": "hera-article-cache", "article_id": article_id, "cached": bool(result.get("cached")), "fetched": bool(result.get("fetched")), "prepared_article": result}
         except (OSError, TimeoutError, urllib.error.URLError, ValueError, json.JSONDecodeError, RuntimeError) as exc:
-            return {"status": "unavailable", "backend": "hera-article-cache", "article_id": article_id, "error": f"{type(exc).__name__}: {str(exc)[:400]}"}
+            error = f"{type(exc).__name__}: {str(exc)[:400]}"
+            return {"status": "unavailable", "backend": "hera-article-cache", "article_id": article_id, "error": error,
+                    "prepared_article": {"prepared_version": 1, "article_id": article_id, "image_status": "article_fetch_failed", "image_error": error}}
 
     def _materialize_articles(self, stories: list[dict[str, Any]]) -> dict[str, Any]:
         summary = {"enabled": bool(self.article_cache_url), "attempted": False, "ready": 0, "failed": 0}
@@ -178,6 +180,10 @@ class DiscoveryEngine:
                 result = future.result()
                 story["article_id"] = result.get("article_id") or str(story.get("article_id") or "")
                 story["article_cache"] = result
+                prepared = result.pop("prepared_article", None)
+                if isinstance(prepared, dict):
+                    story["image_url"] = prepared.get("image_url", "")
+                    story["prepared_article"] = prepared
                 if result.get("status") == "ready":
                     summary["ready"] += 1
                 else:

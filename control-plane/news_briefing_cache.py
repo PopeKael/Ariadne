@@ -11,6 +11,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -90,12 +91,12 @@ def _merge_cards(previous: list[dict[str, Any]], incoming: list[dict[str, Any]])
         # Ariadne's durable cached-image reference across card refreshes.
         cached_image_url = str(local.get("image_cache_url") or "")
         local_enrichment = local.get("image_enrichment")
-        if cached_image_url:
+        if cached_image_url and not remote.get("prepared_version"):
             card["image_cache_url"] = cached_image_url
             card["image_url"] = cached_image_url
             if local_enrichment:
                 card["image_enrichment"] = copy.deepcopy(local_enrichment)
-        elif isinstance(local_enrichment, dict) and not remote.get("image_enrichment"):
+        elif not remote.get("prepared_version") and isinstance(local_enrichment, dict) and not remote.get("image_enrichment"):
             card["image_enrichment"] = copy.deepcopy(local_enrichment)
             if local_enrichment.get("status") in {"no_url_found", "remote_image_failed"}:
                 card["image_url"] = ""
@@ -186,9 +187,12 @@ class NewsBriefingCache:
         timeout: float = DEFAULT_TIMEOUT,
         refresh_seconds: int = DEFAULT_REFRESH_SECONDS,
         startup_trace=None,
+        prepare_missing_images: bool = False,
     ) -> None:
         self.base_url = (base_url or DEFAULT_URL).rstrip("/")
+        self.article_cache_url = os.environ.get("ARIADNE_ARTICLE_CACHE_URL", "http://192.168.1.200:8790").rstrip("/")
         self._startup_trace = startup_trace
+        self.prepare_missing_images = prepare_missing_images
         self.cache_path = Path(cache_path) if cache_path is not None else DEFAULT_CACHE_PATH
         self.timeout = max(0.2, float(timeout))
         self.refresh_seconds = max(15, int(refresh_seconds))
@@ -285,7 +289,7 @@ class NewsBriefingCache:
                 return False
             updated = copy.deepcopy(self._briefing)
             for article in updated.get("articles", []):
-                if not isinstance(article, dict):
+                if not isinstance(article, dict) or article.get("prepared_version"):
                     continue
                 metadata = metadata_by_id.get(str(article.get("article_id") or ""))
                 if not isinstance(metadata, dict):
@@ -310,6 +314,49 @@ class NewsBriefingCache:
                 self._fingerprint = _fingerprint(updated)
                 self._cached_at = self._file_mtime()
         return changed
+
+    def sync_prepared_images(self) -> dict[str, Any]:
+        """Prepare missing retained-card images in the worker, preserving card state."""
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._lock:
+            cards = [dict(card) for card in (self._briefing or {}).get("articles", [])
+                     if not (card.get("image_cache_url") or card.get("image_url"))
+                     and (not card.get("next_retry_at") or card["next_retry_at"] <= now)][:8]
+        def prepare(card):
+            payload = {"article_id": card["article_id"], "url": card.get("canonical_url") or card.get("url"),
+                       "title": card.get("title", ""), "source": card.get("source", ""),
+                       "summary": card.get("summary", ""), "published_at": card.get("published_at", ""), "image_url": ""}
+            request = urllib.request.Request(self.article_cache_url + "/v1/cache/prepare",
+                                             data=json.dumps(payload).encode("utf-8"),
+                                             headers={"Content-Type": "application/json"}, method="POST")
+            try:
+                try:
+                    response = urllib.request.urlopen(request, timeout=50)
+                except urllib.error.HTTPError as error:
+                    response = error  # Preparation failures also carry bounded retry metadata.
+                with response:
+                    result = json.loads(response.read(MAX_SNAPSHOT_BYTES).decode("utf-8"))
+                if not isinstance(result, dict) or result.get("prepared_version") != 1 or result.get("article_id") != card["article_id"]:
+                    return None
+                fields = {key: value for key, value in result.items()
+                          if key.startswith("image_") and key != "image_cache_path"
+                          or key in {"prepared_version", "next_retry_at"}}
+                if fields.get("image_cache_url"):
+                    fields["image_url"] = fields["image_cache_url"]
+                return card["article_id"], fields
+            except (OSError, ValueError, urllib.error.URLError):
+                return None
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            metadata = dict(item for item in executor.map(prepare, cards) if item)
+        with self._lock:
+            if metadata and self._briefing:
+                updated = copy.deepcopy(self._briefing)
+                updated["articles"] = [{**card, **metadata.get(card["article_id"], {})} for card in updated["articles"]]
+                self._atomic_write(updated)
+                self._briefing = updated
+                self._fingerprint = _fingerprint(updated)
+                self._cached_at = self._file_mtime()
+        return {"attempted": len(cards), "updated": len(metadata)}
 
     def _request_briefing(self) -> dict[str, Any]:
         parts = urlsplit(self.base_url)
@@ -409,6 +456,11 @@ class NewsBriefingCache:
                     self.sync_once()
                     if self._startup_trace:
                         self._startup_trace.worker_done("news", self._last_sync.get("ok", False))
+                    if self.prepare_missing_images:
+                        try:
+                            self.sync_prepared_images()
+                        except (OSError, ValueError, TypeError):
+                            pass  # Keep the last good snapshot and retry on the next worker cycle.
                     if self._stop.wait(self.refresh_seconds):
                         return
 

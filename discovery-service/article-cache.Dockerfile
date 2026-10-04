@@ -1,6 +1,10 @@
 FROM python:3.12-slim
 
 WORKDIR /app
+ARG ARIADNE_BUILD_SHA=20261004-article-preparation-1
+ENV ARIADNE_BUILD_SHA=${ARIADNE_BUILD_SHA}
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 COPY discovery_service ./discovery_service
 COPY cache_run.py ./cache_run.py
 

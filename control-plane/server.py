@@ -337,6 +337,7 @@ SIGNAL_SERVICE_CLIENT = SIGNAL_SERVICE_CLIENTS["RUN"]
 NEWS_RECOMMENDATIONS = NewsRecommendations(ROOT / "runtime" / "news-recommendations.sqlite3")
 NEWS_BRIEFING_CACHE = NewsBriefingCache(
     startup_trace=STARTUP_TRACE,
+    prepare_missing_images=True,
     cache_path=Path(os.environ.get(
         "ARIADNE_NEWS_BRIEFING_CACHE_PATH", str(ROOT / "runtime" / "news-briefing.json")
     )),
@@ -5749,7 +5750,7 @@ def _news_snapshot_with_cached_images(snapshot: dict[str, object]) -> dict[str, 
         return snapshot
     briefing["articles"] = [
         {**card, **metadata.get(str(card.get("article_id") or ""), {})}
-        if isinstance(card, dict) else card
+        if isinstance(card, dict) and not card.get("prepared_version") else card
         for card in cards
     ]
     return snapshot
@@ -5808,7 +5809,7 @@ def home_today_payload(health: dict[str, object], *, seen_only: bool = False) ->
     image_metadata = _cached_news_image_metadata()
     if image_metadata:
         cards = [
-            {**item, **image_metadata.get(str(item.get("article_id") or ""), {})}
+            {**item, **({} if item.get("prepared_version") else image_metadata.get(str(item.get("article_id") or ""), {}))}
             for item in cards
         ]
     cached_signals = SIGNAL_SERVICE_CLIENT.cached_briefing() or {}

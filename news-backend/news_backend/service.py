@@ -196,6 +196,9 @@ class NewsStore:
         article_columns = {str(row[1]) for row in self.db.execute("PRAGMA table_info(articles)")}
         if "category" not in article_columns:
             self.db.execute("ALTER TABLE articles ADD COLUMN category TEXT NOT NULL DEFAULT 'Main News Feed'")
+        columns = {r[1] for r in self.db.execute("PRAGMA table_info(articles)")}
+        if "prepared_json" not in columns:
+            self.db.execute("ALTER TABLE articles ADD COLUMN prepared_json TEXT NOT NULL DEFAULT '{}'")
         self.db.commit()
 
     def close(self) -> None:
@@ -267,6 +270,29 @@ class NewsStore:
                 (image_url, summary, article_id),
             )
             self.db.commit()
+
+    def save_prepared(self, article_id: str, prepared: dict[str, Any], *, summary: str) -> None:
+        # Body lives in Markdown; card payloads contain preparation diagnostics only.
+        metadata = {key: value for key, value in prepared.items() if key not in {"extracted_text", "markdown_path"}}
+        with self.lock:
+            self.db.execute("UPDATE articles SET prepared_json=?,image_url=?,summary=CASE WHEN summary='' THEN ? ELSE summary END WHERE article_id=?",
+                            (json.dumps(metadata, ensure_ascii=False), str(prepared.get("image_cache_url") or ""), summary, article_id))
+            self.db.commit()
+
+    def prepared_metadata(self, article_id: str) -> dict[str, Any]:
+        with self.lock:
+            row = self.db.execute("SELECT prepared_json FROM articles WHERE article_id=?", (article_id,)).fetchone()
+        return json.loads(row[0]) if row else {}
+
+    def needs_preparation(self, article_id: str) -> bool:
+        if not self.is_cached(article_id):
+            return True
+        prepared = self.prepared_metadata(article_id)
+        if not prepared:
+            return False  # Existing articles are handled by the selective backfill.
+        if prepared.get("image_status") == "cached":
+            return False
+        return str(prepared.get("next_retry_at") or "") <= utc_now()
 
     def record_interaction(self, article_id: str, kind: str, value: str = "") -> dict[str, Any] | None:
         if kind not in {"tldr_opened", "discussion_opened", "feedback"}:
@@ -352,10 +378,10 @@ class NewsStore:
         with self.lock:
             rows = self.db.execute(
                 """SELECT article_id,title,canonical_url,source,category,published_at,discovered_at,image_url,summary
-                   FROM articles WHERE source=? AND content_ready=0
+                   FROM articles WHERE source=?
                    ORDER BY published_at DESC,article_id ASC""", (source_name,),
             ).fetchall()
-        return [dict(row) for row in rows]
+        return [dict(row) for row in rows if self.needs_preparation(str(row["article_id"]))]
 
     def curated_briefing(self) -> dict[str, Any] | None:
         with self.lock:
@@ -373,6 +399,11 @@ class NewsStore:
             ).fetchall()
             articles = [dict(row) for row in rows]
             for article in articles:
+                prepared = self.prepared_metadata(str(article["article_id"]))
+                if prepared:
+                    article.update({key: value for key, value in prepared.items() if key.startswith("image_") or key in {"prepared_version", "final_url", "next_retry_at"}})
+                    article["image_url"] = prepared.get("image_cache_url", "")
+                    article["image_enrichment"] = {"status": prepared.get("image_status"), "last_error": prepared.get("image_error"), "next_retry_at": prepared.get("next_retry_at"), "cache_mime": prepared.get("image_cache_mime")}
                 interaction = self.article_interactions(str(article["article_id"]))
                 article["feedback"] = interaction["feedback"] if interaction else None
         return {"briefing_id": state["briefing_id"], "generated_at": state["generated_at"],
@@ -563,21 +594,27 @@ class NewsStore:
 def _fetch_publisher(article: Article, store: NewsStore, timeout: float = 25.0) -> tuple[bool, str]:
     path = store.article_root / f"{article.article_id}.md"
     try:
-        request = urllib.request.Request(
-            article.canonical_url,
-            headers={"Accept": "text/html,application/xhtml+xml", "User-Agent": "Ariadne Hera News Backend/0.1"},
-        )
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read(10_000_000)
-            charset = response.headers.get_content_charset() or "utf-8"
-            final_url = response.geturl()
-        body = _clean_article_markdown(article.title, _extract_markdown(raw, final_url, charset=charset))
-        if len(body.strip()) < 220:
-            raise ValueError("publisher page did not yield a useful article body")
-        page_meta = _page_metadata(raw, charset)
-        image_url = article.image_url or urljoin(final_url, page_meta.get("og:image") or page_meta.get("twitter:image", ""))
-        summary_source = article.summary or page_meta.get("og:description") or page_meta.get("description", "")
-        summary = _card_summary(article.title, summary_source or body.replace("\n", " "))
+        payload = {"article_id": article.article_id, "url": article.canonical_url,
+                   "title": article.title, "source": article.source_name, "summary": article.summary,
+                   "published_at": article.published_at, "image_url": article.image_url}
+        cache_url = os.environ.get("NEWS_BACKEND_ARTICLE_CACHE_URL", "http://192.168.1.200:8790").rstrip("/")
+        request = urllib.request.Request(cache_url + "/v1/cache/prepare", data=json.dumps(payload).encode("utf-8"),
+                                         headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=max(timeout, 60)) as response:
+                prepared = json.loads(response.read(500_000))
+        except urllib.error.HTTPError as exc:
+            failure = json.loads(exc.read(500_000))
+            if failure.get("prepared_version"):
+                store.save_prepared(article.article_id, failure, summary=article.summary)
+            raise
+        if not prepared.get("ok"):
+            raise ValueError(str(prepared.get("error") or "Article preparation failed"))
+        store.save_prepared(article.article_id, prepared, summary=article.summary)
+        body = _clean_article_markdown(article.title, str(prepared.get("extracted_text") or ""))
+        if len(body) < 220:
+            raise ValueError("Publisher page did not yield a useful article body.")
+        summary = _card_summary(article.title, article.summary or str(prepared.get("article_description") or "") or body.replace("\n", " "))
         markdown = (
             f"# {article.title}\n\n**Source:** {article.source_name}\n\n"
             f"**Published:** {article.published_at}\n\n**URL:** {article.canonical_url}\n\n{body}\n"
@@ -586,10 +623,15 @@ def _fetch_publisher(article: Article, store: NewsStore, timeout: float = 25.0) 
         temporary.write_text(markdown, encoding="utf-8", newline="\n")
         os.replace(temporary, path)
         store.mark_cached(article.article_id, path, markdown)
-        store.update_card_metadata(article.article_id, image_url=image_url, summary=summary)
+        store.save_prepared(article.article_id, prepared, summary=summary)
         return True, ""
     except Exception as exc:  # A per-article failure is recorded; the collection cycle continues.
-        store.mark_failed(article.article_id, f"{type(exc).__name__}: {exc}")
+        if not store.is_cached(article.article_id):
+            store.mark_failed(article.article_id, f"{type(exc).__name__}: {exc}")
+        else:
+            with store.lock:
+                store.db.execute("UPDATE articles SET scrape_error=? WHERE article_id=?", (f"{type(exc).__name__}: {exc}"[:500], article.article_id))
+                store.db.commit()
         return False, f"{type(exc).__name__}: {exc}"
 
 
@@ -661,7 +703,7 @@ def collect_once(store: NewsStore, sources: list[SourceDefinition] | None = None
         source_fetches = 0
         for index, row in enumerate(pending):
             article_id = str(row["article_id"])
-            if store.is_cached(article_id):
+            if not store.needs_preparation(article_id):
                 continue
             if report["publisher_fetches"] >= max(1, cycle_article_limit):
                 report["pending_deferred"] += len(pending) - index
@@ -711,7 +753,7 @@ class NewsHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlsplit(self.path)
         if parsed.path == "/health":
-            self._json(200, {"ok": True, "service": "ariadne-news-backend", **self.store.stats()})
+            self._json(200, {"ok": True, "service": "ariadne-news-backend", "prepared_version": 1, "build_sha": os.environ.get("ARIADNE_BUILD_SHA", "unknown"), **self.store.stats()})
             return
         if parsed.path == "/articles":
             from urllib.parse import parse_qs

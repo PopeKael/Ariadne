@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 
 WORKDIR /app
+ARG ARIADNE_BUILD_SHA=20261004-article-preparation-1
+ENV ARIADNE_BUILD_SHA=${ARIADNE_BUILD_SHA}
 ARG DISCOVERY_HANDOFF_BUILD=2026-09-10-batched-retry
 COPY discovery_service ./discovery_service
 COPY run.py ./run.py

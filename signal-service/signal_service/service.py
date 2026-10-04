@@ -471,29 +471,54 @@ class SignalService:
         for candidate in candidates:
             try:
                 signal = normalize_candidate(candidate, default_source_name=default_source_name, default_source_url=default_source_url, ingest_type=ingest_type, adapter=adapter, default_category=default_category)
+                prepared = candidate.get("prepared_article", {}) if isinstance(candidate, dict) else {}
+                prepared = prepared if isinstance(prepared, dict) and prepared.get("prepared_version") == 1 else {}
+                if prepared:
+                    # Upstream owns publisher fetching; preserve its diagnostic record.
+                    diagnostics = {key: value for key, value in prepared.items() if key != "extracted_text"}
+                    signal = replace(signal, image_url=str(prepared.get("image_url") or ""), provenance={**signal.provenance, "article_preparation": diagnostics})
                 existing = self.store.image_enrichment_state(signal.dedupe_key)
                 image_error = ""
                 image_status = "not_attempted"
                 image_cache_path = ""
                 image_cache_mime = ""
                 image_source_url = str(signal.image_url or (existing or {}).get("image_url") or "")
-                can_attempt = _retry_is_due(existing)
+                can_attempt = bool(prepared.get("image_cache_url")) or _retry_is_due(existing)
                 existing_cache = str((existing or {}).get("cache_path") or "")
                 existing_cache_file = self.image_cache_dir / existing_cache if existing_cache else None
                 if existing_cache and (existing_cache_file is None or not existing_cache_file.is_file()):
                     can_attempt = True
                 if existing and existing_cache and existing_cache_file.is_file():
+                    can_attempt = False
                     signal = replace(signal, image_url=str(existing.get("image_url") or signal.image_url or ""))
                     image_status = str(existing.get("status") or "cached")
                 elif can_attempt:
                     try:
-                        if not image_source_url:
+                        if prepared:
+                            image_source_url = str(prepared.get("image_url") or "")
+                            local_url = str(prepared.get("image_cache_url") or "")
+                            if local_url:
+                                image_cache_path, image_cache_mime = self._cache_image(local_url, str(prepared.get("final_url") or signal.url))
+                                image_status = "cached"
+                            else:
+                                image_status = str(prepared.get("image_status") or "no_url_found")
+                                image_error = str(prepared.get("image_error") or "")
+                        elif not image_source_url:
                             image_source_url = fetch_article_image(signal.url, timeout=float(os.environ.get("SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS", "5")))
-                        if image_source_url:
-                            image_cache_path, image_cache_mime = self._cache_image(image_source_url, signal.url)
-                            image_status = "cached"
-                        else:
-                            image_status = "no_url_found"
+                        if not prepared:
+                            if image_source_url:
+                                try:
+                                    image_cache_path, image_cache_mime = self._cache_image(image_source_url, signal.url)
+                                except Exception:
+                                    # A broken feed hint must not poison future lookups.
+                                    replacement = fetch_article_image(signal.url, timeout=float(os.environ.get("SIGNAL_SERVICE_IMAGE_TIMEOUT_SECONDS", "5")))
+                                    if not replacement or replacement == image_source_url:
+                                        raise
+                                    image_source_url = replacement
+                                    image_cache_path, image_cache_mime = self._cache_image(image_source_url, signal.url)
+                                image_status = "cached"
+                            else:
+                                image_status = "no_url_found"
                     except Exception as exc:
                         image_error = str(exc)
                         image_status = "remote_image_failed"
