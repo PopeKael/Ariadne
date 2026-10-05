@@ -17,7 +17,7 @@ import urllib.request
 from typing import Callable
 
 
-DEFAULT_ENDPOINT = "http://localhost:11434"
+DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
 DEFAULT_PROBE_TIMEOUT_SECONDS = 0.75
 DEFAULT_REPAIR_TIMEOUT_SECONDS = 4.0
 OLLAMA_PORT = 11434

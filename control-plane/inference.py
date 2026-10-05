@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from urllib.parse import urlsplit
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,17 @@ TASKS = {
     "embedding": {"embeddings"},
     "summarization_classification": {"classification"},
 }
+
+
+def ipv4_ollama_endpoint(endpoint: str) -> str:
+    """Keep legacy loopback model routes on the desktop IPv4 listener."""
+    endpoint = endpoint.strip().rstrip("/")
+    parsed = urlsplit(endpoint)
+    if parsed.hostname not in {"localhost", "::1"}:
+        return endpoint
+    credentials = parsed.netloc.rpartition("@")[0] + "@" if "@" in parsed.netloc else ""
+    authority = credentials + "127.0.0.1" + (f":{parsed.port}" if parsed.port else "")
+    return parsed._replace(netloc=authority).geturl()
 
 
 @dataclass(frozen=True)
@@ -39,11 +51,15 @@ class Provider:
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "Provider":
+        provider_type = str(value.get("provider_type") or "").strip().casefold()
+        endpoint = str(value.get("endpoint") or "").strip().rstrip("/")
+        if provider_type == "ollama":
+            endpoint = ipv4_ollama_endpoint(endpoint)
         return cls(
             str(value.get("provider_id") or "").strip(),
-            str(value.get("provider_type") or "").strip().casefold(),
+            provider_type,
             str(value.get("model_id") or "").strip(),
-            str(value.get("endpoint") or "").strip().rstrip("/"),
+            endpoint,
             str(value.get("credential_reference") or "").strip(),
             tuple(sorted({str(item).strip() for item in value.get("capabilities", []) if str(item).strip()})),
             str(value.get("location") or "desktop").strip().casefold(),
@@ -65,7 +81,7 @@ def _saved(path: Path | None = None) -> dict[str, Any]:
 
 
 def default_providers() -> list[Provider]:
-    ollama_url = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434").rstrip("/")
+    ollama_url = ipv4_ollama_endpoint(os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434"))
     home_model = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
     planner_model = os.environ.get("ARIADNE_PLANNER_MODEL", home_model)
     embedding_model = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")

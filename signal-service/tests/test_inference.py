@@ -1,8 +1,9 @@
 import json
+import os
 import unittest
 from unittest.mock import patch
 
-from signal_service.inference import InferenceRegistry, Provider, ProviderUnavailable
+from signal_service.inference import InferenceRegistry, Provider, ProviderUnavailable, _default_providers
 
 
 class _Response:
@@ -20,6 +21,11 @@ class _Response:
 
 
 class InferenceRegistryTests(unittest.TestCase):
+    def test_default_local_ollama_route_uses_ipv4(self):
+        with patch.dict(os.environ, {}, clear=True):
+            local = [item for item in _default_providers() if item.provider_type == "ollama"]
+        self.assertEqual([item.endpoint for item in local], ["http://127.0.0.1:11434"])
+
     def setUp(self):
         self.registry = InferenceRegistry()
         self.provider = Provider(

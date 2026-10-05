@@ -16,17 +16,22 @@ class OllamaRuntimeTests(unittest.TestCase):
         )
 
     def test_healthy_catalogue_does_not_restart_or_wait(self):
+        endpoints = []
+        def catalogue(endpoint, timeout):
+            endpoints.append(endpoint)
+            return ["qwen3.5:9b-q4_K_M"]
         with patch.object(ollama_runtime, "sync_model_store_environment", return_value=r"F:\AI\Models\Ollama"), \
              patch.object(ollama_runtime, "store_contains_model") as contains, \
              patch.object(ollama_runtime, "_restart_exact_ollama") as restart:
             result = ollama_runtime.startup_preflight(
                 required_models=("qwen3.5:9b-q4_K_M",),
-                request_models=lambda _endpoint, _timeout: ["qwen3.5:9b-q4_K_M"],
+                request_models=catalogue,
             )
         self.assertEqual(result["state"], "online")
         self.assertFalse(result["repaired"])
         contains.assert_not_called()
         restart.assert_not_called()
+        self.assertEqual(endpoints, ["http://127.0.0.1:11434"])
 
     def test_stale_catalogue_restarts_exact_verified_listener(self):
         responses = iter([[], ["qwen3.5:9b-q4_K_M"]])
@@ -39,6 +44,7 @@ class OllamaRuntimeTests(unittest.TestCase):
                 required_models=("qwen3.5:9b-q4_K_M",),
                 request_models=lambda _endpoint, _timeout: next(responses),
                 listener_paths=lambda: [(25344, r"C:\Users\Warren\AppData\Local\Programs\Ollama\ollama.exe")],
+                supervisor_pids=lambda: [],
                 restart_ollama=lambda paths, store: (paths == [(25344, r"C:\Users\Warren\AppData\Local\Programs\Ollama\ollama.exe")], "restarted"),
             )
         self.assertEqual(result["state"], "online")
@@ -64,6 +70,7 @@ class OllamaRuntimeTests(unittest.TestCase):
                 repair_timeout=0.1,
                 request_models=lambda _endpoint, _timeout: None,
                 listener_paths=lambda: [],
+                supervisor_pids=lambda: [],
                 restart_ollama=lambda paths, store: (paths == [], store == r"F:\AI\Models\Ollama" and "started" or ""),
             )
         self.assertEqual(result["state"], "degraded")
