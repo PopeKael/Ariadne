@@ -24,6 +24,55 @@ same access to a private key. Do not ask for passwords in chat.
 
 ## Interactive connection check
 
+### Codex connection verified on 2026-10-07
+
+Codex's normal sandbox account owns and can read the configured key. The
+elevated Windows user cannot read that key. Explicitly load the configuration
+from the normal tool execution context:
+
+```powershell
+ssh -F C:/Users/Warren/.ssh/config -o ConnectTimeout=8 hera-kstore "id"
+```
+
+This successfully authenticates as NAS account `Wazza`. Do not change key ACLs
+or disable host-key checking to work around the wrong execution context.
+Before the grant below was installed, SSH login alone did not grant Docker
+access: the root-owned socket required authenticated sudo. Persistent Docker
+sudo is now installed and verified; use the command below directly.
+
+### Persistent Docker access requested on 2026-10-07
+
+Warren explicitly requested a command to grant persistent maintenance access
+instead of repeating sudo authentication each session. The prepared helper
+`scripts/enable_nas_docker_access.sh` installs only the dedicated rule
+`Wazza ALL=(root) NOPASSWD: /usr/local/bin/docker`, then tests it as Wazza
+without cached authentication. It removes a newly created rule if validation
+fails. Docker administration is effectively root-level access; this is not
+a restricted read-only grant. It does not grant passwordless arbitrary sudo
+executables or modify SSH keys/socket permissions.
+
+**Installed and independently verified on 2026-10-07.** Warren used the
+password-only interactive SSH login below and ran this in the NAS shell:
+
+```sh
+sudo sh /volume1/docker/ariadne-maintenance-20261007/enable_nas_docker_access.sh
+```
+
+It returned `DOCKER_ACCESS_READY`. A fresh Codex SSH session then successfully
+ran `sudo -n /usr/local/bin/docker ps -a`. Future Codex sessions should use the
+normal sandbox SSH key context and passwordless Docker command directly:
+
+```powershell
+ssh -F C:/Users/Warren/.ssh/config hera-kstore "sudo -n /usr/local/bin/docker ps"
+```
+
+Do not send the Codex key-based command to Warren's interactive PowerShell:
+that account cannot read the sandbox-owned key. Use the password-only login
+below for human authentication.
+
+Revoke the grant by removing only `/etc/sudoers.d/ariadne-codex-docker` with
+authenticated NAS sudo. DSM upgrades may require re-verification.
+
 Run in Windows PowerShell, not inside an already connected NAS shell:
 
 ```powershell

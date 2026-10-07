@@ -1,7 +1,7 @@
-"""Run on Hera with sudo after staging the tested image-preparation bundle.
+"""Run on Hera after staging the tested image-preparation bundle.
 
-Keep original containers stopped under backup names for direct rollback.
-Databases and image files retain their original bind mounts.
+Deploy through each service's authoritative Compose project.
+Rollback uses archived definitions and SQLite backups, not duplicate containers.
 """
 import json
 import os
@@ -23,47 +23,8 @@ SERVICES = [
 
 
 def run(*args):
-    return subprocess.check_output([DOCKER] + list(args), text=True).strip()
-
-
-def create_arguments(state, image, overrides):
-    config, host = state["Config"], state["HostConfig"]
-    if host.get("Privileged") or host.get("Devices") or host.get("NetworkMode") == "host":
-        raise RuntimeError("Unexpected container privileges or host networking; inspect before deploying")
-    args = ["create", "--name", state["Name"].lstrip("/"), "--network", host.get("NetworkMode") or "bridge"]
-    restart = host.get("RestartPolicy", {}).get("Name")
-    if restart:
-        args += ["--restart", restart]
-    for mount in state.get("Mounts", []):
-        if mount["Type"] != "bind":
-            raise RuntimeError("Unexpected non-bind mount; refusing to change storage")
-        value = "type=bind,src=%s,dst=%s" % (mount["Source"], mount["Destination"])
-        if not mount["RW"]:
-            value += ",readonly"
-        args += ["--mount", value]
-    for port, bindings in (host.get("PortBindings") or {}).items():
-        for binding in bindings or []:
-            address = binding.get("HostIp") or "0.0.0.0"
-            args += ["--publish", "%s:%s:%s" % (address, binding["HostPort"], port)]
-    environment = dict(value.split("=", 1) for value in config.get("Env", []) if "=" in value)
-    environment.update(overrides)
-    for key, value in environment.items():
-        args += ["--env", key + "=" + value]
-    for key, value in (config.get("Labels") or {}).items():
-        args += ["--label", key + "=" + value]
-    for extra in host.get("ExtraHosts") or []:
-        args += ["--add-host", extra]
-    for value in host.get("Dns") or []:
-        args += ["--dns", value]
-    if config.get("User"):
-        args += ["--user", config["User"]]
-    if config.get("WorkingDir"):
-        args += ["--workdir", config["WorkingDir"]]
-    if host.get("ReadonlyRootfs"):
-        args += ["--read-only"]
-    # These Ariadne services use the image's own entrypoint and CMD.
-    args += [image]
-    return args
+    prefix = [] if os.geteuid() == 0 else ["sudo", "-n"]
+    return subprocess.check_output(prefix + [DOCKER] + list(args), text=True).strip()
 
 
 def healthy(url):
@@ -80,22 +41,39 @@ def healthy(url):
 
 
 def main():
-    if os.geteuid() != 0:
-        raise SystemExit("Run with sudo; no database or container changes made.")
+    os.umask(0o077)
     backup = ROOT / ("before-" + time.strftime("%Y%m%d-%H%M%S"))
     backup.mkdir(mode=0o700)
-    states, plans = {}, {}
+    states, plans, originals = {}, {}, {}
     for name, context, url, extra in SERVICES:
         state = json.loads(run("inspect", name))[0]
+        labels = state["Config"].get("Labels") or {}
+        project = labels.get("com.docker.compose.project")
+        filename = labels.get("com.docker.compose.project.config_files")
+        service = labels.get("com.docker.compose.service")
+        if not project or not service or not filename or "," in filename:
+            raise RuntimeError(name + " must have one authoritative Compose project before deployment")
+        # Reconciled KStore definitions are JSON, a valid Compose YAML representation.
+        source = Path(filename)
+        document = json.loads(source.read_text())
+        originals[name] = (source, source.read_text(), project)
         states[name] = state
         (backup / (name + ".json")).write_text(json.dumps(state, indent=2))
-        overrides = dict(extra, ARIADNE_BUILD_SHA=BUILD)
-        plans[name] = create_arguments(state, "ariadne-%s:%s" % (context, BUILD), overrides)
+        (backup / (name + "-compose.json")).write_text(source.read_text())
+        spec = document["services"][service]
+        environment = spec.get("environment") or {}
+        if isinstance(environment, list):
+            environment = dict(value.split("=", 1) for value in environment if "=" in value)
+        environment.update(extra, ARIADNE_BUILD_SHA=BUILD)
+        spec["environment"] = environment
+        spec["image"] = "ariadne-%s:%s" % (context, BUILD)
+        plans[name] = document
     # Build all images before stopping any service.
     for name, context, url, extra in SERVICES:
         dockerfile = "article-cache.Dockerfile" if context == "article-cache" else "Dockerfile"
         print("BUILD " + context, flush=True)
-        subprocess.check_call([DOCKER, "build", "-f", str(ROOT / context / dockerfile), "-t", "ariadne-%s:%s" % (context, BUILD), str(ROOT / context)])
+        prefix = [] if os.geteuid() == 0 else ["sudo", "-n"]
+        subprocess.check_call(prefix + [DOCKER, "build", "-f", str(ROOT / context / dockerfile), "-t", "ariadne-%s:%s" % (context, BUILD), str(ROOT / context)])
     completed = []
     try:
         for name, context, url, extra in SERVICES:
@@ -111,29 +89,18 @@ def main():
                         source.backup(target)
                         target.close()
                         source.close()
-            run("rename", name, name + "-before-" + BUILD)
-            run(*plans[name])
-            run("start", name)
+            source, original, project = originals[name]
+            source.write_text(json.dumps(plans[name], indent=2))
+            run("compose", "-p", project, "-f", str(source), "up", "-d")
             if not healthy(url):
                 raise RuntimeError(name + " failed its health check")
     except Exception:
         for name in reversed(completed):
-            try:
-                run("inspect", name + "-before-" + BUILD)
-            except subprocess.CalledProcessError:
-                run("start", name)
-                continue
-            try:
-                run("stop", name)
-                run("rename", name, name + "-failed-" + BUILD)
-            except subprocess.CalledProcessError:
-                pass
-            run("rename", name + "-before-" + BUILD, name)
-            run("start", name)
+            source, original, project = originals[name]
+            source.write_text(original)
+            run("compose", "-p", project, "-f", str(source), "up", "-d")
         raise
-    # Preserve staged source as the deployment source of truth; rollback containers
-    # keep their original immutable images. No full database rebuild is triggered.
-    print("DEPLOYED " + BUILD + "; original containers and SQLite backups retained at " + str(backup), flush=True)
+    print("DEPLOYED " + BUILD + "; rollback definitions and SQLite backups at " + str(backup), flush=True)
     print("Validate three known articles before running selective backfill.", flush=True)
 
 

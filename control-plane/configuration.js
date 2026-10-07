@@ -10,6 +10,8 @@ let cleanupHeartbeat = null;
 let cleanupRun = null;
 let cleanupRunPollTimer = null;
 let inferenceProviders = [];
+let managedInterests = new Map();
+const interestPriorityEdits = new Map();
 const CleanupState = window.AriadneCleanupState;
 
 async function configurationJson(url, options) {
@@ -188,6 +190,7 @@ function renderPersonality(payload) {
 
 function renderAdaptiveManagement(payload) {
   const interests = Array.isArray(payload.interests) ? payload.interests : [];
+  managedInterests = new Map(interests.map(item => [item.interest_id, item]));
   const sources = Array.isArray(payload.sources) ? payload.sources : [];
   const profile = payload.learned_preferences || {};
   const interestRoot = document.querySelector("#interest-list");
@@ -212,11 +215,19 @@ async function loadAdaptiveManagement({silent = true} = {}) {
 }
 
 function interestMarkup(item) {
-  return `<div class="managed-row" data-interest-id="${htmlEscape(item.interest_id)}"><div><strong>${htmlEscape(item.name)}</strong><small>${htmlEscape(item.description || "No description")}</small></div><button type="button" class="secondary-button" data-interest-toggle="${htmlEscape(item.interest_id)}" data-interest-enabled="${item.enabled ? "true" : "false"}">${item.enabled ? "Disable" : "Enable"}</button></div>`;
+  const edit = interestPriorityEdits.get(item.interest_id);
+  const priority = Math.max(0, Math.min(5, Number(edit?.priority ?? item.priority ?? 1)));
+  return `<div class="managed-row" data-interest-id="${htmlEscape(item.interest_id)}"><div><strong>${htmlEscape(item.name)}</strong><small>${htmlEscape(item.description || "No description")}</small></div><div class="managed-row-actions interest-actions"><label class="interest-priority"><input type="range" min="0" max="5" step="0.1" value="${priority}" data-interest-priority="${htmlEscape(item.interest_id)}" aria-label="Priority for ${htmlEscape(item.name)}" ${edit?.saving ? "disabled" : ""}><output>${priority}</output></label><button type="button" class="secondary-button" data-interest-save="${htmlEscape(item.interest_id)}" ${edit ? "" : "hidden"} ${edit?.saving ? "disabled" : ""}>${edit?.saving ? "Saving…" : "Save"}</button><button type="button" class="secondary-button" data-interest-toggle="${htmlEscape(item.interest_id)}" data-interest-enabled="${item.enabled ? "true" : "false"}">${item.enabled ? "Disable" : "Enable"}</button></div><small class="interest-save-status" role="status">${htmlEscape(edit?.message || "")}</small></div>`;
+}
+
+function renderInterestRows() {
+  const root = document.querySelector("#interest-list");
+  if (root) root.innerHTML = [...managedInterests.values()].map(interestMarkup).join("") || `<p class="configuration-note">No interests yet.</p>`;
 }
 
 function ensureInterestVisible(interest) {
   if (!interest || !interest.interest_id) return;
+  managedInterests.set(interest.interest_id, interest);
   const root = document.querySelector("#interest-list");
   if (!root || [...root.querySelectorAll("[data-interest-id]")].some(item => String(item.dataset.interestId) === String(interest.interest_id))) return;
   root.querySelector(".configuration-note")?.remove();
@@ -589,6 +600,53 @@ async function updateInterest(interestId, enabled) {
   } catch (error) { setStatus(`Interest update failed: ${error.message}`, "error"); }
 }
 
+document.querySelector("#interest-list")?.addEventListener("input", event => {
+  const slider = event.target;
+  if (!slider.matches("[data-interest-priority]")) return;
+  const id = slider.dataset.interestPriority;
+  const changed = Number(slider.value) !== Number(managedInterests.get(id)?.priority ?? 1);
+  if (changed) interestPriorityEdits.set(id, {priority: Number(slider.value), message: "Unsaved"});
+  else interestPriorityEdits.delete(id);
+  slider.parentElement.querySelector("output").textContent = slider.value;
+  const row = slider.closest("[data-interest-id]");
+  row.querySelector("[data-interest-save]").hidden = !changed;
+  row.querySelector(".interest-save-status").textContent = changed ? "Unsaved" : "";
+});
+
+async function saveInterestPriority(id) {
+  const edit = interestPriorityEdits.get(id);
+  const interest = managedInterests.get(id);
+  if (!edit || edit.saving || !interest) return;
+  edit.saving = true;
+  edit.message = "Saving…";
+  renderInterestRows();
+  try {
+    let saved;
+    try {
+      const result = await configurationJson("/api/signals/interests", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({...interest, interest_id: id, priority: edit.priority})});
+      saved = result.interest;
+      if (!saved || Number(saved.priority) !== edit.priority) throw new Error("Signal Service did not confirm the selected priority.");
+    } catch (error) {
+      // A timed-out write may already have committed before semantic refresh.
+      // Read the authoritative registry before calling the save a failure.
+      try {
+        const result = await configurationJson("/api/signals/interests");
+        saved = result.interests?.find(item => item.interest_id === id);
+      } catch (_) { saved = null; }
+      if (!saved || Number(saved.priority) !== edit.priority) throw error;
+    }
+    managedInterests.set(id, saved);
+    interestPriorityEdits.delete(id);
+    setStatus("Interest priority saved.", "success");
+  } catch (error) {
+    edit.message = "Save not confirmed. Your change is kept; retry Save.";
+    setStatus(`Interest priority update failed: ${error.message}`, "error");
+  } finally {
+    edit.saving = false;
+    renderInterestRows();
+  }
+}
+
 async function updateSource(sourceId, enabled) {
   try {
     await configurationJson("/api/signals/sources", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({source_id: sourceId, enabled})});
@@ -605,6 +663,7 @@ async function removeSource(sourceId) {
 
 document.addEventListener("click", event => {
   const target = event.target;
+  if (target.matches("[data-interest-save]")) { void saveInterestPriority(target.dataset.interestSave); return; }
   if (target.matches("[data-interest-toggle]")) { updateInterest(target.dataset.interestToggle, target.dataset.interestEnabled !== "true"); return; }
   if (target.matches("[data-source-toggle]")) { updateSource(target.dataset.sourceToggle, target.dataset.sourceEnabled !== "true"); return; }
   if (target.matches("[data-source-remove]")) { removeSource(target.dataset.sourceRemove); }
