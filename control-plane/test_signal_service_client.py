@@ -26,6 +26,25 @@ class SignalServiceClientTests(unittest.TestCase):
             result = client.briefing()
         self.assertEqual(result["signals"], [])
 
+    def test_registry_projection_survives_briefing_restart_and_partial_update(self):
+        cache_path = Path(self.temp.name) / "briefing.json"
+        client = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path, cache_path=cache_path)
+        interest = {"interest_id": "custom", "name": "My subject", "description": "Natural description",
+                    "aliases": ["alias"], "enabled": True, "priority": 4}
+        with patch.object(client, "_get", return_value={"ok": True, "interests": [interest]}):
+            client.interests()
+        with patch.object(client, "_get", return_value={"ok": True, "signals": []}):
+            client.briefing()
+        restarted = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path, cache_path=cache_path)
+        self.assertEqual(restarted.cached_interests(), [interest])
+        disabled = {**interest, "enabled": False}
+        with patch.object(restarted, "_post", return_value={"ok": True, "interest": disabled}):
+            restarted.upsert_interest({"interest_id": "custom", "enabled": False})
+        self.assertEqual(restarted.cached_interests(), [disabled])
+        with patch.object(restarted, "_get", return_value={"ok": False}):
+            restarted.health()
+        self.assertEqual(restarted.cached_interests(), [disabled])
+
     def test_failure_is_contained_as_offline_fallback(self):
         client = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path)
         with patch("signal_service_client.urllib.request.urlopen", side_effect=URLError("offline")):

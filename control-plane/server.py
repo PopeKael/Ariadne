@@ -5818,7 +5818,10 @@ def home_today_payload(health: dict[str, object], *, seen_only: bool = False) ->
     matches = {str(item.get("article_id") or _discovery_article_id_for_url(item.get("url"))): item.get("semantic_matches", [])
                for item in cached_signals.get("signals", []) if isinstance(item, dict)}
     cards = [{**item, "semantic_matches": matches.get(str(item.get("article_id")), item.get("semantic_matches", []))} for item in cards]
-    cards = NEWS_RECOMMENDATIONS.rank(cards, signal_health.get("active_interests", []))
+    configured = signal_health.get("active_interests")
+    if not isinstance(configured, list):
+        configured = SIGNAL_SERVICE_CLIENT.cached_interests()
+    cards = NEWS_RECOMMENDATIONS.rank(cards, configured if isinstance(configured, list) else [])
     stale = not local_snapshot.get("available") or local_snapshot.get("sync", {}).get("state") == "unavailable"
     for item in cards:
         if not isinstance(item, dict):

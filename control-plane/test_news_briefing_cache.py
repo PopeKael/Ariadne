@@ -186,9 +186,9 @@ class NewsBriefingCacheTests(unittest.TestCase):
         retained = next(article for article in articles if article["article_id"] == "article-test-1")
         self.assertEqual(retained["title"], "Updated card title")
         self.assertEqual(retained["feedback"]["value"], "useful")
-        self.assertTrue(all(article.get("local_ranked") for article in articles))
+        self.assertTrue(all(not article.get("local_ranked") for article in articles))
 
-    def test_local_ranking_applies_preferences_and_persists_final_order(self):
+    def test_cache_preserves_order_despite_competing_preferences(self):
         value = briefing("hash-a")
         value["articles"] = [
             {**value["articles"][0], "article_id": "article-test-1", "source": "Other"},
@@ -199,10 +199,10 @@ class NewsBriefingCacheTests(unittest.TestCase):
             client.sync_once()
         preferences = {"sources": [{"label": "Preferred", "score": 1.0}]}
         ranked = client.ranked_articles(preferences=preferences)
-        self.assertEqual([article["article_id"] for article in ranked], ["article-test-2", "article-test-1"])
-        self.assertGreater(ranked[0]["local_rank_score"], ranked[1]["local_rank_score"])
+        self.assertEqual([article["article_id"] for article in ranked], ["article-test-1", "article-test-2"])
+        self.assertTrue(all("local_rank_score" not in card for card in ranked))
         restarted = NewsBriefingCache("http://127.0.0.1:1", cache_path=self.path)
-        self.assertEqual(restarted.snapshot()["briefing"]["articles"][0]["article_id"], "article-test-2")
+        self.assertEqual(restarted.snapshot()["briefing"]["articles"][0]["article_id"], "article-test-1")
 
 
 if __name__ == "__main__":

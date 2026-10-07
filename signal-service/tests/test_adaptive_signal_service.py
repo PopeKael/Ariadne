@@ -44,6 +44,50 @@ class BoundedInference(FakeInference):
 
 
 class AdaptiveSignalServiceTests(unittest.TestCase):
+    def test_arbitrary_interest_description_priority_updates_and_disabling(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeInference()
+            service = SignalService(Path(temporary) / "signals.sqlite3", feeds=[], inference=fake)
+            try:
+                interest = service.upsert_interest({"name": "My unusual subject", "description": "AMD Strix Halo",
+                                                    "aliases": ["compact silicon"], "priority": 1})
+                service.ingest_candidates([{"title": "Compact silicon", "url": "https://example.test/custom",
+                                            "summary": "A new platform."}], default_source_name="Example")
+                before = service.briefing(limit=10)["signals"][0]
+                self.assertEqual(before["semantic_matches"][0]["interest"], "My unusual subject")
+                calls = len(fake.calls)
+                scores = []
+                for priority in (0, .5, 1, 2, 3, 4, 5):
+                    updated = service.upsert_interest({"interest_id": interest["interest_id"], "priority": priority})
+                    self.assertEqual(updated["description"], interest["description"])
+                    self.assertEqual(updated["aliases"], interest["aliases"])
+                    scores.append(service.briefing(limit=10)["signals"][0]["rank_score"])
+                self.assertEqual(len(set(scores)), 7)
+                self.assertEqual(scores, sorted(scores))
+                self.assertEqual(len(fake.calls), calls)
+                disabled = service.upsert_interest({"interest_id": interest["interest_id"], "enabled": False})
+                self.assertEqual(disabled["priority"], 5)
+                self.assertEqual(service.briefing(limit=10)["signals"][0]["semantic_matches"], [])
+                self.assertEqual(service.health()["active_interests"], [])
+            finally:
+                service.close()
+
+    def test_more_than_six_semantic_interests_keep_high_priority_match(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeInference()
+            service = SignalService(Path(temporary) / "signals.sqlite3", feeds=[], inference=fake)
+            try:
+                for i in range(8):
+                    service.upsert_interest({"name": f"Custom subject {i}", "description": "AMD Strix Halo",
+                                             "priority": 5 if i == 7 else 1})
+                result = service.ingest_candidates([{"title": "Compact silicon", "url": "https://example.test/many",
+                                                      "summary": "A new platform."}], default_source_name="Example")
+                matches = result["briefing"]["signals"][0]["semantic_matches"]
+                self.assertEqual(len(matches), 8)
+                self.assertTrue(any(m["priority"] == 5 for m in matches))
+            finally:
+                service.close()
+
     def test_semantics_recovers_after_provider_returns_without_new_intake(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as temporary:

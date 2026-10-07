@@ -288,7 +288,7 @@ class SignalStore:
         rows = self._connection.execute(
             """SELECT m.interest_id, i.name, i.priority, m.semantic_score, m.provider_id, m.model_id, m.embedding_version
                FROM signal_interest_matches m JOIN interests i ON i.interest_id = m.interest_id
-               WHERE m.signal_id = ? AND i.enabled = 1 ORDER BY m.semantic_score DESC, i.name COLLATE NOCASE""",
+               WHERE m.signal_id = ? AND i.enabled = 1 AND i.semantic_enabled = 1 ORDER BY m.semantic_score DESC, i.name COLLATE NOCASE""",
             (signal_id,),
         ).fetchall()
         return [{"interest_id": row["interest_id"], "interest": row["name"], "priority": float(row["priority"]), "semantic_score": round(float(row["semantic_score"]), 4), "provider_id": row["provider_id"], "model_id": row["model_id"], "embedding_version": row["embedding_version"]} for row in rows]
@@ -351,6 +351,11 @@ class SignalStore:
             return [{"interest_id": row["interest_id"], "name": row["name"], "description": row["description"], "enabled": bool(row["enabled"]), "priority": float(row["priority"]), "aliases": json.loads(row["aliases_json"]), "semantic_enabled": bool(row["semantic_enabled"]), "created_at": row["created_at"], "updated_at": row["updated_at"]} for row in rows]
 
     def upsert_interest(self, value: dict[str, Any]) -> dict[str, Any]:
+        # Page toggles are partial edits; preserve the other settings.
+        with self._lock:
+            existing = next((item for item in self.list_interests()
+                             if item["interest_id"] == value.get("interest_id")), {})
+            value = {**existing, **value}
         name = " ".join(str(value.get("name") or "").split()).strip()
         if not name or len(name) > 200:
             raise ValueError("Interest name must be between 1 and 200 characters")

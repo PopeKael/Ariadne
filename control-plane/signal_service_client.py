@@ -138,9 +138,11 @@ class SignalServiceClient:
         if result.get("ok", True) and isinstance(raw_signals, list):
             successful = {**result, "signals": list(signals)}
             with self._briefing_cache_lock:
+                if "configured_interests" in (self._last_successful_briefing or {}):
+                    successful["configured_interests"] = self._last_successful_briefing["configured_interests"]
                 self._last_successful_briefing = successful
-            if persist_cache:
-                self._persist_briefing(successful)
+                if persist_cache:
+                    self._persist_briefing(successful)
             return {**result, "signals": list(signals[:bounded_limit])}
 
         with self._briefing_cache_lock:
@@ -202,6 +204,8 @@ class SignalServiceClient:
 
     def health(self) -> dict[str, Any]:
         result = self._get("/v1/health")
+        if result.get("ok") and isinstance(result.get("active_interests"), list):
+            self._cache_interests(result["active_interests"])
         if not result.get("ok"):
             result.setdefault("state", "offline")
         return result
@@ -211,7 +215,25 @@ class SignalServiceClient:
         return result if isinstance(result, dict) else {"ok": False, "state": "offline"}
 
     def interests(self) -> dict[str, Any]:
-        return self._get("/v1/interests")
+        result = self._get("/v1/interests")
+        if result.get("ok") and isinstance(result.get("interests"), list):
+            self._cache_interests(result["interests"])
+        return result
+
+    def cached_interests(self) -> list[dict[str, Any]]:
+        """Local projection of the authoritative registry for first paint."""
+        with self._briefing_cache_lock:
+            return [dict(item) for item in (self._last_successful_briefing or {}).get("configured_interests", [])]
+
+    def _cache_interests(self, interests: list[dict[str, Any]]) -> None:
+        with self._briefing_cache_lock:
+            if (self._last_successful_briefing or {}).get("configured_interests") == interests:
+                return
+            self._last_successful_briefing = {
+                **(self._last_successful_briefing or {"signals": []}),
+                "configured_interests": [dict(item) for item in interests],
+            }
+            self._persist_briefing(self._last_successful_briefing)
 
     def sources(self) -> dict[str, Any]:
         result = self._get("/v1/sources")
@@ -266,7 +288,12 @@ class SignalServiceClient:
             return {"ok": False, "message": f"Signal Service unavailable: {str(exc)[:180]}"}
 
     def upsert_interest(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._post("/v1/interests", payload)
+        result = self._post("/v1/interests", payload)
+        if result.get("ok") and isinstance(result.get("interest"), dict):
+            updated = result["interest"]
+            current = [item for item in self.cached_interests() if item.get("interest_id") != updated.get("interest_id")]
+            self._cache_interests([*current, updated])
+        return result
 
     def upsert_source(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._post("/v1/sources", payload)

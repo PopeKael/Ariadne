@@ -452,7 +452,9 @@ class SignalService:
                 if score >= self.MIN_SEMANTIC_MATCH_SCORE:
                     matches.append({"interest_id": interest["interest_id"], "semantic_score": score})
             matches.sort(key=lambda item: (-float(item["semantic_score"]), item["interest_id"]))
-            self.store.replace_signal_matches(signal.signal_id, matches[:6], selected_provider.provider_id, selected_provider.model_id, selected_provider.embedding_version)
+            # Keep every qualifying configured interest: a similarity-only
+            # top-six cut could discard the user's highest-priority match.
+            self.store.replace_signal_matches(signal.signal_id, matches, selected_provider.provider_id, selected_provider.model_id, selected_provider.embedding_version)
             match_count += len(matches)
         embedding_counts = self.store.embedding_counts(selected_provider.provider_id, selected_provider.model_id, selected_provider.embedding_version)
         self._semantic_status = {"state": "healthy", "provider_id": selected_provider.provider_id, "model_id": selected_provider.model_id, "location": selected_provider.location, "embedded_signals": embedded_signals, "embedded_interests": embedded_interests, "stored_signal_embeddings": embedding_counts["signals"], "stored_interest_embeddings": embedding_counts["interests"], "match_count": match_count, "error": ""}
@@ -681,7 +683,7 @@ class SignalService:
         semantic_state = dict(self._semantic_status)
         if semantic_state.get("state") in {"unavailable", "missing"} and state == "healthy":
             state = "attention"
-        return {"ok": True, "service": "ariadne-signal-service", "version": "0.2.0", "environment": os.environ.get("ARIADNE_ENVIRONMENT", "unknown"), "instance": os.environ.get("ARIADNE_INSTANCE", "signal"), "build_sha": os.environ.get("ARIADNE_BUILD_SHA", "unknown"), "state": state, "feeds": [{"name": feed.name, "url": feed.url} for feed in self.feeds], "sources": self.store.list_sources(), "last_attempt_at": attempt, "last_success_at": last_success, "last_success_age_seconds": _iso_age_seconds(last_success), "last_collection_ok": collection_ok, "refresh_running": running, "source_status": source_status, "errors": errors, "cached_briefing": bool(latest), "semantic": semantic_state, "inference": self.inference.snapshot(probe=False), "learned_preferences": self.store.learned_preferences(), "active_interests": self.store.list_interests(active_only=True)}
+        return {"ok": True, "service": "ariadne-signal-service", "version": "0.2.0", "environment": os.environ.get("ARIADNE_ENVIRONMENT", "unknown"), "instance": os.environ.get("ARIADNE_INSTANCE", "signal"), "build_sha": os.environ.get("ARIADNE_BUILD_SHA", "unknown"), "state": state, "feeds": [{"name": feed.name, "url": feed.url} for feed in self.feeds], "sources": self.store.list_sources(), "last_attempt_at": attempt, "last_success_at": last_success, "last_success_age_seconds": _iso_age_seconds(last_success), "last_collection_ok": collection_ok, "refresh_running": running, "source_status": source_status, "errors": errors, "cached_briefing": bool(latest), "semantic": semantic_state, "inference": self.inference.snapshot(probe=False), "learned_preferences": self.store.learned_preferences(), "active_interests": [item for item in self.store.list_interests() if item["enabled"]]}
 
     def record_feedback(self, signal_id: str, value: str, recorded_at: str | None = None) -> dict[str, Any]:
         if value not in {"useful", "interesting", "not_useful"}:

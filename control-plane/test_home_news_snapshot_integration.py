@@ -30,6 +30,31 @@ class HomeNewsSnapshotIntegrationTests(unittest.TestCase):
         self.journal.db.close()
         self.journal_temp.cleanup()
 
+    def test_final_home_selection_uses_cached_registry_even_without_health(self):
+        cards = [dict(article_id="article-" + "a" * 28, title="Unexpected report",
+                      source="Example", canonical_url="https://example.test/a", briefing_score=80, content_ready=1),
+                 dict(article_id="article-" + "b" * 28, title="Wider discovery",
+                      source="Other", canonical_url="https://example.test/b", briefing_score=95, content_ready=1)]
+        settings = [{"interest_id": "custom", "name": "User-defined subject", "priority": 5}]
+        client = Mock()
+        client.cached_interests.return_value = settings
+        client.cached_briefing.return_value = {"signals": [
+            {"article_id": cards[0]["article_id"], "semantic_matches": [
+                {"interest_id": "custom", "interest": "Old name", "semantic_score": .8, "priority": 1}]}]}
+        cache = Mock()
+        cache.snapshot.return_value = {"available": True, "briefing": {"articles": cards}}
+        with patch.object(server, "NEWS_BRIEFING_CACHE", cache), patch.object(server, "SIGNAL_SERVICE_CLIENT", client):
+            for priority, winner in ((1, cards[1]), (5, cards[0])):
+                settings[0]["priority"] = priority
+                final = server.home_today_payload({})
+                self.assertEqual(final[0]["article_id"], winner["article_id"])
+                self.assertEqual(final[0]["provenance"]["news"]["position"], 1)
+            settings[0]["enabled"] = False
+            self.assertEqual(server.home_today_payload({})[0]["article_id"], cards[1]["article_id"])
+        client.health.assert_not_called()
+        client.interests.assert_not_called()
+        cache.ranked_articles.assert_not_called()
+
     def test_snapshot_route_is_local_and_bypasses_home_session_and_signal_work(self):
         cards = [
             {"article_id": "article-a", "title": "First", "canonical_url": "https://example.test/a"},

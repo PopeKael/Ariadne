@@ -108,8 +108,8 @@ def _merge_cards(previous: list[dict[str, Any]], incoming: list[dict[str, Any]])
             card["interaction_state"] = local["interaction_state"]
         merged.append(card)
         seen.add(article_id)
-    # Keep locally known candidates until Hera replaces them. Final local
-    # ranking and the 100-card limit decide what remains visible.
+    # Keep locally known candidates until Hera replaces them. The incoming order
+    # and 100-card bound retain the candidate projection.
     for local in previous:
         if not isinstance(local, dict):
             continue
@@ -120,59 +120,23 @@ def _merge_cards(previous: list[dict[str, Any]], incoming: list[dict[str, Any]])
     return merged
 
 
-def _preference_score(card: dict[str, Any], preferences: dict[str, Any] | None) -> float:
-    """Apply local Warren preference evidence to one Hera candidate."""
-    preferences = preferences if isinstance(preferences, dict) else {}
-    source_scores = {
-        str(item.get("label") or "").casefold(): float(item.get("score") or 0)
-        for item in preferences.get("sources", [])
-        if isinstance(item, dict) and item.get("label")
-    }
-    category_scores = {
-        str(item.get("label") or "").casefold(): float(item.get("score") or 0)
-        for item in preferences.get("categories", [])
-        if isinstance(item, dict) and item.get("label")
-    }
-    interest_items = [
-        (str(item.get("label") or "").casefold(), float(item.get("score") or 0))
-        for item in preferences.get("interests", [])
-        if isinstance(item, dict) and item.get("label")
-    ]
-    source = str(card.get("source") or card.get("source_name") or "").casefold()
-    category = str(card.get("category") or "").casefold()
-    text = " ".join(str(card.get(key) or "") for key in ("title", "summary", "source", "category")).casefold()
-    score = float(card.get("rank_score") or card.get("briefing_score") or 0)
-    if score <= 1.0:
-        score *= 100.0
-    score += source_scores.get(source, 0.0) * 8.0
-    score += category_scores.get(category, 0.0) * 5.0
-    score += sum(value * 6.0 for label, value in interest_items if label and label in text)
-    feedback = _feedback_value(card)
-    score += {"useful": 8.0, "interesting": 6.0, "not_useful": -18.0}.get(feedback, 0.0)
-    if str(card.get("interaction_state") or "") == "consumed":
-        score -= 2.0
-    return score
-
-
 def _rank_cards(cards: list[dict[str, Any]], preferences: dict[str, Any] | None = None, limit: int = 100) -> list[dict[str, Any]]:
-    ranked = []
-    for index, card in enumerate(cards):
+    """Bound the snapshot in incoming order; Home owns final selection.
+
+    Preferences remains for compatibility with the old cache API. The cache
+    must never apply an independent recommendation policy.
+    """
+    result = []
+    for card in cards:
         if not isinstance(card, dict) or not card.get("article_id"):
             continue
         item = dict(card)
-        item["local_rank_score"] = round(_preference_score(item, preferences), 4)
-        ranked.append((
-            -float(item["local_rank_score"]),
-            int(item.get("position") or index),
-            str(item.get("article_id")),
-            item,
-        ))
-    ranked.sort(key=lambda value: value[:3])
-    result = []
-    for position, (_, _, _, card) in enumerate(ranked[:max(1, min(int(limit), 100))], 1):
-        card["position"] = position
-        card["local_ranked"] = True
-        result.append(card)
+        item.pop("local_rank_score", None)
+        item.pop("local_ranked", None)
+        item["position"] = len(result) + 1
+        result.append(item)
+        if len(result) >= max(1, min(int(limit), 100)):
+            break
     return result
 
 
@@ -239,7 +203,7 @@ class NewsBriefingCache:
         }
 
     def ranked_articles(self, *, limit: int = 100, preferences: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        """Return and persist Ariadne's final local card ordering."""
+        """Return the bounded candidate snapshot without preference sorting."""
         with self._lock:
             if self._briefing is None:
                 return []

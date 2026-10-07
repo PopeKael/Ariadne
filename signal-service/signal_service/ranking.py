@@ -44,7 +44,6 @@ class BasicRanker:
             for signal_id, value in feedback.items()
             if isinstance(value, dict) and value.get("value") in {"useful", "interesting"}
         }
-        semantic_available = profile.get("semantic_state") == "healthy" and int(profile.get("semantic_interest_count", 0)) > 0
         for signal in signals:
             age = _age_hours(signal.published_at, now)
             recency = max(0.0, 1.0 - min(age, 168.0) / 168.0)
@@ -52,7 +51,7 @@ class BasicRanker:
             title_quality = min(1.0, len(signal.title) / 100.0)
             quality = (content * 0.7) + (title_quality * 0.3)
             matches = list(signal.semantic_matches or [])
-            semantic = max((float(item.get("semantic_score", 0.0)) * min(1.0, float(item.get("priority", 1.0))) for item in matches if isinstance(item, dict)), default=0.0)
+            semantic = max((float(item.get("semantic_score", 0.0)) * max(0.0, min(5.0, float(item.get("priority", 1.0)))) for item in matches if isinstance(item, dict)), default=0.0)
             affinity = max(-1.0, min(1.0, source_scores.get(signal.source_name, 0.0) + category_scores.get(signal.category, 0.0)))
             affinity_component = (affinity + 1.0) / 2.0
             score = (

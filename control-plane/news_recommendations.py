@@ -1,13 +1,14 @@
 """Personal, local news preferences. Immutable events; one current reaction/article.
 
-No network/model calls. Hera remains the article store; this journal owns Home's
-recommendations and preserves imported legacy feedback without modifying it.
+No network/model calls. Hera remains the article store; the Interests registry
+controls selection and this journal supplies learned behaviour and preserves imported legacy feedback without modifying it.
 """
 from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import re
 import sqlite3
@@ -15,15 +16,7 @@ import threading
 
 REACTIONS = {"useful", "interesting", "not_useful", ""}
 WEIGHTS = {"useful": 0.6, "interesting": 1.0, "not_useful": -0.7, "": 0}
-# Interests Warren explicitly stated during design, not inferred from chat history.
-DECLARED_INTERESTS = [
-    {"name": "Thailand", "terms": ["thailand", "thai", "bangkok"]},
-    {"name": "Middle East developments", "terms": ["middle east", "israel", "iran", "gaza", "lebanon", "netanyahu"]},
-    {"name": "Trump / US politics", "terms": ["trump", "white house", "us politics", "u.s. politics", "us election"]},
-    {"name": "AI", "terms": ["ai", "artificial intelligence", "llm", "ollama"]},
-    {"name": "Practical local AI and hardware", "terms": ["local ai", "rocm", "strix halo", "gpu", "inference", "ollama", "vram"]},
-]
-STOP = set("the a an and or of to in on for with from at by as is are was be it its this that new says said after over more about how why what your our their will has have news report reports update latest today story stories world france french thailand thai us usa american israel iran gaza trump".split())
+STOP = set("the a an and or of to in on for with from at by as is are was be it its this that new says said after over more about how why what your our their will has have news report reports update latest today story stories world".split())
 
 
 def tokens(card):
@@ -36,20 +29,42 @@ def similarity(left, right):
     return len(shared) / max(1, len(left | right)) if len(shared) >= 2 else 0.0
 
 
-def interest_labels(card, configured):
+def interest_matches(card, configured):
+    """Resolve evidence against current settings, never cached priorities.
+
+    Signal embeds descriptions and aliases. Names/aliases also provide a
+    lexical fallback when semantic matching is disabled or unavailable.
+    """
     text = " ".join(str(card.get(k) or "") for k in ("title", "summary")).casefold()
-    labels = {item["name"] for item in DECLARED_INTERESTS
-              if any(re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", text) for term in item["terms"])}
-    for match in card.get("semantic_matches", []) or []:
-        if isinstance(match, dict) and float(match.get("semantic_score") or match.get("score") or 0) >= 0.55:
-            name = match.get("interest") or match.get("interest_name") or match.get("name")
-            if name:
-                labels.add(str(name))
+    matches = []
     for interest in configured:
+        if not interest.get("enabled", True):
+            continue
         name = str(interest.get("name") or "")
-        if name and name.casefold() in text:
-            labels.add(name)
-    return sorted(labels)
+        if not name:
+            continue
+        strength = 0.0
+        if interest.get("semantic_enabled", True):
+            for match in card.get("semantic_matches", []) or []:
+                if not isinstance(match, dict):
+                    continue
+                match_id = match.get("interest_id")
+                same = (match_id == interest.get("interest_id") if match_id else
+                        (match.get("interest") or match.get("interest_name") or match.get("name")) == name)
+                score = float(match.get("semantic_score") or match.get("score") or 0)
+                if same and score > 0:
+                    strength = max(strength, min(1.0, score))
+        terms = [name, *(interest.get("aliases") or [])]
+        if any(str(term).strip() and re.search(r"(?<!\w)" + re.escape(str(term).casefold()) + r"(?!\w)", text) for term in terms):
+            strength = 1.0
+        priority = max(0.0, min(5.0, float(interest.get("priority", 1.0))))
+        if strength and priority:
+            matches.append((name, priority * strength))
+    return matches
+
+
+def interest_labels(card, configured):
+    return sorted(name for name, _ in interest_matches(card, configured))
 
 
 class NewsRecommendations:
@@ -181,7 +196,9 @@ class NewsRecommendations:
                     base = min(base, max(0, 100 - age * 1.5))
                 except (ValueError, TypeError):
                     pass
-            score = base + (12 if labels else 0) + max(-8, min(8, 12 * strength / (3 + evidence_count)))
+            interest_score = 12 * max((weight for _, weight in interest_matches(item, configured)), default=0.0)
+            item["interest_rank_score"] = round(interest_score, 4)
+            score = base + interest_score + max(-8, min(8, 12 * strength / (3 + evidence_count)))
             item["local_rank_score"] = round(score, 4)
             reasons = ["Seen" if saved["seen"] else "Unseen"]
             if labels:
@@ -205,7 +222,14 @@ class NewsRecommendations:
                     return (item["local_rank_score"] - sources[str(item.get("source") or "")] * 3
                             - categories[str(item.get("category") or "")] * 1.5 - repeat * 16,
                             item["local_rank_score"], -item["recommendation_input_position"])
-                winner = max(pool, key=adjusted)
+                # Retain breadth even with many high-priority stories from one
+                # publisher. Relax only when alternatives run out.
+                source_cap = max(3, math.ceil(min(limit, len(candidates)) * 0.4))
+                eligible = [pair for pair in pool if sources[str(pair[0].get("source") or "")] < source_cap]
+                if not eligible:
+                    least_used = min(sources[str(pair[0].get("source") or "")] for pair in pool)
+                    eligible = [pair for pair in pool if sources[str(pair[0].get("source") or "")] == least_used]
+                winner = max(eligible, key=adjusted)
                 pool.remove(winner)
                 item, _ = winner
                 sources[str(item.get("source") or "")] += 1
