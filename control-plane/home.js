@@ -289,8 +289,13 @@ function renderHealth(payload) {
   }
   document.querySelector("#health-updated").textContent = "Updated " + new Date(payload.timestamp).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
   const homeRoute = payload.inference?.routes?.home_chat || {};
-  document.querySelector("#model-name").textContent = homeRoute.model_id || payload.resident_model || "No Home model selected";
-  document.querySelector("#model-context").textContent = `${Math.round((payload.context_tokens || 16384) / 1024)}K context · ${homeRoute.provider_id || "unconfigured"} · ${homeRoute.location || "—"}`;
+  const modelLabel = homeRoute.model_id || payload.resident_model || "No Home model selected";
+  const contextLabel = `${Math.round((payload.context_tokens || 16384) / 1024)}K context · ${homeRoute.provider_id || "unconfigured"} · ${homeRoute.location || "—"}`;
+  window.ariadneLab?.rememberConversation(modelLabel, contextLabel);
+  if (!window.ariadneLab?.active()) {
+    document.querySelector("#model-name").textContent = modelLabel;
+    document.querySelector("#model-context").textContent = contextLabel;
+  }
 }
 function formatInformationNumber(value, digits = 1) {
   const number = Number(value);
@@ -1575,7 +1580,7 @@ function applyChatActivity(activity, {record = false} = {}) {
   const changedAt = Number(activity.changed_at || 0) * 1000;
   const elapsed = changedAt ? formatClock(Math.max(0, Date.now() - changedAt)) : "0.0s";
   const status = document.querySelector("#ask-status");
-  if (status) status.textContent = label + " · " + elapsed;
+  if (status && !window.ariadneLab?.active() && !window.ariadneLab?.switching()) status.textContent = label + " · " + elapsed;
   const pendingBody = document.querySelector("#chat-log .message.assistant.activity-placeholder .message-body");
   if (pendingBody) {
     pendingBody.textContent = label;
@@ -2247,6 +2252,10 @@ async function ask(event) {
   const submit = document.querySelector("#ask-submit");
   const status = document.querySelector("#ask-status");
   const message = input.value.trim();
+  if (CHAT_PAGE && window.ariadneLab?.active()) {
+    await window.ariadneLab.build(message);
+    return;
+  }
   if (!message) {
     if (!CHAT_PAGE) {
       submit.disabled = true;

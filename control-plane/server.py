@@ -62,6 +62,7 @@ from ariadne_config import (
     save_storage,
 )
 from inference import InferenceRegistry, default_providers
+import code_lab
 from avatar_events import clear_status, emit, emit_say, emit_state, host_status
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
@@ -497,6 +498,7 @@ HOME_MODEL_PRELOAD_LOCK = threading.Lock()
 HOME_MODEL_PRELOAD_THREAD: threading.Thread | None = None
 HOME_MODEL_PRELOAD_STATUS: dict[str, object] = {"state": "unknown", "model": HOME_CHAT_MODEL, "detail": "Home model residency has not been checked."}
 MODEL_SWITCH_LOCK = threading.Lock()
+LAB_RESIDENT_MODEL: str | None = None
 GPU_ARBITRATION_LOCK = threading.RLock()
 GPU_OWNER = "NONE"
 GPU_AI_ADMISSIONS = 0
@@ -1760,7 +1762,8 @@ def monitor_ollama_models() -> dict[str, object]:
         for item in catalog.get("loaded_details", []):
             if isinstance(item, dict) and item.get("name"):
                 MODEL_LAST_USED.setdefault(str(item["name"]), now)
-    release = release_idle_ollama_models(policy=policy, pressure=pressure, preserve_models={HOME_CHAT_MODEL})
+    preserved = {HOME_CHAT_MODEL} | ({LAB_RESIDENT_MODEL} if LAB_RESIDENT_MODEL else set())
+    release = release_idle_ollama_models(policy=policy, pressure=pressure, preserve_models=preserved)
     unloaded = release["unloaded"]
     return {
         "state": "pressure" if pressure else "nominal",
@@ -2268,9 +2271,9 @@ def _model_lab_avatar_transition(record: dict[str, object], state: str, message:
     _model_lab_event(on_event, {"type": "avatar", "state": state, "acknowledged": bool(state_ack), "message_acknowledged": bool(message_ack)})
 
 
-def _ollama_generate_stream(model: str, payload: dict[str, object], timeout: float = 300.0):
+def _ollama_generate_stream(model: str, payload: dict[str, object], timeout: float = 300.0, *, endpoint: str | None = None):
     request = urllib.request.Request(
-        f"{OLLAMA_URL}/api/generate",
+        f"{endpoint or OLLAMA_URL}/api/generate",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json", "Accept": "application/x-ndjson"},
         method="POST",
@@ -2280,6 +2283,93 @@ def _ollama_generate_stream(model: str, payload: dict[str, object], timeout: flo
             line = raw_line.decode("utf-8").strip()
             if line:
                 yield json.loads(line)
+
+
+def code_lab_service():
+    def catalog(endpoint):
+        try:
+            return {"available": True, **json_http(f"{endpoint}/api/tags", timeout=8.0)}
+        except (OSError, ValueError):
+            return {"available": False, "models": []}
+
+    def hardware():
+        return {"gpu": gpu_status(), "memory": memory_status(), "resident_models": ollama_catalog().get("loaded_details", []),
+                "gpu_utilisation": None, "vram_peak_gb": None, "sample": "after generation; not a peak measurement"}
+
+    return code_lab.CodeLab(INFERENCE_REGISTRY, catalog,
+                            lambda endpoint, model, payload: _ollama_generate_stream(model, payload, timeout=600.0, endpoint=endpoint),
+                            ai_gpu_admission, model_activity, hardware,
+                            lambda state: _send_avatar_event_with_retry(lambda: emit_state(state)),
+                            ollama_model_capability_details)
+
+
+@contextmanager
+def lab_model_transition(model):
+    """Use the existing selection lock and GPU state for a temporary mode switch."""
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL
+    global GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
+    if not MODEL_SWITCH_LOCK.acquire(blocking=False):
+        raise RuntimeError("Ariadne is already switching models.")
+    entered = False
+    outcome = {"success": False}
+    previous_owner = GPU_OWNER
+    try:
+        with GPU_ARBITRATION_LOCK:
+            if GPU_VAULT_RESERVATION or GPU_OWNER == "RENDERER":
+                raise RuntimeError("The GPU is reserved for another workload. Finish it before switching modes.")
+            if GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS:
+                raise RuntimeError("Finish the active Ariadne workload before switching modes.")
+            with MODEL_ACTIVITY_LOCK:
+                if any(count > 0 for count in MODEL_IN_FLIGHT.values()):
+                    raise RuntimeError("A local model is still processing. Try again when it finishes.")
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "SWITCHING_MODEL"
+            GPU_TRANSITION_DETAIL = f"Loading {model} for Chat."
+            GPU_TRANSITION_OPERATION = uuid.uuid4().hex
+            GPU_TRANSITION_STARTED_AT = time.monotonic()
+            entered = True
+        yield outcome
+    finally:
+        if entered:
+            with GPU_ARBITRATION_LOCK:
+                GPU_OWNER = "AI" if outcome["success"] else previous_owner
+                GPU_TRANSITION_STATE = "IDLE"
+                GPU_TRANSITION_DETAIL = f"{model} is ready." if outcome["success"] else "Model loading failed; the previous mode remains selected."
+                GPU_TRANSITION_OPERATION = None
+                GPU_TRANSITION_STARTED_AT = None
+        MODEL_SWITCH_LOCK.release()
+
+
+def prepare_code_lab_model(body):
+    global LAB_RESIDENT_MODEL
+    enabled = body.get("enabled")
+    if not isinstance(enabled, bool):
+        return {"ok": False, "message": "Choose whether The Lab is enabled."}, 400
+    if enabled:
+        provider = INFERENCE_REGISTRY.route("coding")
+        if not provider or provider.endpoint.rstrip("/") != OLLAMA_URL.rstrip("/"):
+            return {"ok": False, "message": "The Lab model must use Ariadne's owned local Ollama endpoint."}, 400
+        config = {**code_lab_service().status(), "provider_id": provider.provider_id}
+    else:
+        catalog = ollama_catalog()
+        item = next((item for item in catalog.get("models", []) if item.get("name") == HOME_CHAT_MODEL), {})
+        config = {"model": HOME_CHAT_MODEL, "context_tokens": HOME_CONTEXT_TOKENS,
+                  "installed": bool(item), "provider_id": INFERENCE_REGISTRY.route("home_chat").provider_id,
+                  "message": "The conversational model is unavailable."}
+    config["lab_mode"] = enabled
+
+    def remember(model):
+        global LAB_RESIDENT_MODEL
+        LAB_RESIDENT_MODEL = model if enabled else None
+        with MODEL_ACTIVITY_LOCK:
+            MODEL_LAST_USED[model] = time.monotonic()
+
+    return code_lab.prepare_working_model(
+        config, catalog=ollama_catalog, capabilities=ollama_model_capability_details,
+        transition=lab_model_transition, preload=preload_ollama_model, unload=unload_ollama_model,
+        remember=remember, avatar=lambda state: _send_avatar_event_with_retry(lambda: emit_state(state)),
+        unload_candidates={HOME_CHAT_MODEL, PLANNER_MODEL, LAB_RESIDENT_MODEL} - {None},
+    )
 
 
 def run_model_lab(body: dict[str, object], on_event: Callable[[dict[str, object]], None] | None = None) -> tuple[dict[str, object], int]:
@@ -8096,6 +8186,36 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/model-lab":
             self.send_json(model_lab_payload())
             return
+        if path == "/api/code-lab":
+            try:
+                self.send_json(code_lab_service().status())
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
+            return
+        if path == "/api/code-lab/result":
+            run_id = parse_qs(urlparse(self.path).query).get("run_id", [None])[0]
+            try:
+                self.send_json(code_lab.saved_result(run_id))
+            except FileNotFoundError:
+                self.send_json({"ok": False, "pending": bool(run_id), "message": "No saved result is available yet."}, 404)
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
+            return
+        if path == "/api/code-lab/preview":
+            query = parse_qs(urlparse(self.path).query)
+            try:
+                content = code_lab.preview_html(query.get("run_id", [""])[0], query.get("token", [""])[0]).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Security-Policy", code_lab.PREVIEW_CSP + "; sandbox allow-scripts")
+                self.send_header("X-DNS-Prefetch-Control", "off")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
+            return
         if path == "/api/model-lab/fixtures":
             test_case_id = parse_qs(parsed.query).get("test_case_id", ["test-01"])[0]
             documents, error = model_lab_fixture_documents(test_case_id)
@@ -8272,6 +8392,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/home.js":
             self.send_asset("home.js", "text/javascript; charset=utf-8")
             return
+        if path == "/code-lab.js":
+            self.send_asset("code-lab.js", "text/javascript; charset=utf-8")
+            return
         if path == "/signal-popover-position.js":
             self.send_asset("signal-popover-position.js", "text/javascript; charset=utf-8")
             return
@@ -8366,6 +8489,37 @@ class AriadneHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self.read_json()
+            if path == "/api/code-lab/prepare":
+                try:
+                    result, status = prepare_code_lab_model(body)
+                    self.send_json(result, status)
+                except (ValueError, OSError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                return
+            if path == "/api/code-lab/preview":
+                try:
+                    self.send_json(code_lab.record_preview(body))
+                except (ValueError, OSError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                return
+            if path == "/api/code-lab/run":
+                result, status = code_lab_service().run(body)
+                self.send_json(result, status)
+                return
+            if path == "/api/code-lab/stream":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                def write_code_event(event):
+                    try:
+                        self.wfile.write((json.dumps(event) + "\n").encode("utf-8"))
+                        self.wfile.flush()
+                    except OSError:
+                        pass
+                for event in code_lab.stream_events(code_lab_service(), body):
+                    write_code_event(event)
+                return
             if path == "/api/startup/ui-rendered":
                 accepted = STARTUP_TRACE.ui_rendered(body)
                 self.send_json({"ok": accepted}, 200 if accepted else 400)

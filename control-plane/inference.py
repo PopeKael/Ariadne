@@ -18,6 +18,7 @@ from ariadne_config import configuration_path
 
 
 TASKS = {
+    "coding": {"coding", "structured_output"},
     "home_chat": {"chat"},
     "planner": {"chat", "structured_output"},
     "embedding": {"embeddings"},
@@ -86,6 +87,7 @@ def default_providers() -> list[Provider]:
     planner_model = os.environ.get("ARIADNE_PLANNER_MODEL", home_model)
     embedding_model = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")
     return [
+        Provider("ollama-coding", "ollama", os.environ.get("ARIADNE_CODING_MODEL", "qwen2.5-coder:14b"), ollama_url, "", ("coding", "structured_output"), "desktop", True, 40),
         Provider("ollama-desktop", "ollama", home_model, ollama_url, "", ("chat", "structured_output"), "desktop", True, 10),
         Provider("ollama-planner", "ollama", planner_model, ollama_url, "", ("chat", "structured_output"), "desktop", True, 20),
         Provider("ollama-embedding", "ollama", embedding_model, ollama_url, "", ("embeddings",), "desktop", True, 30, "ollama-embed-v1"),
@@ -104,12 +106,15 @@ class InferenceRegistry:
         raw = _saved(self.path).get("inference", {})
         values = raw.get("providers") if isinstance(raw, dict) and isinstance(raw.get("providers"), list) else []
         self.providers = [Provider.from_dict(item) for item in values if isinstance(item, dict) and str(item.get("provider_id") or "").strip()] or default_providers()
+        # Existing saved configurations predate the dedicated coding provider.
+        if not any(item.provider_id == "ollama-coding" for item in self.providers):
+            self.providers.append(next(item for item in default_providers() if item.provider_id == "ollama-coding"))
         saved_routes = raw.get("routes") if isinstance(raw, dict) and isinstance(raw.get("routes"), dict) else {}
         self.routes = {str(key): str(value) for key, value in saved_routes.items() if str(key) in TASKS and str(value).strip()}
 
     def compatible(self, task: str) -> list[Provider]:
         required = TASKS.get(task, set())
-        return sorted([item for item in self.providers if item.enabled and required.issubset(set(item.capabilities))], key=lambda item: (item.priority, item.provider_id))
+        return sorted([item for item in self.providers if item.enabled and required.issubset(set(item.capabilities)) and (task != "coding" or (item.provider_type == "ollama" and item.location == "desktop"))], key=lambda item: (item.priority, item.provider_id))
 
     def route(self, task: str) -> Provider | None:
         override = {"home_chat": os.environ.get("ARIADNE_HOME_PROVIDER"), "planner": os.environ.get("ARIADNE_PLANNER_PROVIDER"), "embedding": os.environ.get("ARIADNE_EMBEDDING_PROVIDER"), "summarization_classification": os.environ.get("ARIADNE_SUMMARIZATION_PROVIDER")}.get(task)
