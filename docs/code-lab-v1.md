@@ -32,6 +32,13 @@ before loading or generation; it is never silently lowered. Output budget is hal
 capped at 8192 tokens. Temperature is 0 and seed is 42. The exact request, fixed
 instructions, schema and user prompt are retained in each run record.
 
+The coding system instructions require the model to identify all functional and
+presentation requirements, implement them, then review controls, visible state,
+initialization, reachable outcomes and completeness before returning the project.
+It must correct omissions internally and return only the existing structured
+single-file project. This review is part of the same generation request; it does
+not add a separate model call or change the UI, schema or runtime validation.
+
 `ARIADNE_LAB_ROOT` defaults to **F:\AriadneLab**. An optional `code_lab` object in
 the existing local configuration can specify `root` and `context_tokens`; environment
 variables take precedence. Relative paths and roots overlapping Ariadne source or
@@ -192,3 +199,121 @@ Test was recovered through the canonical HTTPS Chat UI and Preview reported LOAD
 with zero runtime errors. This check did not repeat a full long production build.
 The generated game itself places the player at (0,0), also a wall, so movement is
 blocked; its model output was preserved rather than silently repaired.
+
+
+## Lab conversation save repair
+
+The last Dungeon Test run (47391d9684bd49fbb1bbed825c5cdb61) successfully saved
+its generated files and loaded Preview, but the Lab submit branch returned before
+the normal Chat turn-recording flow. Its prompt and source therefore never reached
+Chat history, Inbox save or Markdown export. This was a conversation integration
+omission, separate from the Workbench presentation layout.
+
+Completed and recovered results now import their authoritative saved prompt,
+summary, model, 32K context, run ID, project path and exact source into the existing
+ChatStore through a session-checked endpoint. The import is atomic and idempotent
+by run ID within the selected chat, preserving existing dialogue. The Workbench
+has its own Save to Inbox button, using the same canonical transcript export and
+Inbox save as ordinary Chat. Reopened Chat messages offer Open Lab build to restore
+Preview / Code / Metrics. No additional coding page or alternative transcript store
+was added. The half-screen preview presentation is still a separate pending review.
+
+Forty focused ChatStore, Lab and model-preparation tests passed, including exact
+source in Inbox/export, duplicate recovery and preservation of existing dialogue.
+
+Live HTTPS verification recovered that original run, created The Lab: Dungeon Test
+in Recent Chats with one turn, saved it through Workbench Save to Inbox, refreshed
+the page, reselected the conversation and reopened its Lab build. The Inbox copy
+contains the original prompt, exact generated source and run ID. Repeated recovery
+and save retained one turn. The reference chat ID is 5449a0355b974bc1885f8e9cef05eb1f.
+
+
+## Separate Lab Runner
+
+Workbench remains the development preview. Launch Lab Runner requests a distinct
+full-screen session from the Windows resident host over the existing named pipe.
+The host constructs only the canonical Runner URL from validated identifiers and
+launches installed Microsoft Edge in its supported fullscreen kiosk mode. It does
+not open arbitrary executable paths, invoke a shell, or execute generated code on
+the operating system. The Runner has no navigation, Chat, Workbench or metrics UI.
+Its iframe fills the viewport with the same sandbox, CSP and device restrictions
+as the development preview. Preview's network-isolation limitation described above
+also applies here; fullscreen does not create an OS sandbox or repair generated
+application logic.
+
+The launch remains pending until the host starts Edge and the loaded iframe
+reports readiness. Missing host/browser, a failed build, runtime errors and load
+timeouts are displayed as failures in Chat. A private launch token correlates the
+host and browser acknowledgements. Alt+F4 closes the Runner session. The host
+allows one Runner at a time, hides its avatar while it runs and restores the
+previously visible overlay on exit. A per-launch Edge profile under
+%LOCALAPPDATA%/Ariadne/LabRunner/Sessions/<launch_id> is retained as owned runtime state,
+separate from the user's normal browsing profile. No windows security settings,
+default browser settings or kiosk account configuration are changed.
+
+The host owns the Edge process tree through a kill-on-close Windows job. Host
+exit closes the presentation session; a later launch cannot delegate to a stale
+Edge profile. FAILED/CLOSED states cannot be revived by delayed browser callbacks.
+Runner progress and errors remain beside the Workbench launch button, independent
+of normal Chat activity updates.
+
+Microsoft documents the launch options at
+https://learn.microsoft.com/en-us/deployedge/microsoft-edge-configure-kiosk-mode.
+
+
+Runner verification used saved build 47391d9684bd49fbb1bbed825c5cdb61 through
+Chat's Launch Lab Runner button. The actual Windows host launched Edge and the
+sandboxed Runner reported READY with viewport 1920x1080 and screen 1920x1080.
+Chat displayed its ready message. The session was left open for user inspection;
+manual Alt+F4 exit/overlay restoration remains to be accepted by the user.
+The browser automation surface cannot capture this standalone native Edge window,
+so the fullscreen measurement is runtime telemetry, not screenshot verification.
+The exact previously generated game was used and was not repaired by the Runner.
+
+2026-10-09 launch repair: an old Edge kiosk survived a host restart, and the
+shared profile allowed later Edge starter processes to delegate to it. The old
+owned kiosk was closed. The replacement host binary was installed with a rollback
+copy; its hash matched the tested release build. The saved Dungeon Test launched
+through Chat's button with a new host-owned Edge PID and READY viewport 1920x1080.
+A duplicate click displayed the already-open error in Workbench while Chat
+returned to Idle. Exiting the host closed the Runner PID; after restarting, the
+same button launched another fresh READY session. 46 focused Python tests,
+the Rust identifier test, release compilation, JS syntax and diff checks passed.
+Native kiosk screenshot/foreground placement still require manual observation;
+the browser automation surface can verify Chat's status and viewport telemetry.
+
+Follow-up acceptance: Warren reported immediate CLOSED launches with no window.
+The host was waiting only for the Edge starter, then closing its kill-on-close
+job. Lifecycle tracking now waits for the job's entire process tree to end, and
+records the resolved Edge/profile paths, starter exit status and remaining process
+count. The updated host was installed and Warren confirmed a window appeared
+instantly. A controlled process-tree close reported CLOSED, then the next host
+launch returned READY at 1920x1080 and stayed open. This confirms visible-window
+acceptance for the new launch; the specific earlier starter exit reason was not
+captured and should not be inferred from the old generic CLOSED message.
+An attempted command-shell descendant regression test produced a Windows
+cannot-find-path dialog because of quoting. It was removed; it is not part of
+the installed release host. The existing Rust identifier test passes. Acceptance
+for the process lifecycle is the actual host close/relaunch check described above.
+
+Foreground acceptance: the host now activates only a visible window belonging
+to its Runner process job. It raises the window without resizing or permanently
+pinning it, and briefly joins the current foreground and Edge UI input queues
+when direct activation is denied. Both queues are detached immediately; retries
+stop on success or after ten seconds. Foreground ownership is confirmed with
+GetForegroundWindow and reported separately from iframe READY. Workbench waits
+for both results and shows an honest fallback if Windows refuses activation.
+The installed release returned READY, viewport 1920x1080 and foreground=true;
+Warren independently confirmed that it came to the front. 47 focused Python
+tests and release compilation passed. Opera remains the default browser; Edge
+continues to provide the separate fullscreen Runner.
+
+## Coding agent (pipeline version 4, 2026-10-09)
+
+The model now chooses read, write, patch, run, test and finish actions in one conversation. Ariadne executes safe operations and returns concrete observations. Mandatory acceptance planning, Task Contracts, contract revisions and semantic reviewer stages have been removed. Existing historical builds are retained.
+
+The browser tools compile source, capture runtime errors, inspect visible controls and execute model-selected declarative test scripts in fresh isolated pages, with sequential assertions sharing state. Patches require a read of the current file and exact unique matches. Finish requires current successful execution; failed/stale tests cannot be overridden, and interactive pages require interaction tests.
+
+The Chat toggle, model loading/context, GPU lifecycle, Workbench layout and development preview, full-screen Runner, saves/history and sandbox retain their existing boundaries. No model or dependency was added. See [the current architecture](lab-agent-architecture.md) and [source comparison](lab-agent-reference-comparison.md).
+
+Run focused regressions from control-plane with `python -m unittest test_lab_agent test_code_lab test_lab_verification test_lab_runner test_home_chat_store test_lab_model_preparation -q`. An isolated real-browser repair fixture is available with `python test_lab_verification.py --serve` on localhost:8799, using temporary owned storage and scripted model actions. It tests the environment and controller, not live model intelligence.

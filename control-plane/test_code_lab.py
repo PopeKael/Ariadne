@@ -7,6 +7,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import Mock, patch
 import code_lab
+from test_lab_verification import scripted_actions
 from inference import InferenceRegistry
 
 PROJECT = {"project_name": "Catch", "summary": "A browser game", "entrypoint": "index.html",
@@ -25,6 +26,17 @@ class CodeLabTests(unittest.TestCase):
             'prompt_eval_count': 100, 'prompt_eval_duration': 500_000_000, 'eval_count': 200, 'eval_duration': 2_000_000_000,
             'load_duration': 100_000_000, 'total_duration': 2_600_000_000}]))
         self.catalog = Mock(return_value={'available': True, 'models': [{'name': 'test-coder'}]})
+        self.browser_patch=patch.object(code_lab.lab_verification,'request_browser',return_value={'passed':True,'errors':[],'checks':[{'passed':True}]})
+        self.browser_patch.start();self.addCleanup(self.browser_patch.stop)
+        def generate(*args):
+            messages=args[2]['messages'][1:]
+            observations=[json.loads(m['content'])['observation'] for m in messages if m['role']=='user' and m['content'].startswith('{"observation":')]
+            value=scripted_actions(PROJECT['files'][0]['content'],observations)
+            if value['action']=='write':value['project']=PROJECT
+            return iter([{'response':json.dumps({'reason':'Scripted fixture action',**value}),'done':True,'done_reason':'stop',
+                'prompt_eval_count':100,'prompt_eval_duration':500_000_000,'eval_count':200,'eval_duration':2_000_000_000,
+                'load_duration':100_000_000,'total_duration':2_600_000_000}])
+        self.generate.side_effect=generate
         self.lab = code_lab.CodeLab(self.registry, self.catalog, self.generate, nullcontext, lambda model: nullcontext(), lambda: {'gpu': None}, lambda state: None)
 
     def test_coding_route_independent_of_home_and_existing_saved_config(self):
@@ -47,31 +59,33 @@ class CodeLabTests(unittest.TestCase):
         self.assertEqual(saved['instructions'], code_lab.INSTRUCTIONS)
         self.assertEqual(saved['user_prompt'], 'Build a game')
         self.assertTrue(saved['success'])
-        self.assertEqual(saved['request']['format'], code_lab.SCHEMA)
-        self.assertEqual([e['state'] for e in events], ['LOADING MODEL', 'GENERATING', 'SAVING', 'READY TO RUN'])
-        self.assertNotIn('messages', saved['request'])
+        self.assertEqual(saved['request']['format']['oneOf'][1]['properties']['project'], code_lab.SCHEMA)
+        self.assertEqual([e['state'] for e in events if e['type']=='state'], ['LOADING MODEL','GENERATING','EXECUTE','GENERATING','EXECUTE','GENERATING','EXECUTE','READY'])
+        self.assertEqual(saved['request']['messages'][1]['content'],'Build a game')
 
     def test_saved_result_recovers_original_source_without_generating_again(self):
-        result, _ = self.lab.run({'prompt': 'Build a game'})
+        result, _ = self.lab.run({'prompt': 'Build a game'},lambda e:None)
         recovered = code_lab.saved_result(result['run']['run_id'])
-        self.assertEqual(recovered, result)
+        self.assertEqual(recovered['run'], result['run'])
         self.assertEqual(code_lab.saved_result(), recovered)
-        self.generate.assert_called_once()
+        self.assertEqual(self.generate.call_count,3)
         with self.assertRaises(ValueError):
             code_lab.saved_result('../bad')
 
     def test_stream_heartbeats_during_silent_inference_and_returns_persisted_result(self):
         import threading
         release = threading.Event()
+        original=self.generate.side_effect
         def slow_generate(*args):
             release.wait(timeout=3)
-            yield {'response': json.dumps(PROJECT), 'done': True, 'done_reason': 'stop'}
+            yield from original(*args)
         self.generate.side_effect = slow_generate
         stream = code_lab.stream_events(self.lab, {'prompt': 'Build a game'}, heartbeat_seconds=0.01)
         try:
             first = next(stream)
             self.assertEqual(first['state'], 'LOADING MODEL')
-            self.assertEqual(next(stream)['type'], 'heartbeat')
+            while next(stream)['type'] != 'heartbeat':
+                pass
             release.set()
             events = list(stream)
             complete = events[-1]
@@ -80,6 +94,7 @@ class CodeLabTests(unittest.TestCase):
             self.assertTrue((self.root / first['run_id'] / 'run.json').exists())
         finally:
             release.set()
+            list(stream)
 
     def test_missing_model_is_recorded_without_generating(self):
         self.catalog.return_value = {'available': True, 'models': []}
@@ -94,7 +109,7 @@ class CodeLabTests(unittest.TestCase):
 
     def test_invalid_output_does_not_create_successful_project(self):
         for response in ['not json', '{}', json.dumps({**PROJECT, 'files': []})]:
-            self.generate.return_value = iter([{'response': response, 'done': True}])
+            self.generate.side_effect=lambda *args: iter([{'response': response, 'done': True}])
             result, _ = self.lab.run({'prompt': 'Build a game'})
             self.assertFalse(result['ok'])
             self.assertIsNone(result['run']['project_path'])
@@ -117,7 +132,7 @@ class CodeLabTests(unittest.TestCase):
             with self.assertRaises(ValueError): code_lab.run_directory(self.root, 'a' * 32)
 
     def test_authoritative_timing_and_rates(self):
-        result, _ = self.lab.run({'prompt': 'Build a game'})
+        result, _ = self.lab.run({'prompt': 'Build a game'},lambda e:None)
         t = result['run']['telemetry']
         self.assertEqual(t['total_duration'], 2_600_000_000)
         self.assertEqual(t['load_duration'], 100_000_000)
@@ -196,7 +211,7 @@ class CodeLabTests(unittest.TestCase):
         transition.assert_not_called()
 
     def test_truncated_output_fails_even_if_valid_json(self):
-        self.generate.return_value = iter([{'response': json.dumps(PROJECT), 'done': True, 'done_reason': 'length'}])
+        self.generate.side_effect=lambda *args: iter([{'response': json.dumps(PROJECT), 'done': True, 'done_reason': 'length'}])
         result, _ = self.lab.run({'prompt': 'Build a game'})
         self.assertFalse(result['ok'])
 
@@ -208,7 +223,7 @@ class CodeLabTests(unittest.TestCase):
                 code_lab.validate_project({**PROJECT, 'files': [{'path': 'index.html', 'content': '<html>' + markup + '</html>'}]})
 
     def test_preview_keeps_source_and_records_errors(self):
-        result, _ = self.lab.run({'prompt': 'Build a game'}); run_id = result['run']['run_id']
+        result, _ = self.lab.run({'prompt': 'Build a game'},lambda e:None); run_id = result['run']['run_id']
         html = code_lab.preview_html(run_id, 'a' * 32)
         self.assertIn("connect-src 'none'", html)
         self.assertIn('unhandledrejection', html)

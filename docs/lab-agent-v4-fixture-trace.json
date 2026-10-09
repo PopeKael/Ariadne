@@ -1,0 +1,424 @@
+{
+  "run_id": "4c2fbad9c0074110b168bff2c45b2f12",
+  "pipeline_version": 4,
+  "stop_reason": "VERIFIED",
+  "success": true,
+  "verified": true,
+  "totals": {
+    "model_calls": 10,
+    "input_tokens": null,
+    "output_tokens": null,
+    "token_counts_complete": false,
+    "model_duration_ms": 0.0,
+    "tool_duration_ms": 3561.0,
+    "wall_duration_ms": 3797.0
+  },
+  "repairs": 2,
+  "steps": [
+    {
+      "number": 1,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 0.0,
+      "model_call_number": 1,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 6341,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 2,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 16.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 0.0,
+      "context_bytes": 0,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 3,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 16.0,
+      "model_call_number": 2,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 7254,
+      "duration_ms": 16.0
+    },
+    {
+      "number": 4,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 32.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 109.0,
+      "context_bytes": 0,
+      "duration_ms": 109.0
+    },
+    {
+      "number": 5,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 157.0,
+      "model_call_number": 3,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 7956,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 6,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 157.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 15.0,
+      "context_bytes": 0,
+      "duration_ms": 15.0
+    },
+    {
+      "number": 7,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 172.0,
+      "model_call_number": 4,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 8669,
+      "duration_ms": 16.0
+    },
+    {
+      "number": 8,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 188.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 0.0,
+      "context_bytes": 0,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 9,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 203.0,
+      "model_call_number": 5,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 9851,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 10,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 203.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 891.0,
+      "context_bytes": 0,
+      "duration_ms": 891.0
+    },
+    {
+      "number": 11,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 1110.0,
+      "model_call_number": 6,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 11025,
+      "duration_ms": 15.0
+    },
+    {
+      "number": 12,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 1125.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 0.0,
+      "context_bytes": 0,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 13,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 1141.0,
+      "model_call_number": 7,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 11656,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 14,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 1157.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 0.0,
+      "context_bytes": 0,
+      "duration_ms": 0.0
+    },
+    {
+      "number": 15,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 1172.0,
+      "model_call_number": 8,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 12784,
+      "duration_ms": 16.0
+    },
+    {
+      "number": 16,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 1188.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 859.0,
+      "context_bytes": 0,
+      "duration_ms": 859.0
+    },
+    {
+      "number": 17,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 2047.0,
+      "model_call_number": 9,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 13752,
+      "duration_ms": 16.0
+    },
+    {
+      "number": 18,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 2078.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 1672.0,
+      "context_bytes": 0,
+      "duration_ms": 1672.0
+    },
+    {
+      "number": 19,
+      "action": "GENERATING",
+      "role": "model",
+      "reason": "Choose next environment action",
+      "status": "complete",
+      "started_ms": 3766.0,
+      "model_call_number": 10,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0.0,
+      "tool_duration_ms": 0,
+      "context_bytes": 16679,
+      "duration_ms": 16.0
+    },
+    {
+      "number": 20,
+      "action": "EXECUTE",
+      "role": "tool",
+      "reason": "Execute model-selected action",
+      "status": "complete",
+      "started_ms": 3782.0,
+      "model_call_number": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "generation_duration_ms": 0,
+      "tool_duration_ms": 15.0,
+      "context_bytes": 0,
+      "duration_ms": 15.0
+    }
+  ],
+  "actions": [
+    "write",
+    "run",
+    "read",
+    "patch",
+    "run",
+    "read",
+    "patch",
+    "run",
+    "test",
+    "finish"
+  ],
+  "candidate_failures": [
+    [
+      "index.html:1\nlet message='You can't go that way.';\n                     ^\n\nSyntaxError: Unexpected identifier 't'"
+    ],
+    [
+      "Uncaught ReferenceError: missingFunction is not defined (index.html:1:231)"
+    ],
+    []
+  ],
+  "checks": [
+    {
+      "description": "Increment changes the visible count",
+      "actions": [
+        {
+          "kind": "click",
+          "selector": "#add",
+          "value": "",
+          "label": "Add",
+          "changed": true,
+          "before": "Counter test\n\n0\n\nAddReset",
+          "after": "Counter test\n\n1\n\nAddReset"
+        }
+      ],
+      "matches": [
+        "1"
+      ],
+      "assertions": {
+        "count": true,
+        "text": true,
+        "change": true
+      },
+      "errors": [],
+      "passed": true
+    },
+    {
+      "description": "Two more increments preserve script state",
+      "actions": [
+        {
+          "kind": "click",
+          "selector": "#add",
+          "value": "",
+          "label": "Add",
+          "changed": true,
+          "before": "Counter test\n\n1\n\nAddReset",
+          "after": "Counter test\n\n2\n\nAddReset"
+        },
+        {
+          "kind": "click",
+          "selector": "#add",
+          "value": "",
+          "label": "Add",
+          "changed": true,
+          "before": "Counter test\n\n2\n\nAddReset",
+          "after": "Counter test\n\n3\n\nAddReset"
+        }
+      ],
+      "matches": [
+        "3"
+      ],
+      "assertions": {
+        "count": true,
+        "text": true,
+        "change": true
+      },
+      "errors": [],
+      "passed": true
+    },
+    {
+      "description": "Reset restores zero",
+      "actions": [
+        {
+          "kind": "click",
+          "selector": "#reset",
+          "value": "",
+          "label": "Reset",
+          "changed": true,
+          "before": "Counter test\n\n3\n\nAddReset",
+          "after": "Counter test\n\n0\n\nAddReset"
+        }
+      ],
+      "matches": [
+        "0"
+      ],
+      "assertions": {
+        "count": true,
+        "text": true,
+        "change": true
+      },
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "model": "Scripted fixture; real compiler and browser, not a live model"
+}

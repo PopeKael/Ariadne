@@ -20,7 +20,7 @@ use std::sync::{mpsc::Receiver, mpsc::TryRecvError, Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use windows::core::{w, GUID, PCWSTR};
+use windows::core::{w, GUID, PCWSTR, BOOL};
 use windows::Win32::Foundation::{
     CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, ERROR_PIPE_CONNECTED, GENERIC_WRITE, HINSTANCE,
     HWND, LPARAM, LRESULT, POINT, RECT, WPARAM,
@@ -36,31 +36,32 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::Storage::FileSystem::{CreateFileW, ReadFile, WriteFile, PIPE_ACCESS_INBOUND};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::JobObjects::{
-    AssignProcessToJobObject, CreateJobObjectW, SetInformationJobObject, TerminateJobObject,
+    AssignProcessToJobObject, CreateJobObjectW, IsProcessInJob, QueryInformationJobObject, SetInformationJobObject, TerminateJobObject,
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
     JobObjectExtendedLimitInformation,
+    JobObjectBasicAccountingInformation, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
 };
 use windows::Win32::System::Pipes::{
     ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, PIPE_READMODE_MESSAGE,
     PIPE_TYPE_MESSAGE, PIPE_WAIT,
 };
-use windows::Win32::System::Threading::{GetCurrentProcessId, GetCurrentThreadId};
+use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentProcessId, GetCurrentThreadId, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
 use windows::Win32::UI::Shell::{
     ShellExecuteW, Shell_NotifyIconW, NIF_GUID, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD,
     NIM_DELETE, NIM_SETVERSION, NOTIFYICONDATAW, NOTIFYICON_VERSION_4,
 };
-use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture};
+use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, SetFocus, SetActiveWindow};
 use windows::Win32::System::SystemServices::MK_LBUTTON;
 use windows::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
-    DispatchMessageW, GetCursorPos, GetMessageW, GetSystemMetrics, GetWindowLongPtrW,
-    GetWindowRect, GetWindowThreadProcessId, IsWindow, LoadCursorW, LoadIconW, PostMessageW,
+    AppendMenuW, BringWindowToTop, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
+    DispatchMessageW, EnumWindows, GetForegroundWindow, GetCursorPos, GetMessageW, GetSystemMetrics, GetWindowLongPtrW,
+    GetWindowRect, GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, LoadCursorW, LoadIconW, PostMessageW,
     PostQuitMessage, RegisterClassW, RegisterWindowMessageW, SetForegroundWindow,
     SetWindowLongPtrW, SetWindowPos, ShowWindow, TrackPopupMenu, TranslateMessage,
     UpdateLayeredWindow, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWLP_USERDATA, HTCLIENT,
     HTTRANSPARENT, IDC_ARROW, IDI_APPLICATION, MA_NOACTIVATE, MF_SEPARATOR, MF_STRING,
     MSG, SWP_NOACTIVATE, SWP_NOSIZE, SW_HIDE,
-    SW_SHOWNORMAL, SW_SHOWNOACTIVATE, TPM_RIGHTBUTTON, ULW_ALPHA, WM_APP, WM_CLOSE, WM_COMMAND,
+    SW_SHOWNORMAL, SW_SHOWNOACTIVATE, SW_RESTORE, SWP_NOMOVE, SWP_SHOWWINDOW, HWND_TOP, TPM_RIGHTBUTTON, ULW_ALPHA, WM_APP, WM_CLOSE, WM_COMMAND,
     WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP,
     WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_NCHITTEST, WM_NULL, WM_RBUTTONUP,
     WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
@@ -98,6 +99,7 @@ const DASHBOARD_URL_W: PCWSTR = w!("https://ariadne.dia.net.au/");
 const NIN_SELECT_EVENT: u32 = 0x0400;
 const NIN_KEYSELECT_EVENT: u32 = 0x0401;
 
+static LAB_RUNNER_ACTIVE: AtomicBool = AtomicBool::new(false);
 static LOG_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 static TRAY_CALLBACK_MESSAGE: AtomicU32 = AtomicU32::new(0);
 
@@ -135,6 +137,8 @@ struct HostMessage {
     text: Option<String>,
     x: Option<i32>,
     y: Option<i32>,
+    run_id: Option<String>,
+    launch_id: Option<String>,
 }
 
 enum UiEvent {
@@ -143,6 +147,7 @@ enum UiEvent {
     CoreAvailable,
     CoreUnavailable(String),
     CoreExited,
+    LabRunnerClosed(bool),
 }
 
 #[derive(Clone)]
@@ -2380,6 +2385,169 @@ fn tray_event_name(event: u32) -> &'static str {
     }
 }
 
+fn runner_id_valid(value: &str) -> bool {
+    value.len() == 32 && value.bytes().all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+}
+
+fn report_runner(launch_id: &str, state: &str, message: &str) {
+    let payload = serde_json::json!({"launch_id": launch_id, "state": state, "message": message}).to_string();
+    let Ok(address) = "127.0.0.1:8765".parse() else { return };
+    if let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_secs(2)) {
+        let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+        let request = format!("POST /api/code-lab/runner/status HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", payload.len(), payload);
+        let _ = stream.write_all(request.as_bytes());
+    }
+}
+
+fn runner_job_processes(job: usize) -> Result<u32, String> {
+    let mut info = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
+    unsafe {
+        QueryInformationJobObject(
+            Some(windows::Win32::Foundation::HANDLE(job as *mut c_void)),
+            JobObjectBasicAccountingInformation,
+            &mut info as *mut _ as *mut c_void,
+            std::mem::size_of_val(&info) as u32, None,
+        ).map_err(|error| error.to_string())?;
+    }
+    Ok(info.ActiveProcesses)
+}
+
+struct RunnerWindowSearch { job: usize, window: HWND }
+
+unsafe extern "system" fn find_runner_window(hwnd: HWND, param: LPARAM) -> BOOL {
+    let search = &mut *(param.0 as *mut RunnerWindowSearch);
+    if !IsWindowVisible(hwnd).as_bool() {
+        return BOOL(1);
+    }
+    let mut pid = 0;
+    GetWindowThreadProcessId(hwnd, Some(&mut pid));
+    if let Ok(process) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+        let mut owned = BOOL(0);
+        let checked = IsProcessInJob(process, Some(windows::Win32::Foundation::HANDLE(search.job as *mut c_void)), &mut owned);
+        let _ = CloseHandle(process);
+        if checked.is_ok() && owned.as_bool() { search.window = hwnd; return BOOL(0); }
+    }
+    BOOL(1)
+}
+
+fn focus_runner_window(job: usize) -> bool {
+    unsafe {
+        let mut search = RunnerWindowSearch { job, window: HWND::default() };
+        let _ = EnumWindows(Some(find_runner_window), LPARAM(&mut search as *mut _ as isize));
+        let hwnd = search.window;
+        if hwnd.0.is_null() { return false; }
+        if IsIconic(hwnd).as_bool() { let _ = ShowWindow(hwnd, SW_RESTORE); }
+        let _ = SetWindowPos(hwnd, Some(HWND_TOP), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        let _ = SetForegroundWindow(hwnd);
+        if GetForegroundWindow() == hwnd { return true; }
+        // Briefly share the current foreground input queue for this explicit
+        // user-requested activation; detach immediately and never pin on top.
+        let current = GetCurrentThreadId();
+        let foreground = GetWindowThreadProcessId(GetForegroundWindow(), None);
+        let target = GetWindowThreadProcessId(hwnd, None);
+        let attached = foreground != 0 && foreground != current && AttachThreadInput(current, foreground, true).as_bool();
+        let target_attached = target != 0 && target != current && target != foreground && AttachThreadInput(current, target, true).as_bool();
+        let _ = BringWindowToTop(hwnd);
+        let _ = SetForegroundWindow(hwnd);
+        let _ = SetActiveWindow(hwnd);
+        let _ = SetFocus(Some(hwnd));
+        let focused = GetForegroundWindow() == hwnd;
+        if target_attached { let _ = AttachThreadInput(current, target, false); }
+        if attached { let _ = AttachThreadInput(current, foreground, false); }
+        log_line(format!("Lab Runner activation: hwnd={}, attached={}, target_attached={}, confirmed={}", hwnd.0 as usize, attached, target_attached, focused));
+        focused
+    }
+}
+
+fn report_runner_focus(launch_id: &str, focused: bool) {
+    let payload = serde_json::json!({"launch_id":launch_id,"state":"FOCUS","foreground":focused}).to_string();
+    let Ok(address) = "127.0.0.1:8765".parse() else { return };
+    if let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_secs(2)) {
+        let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+        let request = format!("POST /api/code-lab/runner/status HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", payload.len(), payload);
+        let _ = stream.write_all(request.as_bytes());
+    }
+}
+
+fn launch_lab_runner(message: HostMessage, avatar: &mut AvatarOverlay, queue: &UiQueue) {
+    let run_id = message.run_id.unwrap_or_default();
+    let launch_id = message.launch_id.unwrap_or_default();
+    if !runner_id_valid(&run_id) || !runner_id_valid(&launch_id) {
+        log_line("rejected invalid Lab Runner launch identifiers");
+        return;
+    }
+    if LAB_RUNNER_ACTIVE.swap(true, Ordering::AcqRel) {
+        report_runner(&launch_id, "FAILED", "A Lab Runner is already open. Close it with Alt+F4 before launching another build.");
+        return;
+    }
+    let edge = ["ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"].iter()
+        .filter_map(|key| env::var_os(key))
+        .map(|base| PathBuf::from(base).join("Microsoft/Edge/Application/msedge.exe"))
+        .find(|path| path.is_file());
+    let result = (|| -> Result<(Child, usize), String> {
+        if !health_check() { return Err("Ariadne core is unavailable.".into()); }
+        let edge = edge.ok_or("Microsoft Edge is not installed.")?;
+        // Chromium delegates launches to an existing process for the same profile.
+        // A per-session profile keeps this child the owner of the kiosk window.
+        let profile = PathBuf::from(env::var_os("LOCALAPPDATA").ok_or("Local application storage is unavailable.")?).join("Ariadne/LabRunner/Sessions").join(&launch_id);
+        let url = format!("{}lab-runner?launch_id={}", DASHBOARD_URL, launch_id);
+        log_line(format!("Lab Runner start: edge={}, profile={}, launch_id={}", edge.display(), profile.display(), launch_id));
+        let mut child = Command::new(edge).arg("--kiosk").arg(&url).arg("--edge-kiosk-type=fullscreen")
+            .arg("--no-first-run").arg("--no-default-browser-check")
+            .arg(format!("--user-data-dir={}", profile.display()))
+            .spawn().map_err(|error| error.to_string())?;
+        let job = match create_core_job(&child) {
+            Ok(job) => job,
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("Could not own Lab Runner lifecycle: {}", error));
+            }
+        };
+        Ok((child, job.0 as usize))
+    })();
+    match result {
+        Ok((mut child, job)) => {
+            let restore_avatar = unsafe { IsWindowVisible(avatar.hwnd).as_bool() };
+            avatar.hide();
+            log_line(format!("Lab Runner launched: run_id={}, pid={}", run_id, child.id()));
+            report_runner(&launch_id, "LAUNCHED", "Separate full-screen Runner launched.");
+            let ui = queue.clone();
+            thread::spawn(move || {
+                let mut focused = false;
+                for _ in 0..100 {
+                    if runner_job_processes(job).ok() == Some(0) { break; }
+                    if focus_runner_window(job) { focused = true; break; }
+                    thread::sleep(Duration::from_millis(100));
+                }
+                log_line(format!("Lab Runner foreground: launch_id={}, confirmed={}", launch_id, focused));
+                report_runner_focus(&launch_id, focused);
+                let exit = child.wait();
+                log_line(format!("Lab Runner starter exit: launch_id={}, result={:?}, active={:?}", launch_id, exit, runner_job_processes(job)));
+                // Edge may relaunch itself. Track its remaining owned processes.
+                loop {
+                    match runner_job_processes(job) {
+                        Ok(0) => break,
+                        Ok(_) => thread::sleep(Duration::from_millis(250)),
+                        Err(error) => { log_line(format!("Lab Runner lifecycle query failed: {}", error)); break; }
+                    }
+                }
+                // Also kills remaining Edge descendants, including on host exit.
+                unsafe { let _ = CloseHandle(windows::Win32::Foundation::HANDLE(job as *mut c_void)); }
+                LAB_RUNNER_ACTIVE.store(false, Ordering::Release);
+                report_runner(&launch_id, "CLOSED", "Lab Runner session closed.");
+                log_line(format!("Lab Runner closed: run_id={}", run_id));
+                ui.push(UiEvent::LabRunnerClosed(restore_avatar));
+            });
+        }
+        Err(error) => {
+            LAB_RUNNER_ACTIVE.store(false, Ordering::Release);
+            report_runner(&launch_id, "FAILED", &error);
+            log_line(format!("Lab Runner launch failed: {}", error));
+        }
+    }
+}
+
 fn open_dashboard(trigger: &str) {
     if !health_check() {
         tray_log_line(format!(
@@ -2422,7 +2590,10 @@ fn process_events(
 ) {
     for event in queue.drain() {
         match event {
+            UiEvent::Pipe(message) if LAB_RUNNER_ACTIVE.load(Ordering::Acquire)
+                && matches!(message.kind.as_str(), "state" | "say" | "show" | "reload_avatar") => {},
             UiEvent::Pipe(message) => match message.kind.as_str() {
+                "launch_lab_runner" => launch_lab_runner(message, avatar, queue),
                 "state" => {
                     if let Some(state) = message.state.as_deref() {
                         log_line(format!("avatar state event received: {} · {}", state, message.status.as_deref().unwrap_or("")));
@@ -2463,6 +2634,9 @@ fn process_events(
                 }
                 _ => log_line(format!("ignored unknown IPC event type: {}", message.kind)),
             },
+            UiEvent::LabRunnerClosed(restore) => {
+                if restore { avatar.show(); }
+            }
             UiEvent::CoreLaunched(command) => {
                 avatar.set_state("loading_model");
                 log_line(format!("core launch recorded: {}", command));
@@ -2671,6 +2845,14 @@ mod tests {
         scaled_avatar_dimensions, state_status, PresentationTiming, AVATAR_MAX_HEIGHT,
         BUBBLE_CORNER_RADIUS, BUBBLE_MAX_HEIGHT,
     };
+
+    #[test]
+    fn runner_identifiers_reject_paths_urls_and_arguments() {
+        assert!(super::runner_id_valid("0123456789abcdef0123456789abcdef"));
+        for value in ["", "../index.html", "https://example.com/", "--disable-security", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0123456789abcdef"] {
+            assert!(!super::runner_id_valid(value));
+        }
+    }
 
     #[test]
     fn tray_left_activation_opens_dashboard() {

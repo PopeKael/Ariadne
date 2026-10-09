@@ -22,6 +22,40 @@ class HomeChatStoreTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_lab_run_is_durable_idempotent_and_exported_with_exact_source(self):
+        chat = self.store.create()
+        run = {'run_id': 'a' * 32, 'user_prompt': 'Create Dungeon Test',
+               'model': 'qwen2.5-coder:14b', 'context_tokens': 32768, 'success': True,
+               'project_name': 'Dungeon Test', 'summary': 'A dungeon game',
+               'project_path': 'F:/AriadneLab/' + 'a' * 32}
+        code = '<html><script>const x = "```";</script></html>'
+        first = self.store.record_lab_run(chat['chat_id'], run, code)
+        again = self.store.record_lab_run(chat['chat_id'], run, code)
+        self.assertEqual(first, again)
+        self.assertEqual(len(again['messages']), 2)
+        self.assertEqual(again['messages'][0]['content'], run['user_prompt'])
+        self.assertEqual(again['messages'][1]['lab_run_id'], run['run_id'])
+        self.assertEqual(self.store.list_recent()[0]['turn_count'], 1)
+        markdown, _ = self.store.export_markdown(chat['chat_id'])
+        self.assertIn(code, markdown)
+        self.assertIn('32768 tokens', markdown)
+        _, inbox = self.store.save_to_inbox(chat['chat_id'])
+        self.assertIn(code, (self.vault / inbox).read_text(encoding='utf-8'))
+
+    def test_lab_import_keeps_existing_dialogue_and_rejects_closed_chat(self):
+        chat = self.store.create()
+        turn, _ = self.store.begin_turn(chat['chat_id'], 'Original question', 'home', {})
+        self.store.complete_turn(chat['chat_id'], turn, 'Original answer', model='home',
+                                 used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={})
+        run = {'run_id': 'b' * 32, 'user_prompt': 'Build', 'success': False, 'error': 'Output limit'}
+        record = self.store.record_lab_run(chat['chat_id'], run, None)
+        self.assertEqual(len(record['messages']), 4)
+        self.assertEqual(record['messages'][1]['content'], 'Original answer')
+        self.assertIn('Output limit', record['messages'][3]['content'])
+        self.store.close_and_archive(chat['chat_id'])
+        with self.assertRaises(ValueError):
+            self.store.record_lab_run(chat['chat_id'], {**run, 'run_id': 'c' * 32}, None)
+
     def test_document_title_uses_metadata_and_is_not_replaced_by_later_turns(self):
         self.assertEqual(
             title_from_document({"filename": "article.md", "metadata": {"title": "Metadata title"}}),

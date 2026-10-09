@@ -63,6 +63,7 @@ from ariadne_config import (
 )
 from inference import InferenceRegistry, default_providers
 import code_lab
+import lab_runner
 from avatar_events import clear_status, emit, emit_say, emit_state, host_status
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
@@ -2297,7 +2298,7 @@ def code_lab_service():
                 "gpu_utilisation": None, "vram_peak_gb": None, "sample": "after generation; not a peak measurement"}
 
     return code_lab.CodeLab(INFERENCE_REGISTRY, catalog,
-                            lambda endpoint, model, payload: _ollama_generate_stream(model, payload, timeout=600.0, endpoint=endpoint),
+                            None,  # Lab adapter owns deadline-aware transport
                             ai_gpu_admission, model_activity, hardware,
                             lambda state: _send_avatar_event_with_retry(lambda: emit_state(state)),
                             ollama_model_capability_details)
@@ -8186,6 +8187,23 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/model-lab":
             self.send_json(model_lab_payload())
             return
+        if path == "/lab-runner":
+            try:
+                token = parse_qs(urlparse(self.path).query).get("launch_id", [""])[0]
+                self.send_bytes(lab_runner.runner_page(token).encode("utf-8"), "text/html; charset=utf-8")
+            except (ValueError, OSError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 404)
+            return
+        if path == "/lab-runner.js":
+            self.send_asset("lab-runner.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/api/code-lab/runner/status":
+            try:
+                token = parse_qs(urlparse(self.path).query).get("launch_id", [""])[0]
+                self.send_json(lab_runner.status(token))
+            except ValueError as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 404)
+            return
         if path == "/api/code-lab":
             try:
                 self.send_json(code_lab_service().status())
@@ -8201,10 +8219,22 @@ class AriadneHandler(BaseHTTPRequestHandler):
             except (ValueError, OSError) as exc:
                 self.send_json({"ok": False, "message": str(exc)}, 400)
             return
+        if path == '/api/code-lab/candidate':
+            query=parse_qs(urlparse(self.path).query)
+            try:
+                directory,record=code_lab.read_run(query.get('run_id',[''])[0])
+                attempt=int(query.get('attempt',['-1'])[0])
+                if attempt < 0 or attempt >= len(record.get('attempts',[])):
+                    raise ValueError('Invalid candidate attempt.')
+                self.send_json({'code':(directory/f'attempt-{attempt}.html').read_text(encoding='utf-8')})
+            except (ValueError,OSError) as exc:
+                self.send_json({'ok':False,'message':str(exc)},400)
+            return
         if path == "/api/code-lab/preview":
             query = parse_qs(urlparse(self.path).query)
             try:
-                content = code_lab.preview_html(query.get("run_id", [""])[0], query.get("token", [""])[0]).encode("utf-8")
+                index = int(query['test'][0]) if 'test' in query else None
+                content = code_lab.preview_html(query.get("run_id", [""])[0], query.get("token", [""])[0], index).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Security-Policy", code_lab.PREVIEW_CSP + "; sandbox allow-scripts")
@@ -8489,12 +8519,31 @@ class AriadneHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self.read_json()
+            if path == "/api/code-lab/runner":
+                try:
+                    self.send_json(lab_runner.launch(str(body.get("run_id") or "")), 202)
+                except (ValueError, OSError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                return
+            if path == "/api/code-lab/runner/status":
+                try:
+                    lab_runner.report(body)
+                    self.send_json({"ok": True})
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                return
             if path == "/api/code-lab/prepare":
                 try:
                     result, status = prepare_code_lab_model(body)
                     self.send_json(result, status)
                 except (ValueError, OSError) as exc:
                     self.send_json({"ok": False, "message": str(exc)}, 400)
+                return
+            if path == "/api/code-lab/verification":
+                try:
+                    self.send_json(code_lab.lab_verification.submit_report(body))
+                except (ValueError, OSError) as exc:
+                    self.send_json({'ok':False,'message':str(exc)},400)
                 return
             if path == "/api/code-lab/preview":
                 try:
@@ -9192,6 +9241,19 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     data=feedback,
                 )
                 self.send_json({"ok": True, "chat_id": active_chat_id, "feedback": feedback}, 200)
+                return
+            if path == "/api/home/chat/lab-run":
+                if str(body.get("chat_id") or "") != active_chat_id:
+                    self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
+                    return
+                try:
+                    result = code_lab.saved_result(str(body.get("run_id") or ""))
+                    if result.get('pending'):
+                        raise ValueError('The build has not finished verification.')
+                    chat = HOME_CHAT_STORE.record_lab_run(active_chat_id, result["run"], result["code"])
+                    self.send_json({"ok": True, "chat": chat})
+                except (ValueError, OSError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
                 return
             if path == "/api/home/chat/save":
                 requested_chat_id = body.get("chat_id")

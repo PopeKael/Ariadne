@@ -318,6 +318,47 @@ class ChatStore:
             self._write_locked(record)
             return turn_id, record
 
+    def record_lab_run(self, chat_id: str, run: dict[str, Any], code: str | None) -> dict[str, Any]:
+        """Import an authoritative saved Lab result once into the selected chat."""
+        run_id = str(run.get("run_id") or "")
+        if not re.fullmatch(r"[0-9a-f]{32}", run_id):
+            raise ValueError("Invalid Lab run ID.")
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record or record.get("status") != "active":
+                raise ValueError("The selected chat is not active.")
+            if any(item.get("lab_run_id") == run_id for item in record.get("messages", [])):
+                return record
+            timestamp = isoformat(self.now_fn())
+            turn_id = uuid.uuid4().hex
+            model = str(run.get("model") or "")
+            answer = ("The Lab: " + str(run.get("project_name") or "Browser build") + "\n\n"
+                      + str(run.get("summary") or "")
+                      + "\nBuild state: " + str(run.get('state') or 'Unknown')
+                      + ("\nDiagnostics: " + str(run['error']) if run.get('error') else '')
+                      + f"\n\nRun ID: {run_id}\nModel: {model}\nContext: {run.get('context_tokens')} tokens"
+                      + "\nProject: " + str(run.get("project_path") or "No project saved"))
+            if code:
+                fence = "`" * max(3, max((len(match.group()) + 1 for match in re.finditer(r"`+", code)), default=3))
+                answer += f"\n\n{fence}html\n{code}\n{fence}"
+            record["messages"].extend([
+                {"message_id": uuid.uuid4().hex, "turn_id": turn_id, "role": "user",
+                 "content": str(run.get("user_prompt") or ""), "created_at": run.get("timestamp") or timestamp,
+                 "state": "complete", "response_state": "submitted", "lab_run_id": run_id},
+                {"message_id": uuid.uuid4().hex, "turn_id": turn_id, "role": "assistant",
+                 "content": answer, "created_at": timestamp, "completed_at": run.get("finished_at") or timestamp,
+                 "state": "complete", "response_state": "completed", "model": model,
+                 "lab_run_id": run_id, "lab_success": bool(run.get("success")), "used_vault": False,
+                 "sources": [], "retrieval": {}, "timing": {}, "identity_kernel": {}},
+            ])
+            if not record.get("title"):
+                record["title"] = _clean_title("The Lab: " + str(run.get("project_name") or "Browser build"), 80)
+            record["model"] = model
+            record["last_activity_at"] = timestamp
+            record["expires_at"] = isoformat(self.now_fn() + timedelta(days=RETENTION_DAYS))
+            self._write_locked(record)
+            return record
+
     def record_context_recipe(self, chat_id: str, turn_id: str, recipe: dict[str, Any]) -> None:
         """Persist the prepared receipt before transport; retain it on interruption."""
         with _process_lock(self.lock_path):

@@ -6,6 +6,10 @@ All notable repository-level changes are recorded here. Entries describe changes
 
 ### Changed
 
+- Refactored The Lab into a bounded model/action/observation coding-agent loop, using mini-SWE-agent and Aider as design references. Removed mandatory semantic planner/reviewer stages; added read, create, exact patch, run, sequential browser test and finish actions with full trajectory and provider timing/token receipts.
+- Added a separate Windows-host-owned full-screen Lab Runner with confirmed foreground focus and explicit launch/close/error reporting; Workbench remains the development preview.
+- Persisted Lab results in normal Chat with Save to Inbox and saved-build reopening. Added visible elapsed/output/heartbeat activity, candidate diagnostics and interrupted-run recovery.
+- Verified a live four-call counter build and real-browser interactions; recorded bounded-failure and two-patch repair fixtures separately from live-model evidence. Updated About and the checkpoint/validation logs on 2026-10-09.
 - Added The Lab inside Chat with a dedicated local coding model, minimum 32K context, immediate GPU model loading, and Workbench Preview / Code / Metrics for saved single-file browser builds.
 - Added build-stream heartbeats and saved-result recovery after interrupted connections; documented runtime verification and remaining preview isolation and model-output quality limits.
 

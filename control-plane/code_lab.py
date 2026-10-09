@@ -12,14 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from html.parser import HTMLParser
 from ariadne_config import _read_saved, effective_storage
+import lab_verification
 
-INSTRUCTIONS = (
-    "Create the application requested by the user. Return only a JSON project object "
-    "with project_name, summary, entrypoint and files. V1 requires entrypoint index.html "
-    "and exactly one file with path index.html and content containing all HTML, CSS and "
-    "JavaScript. Use no external dependencies, network resources, remote fonts or images. "
-    "The application must run in an ordinary modern browser."
-)
+from lab_environment import INSTRUCTIONS
 SCHEMA = {
     "type": "object", "additionalProperties": False,
     "required": ["project_name", "summary", "entrypoint", "files"],
@@ -37,6 +32,7 @@ PREVIEW_CSP = ("default-src 'none'; script-src 'unsafe-inline'; style-src 'unsaf
                "img-src data:; media-src data:; font-src 'none'; connect-src 'none'; "
                "frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; webrtc 'block'")
 _LOCK = threading.RLock()
+_ACTIVE_RUNS = set()
 
 
 class _Resources(HTMLParser):
@@ -148,80 +144,62 @@ class CodeLab:
                 "message": "Ready." if installed else f"Coding model {model} is missing or Ollama is unavailable. Install it explicitly in the owned model store; no download was attempted."}
 
     def run(self, body, on_event=None):
+        from lab_agent import LabAgent, RunLimits, RunRecord
+        from lab_model import OllamaModelAdapter, ollama_stream
+        from lab_workspace import Workspace
+        from lab_environment import BrowserEnvironment
         root, context = settings()
-        prompt = body.get("prompt")
-        if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 8000:
-            return {"ok": False, "message": "Enter a coding prompt of 1–8000 characters."}, 400
-        provider = self.registry.route("coding")
-        model = os.environ.get("ARIADNE_CODING_MODEL") or (provider.model_id if provider else None)
-        run_id = uuid.uuid4().hex
-        record = {"run_id": run_id, "timestamp": datetime.now(timezone.utc).isoformat(),
-                  "model": model, "context_tokens": context, "user_prompt": prompt,
-                  "instructions": INSTRUCTIONS, "schema": SCHEMA, "state": "LOADING MODEL",
-                  "success": False, "project_path": None, "preview": {"result": "NOT RUN", "errors": []},
-                  "telemetry": provider_metrics({}), "hardware": None}
-        started = time.monotonic()
-        directory = run_directory(root, run_id)
-
-        def state(name, avatar):
-            record["state"] = name
-            self.avatar(avatar)
-            if on_event:
-                on_event({"type": "state", "state": name, "run_id": run_id})
-
+        prompt = body.get('prompt')
+        if not isinstance(prompt,str) or not prompt.strip() or len(prompt)>8000:
+            return {'ok':False,'message':'Enter a coding prompt of 1–8000 characters.'},400
+        provider=self.registry.route('coding')
+        model=os.environ.get('ARIADNE_CODING_MODEL') or (provider.model_id if provider else None)
+        run_id=uuid.uuid4().hex
+        directory=run_directory(root,run_id)
+        record={'run_id':run_id,'timestamp':datetime.now(timezone.utc).isoformat(),'model':model,
+                'context_tokens':context,'user_prompt':prompt,'instructions':INSTRUCTIONS,'schema':SCHEMA,
+                'state':'LOADING MODEL','success':False,'verified':False,'project_path':None,
+                'preview':{'result':'NOT RUN','errors':[]},'attempts':[],'output_characters':0,
+                'telemetry':provider_metrics({}),'pipeline_version':4,'pending':True,'repair_attempts':0}
+        directory.mkdir(parents=True,exist_ok=True)
+        def save():
+            with _LOCK:
+                atomic_write(directory/'run.json',json.dumps(record,indent=2,ensure_ascii=False))
+        def emit(event):
+            if event.get('type')=='test_candidate':
+                record['pending_test']=event;save()
+            if on_event:on_event({'run_id':run_id,**event})
+        workspace=Workspace(directory,record,atomic_write,validate_project)
+        with _LOCK:_ACTIVE_RUNS.add(run_id)
         try:
-            if not provider:
-                raise ValueError("No local Ollama coding provider is configured.")
-            catalog = self.catalog(provider.endpoint)
-            if not catalog.get("available"):
-                raise ValueError("The coding Ollama provider is unavailable.")
-            if model not in [item.get("name") for item in catalog.get("models", [])]:
-                raise ValueError(f"Coding model {model} is missing. Install it explicitly in the owned model store; no download was attempted.")
-            if self.capabilities:
-                validate_context(context, self.capabilities(model))
-            payload = {"model": model, "system": INSTRUCTIONS, "prompt": prompt, "format": SCHEMA,
-                       "stream": True, "keep_alive": -1,
-                       "options": {"num_ctx": context, "num_predict": min(8192, context // 2), "temperature": 0, "seed": 42}}
-            record["request"] = payload
-            response, chunks = {}, []
-            state("LOADING MODEL", "loading_model")
-            with self.admission(), self.activity(model):
-                for chunk in self.generate(provider.endpoint, model, payload):
-                    response.update(chunk)
-                    if chunk.get("response"):
-                        if not chunks:
-                            state("GENERATING", "working")
-                        chunks.append(str(chunk["response"]))
-                record["hardware"] = self.hardware()
-            record["telemetry"] = provider_metrics(response)
-            if not response.get("done") or response.get("done_reason") in {"length", "context", "context_length"}:
-                raise ValueError("Coding generation did not complete: output/context limit or incomplete provider response.")
-            project = validate_project(json.loads("".join(chunks)))
-            state("SAVING", "working")
-            directory = run_directory(root, run_id)
-            directory.mkdir(parents=True, exist_ok=False)
-            directory = run_directory(root, run_id)
-            atomic_write(directory / "index.html", project["files"][0]["content"])
-            record.update(success=True, project_path=str(directory), project_name=project["project_name"], summary=project["summary"])
-            state("READY TO RUN", "success")
-            code = project["files"][0]["content"]
-            status = 200
-        except (OSError, ValueError, TypeError, RuntimeError) as exc:
-            record.update(success=False, project_path=None, error=str(exc)[:1000])
-            state("FAILED", "error")
-            code, status = None, 409
-        record["wall_duration_ms"] = round((time.monotonic() - started) * 1000, 1)
-        record["finished_at"] = datetime.now(timezone.utc).isoformat()
-        # Failures also get a reproducible record, never a successful project.
-        try:
-            directory = run_directory(root, run_id)
-            directory.mkdir(parents=True, exist_ok=True)
-            directory = run_directory(root, run_id)
-            atomic_write(directory / "run.json", json.dumps(record, indent=2, ensure_ascii=False))
-        except OSError as exc:
-            record.update(success=False, state="FAILED", project_path=None, error=f"Cannot persist Code Lab run: {exc}")
-            code, status = None, 409
-        return {"ok": record["success"], "run": record, "code": code, "message": record.get("error", record.get("summary", ""))}, status
+            save();emit({'type':'state','state':'LOADING MODEL'});self.avatar('working')
+            run=RunRecord(record,save,emit,RunLimits.configured())
+            if not provider:raise ValueError('No local Ollama coding provider is configured.')
+            catalog=self.catalog(provider.endpoint)
+            if not catalog.get('available') or model not in [i.get('name') for i in catalog.get('models',[])]:
+                raise ValueError(f'Coding model {model} is missing or unavailable.')
+            details=self.capabilities(model) if self.capabilities else {}
+            if self.capabilities:validate_context(context,details)
+            # Production owns a cancellable HTTP transport; injected test streams
+            # retain their simple callback interface and must cooperate with deadlines.
+            transport=ollama_stream if self.generate is None else lambda endpoint,model,payload,deadline:self.generate(endpoint,model,payload)
+            adapter=OllamaModelAdapter(provider.endpoint,model,context,transport,self.admission,self.activity,run,
+                provider_metrics,lambda name,text:atomic_write(directory/name,text),self.hardware)
+            adapter.capabilities.update(thinking='thinking' in details.get('capabilities',[]),native=details)
+            record['model_capabilities']=adapter.capabilities
+            environment=BrowserEnvironment(SCHEMA,workspace,run,bool(on_event))
+            record['schema']=environment.action_schema
+            LabAgent(adapter,environment,workspace,run).run_task(prompt)
+        except (OSError,ValueError,TypeError,RuntimeError) as exc:
+            record.update(state='NEEDS ATTENTION',stop_reason='SETUP_FAILED',error=str(exc)[:2000],pending=False)
+        finally:
+            record.update(finished_at=datetime.now(timezone.utc).isoformat(),pending=False)
+            try:record['hardware']=self.hardware()
+            except Exception as exc:record['hardware']={'sample':'unavailable','error':str(exc)[:250]}
+            save()
+            with _LOCK:_ACTIVE_RUNS.discard(run_id)
+        self.avatar('success' if record['verified'] else 'error')
+        return {'ok':record['success'],'run':record,'code':workspace.code,'message':record.get('error',record.get('summary',''))},200 if record['success'] else 409
 
 
 def stream_events(service, body, heartbeat_seconds=5):
@@ -251,9 +229,15 @@ def saved_result(run_id=None):
         if not candidates:
             raise FileNotFoundError("No saved Lab run is available yet.")
         run_id = max(candidates, key=lambda p: p.stat().st_mtime_ns).parent.name
-    directory, record = read_run(run_id)
-    code = (directory / "index.html").read_text(encoding="utf-8") if record.get("success") else None
-    return {"ok": record.get("success", False), "run": record, "code": code,
+    with _LOCK:
+        directory, record = read_run(run_id)
+        if record.get('pending') and run_id not in _ACTIVE_RUNS:
+            record.update(pending=False,success=False,verified=False,state='NEEDS ATTENTION',
+                          stop_reason='CORE_RESTART',error='Core restarted before this run finished; saved candidates are retained.')
+            record.pop('pending_test',None)
+            atomic_write(directory/'run.json',json.dumps(record,indent=2,ensure_ascii=False))
+    code = (directory / "index.html").read_text(encoding="utf-8") if (directory / 'index.html').exists() else None
+    return {"ok": record.get("success", False), "pending":record.get('pending',False), "run": record, "code": code,
             "message": record.get("error", record.get("summary", ""))}
 
 
@@ -266,7 +250,7 @@ def read_run(run_id):
 def record_preview(body):
     with _LOCK:
         directory, record = read_run(str(body.get("run_id") or ""))
-        if not record.get("success"):
+        if not (directory / 'index.html').is_file():
             raise ValueError("Failed generations cannot be previewed.")
         result = body.get("result")
         if result not in {"RUNNING", "LOADED", "FAILED", "ERROR", "RESET"}:
@@ -277,14 +261,17 @@ def record_preview(body):
         preview = {"result": result, "errors": errors, "timestamp": datetime.now(timezone.utc).isoformat()}
         record.setdefault("preview_history", []).append(preview)
         record["preview"] = preview
-        record["state"] = "RUNNING" if result == "RUNNING" else "COMPLETED" if result == "LOADED" and not errors else "READY TO RUN" if result == "RESET" else "FAILED"
+        if record.get('pipeline_version',0) < 2:
+            record["state"] = "RUNNING" if result == "RUNNING" else "COMPLETED" if result == "LOADED" and not errors else "READY TO RUN" if result == "RESET" else "FAILED"
+        elif result in {'FAILED','ERROR'}:
+            record.update(success=False,verified=False,state='NEEDS ATTENTION',error='Preview reported a runtime failure. See preview diagnostics.')
         atomic_write(directory / "run.json", json.dumps(record, indent=2, ensure_ascii=False))
         return {"ok": True, "run": record}
 
 
-def preview_html(run_id, token):
+def preview_html(run_id, token, test_index=None):
     directory, record = read_run(run_id)
-    if not record.get("success") or not re.fullmatch(r"[0-9a-f]{32}", token):
+    if not (directory / 'index.html').is_file() or not re.fullmatch(r"[0-9a-f]{32}", token):
         raise ValueError("Preview requires a successful run and a preview token.")
     source = (directory / "index.html").read_text(encoding="utf-8")
     bootstrap = """<script>(()=>{const token=TOKEN; const send=(kind,message='')=>parent.postMessage({type:'code-lab-preview',token,kind,message},'*');
@@ -296,7 +283,11 @@ addEventListener('click',e=>{if(e.target.closest?.('a[href],area[href]'))e.preve
 addEventListener('submit',e=>e.preventDefault(),true);
 })();</script>""".replace("TOKEN", json.dumps(token))
     # Insert trusted CSP and bootstrap before any model markup is parsed.
-    return '<!doctype html><meta http-equiv="Content-Security-Policy" content="' + PREVIEW_CSP + '">' + bootstrap + source
+    testing = lab_verification.bootstrap(run_id,token,test_index) if test_index is not None else ''
+    prefix='<!doctype html><meta http-equiv="Content-Security-Policy" content="' + PREVIEW_CSP + '">' + testing + bootstrap
+    if testing:
+        prefix=prefix.replace('"source_offset": 0','"source_offset": '+str(prefix.count('\n')),1)
+    return prefix + source
 
 
 def validate_context(context, capabilities):

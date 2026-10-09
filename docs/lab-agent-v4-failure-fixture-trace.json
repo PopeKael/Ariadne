@@ -1,0 +1,986 @@
+{
+  "run_id": "6ed80c01c3e5423994cb7ff9b932d791",
+  "stop_reason": "CONTEXT_BUDGET",
+  "error": "Model input exceeds the configured conservative byte budget; source was not silently truncated.",
+  "totals": {
+    "model_calls": 12,
+    "input_tokens": null,
+    "output_tokens": null,
+    "token_counts_complete": false,
+    "model_duration_ms": 31.0,
+    "tool_duration_ms": 7953.0,
+    "wall_duration_ms": 8297.0
+  },
+  "repairs": 2,
+  "attempts": [
+    {
+      "attempt": 0,
+      "failures": [
+        "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"].",
+        "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+      ],
+      "source": {
+        "passed": true,
+        "errors": []
+      },
+      "browser": {
+        "source": {
+          "passed": true,
+          "errors": []
+        },
+        "passed": false,
+        "errors": [
+          "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"].",
+          "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+        ],
+        "checks": [
+          {
+            "description": "Increment changes the visible count",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": false,
+              "change": true
+            },
+            "errors": [
+              "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"]."
+            ],
+            "passed": false
+          },
+          {
+            "description": "Two more increments preserve script state",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              },
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": false,
+              "change": true
+            },
+            "errors": [
+              "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+            ],
+            "passed": false
+          },
+          {
+            "description": "Reset restores zero",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#reset",
+                "value": "",
+                "label": "Reset",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": true,
+              "change": true
+            },
+            "errors": [],
+            "passed": true
+          }
+        ],
+        "usable": true,
+        "smoke_passed": true,
+        "startup": {
+          "initial": {
+            "text": "Counter test\n\n0\n\nAddReset",
+            "dom": "<h1>Counter test</h1><p id=\"count\">0</p><button id=\"add\" onclick=\"void 0\">Add</button><button id=\"reset\" onclick=\"count.textContent=0\">Reset</button>",
+            "canvas": "",
+            "visual": [
+              {
+                "tag": "H1",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "P",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "BUTTON",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "BUTTON",
+                "value": "",
+                "style": "",
+                "class": ""
+              }
+            ]
+          },
+          "errors": [],
+          "actions": [
+            {
+              "label": "Add",
+              "changed": false,
+              "before": "Counter test\n\n0\n\nAddReset",
+              "after": "Counter test\n\n0\n\nAddReset"
+            },
+            {
+              "label": "Reset",
+              "changed": false,
+              "before": "Counter test\n\n0\n\nAddReset",
+              "after": "Counter test\n\n0\n\nAddReset"
+            }
+          ],
+          "warnings": [
+            "Control produced no observable change in this state: Add",
+            "Control produced no observable change in this state: Reset"
+          ],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "id": "add",
+              "label": "Add",
+              "visible": true,
+              "disabled": false
+            },
+            {
+              "tag": "BUTTON",
+              "id": "reset",
+              "label": "Reset",
+              "visible": true,
+              "disabled": false
+            }
+          ],
+          "usable": true,
+          "smoke_passed": true
+        },
+        "controls": [
+          {
+            "tag": "BUTTON",
+            "id": "add",
+            "label": "Add",
+            "visible": true,
+            "disabled": false
+          },
+          {
+            "tag": "BUTTON",
+            "id": "reset",
+            "label": "Reset",
+            "visible": true,
+            "disabled": false
+          }
+        ],
+        "warnings": [
+          "Control produced no observable change in this state: Add",
+          "Control produced no observable change in this state: Reset"
+        ],
+        "requirements": [
+          {
+            "description": "Increment changes the visible count",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "1",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          },
+          {
+            "description": "Two more increments preserve script state",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              },
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "3",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          },
+          {
+            "description": "Reset restores zero",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#reset",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "0",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "description": "Increment changes the visible count",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "1",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "description": "Two more increments preserve script state",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            },
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "3",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "description": "Reset restores zero",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#reset",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "0",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    },
+    {
+      "attempt": 1,
+      "failures": [
+        "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"].",
+        "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+      ],
+      "source": {
+        "passed": true,
+        "errors": []
+      },
+      "browser": {
+        "source": {
+          "passed": true,
+          "errors": []
+        },
+        "passed": false,
+        "errors": [
+          "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"].",
+          "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+        ],
+        "checks": [
+          {
+            "description": "Increment changes the visible count",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": false,
+              "change": true
+            },
+            "errors": [
+              "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"]."
+            ],
+            "passed": false
+          },
+          {
+            "description": "Two more increments preserve script state",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              },
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": false,
+              "change": true
+            },
+            "errors": [
+              "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+            ],
+            "passed": false
+          },
+          {
+            "description": "Reset restores zero",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#reset",
+                "value": "",
+                "label": "Reset",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": true,
+              "change": true
+            },
+            "errors": [],
+            "passed": true
+          }
+        ],
+        "usable": true,
+        "smoke_passed": true,
+        "startup": {
+          "initial": {
+            "text": "Counter test\n\n0\n\nAddReset",
+            "dom": "<h1>Counter test</h1><p id=\"count\">0</p><button id=\"add\" onclick=\"void 1\">Add</button><button id=\"reset\" onclick=\"count.textContent=0\">Reset</button>",
+            "canvas": "",
+            "visual": [
+              {
+                "tag": "H1",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "P",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "BUTTON",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "BUTTON",
+                "value": "",
+                "style": "",
+                "class": ""
+              }
+            ]
+          },
+          "errors": [],
+          "actions": [
+            {
+              "label": "Add",
+              "changed": false,
+              "before": "Counter test\n\n0\n\nAddReset",
+              "after": "Counter test\n\n0\n\nAddReset"
+            },
+            {
+              "label": "Reset",
+              "changed": false,
+              "before": "Counter test\n\n0\n\nAddReset",
+              "after": "Counter test\n\n0\n\nAddReset"
+            }
+          ],
+          "warnings": [
+            "Control produced no observable change in this state: Add",
+            "Control produced no observable change in this state: Reset"
+          ],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "id": "add",
+              "label": "Add",
+              "visible": true,
+              "disabled": false
+            },
+            {
+              "tag": "BUTTON",
+              "id": "reset",
+              "label": "Reset",
+              "visible": true,
+              "disabled": false
+            }
+          ],
+          "usable": true,
+          "smoke_passed": true
+        },
+        "controls": [
+          {
+            "tag": "BUTTON",
+            "id": "add",
+            "label": "Add",
+            "visible": true,
+            "disabled": false
+          },
+          {
+            "tag": "BUTTON",
+            "id": "reset",
+            "label": "Reset",
+            "visible": true,
+            "disabled": false
+          }
+        ],
+        "warnings": [
+          "Control produced no observable change in this state: Add",
+          "Control produced no observable change in this state: Reset"
+        ],
+        "requirements": [
+          {
+            "description": "Increment changes the visible count",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "1",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          },
+          {
+            "description": "Two more increments preserve script state",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              },
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "3",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          },
+          {
+            "description": "Reset restores zero",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#reset",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "0",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "description": "Increment changes the visible count",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "1",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "description": "Two more increments preserve script state",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            },
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "3",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "description": "Reset restores zero",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#reset",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "0",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    },
+    {
+      "attempt": 2,
+      "failures": [
+        "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"].",
+        "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+      ],
+      "source": {
+        "passed": true,
+        "errors": []
+      },
+      "browser": {
+        "source": {
+          "passed": true,
+          "errors": []
+        },
+        "passed": false,
+        "errors": [
+          "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"].",
+          "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+        ],
+        "checks": [
+          {
+            "description": "Increment changes the visible count",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": false,
+              "change": true
+            },
+            "errors": [
+              "Test failed: Increment changes the visible count expected text \"1\", observed [\"0\"]."
+            ],
+            "passed": false
+          },
+          {
+            "description": "Two more increments preserve script state",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              },
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": "",
+                "label": "Add",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": false,
+              "change": true
+            },
+            "errors": [
+              "Test failed: Two more increments preserve script state expected text \"3\", observed [\"0\"]."
+            ],
+            "passed": false
+          },
+          {
+            "description": "Reset restores zero",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#reset",
+                "value": "",
+                "label": "Reset",
+                "changed": false,
+                "before": "Counter test\n\n0\n\nAddReset",
+                "after": "Counter test\n\n0\n\nAddReset"
+              }
+            ],
+            "matches": [
+              "0"
+            ],
+            "assertions": {
+              "count": true,
+              "text": true,
+              "change": true
+            },
+            "errors": [],
+            "passed": true
+          }
+        ],
+        "usable": true,
+        "smoke_passed": true,
+        "startup": {
+          "initial": {
+            "text": "Counter test\n\n0\n\nAddReset",
+            "dom": "<h1>Counter test</h1><p id=\"count\">0</p><button id=\"add\" onclick=\"void 2\">Add</button><button id=\"reset\" onclick=\"count.textContent=0\">Reset</button>",
+            "canvas": "",
+            "visual": [
+              {
+                "tag": "H1",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "P",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "BUTTON",
+                "value": "",
+                "style": "",
+                "class": ""
+              },
+              {
+                "tag": "BUTTON",
+                "value": "",
+                "style": "",
+                "class": ""
+              }
+            ]
+          },
+          "errors": [],
+          "actions": [
+            {
+              "label": "Add",
+              "changed": false,
+              "before": "Counter test\n\n0\n\nAddReset",
+              "after": "Counter test\n\n0\n\nAddReset"
+            },
+            {
+              "label": "Reset",
+              "changed": false,
+              "before": "Counter test\n\n0\n\nAddReset",
+              "after": "Counter test\n\n0\n\nAddReset"
+            }
+          ],
+          "warnings": [
+            "Control produced no observable change in this state: Add",
+            "Control produced no observable change in this state: Reset"
+          ],
+          "controls": [
+            {
+              "tag": "BUTTON",
+              "id": "add",
+              "label": "Add",
+              "visible": true,
+              "disabled": false
+            },
+            {
+              "tag": "BUTTON",
+              "id": "reset",
+              "label": "Reset",
+              "visible": true,
+              "disabled": false
+            }
+          ],
+          "usable": true,
+          "smoke_passed": true
+        },
+        "controls": [
+          {
+            "tag": "BUTTON",
+            "id": "add",
+            "label": "Add",
+            "visible": true,
+            "disabled": false
+          },
+          {
+            "tag": "BUTTON",
+            "id": "reset",
+            "label": "Reset",
+            "visible": true,
+            "disabled": false
+          }
+        ],
+        "warnings": [
+          "Control produced no observable change in this state: Add",
+          "Control produced no observable change in this state: Reset"
+        ],
+        "requirements": [
+          {
+            "description": "Increment changes the visible count",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "1",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          },
+          {
+            "description": "Two more increments preserve script state",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              },
+              {
+                "kind": "click",
+                "selector": "#add",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "3",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          },
+          {
+            "description": "Reset restores zero",
+            "actions": [
+              {
+                "kind": "click",
+                "selector": "#reset",
+                "value": ""
+              }
+            ],
+            "selector": "#count",
+            "text": "0",
+            "min_count": 1,
+            "max_count": 1,
+            "changed": false,
+            "mode": "browser",
+            "passed": false,
+            "evidence": ""
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "description": "Increment changes the visible count",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "1",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "description": "Two more increments preserve script state",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            },
+            {
+              "kind": "click",
+              "selector": "#add",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "3",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "description": "Reset restores zero",
+          "actions": [
+            {
+              "kind": "click",
+              "selector": "#reset",
+              "value": ""
+            }
+          ],
+          "selector": "#count",
+          "text": "0",
+          "min_count": 1,
+          "max_count": 1,
+          "changed": false,
+          "mode": "browser",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    }
+  ]
+}

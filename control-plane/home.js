@@ -1332,6 +1332,24 @@ async function startNewChat() {
     button.disabled = false;
   }
 }
+window.ariadneLabChat = {
+  context: () => ({session_id: state.sessionId, chat_id: state.chatId}),
+  record: async (runId, context) => {
+    if (!state.sessionId && !(await startSession())) throw new Error('Start a Chat session first.');
+    context = context?.chat_id ? context : {session_id: state.sessionId, chat_id: state.chatId};
+    if (context.chat_id !== state.chatId) throw new Error('Return to the build conversation before saving its result.');
+    const result = await postWithSessionRecovery('/api/home/chat/lab-run', {...context, run_id: runId});
+    restoreMessages(result.chat.messages || []);
+    await loadRecentChats();
+    return result.chat;
+  },
+  save: async (runId, context) => {
+    await window.ariadneLabChat.record(runId, context);
+    const result = await postWithSessionRecovery('/api/home/chat/save', {session_id: state.sessionId, chat_id: state.chatId});
+    await loadRecentChats();
+    return result;
+  },
+};
 async function saveCurrentChat() {
   if (!state.sessionId || !state.chatId) return;
   try {
@@ -1861,9 +1879,14 @@ function addMessage(role, content, metadata) {
     meta.append(readButton);
     if (String(content || "").includes("```") || /!\[[^\]]*\]\([^)]*\)/.test(String(content || ""))) {
       const hasCode = String(content || "").includes("```");
-      const workbenchButton = el("button", "read-button", hasCode ? "Open code" : "Open in Workbench");
+      const workbenchButton = el("button", "read-button", metadata.lab_run_id ? "Open Lab build" : hasCode ? "Open code" : "Open in Workbench");
       workbenchButton.type = "button";
-      workbenchButton.addEventListener("click", () => showInWorkbench(String(content || ""), hasCode ? "Generated code" : "Conversation output"));
+      workbenchButton.addEventListener("click", async () => {
+        try {
+          if (metadata.lab_run_id && window.ariadneLab) await window.ariadneLab.openSaved(metadata.lab_run_id);
+          else showInWorkbench(String(content || ""), hasCode ? "Generated code" : "Conversation output");
+        } catch (error) { document.querySelector("#ask-status").textContent = error.message; }
+      });
       meta.append(workbenchButton);
     }
     message.append(meta);
@@ -2253,7 +2276,7 @@ async function ask(event) {
   const status = document.querySelector("#ask-status");
   const message = input.value.trim();
   if (CHAT_PAGE && window.ariadneLab?.active()) {
-    await window.ariadneLab.build(message);
+    await window.ariadneLab.build(message, {session_id: state.sessionId, chat_id: state.chatId});
     return;
   }
   if (!message) {
