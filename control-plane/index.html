@@ -18,14 +18,15 @@
       </div>
       <div class="top-metrics" aria-label="Live resource gauges">
         <article class="resource-gauge" id="memory-gauge">
-          <div class="resource-head"><span class="label">RAM</span><strong id="memory-used">—</strong></div>
+          <div class="resource-head"><span class="label" title="Physical RAM used by the whole machine">System RAM</span><strong id="memory-used">—</strong></div>
           <div class="resource-bar"><span id="memory-bar"></span></div>
           <div class="resource-foot"><span id="memory-free">Reading…</span><span id="memory-percent">—</span></div>
         </article>
         <article class="resource-gauge" id="gpu-gauge">
-          <div class="resource-head"><span class="label">GPU VRAM</span><strong id="gpu-used">—</strong></div>
+          <div class="resource-head"><span class="label" title="Dedicated GPU memory used by all applications">Total VRAM</span><strong id="gpu-used">—</strong></div>
           <div class="resource-bar"><span id="gpu-bar"></span></div>
           <div class="resource-foot"><span id="gpu-free">Reading…</span><span id="gpu-percent">—</span></div>
+          <div class="resource-model-memory" id="gpu-model-memory">Model VRAM: reading…</div>
         </article>
       </div>
       <div class="profile-card top-profile">

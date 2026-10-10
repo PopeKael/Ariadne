@@ -6,6 +6,7 @@ All notable repository-level changes are recorded here. Entries describe changes
 
 ### Changed
 
+- Synchronized System RAM/VRAM gauges and the shared GPU header using one in-flight status request, five-second polling and immediate refresh on tab return. Stale/failed memory readings clear visibly, and System now separates total VRAM from Ollama-reported model allocation. Recorded checks in [memory-display checkpoint notes](docs/checkpoint-2026-10-10-system-memory.md).
 - Updated About with the 10 October Rabbit Hole and universal Watchlist milestone, manual discovery, GitHub safeguards and Garage Alchemy testing focus. Recorded the reviewed checkpoint and validation boundaries in [checkpoint notes](docs/checkpoint-2026-10-10-rabbit-hole-watchlist.md).
 - Added one persistent GitHub quota/cache guard shared by Rabbit Hole and Watchlist: manual-only discovery, one fresh search batch per Bangkok day, local hourly/daily safety caps, paced requests, server-quota reserves, durable backoff and visible warnings. Cached evidence retains its original fetch age and is rescored against the current workstation and practical Garage Alchemy episode potential.
 - Added persistent Rabbit Hole browsing with Next ten, unseen candidate queues, saved-project exclusion and automatic slot refill. Added Watchlist Check all now for active source watches, compact Watchlist styling with the shared background, and Tools ordering: Cleanup, Rabbit Hole, Watchlist, then Services.

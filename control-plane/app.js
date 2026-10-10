@@ -199,7 +199,7 @@ function renderGauge(prefix, metric, fallbackName = "") {
     gauge.classList.add("unavailable");
     used.textContent = "Unavailable";
     bar.style.width = "0%";
-    free.textContent = fallbackName || "Telemetry unavailable";
+    free.textContent = metric?.detail || fallbackName || "Telemetry unavailable";
     percent.textContent = "—";
     return;
   }
@@ -210,6 +210,18 @@ function renderGauge(prefix, metric, fallbackName = "") {
   free.textContent = `${metric.free_gb} GB free`;
   percent.textContent = `${metric.used_percent}%`;
   bar.style.width = `${Math.min(100, Math.max(0, metric.used_percent))}%`;
+}
+function renderModelMemory(memory) {
+  const detail = document.querySelector("#gpu-model-memory");
+  if (!detail) return;
+  if (!memory?.available) {
+    detail.textContent = "Model VRAM: unavailable";
+    detail.title = memory?.detail || "Ollama residency unavailable";
+    return;
+  }
+  const loaded = Array.isArray(memory.loaded) ? memory.loaded : [];
+  detail.textContent = `Model VRAM: ${memory.loaded_vram_gb ?? "—"} GB`;
+  detail.title = loaded.length ? loaded.map(item => `${item.name} · ${(Number(item.size_vram || 0) / 1024**3).toFixed(1)} GB`).join("\n") + "\nOllama-reported model allocation; total VRAM above includes runtime and other applications." : "No Ollama models resident.";
 }
 function renderHostCapabilities(services) {
   for (const [name, service] of Object.entries(services || {})) {
@@ -286,6 +298,7 @@ function render(data) {
   renderInteractiveAI(data.interactive_ai || {});
   renderGauge("memory", data.memory);
   renderGauge("gpu", data.gpu, "GPU not detected");
+  renderModelMemory(data.model_memory);
   renderHostCapabilities(data.host_capabilities);
   renderPluginSummary(data.plugins);
   const distributions = data.wsl || [];
@@ -298,7 +311,7 @@ function render(data) {
   document.querySelector("#native-runtime-pill").textContent = nativeReady ? "Native" : "Checking";
   renderNativeServices(data.local_services || []);
   renderDrives(data.drives || []);
-  document.querySelector("#last-update").textContent = `Updated ${new Date(data.timestamp).toLocaleTimeString()}`;
+  document.querySelector("#last-update").textContent = data.telemetry_stale ? "Telemetry is stale · refreshing…" : `Updated ${new Date(data.timestamp).toLocaleTimeString()}`;
 }
 
 let vaultSessionId = null;
@@ -995,6 +1008,10 @@ function setupLaunchActions() {
 let refreshInFlight = false;
 
 async function refresh() {
+  if (window.ariadneRuntime) {
+    try { await window.ariadneRuntime.refresh(); } catch (_error) { /* Shared error event clears the gauges. */ }
+    return;
+  }
   if (refreshInFlight) return;
   refreshInFlight = true;
   try {
@@ -1017,5 +1034,17 @@ setupProfileControls();
 setupVaultControls();
 setupResourceControls();
 if (!document.body.classList.contains("control-mode")) startVaultSession("home");
-refresh();
-setInterval(refresh, 5000);
+if (window.ariadneRuntime) {
+  window.addEventListener("ariadne:runtime", event => render(event.detail));
+  window.addEventListener("ariadne:runtime-error", () => {
+    renderGauge("memory", null);
+    renderGauge("gpu", null);
+    renderModelMemory(null);
+    document.querySelector("#last-update").textContent = "Telemetry unavailable · retrying…";
+  });
+  if (window.ariadneRuntime.snapshot) render(window.ariadneRuntime.snapshot);
+  refresh();
+} else {
+  refresh();
+  setInterval(refresh, 5000);
+}

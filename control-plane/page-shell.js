@@ -17,9 +17,50 @@
   function bytes(value){const amount=Number(value||0);return amount?`${(amount/1024**3).toFixed(1)} GB`:"size unknown"}
   let workingSelection=null,workingLoading=false;
   async function loadModelControl(){try{const response=await fetch("/api/model-control",{cache:"no-store"}),payload=await response.json();if(!response.ok)throw new Error(payload.message||`HTTP ${response.status}`);const active=workingSelection?.model||payload.active_model||"No model selected";triggerCopy.querySelector("strong").textContent=active;current.textContent=`${active} · ${payload.location||"desktop"}`;provider.textContent=`Provider: ${workingSelection?.provider_id||payload.provider_id||"unconfigured"}`;const loaded=Array.isArray(payload.loaded)?payload.loaded:[];residency.textContent=loaded.length?`Resident: ${loaded.join(", ")}`:"Resident: none";const selectedBefore=select.value;select.replaceChildren();(payload.models||[]).forEach(item=>select.add(new Option(`${item.name} · ${bytes(item.size)}`,item.name)));select.value=!workingSelection&&selectedBefore&&[...select.options].some(option=>option.value===selectedBefore)?selectedBefore:active;apply.disabled=workingLoading||Boolean(workingSelection)||!select.options.length;select.disabled=workingLoading||Boolean(workingSelection);if(workingSelection){status.className="ariadne-model-status";status.textContent="The Lab model is loaded. Toggle The Lab off to return to Chat."}else if(workingLoading){status.textContent="Loading model..."}else if(status.textContent.startsWith("The Lab")||status.textContent==="Loading model..."){status.textContent="Select a model, then apply."}const homeModel=document.querySelector("#model-name");if(homeModel&&!window.ariadneLab?.active())homeModel.textContent=active}catch(error){triggerCopy.querySelector("strong").textContent="Model control unavailable";status.textContent=error.message;status.className="ariadne-model-status error";apply.disabled=true}}
-  async function loadRuntime(){try{const response=await fetch("/api/status",{cache:"no-store"}),payload=await response.json(),deployment=payload.deployment?.display||payload.profile||"Unknown";setChip(profileChip,deployment,payload.deployment?.transition_state==="ready"?"":"attention");const owner=payload.gpu_owner?.current_gpu_owner||"NONE",free=payload.gpu?.available?`${payload.gpu.free_gb} GB free`:"telemetry pending";setChip(gpuChip,`${owner} · ${free}`,payload.gpu_owner?.transition_state==="IDLE"?"":"attention");const nativeState=String(payload.native_runtime?.state||"unknown").toLowerCase();setChip(serviceChip,nativeState==="ready"?"Native online":nativeState==="unknown"?"Checking":"Attention",nativeState==="ready"?"":nativeState==="unknown"?"attention":"offline");window.dispatchEvent(new CustomEvent("ariadne:runtime",{detail:payload}))}catch(_error){setChip(serviceChip,"Unavailable","offline")}}
+  let runtimePending = null;
+  function publishRuntime(payload) {
+    const age = Date.now() - Date.parse(payload.timestamp);
+    const stale = !Number.isFinite(age) || age > 30000;
+    const snapshot = stale ? {...payload, telemetry_stale: true,
+      memory: {available: false, detail: "Reading is stale; refreshing…"},
+      gpu: {available: false, detail: "Reading is stale; refreshing…"},
+      model_memory: {available: false, detail: "Reading is stale; refreshing…"}} : payload;
+    window.ariadneRuntime.snapshot = snapshot;
+    const deployment = snapshot.deployment?.display || snapshot.profile || "Unknown";
+    setChip(profileChip, deployment, snapshot.deployment?.transition_state === "ready" ? "" : "attention");
+    const owner = snapshot.gpu_owner?.current_gpu_owner || "NONE";
+    const free = snapshot.gpu?.available ? `${snapshot.gpu.free_gb} GB free` : stale ? "Refreshing…" : "telemetry pending";
+    setChip(gpuChip, `${owner} · ${free}`, stale || snapshot.gpu_owner?.transition_state !== "IDLE" ? "attention" : "");
+    gpuChip.title = snapshot.gpu?.available ? `Total GPU memory · ${snapshot.gpu.used_gb} / ${snapshot.gpu.total_gb} GB used · updated ${new Date(snapshot.timestamp).toLocaleTimeString()}` : snapshot.gpu?.detail || "";
+    const nativeState = String(snapshot.native_runtime?.state || "unknown").toLowerCase();
+    setChip(serviceChip, nativeState === "ready" ? "Native online" : nativeState === "unknown" ? "Checking" : "Attention", nativeState === "ready" ? "" : nativeState === "unknown" ? "attention" : "offline");
+    window.dispatchEvent(new CustomEvent("ariadne:runtime", {detail: snapshot}));
+    return snapshot;
+  }
+  function loadRuntime() {
+    // Every consumer receives the same snapshot; overlapping polls share one request.
+    if (runtimePending) return runtimePending;
+    runtimePending = (async () => {
+      try {
+        const response = await fetch("/api/status", {cache: "no-store", signal: AbortSignal.timeout(8000)});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return publishRuntime(await response.json());
+      } catch (error) {
+        window.ariadneRuntime.snapshot = null;
+        setChip(gpuChip, "Unavailable", "offline");
+        setChip(serviceChip, "Unavailable", "offline");
+        window.dispatchEvent(new CustomEvent("ariadne:runtime-error", {detail: error}));
+        throw error;
+      }
+    })().finally(() => { runtimePending = null; });
+    return runtimePending;
+  }
+  window.ariadneRuntime = {snapshot: null, refresh: loadRuntime};
+  function refreshRuntime() { void loadRuntime().catch(() => {}); }
   modelTrigger.addEventListener("click",()=>{panel.hidden=!panel.hidden;modelTrigger.setAttribute("aria-expanded",String(!panel.hidden))});document.addEventListener("click",event=>{if(!modelWrap.contains(event.target)){panel.hidden=true;modelTrigger.setAttribute("aria-expanded","false")}});
   apply.addEventListener("click",async()=>{const model=select.value;if(!model)return;apply.disabled=true;status.className="ariadne-model-status";status.textContent=`Ariadne is loading ${model}…`;try{const response=await fetch("/api/model-control/select",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model})}),payload=await response.json();if(!response.ok||!payload.ok)throw new Error(payload.message||`HTTP ${response.status}`);status.className="ariadne-model-status success";status.textContent=payload.message;await Promise.all([loadModelControl(),loadRuntime()])}catch(error){status.className="ariadne-model-status error";status.textContent=error.message}finally{apply.disabled=!select.options.length}});
-  window.addEventListener("ariadne:working-model",event=>{workingSelection=event.detail.selection;workingLoading=event.detail.loading;apply.disabled=workingLoading||Boolean(workingSelection);select.disabled=apply.disabled;if(workingSelection)triggerCopy.querySelector("strong").textContent=workingSelection.model;void loadModelControl();void loadRuntime()});
-  loadModelControl();loadRuntime();window.setInterval(loadRuntime,10000);window.setInterval(loadModelControl,30000);
+  window.addEventListener("ariadne:working-model",event=>{workingSelection=event.detail.selection;workingLoading=event.detail.loading;apply.disabled=workingLoading||Boolean(workingSelection);select.disabled=apply.disabled;if(workingSelection)triggerCopy.querySelector("strong").textContent=workingSelection.model;void loadModelControl();refreshRuntime()});
+  window.addEventListener("focus", refreshRuntime);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { refreshRuntime(); void loadModelControl(); } });
+  loadModelControl();refreshRuntime();window.setInterval(refreshRuntime,5000);window.setInterval(loadModelControl,30000);
 })();

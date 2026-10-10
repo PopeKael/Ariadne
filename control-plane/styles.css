@@ -11,6 +11,9 @@
 .resource-bar{height:5px;background:#1a2944;border-radius:8px;overflow:hidden;margin:7px 0 5px}
 .resource-bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:8px;transition:width .35s ease}
 .resource-foot{color:var(--muted);font-size:10px}
+.resource-model-memory{color:var(--cyan);font-size:10px;margin-top:5px}
+.resource-head{flex-wrap:wrap;gap:3px}
+.resource-head .label{width:100%;font-size:9px}
 .resource-gauge.warning .resource-bar span{background:linear-gradient(90deg,var(--yellow),#e6a94d)}
 .resource-gauge.critical .resource-bar span{background:linear-gradient(90deg,#ff788f,#e44f67)}
 .resource-gauge.unavailable{opacity:.7}
