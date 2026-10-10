@@ -60,6 +60,17 @@ For somebody deploying their own copy, start with
 tray dependencies are listed in [`requirements.txt`](requirements.txt); the
 tray remains available as the explicit rollback path during host migration.
 
+## Rabbit Hole and Watchlist
+
+Open Tools on `https://ariadne.dia.net.au`: Cleanup, Rabbit Hole, then Watchlist.
+Rabbit Hole retains undecided projects, with nine cards per page, local looping
+navigation and Dismiss/Undo. Check this project assesses a supplied GitHub link;
+Find something new discovers more under the shared GitHub safety budget.
+Watching a project moves it out of discovery into the persistent Watchlist.
+Runtime SQLite databases and cached evidence are local data, excluded from Git.
+See the [Watchlist guide](../docs/watchlist.md) and
+[library checkpoint](../docs/rabbit-hole-library-2026-10-10.md).
+
 ## Configuration
 
 The Configuration page is available at `/configuration` and stores machine-

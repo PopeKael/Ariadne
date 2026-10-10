@@ -17,15 +17,22 @@
     </header>
     <main class="rabbit-main">
       <section class="rabbit-intro" aria-label="Discover projects">
-        <div class="rabbit-intro-copy"><p>Explore up to ten projects. Save the promising ones to your Watchlist.</p><small>Read-only documentation checks. Nothing is installed. Your saved watches stay put.</small></div>
+        <div class="rabbit-intro-copy"><p>Discover projects. Keep them here until you Watch or Dismiss.</p><small>Browsing saved cards stays local. Nothing is installed.</small></div>
         <button id="rabbit-explore" class="rabbit-primary" type="button">Find something new <span aria-hidden="true">↗</span></button>
       </section>
+      <form id="rabbit-check-form" class="rabbit-check-form">
+        <label for="rabbit-project-url">Check this project</label>
+        <input id="rabbit-project-url" type="text" required maxlength="300" placeholder="https://github.com/owner/project" aria-label="GitHub repository link">
+        <button id="rabbit-check" class="rabbit-save" type="submit">Check project</button>
+      </form>
       <section class="rabbit-shortlist" aria-labelledby="shortlist-heading">
         <div class="rabbit-shortlist-heading"><h2 id="shortlist-heading">On the table</h2><span id="rabbit-count"></span></div>
         <p id="rabbit-status" class="rabbit-status" role="status" aria-live="polite">Opening the last exploration…</p>
         <p id="github-budget" class="rabbit-status" role="status" aria-live="polite">Manual discovery · Cached browsing uses no GitHub requests.</p>
         <div id="rabbit-results" class="rabbit-results"><div class="rabbit-empty">Opening your last shortlist…</div></div>
-        <div class="rabbit-page-actions"><button id="rabbit-next" class="rabbit-primary" type="button">Next ten <span aria-hidden="true">→</span></button><span id="rabbit-next-note">Keep exploring; saved projects stay on your Watchlist.</span></div>
+        <div class="rabbit-page-actions"><button id="rabbit-previous" class="rabbit-save" type="button">← Previous</button><span id="rabbit-next-note">Undecided projects stay here.</span><button id="rabbit-next" class="rabbit-primary" type="button">Next nine →</button></div>
+        <div class="rabbit-undo"><span id="rabbit-dismissed-count"></span><button id="rabbit-undo" class="rabbit-source-link" type="button" hidden>Undo last dismissal</button></div>
+        <p id="rabbit-page-status" class="rabbit-status" role="status" aria-live="polite"></p>
       </section>
     </main>
     <footer class="rabbit-footer"><p>Rabbit Hole finds possibilities. <a href="/watchlist">Watchlist keeps the thread.</a></p><span>Public GitHub discovery · No cloning, installation or execution</span></footer>

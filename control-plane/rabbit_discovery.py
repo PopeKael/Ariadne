@@ -6,7 +6,7 @@ reserve cards and displayed page together only when a job completes successfully
 from copy import deepcopy
 from urllib.parse import urlsplit
 
-PAGE_SIZE = 10
+PAGE_SIZE = 9
 INSPECTION_BUDGET = 16
 
 
@@ -122,7 +122,7 @@ def advance(config, search, enrich, report):
                   source='GitHub public REST repository search', queries_attempted=queries,
                   results=current, warnings=warnings,
                   selection=dict(search_matches=matches, inspected=inspected, shown=len(current)),
-                  message=f'{len(current)} projects ready. ' + ('No more matches in this search.' if exhausted and not pending and not reserve else 'Continue with Next ten.'),
+                  message=f'{len(current)} projects ready. ' + ('No more matches in this search.' if exhausted and not pending and not reserve else 'Added to your undecided projects.'),
                   _deck=dict(seen=sorted(seen), reserve=reserve, pending=pending,
                              search_page=page, exhausted=exhausted))
     report('completed', result['message'], 100)

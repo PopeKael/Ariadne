@@ -19,6 +19,11 @@ Start with:
 - [Clone and deploy](CLONE-AND-DEPLOY.md) — the starting path for a new
   independent local installation.
 
+## Current tool workflows
+
+- [Universal Watchlist](watchlist.md) — projects, topics, reminders and shared GitHub safeguards.
+- [Rabbit Hole library](rabbit-hole-library-2026-10-10.md) — retained cards, local paging, Dismiss/Undo and supplied project checks; accepted 10 October 2026 checkpoint.
+
 ## Typical contents
 
 Examples include:

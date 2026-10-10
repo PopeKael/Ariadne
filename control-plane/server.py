@@ -81,6 +81,7 @@ from conversation_orchestration import (validate_focus, personality_mode, normal
 from search_providers import SearchProviderRegistry, compact_source_query
 from watchlist import Watchlist
 from rabbit_discovery import excluded_names, visible_result
+from rabbit_library import RabbitLibrary, repository_name as rabbit_repository_name
 from watchlist_sources import collect_evidence
 from plugin_activity import PluginActivityStream
 from plugin_execution import PluginExecutionError, build_plugin_command, load_plugin_callable
@@ -363,6 +364,7 @@ SIGNAL_ARTICLE_LOCK = threading.RLock()
 SIGNAL_ARTICLE_JOBS: dict[str, dict[str, object]] = {}
 RABBIT_HOLE_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rabbit-hole")
 RABBIT_HOLE_RESULT_PATH = Path(os.environ.get("ARIADNE_RABBIT_HOLE_RESULT_PATH", str(ROOT / "runtime" / "rabbit-hole-result.json")))
+RABBIT_LIBRARY = RabbitLibrary(Path(os.environ.get("ARIADNE_RABBIT_LIBRARY_PATH", str(ROOT / "runtime" / "rabbit-library.sqlite3"))))
 RABBIT_HOLE_FALLBACK_RESULT_PATH = Path(tempfile.gettempdir()) / "Ariadne" / "rabbit-hole-result.json"
 HOME_ACTIVITY_STREAM = ActivityStateStream(
     emit_avatar_state=emit_state,
@@ -4810,8 +4812,16 @@ def rabbit_hole_result_payload(*, raw: bool = False) -> dict[str, object]:
             continue
         if isinstance(result, dict) and isinstance(result.get("results"), list):
             if not raw:
-                result = visible_result(result, excluded_names(WATCHLIST.snapshot()['watches']))
+                excluded = excluded_names(WATCHLIST.snapshot()['watches'])
+                RABBIT_LIBRARY.add(result['results'] + result.get('_deck', {}).get('reserve', []), update=False)
+                RABBIT_LIBRARY.recover_legacy(result, BUDGET.path)
+                result = visible_result(result, excluded)
+                result.update(RABBIT_LIBRARY.view(excluded))
             return {"ok": True, "has_result": True, "result": result, **budget}
+    if not raw:
+        library = RABBIT_LIBRARY.view(excluded_names(WATCHLIST.snapshot()['watches']))
+        if library['total'] or library['dismissed_count']:
+            return {"ok": True, "has_result": True, "result": {"completed_at": None, "warnings": [], **library}, **budget}
     return {"ok": True, "has_result": False, "result": None, **budget}
 
 
@@ -4837,9 +4847,9 @@ def _run_rabbit_hole_job(job_id: str, record: object, session_id: str) -> None:
 
     try:
         adapter = load_plugin_callable(record)  # type: ignore[arg-type]
-        result = adapter({"mode": job.get("action", "explore"),
+        result = adapter({"mode": job.get("action", "explore"), "repository": job.get("repository"),
                           "previous": rabbit_hole_result_payload(raw=True).get("result"),
-                          "excluded": sorted(excluded_names(WATCHLIST.snapshot()['watches']))}, report)
+                          "excluded": sorted(excluded_names(WATCHLIST.snapshot()['watches']) | RABBIT_LIBRARY.dismissed_names())}, report)
         if not isinstance(result, dict):
             raise ValueError("Rabbit Hole returned an invalid result.")
         with SESSION_LOCK:
@@ -4848,7 +4858,10 @@ def _run_rabbit_hole_job(job_id: str, record: object, session_id: str) -> None:
         if cancelled:
             return
         if result.get("ok"):
-            _write_rabbit_hole_result(result)
+            if job.get('action') != 'check':
+                _write_rabbit_hole_result(result)
+            RABBIT_LIBRARY.add(result.get('results', []) + result.get('_deck', {}).get('reserve', []), focus=True,
+                               excluded=excluded_names(WATCHLIST.snapshot()['watches']))
         with SESSION_LOCK:
             current = JOBS.get(job_id)
             if current and current.get("state") == "running":
@@ -4874,7 +4887,7 @@ def _run_rabbit_hole_job(job_id: str, record: object, session_id: str) -> None:
             presenter.failed(f"Rabbit Hole exploration failed: {str(exc)[:300]}")
 
 
-def start_rabbit_hole_action(session_id: str, record: object, *, trigger: str = "manual", action: str = "explore") -> str:
+def start_rabbit_hole_action(session_id: str, record: object, *, trigger: str = "manual", action: str = "explore", repository: str | None = None) -> str:
     job_id = uuid.uuid4().hex
     reporter = PLUGIN_ACTIVITY_STREAM.reporter(activity_id=job_id, plugin_id="rabbit-hole", capability_id="github.explore")
     presenter = CoreActivityPresenter(reporter, completion_state="success")
@@ -4885,6 +4898,7 @@ def start_rabbit_hole_action(session_id: str, record: object, *, trigger: str = 
         "state": "running",
         "message": "Searching GitHub for unusual active projects…",
         "action": action,
+        "repository": repository,
         "trigger": trigger,
         "plugin_id": "rabbit-hole",
         "capability_id": "github.explore",
@@ -8547,6 +8561,17 @@ class AriadneHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self.read_json()
+            if path == '/api/rabbit-hole/library':
+                try:
+                    if body.get('action') in {'dismiss', 'undo'}:
+                        RABBIT_LIBRARY.decide(body.get('repository'), body['action'])
+                    elif body.get('action') != 'browse':
+                        raise ValueError('Unknown library action.')
+                    self.send_json({'ok': True, 'library': RABBIT_LIBRARY.view(
+                        excluded_names(WATCHLIST.snapshot()['watches']), body.get('direction'))})
+                except (ValueError, TypeError) as exc:
+                    self.send_json({'ok': False, 'message': str(exc)}, 400)
+                return
             if path == "/api/watchlist" or path.startswith("/api/watchlist/"):
                 try:
                     if not isinstance(body, dict):
@@ -9177,6 +9202,23 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 payload = {"ok": True, "chat_id": active_chat_id, "signal_id": signal_id.strip(), "job": job or {"status": "ready", "stage": "ready"}, "document": document}
                 self.send_json(payload, 200)
+                return
+            if path == '/api/rabbit-hole/check':
+                try:
+                    repository = rabbit_repository_name(body.get('repository'))
+                    record = _plugin_record('rabbit-hole')
+                    if not record or record.status != 'healthy' or not record.manifest.get('enabled'):
+                        raise ValueError('Rabbit Hole is unavailable.')
+                    if _active_plugin_job(session_id, 'rabbit-hole'):
+                        raise ValueError('A Rabbit Hole check is already running.')
+                    if repository.casefold() in excluded_names(WATCHLIST.snapshot()['watches']):
+                        raise ValueError('That project is already on your Watchlist. Use Check now there.')
+                    if repository.casefold() in RABBIT_LIBRARY.dismissed_names():
+                        raise ValueError('That project was dismissed. Undo its dismissal before checking it again.')
+                    job_id = start_rabbit_hole_action(session_id, record, action='check', repository=repository)
+                    self.send_json({'ok': True, 'job_id': job_id})
+                except ValueError as exc:
+                    self.send_json({'ok': False, 'message': str(exc)}, 400)
                 return
             plugin_match = re.fullmatch(r"/api/plugins/([^/]+)/run", path)
             if plugin_match:

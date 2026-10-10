@@ -27,7 +27,7 @@ enrich = _assessment.enrich
 
 
 GITHUB_SEARCH_URL = "https://api.github.com/search/repositories"
-MAX_RESULTS = 10
+MAX_RESULTS = 9
 MAX_CANDIDATES = 120
 SEARCH_TIMEOUT_SECONDS = 20
 REPORT = Callable[[str, str, float | int | None], None]
@@ -237,10 +237,38 @@ def search_candidates(page: int, report: REPORT) -> dict[str, Any]:
 
 
 def explore(config: dict[str, Any] | None = None, report: REPORT | None = None) -> dict[str, Any]:
+    config = config or {}
+    report = report or (lambda *_: None)
+    if config.get('mode') == 'check':
+        from rabbit_library import repository_name
+        repository = repository_name(config.get('repository'))
+        report('inspecting', f'Checking {repository}: metadata, README, releases and issues…', 10)
+        headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'Ariadne-Rabbit-Hole/0.1'}
+        token = os.environ.get('ARIADNE_GITHUB_TOKEN', '').strip()
+        if token: headers['Authorization'] = 'Bearer ' + token
+        warnings = []
+        try:
+            request = Request('https://api.github.com/repos/' + repository, headers=headers)
+            raw, _ = BUDGET.request(request, urlopen, timeout=SEARCH_TIMEOUT_SECONDS, max_bytes=1_000_000)
+            metadata = json.loads(raw)
+            candidate = _candidate(metadata, datetime.now(timezone.utc), 0)
+            if not candidate: raise ValueError('GitHub did not return a repository.')
+        except GitHubPaused as exc:
+            # Keep the user's suggestion even when source collection must wait.
+            warnings.append(str(exc))
+            candidate = _candidate({'full_name': repository, 'html_url': 'https://github.com/' + repository,
+                                    'description': 'Suggested by you. Source checks are waiting for the GitHub allowance.'}, datetime.now(timezone.utc), 0)
+        candidate = enrich(candidate)
+        candidate['nominated'] = True
+        candidate['source_check_pending'] = bool(warnings or candidate.get('assessment', {}).get('errors'))
+        warnings.extend(candidate.get('assessment', {}).get('errors', []))
+        message = f'{repository} added to your cards.' + (' Source checks are incomplete; retry when the GitHub allowance is available.' if candidate['source_check_pending'] else ' Source assessment complete; no runtime test performed.')
+        report('completed', message, 100)
+        return dict(ok=True, results=[candidate], warnings=warnings, message=message)
     spec = importlib.util.spec_from_file_location('ariadne_rabbit_discovery', Path(__file__).resolve().parents[2] / 'rabbit_discovery.py')
     discovery = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(discovery)
-    result = discovery.advance(config or {}, search_candidates, enrich, report or (lambda *_: None))
+    result = discovery.advance(config, search_candidates, enrich, report)
     result['authenticated'] = bool(os.environ.get('ARIADNE_GITHUB_TOKEN', '').strip())
     return result
 

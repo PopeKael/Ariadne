@@ -19,7 +19,7 @@ class DiscoveryPagingTests(unittest.TestCase):
         for _ in range(4):
             result = advance(dict(previous=json.loads(json.dumps(previous))), search, lambda c:c, lambda *_:None)
             self.assertTrue(result['ok'])
-            self.assertEqual(len(result['results']), 10)
+            self.assertEqual(len(result['results']), 9)
             names = {c['repository_name'] for c in result['results']}
             self.assertFalse(names & shown)
             shown |= names
@@ -27,14 +27,14 @@ class DiscoveryPagingTests(unittest.TestCase):
         self.assertEqual(searched, [1,2])
 
     def test_saving_replaces_only_one_card_from_reserve_on_every_refresh(self):
-        original = dict(results=[card(i) for i in range(10)], _deck=dict(reserve=[card(10)], pending=[], search_page=1))
+        original = dict(results=[card(i) for i in range(9)], _deck=dict(reserve=[card(9)], pending=[], search_page=1))
         excluded = excluded_names([dict(sources=['https://github.com/OWNER/project-3/'],state='active')])
         before = json.dumps(original)
         for _ in range(2):
             view = visible_result(original, excluded)
-            self.assertEqual(len(view['results']), 10)
+            self.assertEqual(len(view['results']), 9)
             self.assertNotIn('owner/project-3', [c['repository_name'] for c in view['results']])
-            self.assertIn('owner/project-10', [c['repository_name'] for c in view['results']])
+            self.assertIn('owner/project-9', [c['repository_name'] for c in view['results']])
         self.assertEqual(json.dumps(original), before)
         search = Mock(side_effect=AssertionError('A reserve card should not need network work'))
         result = advance(dict(previous=original,excluded=excluded,mode='refill'), search, lambda c:c, lambda *_:None)
@@ -42,18 +42,18 @@ class DiscoveryPagingTests(unittest.TestCase):
         self.assertFalse(search.called)
 
     def test_refill_preserves_other_cards_and_next_skips_visible_replacement(self):
-        original = dict(results=[card(i) for i in range(10)], _deck=dict(reserve=[card(10)],pending=[card(i) for i in range(11,27)],search_page=1))
+        original = dict(results=[card(i) for i in range(9)], _deck=dict(reserve=[card(9)],pending=[card(i) for i in range(10,26)],search_page=1))
         result = advance(dict(previous=original,excluded=['owner/project-3']), Mock(), lambda c:c, lambda *_:None)
-        self.assertEqual(len(result['results']), 10)
-        self.assertTrue(all(int(c['repository_name'].split('-')[-1]) >= 11 for c in result['results']))
-        self.assertIn('owner/project-10', result['_deck']['seen'])
+        self.assertEqual(len(result['results']), 9)
+        self.assertTrue(all(int(c['repository_name'].split('-')[-1]) >= 10 for c in result['results']))
+        self.assertIn('owner/project-9', result['_deck']['seen'])
         original['_deck']['reserve'] = []
         result = advance(dict(previous=original,excluded=['owner/project-3'],mode='refill'), Mock(), lambda c:c, lambda *_:None)
-        self.assertEqual(len(result['results']), 10)
-        self.assertTrue({f'owner/project-{i}' for i in range(10) if i != 3} <= {c['repository_name'] for c in result['results']})
+        self.assertEqual(len(result['results']), 9)
+        self.assertTrue({f'owner/project-{i}' for i in range(9) if i != 3} <= {c['repository_name'] for c in result['results']})
 
     def test_failed_source_collection_keeps_previous_page_and_cursor(self):
-        previous = dict(results=[card(i) for i in range(10)], _deck=dict(reserve=[],pending=[card(11)],search_page=1))
+        previous = dict(results=[card(i) for i in range(9)], _deck=dict(reserve=[],pending=[card(11)],search_page=1))
         before = json.dumps(previous)
         def fail(c):
             c['assessment']['errors']=['GitHub HTTP 403']

@@ -65,6 +65,27 @@ def inspected(item):
 
 
 class RabbitHoleAdapterTests(unittest.TestCase):
+    def test_direct_link_uses_repository_endpoint_and_retains_explicit_suggestions(self):
+        def ignored(item):
+            item['assessment'] = dict(relevant=False, recommendation='Ignore', errors=[])
+            return item
+        with patch.object(rabbit_hole, 'urlopen', return_value=FakeResponse(repository('suggested'))), patch.object(rabbit_hole, 'enrich', side_effect=ignored), patch.object(rabbit_hole, '_request_json', side_effect=AssertionError('No search for direct links')):
+            result = rabbit_hole.explore({'mode':'check', 'repository':'https://github.com/example/suggested'})
+        self.assertTrue(result['ok'])
+        self.assertTrue(result['results'][0]['nominated'])
+        self.assertEqual(result['results'][0]['assessment']['recommendation'], 'Ignore')
+
+    def test_direct_link_survives_quota_pause_with_pending_analysis(self):
+        from github_budget import GitHubPaused
+        def pending(item):
+            item['assessment'] = dict(relevant=False, recommendation='Watch', errors=['Quota pause'])
+            return item
+        with patch.object(rabbit_hole.BUDGET, 'request', side_effect=GitHubPaused('Safety cap reached')), patch.object(rabbit_hole, 'enrich', side_effect=pending):
+            result = rabbit_hole.explore({'mode':'check', 'repository':'example/suggested'})
+        self.assertTrue(result['ok'])
+        self.assertTrue(result['results'][0]['source_check_pending'])
+        self.assertIn('incomplete', result['message'])
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -91,7 +112,7 @@ class RabbitHoleAdapterTests(unittest.TestCase):
             result = rabbit_hole.explore()
 
         self.assertTrue(result["ok"])
-        self.assertEqual(len(result["results"]), 10)
+        self.assertEqual(len(result["results"]), 9)
         self.assertEqual(result["results"][0]["metrics"]["created_at"], "2024-01-01T00:00:00Z")
         self.assertEqual(result["results"][0]["metrics"]["size"], 1024)
         self.assertEqual(len(calls), len(rabbit_hole._query_strings(rabbit_hole.datetime.now())) + 1)
@@ -128,7 +149,7 @@ class RabbitHoleAdapterTests(unittest.TestCase):
             return item
         with patch.object(rabbit_hole, '_request_json', return_value={'items':items}), patch.object(rabbit_hole, 'enrich', side_effect=screen):
             result = rabbit_hole.explore()
-        self.assertEqual(len(result['results']), 10)
+        self.assertEqual(len(result['results']), 9)
         self.assertEqual(result['results'][0]['repository_name'], 'example/mature-inference')
         self.assertTrue(all(c['assessment']['recommendation'] != 'Ignore' and not c['assessment']['errors'] for c in result['results']))
         queries = rabbit_hole._query_strings(rabbit_hole.datetime.now())
@@ -145,6 +166,14 @@ class RabbitHoleAdapterTests(unittest.TestCase):
 
 
 class RabbitHoleServerTests(unittest.TestCase):
+    def setUp(self):
+        from rabbit_library import RabbitLibrary
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        patched = patch.object(server, 'RABBIT_LIBRARY', RabbitLibrary(Path(temporary.name) / 'library.sqlite3'))
+        patched.start()
+        self.addCleanup(patched.stop)
+
     def test_manifest_page_and_read_only_in_process_job(self):
         plugin = next(item for item in server.PLUGIN_REGISTRY.payload()["plugins"] if item.get("plugin_id") == "rabbit-hole")
         self.assertEqual(plugin["status"], "healthy")
@@ -218,6 +247,20 @@ class RabbitHoleServerTests(unittest.TestCase):
                 _, result = request("/api/rabbit-hole/result")
                 self.assertTrue(result["has_result"])
                 self.assertEqual(result["result"]["results"][0]["repository_name"], "example/http")
+                _, decision = request('/api/rabbit-hole/library', method='POST', payload={'action':'dismiss','repository':'example/http'})
+                self.assertEqual(decision['library']['total'], 0)
+                _, result = request('/api/rabbit-hole/result')
+                self.assertEqual(result['result']['total'], 0, 'legacy snapshot cannot resurrect a dismissal')
+                _, undone = request('/api/rabbit-hole/library', method='POST', payload={'action':'undo','repository':'example/http'})
+                self.assertEqual(undone['library']['total'], 1)
+                _, checked = request('/api/rabbit-hole/check', method='POST', payload={'session_id':session_id,'repository':'example/direct'})
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    job = server.job_payload(checked['job_id'])
+                    if job.get('state') in {'complete','error'}: break
+                    time.sleep(.02)
+                self.assertEqual(job['state'], 'complete')
+                self.assertEqual(json.loads(result_path.read_text())['results'][0]['repository_name'], 'example/http', 'direct checks cannot replace the discovery cursor')
         finally:
             server._close_session(session_id)
             httpd.shutdown()

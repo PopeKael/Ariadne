@@ -201,7 +201,10 @@ selection, backfilling ten cards and allowing a mature project to rank first.
 An additional screen excludes builds explicitly described as targeting another
 GPU architecture, even when a generic README reference table mentions our card.
 
-### Persistent browsing and bulk checks (10 October 2026)
+### Initial persistent browsing and bulk checks (10 October 2026)
+
+Historical implementation below; local navigation and retention are superseded
+by the persistent library described in the next section.
 
 Rabbit Hole now commits its current page, inspected reserve, pending metadata,
 search page and consumed repository names together through Core's existing atomic
@@ -235,13 +238,32 @@ refresh preserved that exact page. Desktop screenshots confirmed the two-column
 Rabbit Hole layout, compact Watchlist controls and shared background. Deeper
 search-page progression is additionally covered with deterministic source data.
 
+### Persistent undecided library and supplied projects (10 October 2026)
+
+The current workflow keeps undecided projects in a separate local SQLite library.
+Nine cards per page appear in three desktop columns. Previous/Next loops locally,
+and refresh preserves the page. Watching or dismissing a project replaces its
+slot from the library; dismissal persists and Undo restores the last dismissal.
+Discovery appends or updates cards without reversing decisions.
+
+Check this project accepts a GitHub repository link or owner/project and runs the
+same bounded metadata, README, releases and issues assessment. Explicit suggestions
+remain visible even if rated Ignore. A quota pause preserves the suggestion with
+pending analysis and Retry; it does not claim verified workstation compatibility.
+Direct checks leave the discovery cursor intact. Earlier seen projects are
+recovered from surviving evidence where possible, with missing metadata labelled.
+
+See [library implementation and verification](rabbit-hole-library-2026-10-10.md)
+for storage, API, migration limits, tests and accepted live behaviour. This
+supersedes the earlier Next ten and automatic network refill behaviour.
+
 ### GitHub safety budget and local episode value (10 October 2026)
 
-Discovery remains manual; there is no daily discovery job. Opening or refreshing
-Rabbit Hole reads local results and does not trigger a search/refill. Saving a
-watch can request a refill, under the same guard as every other GitHub request.
-Next ten uses inspected reserve cards first, then pending source inspections;
-only an empty queue needs another search page.
+Discovery remains manual; there is no daily discovery job. Opening, refreshing,
+Previous/Next, Dismiss/Undo and saving a watch use the local project library
+without GitHub requests. Find something new advances the bounded discovery
+queue under the shared guard. Check this project inspects a supplied repository
+under the same request caps without spending a fresh search batch.
 
 `github_budget.py` owns a shared SQLite ledger/cache in
 `control-plane/runtime/github-budget.sqlite3`. Rabbit Hole search and both

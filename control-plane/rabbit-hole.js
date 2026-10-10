@@ -4,16 +4,31 @@
   const nextButton = document.querySelector("#rabbit-next");
   const results = document.querySelector("#rabbit-results");
   const count = document.querySelector("#rabbit-count");
+  const pageStatus = document.querySelector("#rabbit-page-status");
+  const previousButton = document.querySelector('#rabbit-previous');
+  const checkButton = document.querySelector('#rabbit-check');
+  const undoButton = document.querySelector('#rabbit-undo');
+  let currentResult = null;
+  function setStatus(message) {
+    status.textContent = message;
+    pageStatus.textContent = message;
+  }
   let sessionId = null;
   let activeJobId = null;
   let heartbeatTimer = null;
   let pollTimer = null;
   let watches = new Map();
-  let busy = false, exhausted = false, autoRefillAttempted = false, browsingAction = 'explore';
+  let busy = false, browsingAction = 'explore';
   function setBusy(value) {
     busy = value;
-    button.disabled = value || exhausted;
-    nextButton.disabled = value || exhausted;
+    button.disabled = value;
+    nextButton.disabled = value || !currentResult || currentResult.pages <= 1;
+    previousButton.disabled = nextButton.disabled;
+    checkButton.disabled = value;
+    undoButton.disabled = value;
+    nextButton.textContent = value ? "Working…" : currentResult?.page === currentResult?.pages ? "Back to first page ↻" : "Next nine →";
+    nextButton.setAttribute("aria-busy", String(value));
+    results.setAttribute("aria-busy", String(value));
   }
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"]/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[char]));
@@ -54,21 +69,27 @@
 
   function renderResult(payload) {
     const result = payload?.result;
+    currentResult = result;
+    setBusy(busy);
     if (!payload?.has_result || !result) {
       count.textContent = "Your next discovery starts here";
-      status.textContent = "No completed exploration yet.";
+      setStatus("No completed exploration yet.");
       results.innerHTML = '<div class="rabbit-empty"><h3>Let’s see what’s out there.</h3><p>Choose “Find something new” for a small shortlist of GitHub projects. Save a promising one and Watchlist will keep following it.</p></div>';
       return;
     }
     const cards = (Array.isArray(result.results) ? result.results : []).filter(item => !watches.has(String(item.github_url).toLowerCase()));
-    exhausted = Boolean(result.exhausted);
-    setBusy(busy);
-    document.querySelector('#rabbit-next-note').textContent = exhausted ? 'You’ve reached the end of the current search.' : 'Keep exploring; saved projects stay on your Watchlist.';
-    count.textContent = `${cards.length} project${cards.length === 1 ? "" : "s"} to explore`;
+    document.querySelector('#rabbit-next-note').textContent = `Page ${result.page || 1} of ${result.pages || 1} · Browsing stays local`;
+    count.textContent = `${result.total ?? cards.length} undecided · Page ${result.page || 1} of ${result.pages || 1}`;
+    document.querySelector('#rabbit-dismissed-count').textContent = `${result.dismissed_count || 0} dismissed`;
+    undoButton.hidden = !result.undo;
+    undoButton.dataset.repository = result.undo?.repository_name || '';
+    undoButton.textContent = result.undo ? `Undo dismissal: ${result.undo.title}` : 'Undo last dismissal';
     results.innerHTML = cards.length ? cards.map((item) => `
       <article class="rabbit-result">
         <div class="rabbit-result-head"><div><span class="rabbit-repository-owner">${escapeHtml(String(item.repository_name || "").includes("/") ? String(item.repository_name).split("/")[0] : "GitHub project")}</span><h3><a href="${escapeHtml(item.github_url)}" target="_blank" rel="noreferrer">${escapeHtml(String(item.repository_name || "Untitled project").split("/").pop())}</a></h3></div>${item.language ? `<span class="rabbit-language">${escapeHtml(item.language)}</span>` : ""}</div>
         <p class="rabbit-description">${escapeHtml(item.description)}</p>
+        ${item.nominated ? `<p class="rabbit-fit-note">Suggested by you${item.source_check_pending ? ' · Source checks pending' : ''}</p>` : ''}
+        ${item.recovered ? '<p class="rabbit-fit-note">Recovered earlier project · Repository metadata incomplete</p>' : ''}
         <details class="rabbit-statistics"><summary>Project statistics</summary>${metricsHtml(item)}</details>
         ${assessmentHtml(item)}
         <details class="rabbit-notes"><summary>Sources & workstation evidence</summary>
@@ -76,10 +97,11 @@
         <div class="rabbit-meta">${(item.topics || []).map((topic) => `<span class="rabbit-topic">${escapeHtml(topic)}</span>`).join("")}</div>
         </details>
         <div class="rabbit-watch-actions">${watches.has(String(item.github_url).toLowerCase()) ? `<a class="rabbit-save" href="/watchlist">Saved to Watchlist · ${escapeHtml(watches.get(String(item.github_url).toLowerCase()).state)}</a>` : `<button type="button" class="rabbit-save" data-watch-url="${escapeHtml(item.github_url)}" data-watch-title="${escapeHtml(item.repository_name)}">Keep an eye on this</button>`}<a class="rabbit-source-link" href="${escapeHtml(item.github_url)}" target="_blank" rel="noreferrer">Take a look on GitHub ↗</a></div>
-      </article>`).join("") : '<div class="rabbit-empty"><h3>Nothing promising this time.</h3><p>Your saved watches are still there. Try another exploration when you’re ready.</p></div>';
+        <div class="rabbit-decision-actions"><button type="button" class="rabbit-source-link" data-dismiss="${escapeHtml(item.repository_name)}">Dismiss</button>${item.source_check_pending ? `<button type="button" class="rabbit-source-link" data-check-project="${escapeHtml(item.repository_name)}">Retry source check</button>` : ''}</div>
+      </article>`).join("") : '<div class="rabbit-empty"><h3>No undecided projects.</h3><p>Find something new, check a supplied link, or undo a dismissal. Your watches remain saved.</p></div>';
     const warning = Array.isArray(result.warnings) && result.warnings.length ? ` ${result.warnings.join(' ')}` : "";
     const selection = result.selection ? ` ${result.selection.inspected} inspected from ${result.selection.search_matches} search matches.` : "";
-    status.textContent = `Last explored ${new Date(result.completed_at).toLocaleString()}.${selection}${warning}`;
+    setStatus(`${result.completed_at ? `Last discovery ${new Date(result.completed_at).toLocaleString()}.` : 'Your saved projects.'}${selection}${warning}`);
   }
 
   async function json(url, options) {
@@ -89,19 +111,14 @@
     return payload;
   }
 
-  async function loadLastResult(refillAfterSave = false) {
+  async function loadLastResult() {
     try {
       try {const saved = await json("/api/watchlist"); watches = new Map(saved.watches.filter(w => w.identity?.startsWith("github:")).map(w => [w.identity.slice(7),w]));} catch (_error) { /* Saving still reports failures explicitly. */ }
       const payload = await json("/api/rabbit-hole/result");
       renderResult(payload);
       document.querySelector('#github-budget').textContent = payload.github_budget?.message || 'Manual discovery · Cached browsing uses no GitHub requests.';
-      const needsRefill = payload.result?.needs_refill || (payload.has_result && !payload.result.exhausted && payload.result.results.length < 10);
-      if (refillAfterSave && needsRefill && !autoRefillAttempted && !busy) {
-        autoRefillAttempted = true;
-        await startExploration('refill');
-      }
     }
-    catch (error) { status.textContent = `Could not load the last exploration: ${error.message}`; }
+    catch (error) { setStatus(`Could not load the last exploration: ${error.message}`); }
   }
 
   async function ensureSession() {
@@ -119,37 +136,68 @@
       if (["complete", "error", "cancelled"].includes(job.state)) {
         activeJobId = null;
         setBusy(false);
-        if (job.state === "complete") { status.textContent = job.message || "Rabbit Hole exploration complete."; await loadLastResult(); if (browsingAction === 'explore') document.querySelector('#shortlist-heading').scrollIntoView({block:'start'}); }
+        if (job.state === "complete") { await loadLastResult(); setStatus(`${job.message || "Rabbit Hole exploration complete."}${status.textContent ? ' ' + status.textContent : ''}`); if (browsingAction === 'explore') document.querySelector('#shortlist-heading').scrollIntoView({block:'start'}); }
         else {
-          status.textContent = job.message || `Rabbit Hole ${job.state}.`;
+          setStatus(job.message || `Rabbit Hole ${job.state}.`);
           try {const last = await json('/api/rabbit-hole/result'); document.querySelector('#github-budget').textContent = last.github_budget?.message || '';} catch (_) { /* The job error remains visible. */ }
         }
         return;
       }
-      status.textContent = job.message || "Rabbit Hole is searching GitHub…";
+      setStatus(job.message || "Rabbit Hole is searching GitHub…");
       pollTimer = window.setTimeout(() => pollJob(jobId), 1200);
     } catch (error) {
-      activeJobId = null; setBusy(false); status.textContent = `Rabbit Hole status unavailable: ${error.message}`;
+      activeJobId = null; setBusy(false); setStatus(`Rabbit Hole status unavailable: ${error.message}`);
     }
   }
 
   async function startExploration(action = 'explore') {
     if (activeJobId || busy) return;
     browsingAction = action;
-    autoRefillAttempted = true;
     setBusy(true);
-    status.textContent = action === 'refill' ? 'Replacing saved projects with new candidates…' : 'Finding the next unseen projects…';
+    setStatus(action === 'refill' ? 'Replacing saved projects with new candidates…' : 'Finding the next unseen projects… Checking source evidence can take a minute or two.');
     try {
       const session = await ensureSession();
       const started = await json("/api/plugins/rabbit-hole/run", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({session_id: session, action, trigger: "manual"})});
       activeJobId = started.job_id;
       pollJob(activeJobId);
-    } catch (error) { setBusy(false); status.textContent = `Could not start Rabbit Hole: ${error.message}`; }
+    } catch (error) { setBusy(false); setStatus(`Could not start Rabbit Hole: ${error.message}`); }
   }
   button.addEventListener('click', () => startExploration());
-  nextButton.addEventListener('click', () => startExploration());
+  async function libraryAction(action, extra = {}) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await json('/api/rabbit-hole/library', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action,...extra})});
+      await loadLastResult();
+      if (action === 'browse') document.querySelector('#shortlist-heading').scrollIntoView({block:'start'});
+    } catch (error) { setStatus(`Could not update projects: ${error.message}`); }
+    finally { setBusy(false); }
+  }
+  nextButton.addEventListener('click', () => libraryAction('browse', {direction:'next'}));
+  previousButton.addEventListener('click', () => libraryAction('browse', {direction:'previous'}));
+  undoButton.addEventListener('click', () => libraryAction('undo', {repository:undoButton.dataset.repository}));
+  async function checkProject(repository) {
+    if (busy || activeJobId) return;
+    browsingAction = 'explore';
+    setBusy(true);
+    setStatus(`Checking ${repository} against our workstation and workflows…`);
+    try {
+      const session = await ensureSession();
+      const started = await json('/api/rabbit-hole/check', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({session_id:session, repository})});
+      activeJobId = started.job_id;
+      pollJob(activeJobId);
+    } catch(error) { setBusy(false); setStatus(`Could not check project: ${error.message}`); }
+  }
+  document.querySelector('#rabbit-check-form').addEventListener('submit', event => {
+    event.preventDefault();
+    checkProject(document.querySelector('#rabbit-project-url').value.trim());
+  });
 
   results.addEventListener("click", async event => {
+    const dismiss = event.target.closest('[data-dismiss]');
+    if (dismiss) { await libraryAction('dismiss', {repository:dismiss.dataset.dismiss}); return; }
+    const retry = event.target.closest('[data-check-project]');
+    if (retry) { await checkProject(retry.dataset.checkProject); return; }
     const watch = event.target.closest("[data-watch-url]");
     if (!watch) return;
     watch.disabled = true;
@@ -159,9 +207,8 @@
         identity:"github:" + watch.dataset.watchUrl.toLowerCase(),
         purpose:"Follow releases, README and issues for RX 7800 XT, gfx1101, RDNA3, AMD, Windows, 16GB VRAM, local/offline use, MCP, Ollama, llama.cpp, OpenAI-compatible integration and disk requirements. Look for a small practical local test suitable for a Garage Alchemy episode."
       })});
-      autoRefillAttempted = false;
-      await loadLastResult(true);
-    } catch(error) {status.textContent = `Could not save this watch: ${error.message}`; watch.disabled = false;}
+      await loadLastResult();
+    } catch(error) {setStatus(`Could not save this watch: ${error.message}`); watch.disabled = false;}
   });
 
   window.addEventListener("beforeunload", () => {
