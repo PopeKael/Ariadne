@@ -1,0 +1,2 @@
+# Live ComfyUI execution events for Image Studio background jobs.
+websockets==17.0.1

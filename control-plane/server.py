@@ -12,7 +12,7 @@ import hashlib
 import html
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import ctypes
 import io
 import json
@@ -41,6 +41,7 @@ from urllib.parse import parse_qs, parse_qsl, unquote, urlencode, urlparse, urls
 
 
 from workspace_proxy import proxy_workspace
+from image_jobs import ImageJobs, comfy_progress
 from news_recommendations import NewsRecommendations
 import sqlite3
 from home_chat_store import ChatStore, title_from_document
@@ -442,6 +443,7 @@ GODS_EYE_VIEW_PROCESS: subprocess.Popen | None = None
 GODS_EYE_VIEW_LOCK = threading.RLock()
 IMAGE_GENERATION_LOCK = threading.Lock()
 IMAGE_GENERATION_ACTIVE = False
+IMAGE_JOBS = ImageJobs()
 MUSIC_GENERATION_LOCK = threading.Lock()
 MUSIC_GENERATION_ACTIVE = False
 MUSIC_JOBS_LOCK = threading.RLock()
@@ -3467,6 +3469,7 @@ def image_engine_status() -> dict[str, object]:
             "engine": "ComfyUI",
             "url": PUBLIC_ORIGIN + "/image",
             "system": system,
+            "job": IMAGE_JOBS.snapshot(),
             "models": models,
             "sizes": image_sizes_payload(),
             "gpu": gpu_owner_status(),
@@ -3618,7 +3621,7 @@ def write_unassigned_image_sidecar(image_path: Path, provenance: dict[str, objec
     return asset
 
 
-def generate_image(body: dict[str, object]) -> tuple[dict[str, object], int]:
+def generate_image(body: dict[str, object], on_progress=None) -> tuple[dict[str, object], int]:
     global IMAGE_GENERATION_ACTIVE
     if not IMAGE_GENERATION_LOCK.acquire(blocking=False):
         return {"ok": False, "message": "Ariadne is already rendering an image."}, 409
@@ -3638,8 +3641,8 @@ def generate_image(body: dict[str, object]) -> tuple[dict[str, object], int]:
         if not path.is_file():
             return {"ok": False, "message": f"{model['name']} is not installed yet."}, 409
         try:
-            width = int(body.get("width") or 768)
-            height = int(body.get("height") or 768)
+            width = int(body.get("width") or 1280)
+            height = int(body.get("height") or 720)
             seed = int(body.get("seed")) if str(body.get("seed") or "").strip() else int.from_bytes(os.urandom(4), "big")
         except (TypeError, ValueError):
             return {"ok": False, "message": "Width, height and seed must be numeric."}, 400
@@ -3660,12 +3663,17 @@ def generate_image(body: dict[str, object]) -> tuple[dict[str, object], int]:
         if str(video.get("state") or "") in {"online", "starting"}:
             return {"ok": False, "message": "Stop the video renderer before generating an image."}, 409
         IMAGE_GENERATION_ACTIVE = True
-        with ai_gpu_admission():
-            queued = post_json(f"{IMAGE_ENGINE_URL}/prompt", {"prompt": image_prompt_workflow(str(model["filename"]), prompt, negative_prompt, width, height, seed)}, timeout=30.0)
+        client_id = str(uuid.uuid4())
+        if on_progress:
+            on_progress(stage="Waiting for GPU")
+        with ai_gpu_admission(), (comfy_progress(IMAGE_ENGINE_URL, client_id, on_progress) if on_progress else nullcontext()):
+            if on_progress:
+                on_progress(stage="Submitting image workflow")
+            queued = post_json(f"{IMAGE_ENGINE_URL}/prompt", {"client_id": client_id, "prompt_id": client_id, "prompt": image_prompt_workflow(str(model["filename"]), prompt, negative_prompt, width, height, seed)}, timeout=30.0)
             prompt_id = str(queued.get("prompt_id") or "")
             if not prompt_id:
                 return {"ok": False, "message": "ComfyUI did not accept the image workflow."}, 502
-            deadline = time.monotonic() + 300.0
+            deadline = time.monotonic() + 1800.0
             result: dict[str, object] | None = None
             while time.monotonic() < deadline:
                 try:
@@ -3676,7 +3684,9 @@ def generate_image(body: dict[str, object]) -> tuple[dict[str, object], int]:
                 if isinstance(candidate, dict):
                     status = candidate.get("status") if isinstance(candidate.get("status"), dict) else {}
                     if status.get("status_str") == "error" or status.get("completed") is False and status.get("messages"):
-                        return {"ok": False, "message": "ComfyUI reported an image rendering error.", "job_id": prompt_id}, 502
+                        errors = [entry[1] for entry in status.get("messages", []) if entry[0] == "execution_error"]
+                        detail = str(errors[-1].get("exception_message") or "")[:1000] if errors else ""
+                        return {"ok": False, "message": f"ComfyUI reported an image rendering error. {detail}".strip(), "job_id": prompt_id}, 502
                     outputs = candidate.get("outputs") if isinstance(candidate.get("outputs"), dict) else {}
                     images = [item for node in outputs.values() if isinstance(node, dict) for item in (node.get("images") or []) if isinstance(item, dict)]
                     if images:
@@ -3686,6 +3696,8 @@ def generate_image(body: dict[str, object]) -> tuple[dict[str, object], int]:
             if result is None:
                 return {"ok": False, "message": "The image render timed out before producing an output.", "job_id": prompt_id}, 504
             try:
+                if on_progress:
+                    on_progress(stage="Saving PNG and provenance", step=None, total_steps=None)
                 payload = _comfy_output_bytes(result)
                 storage = configuration_snapshot()["storage"]
                 target_root = SEQUENCE_PROJECTS.image_candidate_directory(project_id) if project else Path(str(storage["images"]))
@@ -8301,6 +8313,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/image/status":
             self.send_json(image_engine_status())
             return
+        image_job_match = re.fullmatch(r"/api/image/generation/([a-f0-9]{32})", path)
+        if image_job_match:
+            job = IMAGE_JOBS.snapshot(image_job_match.group(1))
+            self.send_json({"ok": job is not None, "job": job, "message": "Image job not found." if job is None else ""}, 200 if job else 404)
+            return
         if path == "/api/music/provider/status":
             self.send_json(music_provider_status())
             return
@@ -8829,7 +8846,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json(result, 200 if result.get("ok") else 409)
                 return
             if path == "/api/image/generate":
-                result, status = generate_image(body)
+                request_id = str(body.get("request_id") or "")
+                if request_id and not re.fullmatch(r"[a-f0-9]{32}", request_id):
+                    self.send_json({"ok": False, "message": "Invalid image request ID."}, 400)
+                    return
+                result, status = IMAGE_JOBS.start(body, generate_image)
                 self.send_json(result, status)
                 return
             if path == "/api/music/lyrics/check":

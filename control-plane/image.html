@@ -42,12 +42,13 @@
                 <div class="image-options"><div><label class="field-label" for="image-size">Size</label><select id="image-size" class="ws-select">
                   <optgroup label="Square"><option value="768x768">768 × 768</option><option value="1024x1024">1024 × 1024</option></optgroup>
                   <optgroup label="Portrait · 9:16"><option value="720x1280">720 × 1280</option><option value="1080x1920">1080 × 1920</option></optgroup>
-                  <optgroup label="Landscape · 16:9"><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option></optgroup>
+                  <optgroup label="Landscape · 16:9"><option value="1280x720" selected>1280 × 720 Landscape</option><option value="1920x1080">1920 × 1080</option></optgroup>
                 </select></div><div><label class="field-label" for="image-seed">Seed</label><input id="image-seed" class="ws-input" type="number" placeholder="Random"></div></div>
                 <div class="card-actions image-actions"><button id="image-start" class="ws-button" type="button">Start process</button><button id="image-stop" class="ws-button" type="button">Stop process</button><button id="image-generate" class="ws-button primary" type="button">Generate image</button></div>
               </div>
               <div class="image-preview" aria-live="polite"><div id="image-preview-empty" class="image-preview-empty"><span class="preview-mark">◇</span><strong>Your render will appear here</strong><span>PNG output · matching JSON provenance</span></div><img id="image-preview-image" alt="Latest Ariadne image render" hidden><div id="image-preview-meta" class="image-preview-meta" hidden></div><button id="image-accept" class="ws-button primary" type="button" hidden>Accept image into project</button></div>
             </div>
+            <div id="image-progress" hidden><strong id="image-stage" role="status"></strong><progress id="image-progress-bar" max="24" style="width:100%"></progress><span id="image-elapsed" class="field-hint"></span></div>
             <span id="image-feedback" class="card-feedback" role="status">Reading the image process lifecycle…</span>
           </div>
         </article>

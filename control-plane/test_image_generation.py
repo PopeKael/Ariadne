@@ -103,10 +103,12 @@ class ImageGenerationTests(unittest.TestCase):
                 patch.object(server, "configuration_snapshot", return_value={"storage": {"images": str(root / "images")}}),
                 patch.object(server, "ai_gpu_admission", return_value=nullcontext()),
             ):
-                result, status = server.generate_image({"project_id": project["project_id"], "prompt": "A rainy Bangkok alley", "model": "sdxl-base-1.0", "width": 768, "height": 768, "seed": 42})
+                result, status = server.generate_image({"project_id": project["project_id"], "prompt": "A rainy Bangkok alley", "model": "sdxl-base-1.0", "seed": 42})
             self.assertEqual(status, 200)
             self.assertEqual(result["asset"]["status"], "candidate")
             self.assertEqual(result["asset"]["provenance"]["prompt"], "A rainy Bangkok alley")
+            self.assertEqual(result["image"]["width"], 1280)
+            self.assertEqual(result["image"]["height"], 720)
             self.assertTrue((store.image_candidate_directory(project["project_id"]) / "ariadne-job-42.png").is_file())
             self.assertTrue((store.image_candidate_directory(project["project_id"]) / "ariadne-job-42.json").is_file())
 
