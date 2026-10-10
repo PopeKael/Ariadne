@@ -35,6 +35,14 @@ class AgentTests(unittest.TestCase):
                 LabAgent(model,env,w,r).run_task('A generic request')
             return data,transcript
 
+    def test_empty_workspace_only_offers_initial_creation(self):
+        def create(env):
+            names={v['properties']['action']['const'] for v in env.action_schema['oneOf']}
+            self.assertEqual(names,{'write'})
+            return {'action':'write','project':project(GOOD)}
+        data,_=self.run_actions([create,{'action':'run'},{'action':'finish','summary':'Done'}])
+        self.assertEqual(data['stop_reason'],'VERIFIED')
+
     def test_model_selects_actions_and_receives_observations(self):
         data,calls=self.run_actions([{'action':'write','project':project(GOOD)}, {'action':'run'}, {'action':'finish','summary':'Complete'}])
         self.assertEqual(data['stop_reason'],'VERIFIED');self.assertEqual(len(calls),3)
@@ -111,12 +119,98 @@ class AgentTests(unittest.TestCase):
 
     def test_context_budget_rejects_before_transport(self):
         from lab_model import OllamaModelAdapter
-        r=RunRecord({'model_requests':[]},lambda:None,lambda e:None,RunLimits(prompt_bytes=1000))
+        r=RunRecord({'model_requests':[]},lambda:None,lambda e:None,RunLimits())
         called=[]
-        m=OllamaModelAdapter('fixture','another-compatible-model',32768,lambda *args:called.append(args),
+        m=OllamaModelAdapter('fixture','another-compatible-model',2048,lambda *args:called.append(args),
                              nullcontext,lambda _:nullcontext(),r,code_lab.provider_metrics,lambda *args:None,lambda:{})
         with self.assertRaisesRegex(RuntimeError,'budget'):m.call('create','instructions','x'*2000,{},time.monotonic()+10)
         self.assertEqual(called,[])
+
+    def test_measured_prefix_prevents_false_context_overflow_and_preserves_request(self):
+        from lab_model import OllamaModelAdapter
+        r=RunRecord({'model_requests':[],'output_characters':0},lambda:None,lambda e:None,RunLimits())
+        payloads=[]
+        def stream(endpoint,model,payload,deadline):
+            payloads.append(payload)
+            yield {'message':{'content':'{"action":"read"}'},'done':True,
+                   'prompt_eval_count':5000,'eval_count':5}
+        adapter=OllamaModelAdapter('fixture','compatible-worker',32768,stream,nullcontext,lambda _:nullcontext(),
+                                  r,code_lab.provider_metrics,lambda *args:None,lambda:{})
+        messages=[{'role':'system','content':'Generic instructions'},{'role':'user','content':'x'*23000}]
+        r.step('GENERATING','model','Choose action',lambda:adapter.query(messages,{},time.monotonic()+10))
+        messages.extend([{'role':'assistant','content':'read'}, {'role':'user','content':'New observation '+ 'y'*3000}])
+        r.step('GENERATING','model','Choose action',lambda:adapter.query(messages,{},time.monotonic()+10))
+        last=r.data['model_requests'][-1]
+        self.assertGreater(last['context_bytes'],24576)
+        self.assertLess(last['input_token_bound'],10000)
+        self.assertEqual(last['context_budget_basis'],'provider_prefix_plus_utf8_margin')
+        self.assertEqual(payloads[-1]['messages'],messages)
+        self.assertEqual(len(payloads[0]['messages']),2)
+        changed_schema={'type':'object','description':'Updated available actions'}
+        r.step('GENERATING','model','Tools changed',lambda:adapter.query(messages,changed_schema,time.monotonic()+10))
+        self.assertEqual(payloads[-1]['format'],changed_schema)
+        self.assertLess(r.data['model_requests'][-1]['input_token_bound'],10000)
+        large='a'*50000
+        previous=r.data['model_requests'][-1]
+        previous['request']['messages']=[{'role':'system','content':'Generic instructions'},{'role':'user','content':large}]
+        previous['input_tokens']=10000
+        messages=json.loads(json.dumps(previous['request']['messages']))
+        messages.append({'role':'user','content':'small observation'})
+        r.step('GENERATING','model','Large measured prefix',lambda:adapter.query(messages,changed_schema,time.monotonic()+10))
+        self.assertGreater(r.data['model_requests'][-1]['context_bytes'],48000)
+        self.assertLess(r.data['model_requests'][-1]['input_token_bound'],24576)
+        messages.append({'role':'user','content':'z'*26000})
+        with self.assertRaisesRegex(RuntimeError,'budget'):
+            r.step('GENERATING','model','Too large',lambda:adapter.query(messages,{},time.monotonic()+10))
+        self.assertEqual(len(payloads),4)
+
+    def test_patch_mismatch_reports_actual_source_and_can_recover(self):
+        source=GOOD.replace('</body>','<script>\n// Application logic goes here\n</script></body>')
+        wrong={'path':'index.html','search':'<!-- Application logic goes here -->','replace':'wrong'}
+        def fix(env):
+            return {'action':'patch','revision':env.read_revision,'edits':[
+                {'path':'index.html','search':'// Application logic goes here','replace':'const initialized = true;'}]}
+        data,calls=self.run_actions([{'action':'write','project':project(source)},{'action':'read'},
+            lambda e:{'action':'patch','revision':e.read_revision,'edits':[wrong]},fix,
+            {'action':'run'},{'action':'finish','summary':'Fixed'}])
+        self.assertEqual(data['stop_reason'],'VERIFIED')
+        error=json.loads(calls[3][-1]['content'])['observation']['error']
+        self.assertIn('"matches": 0',error)
+        self.assertIn('// Application logic goes here',error)
+        self.assertIn('closest_actual_lines',error)
+        self.assertEqual(data['repairs'],1)
+        self.assertEqual(len(data['attempts']),2)
+
+    def test_patch_is_only_offered_after_current_file_read(self):
+        offered=[]
+        def capture(env):
+            offered.append({v['properties']['action']['const'] for v in env.action_schema['oneOf']})
+        def read(env):
+            capture(env)
+            self.assertNotIn('write',offered[-1])
+            return {'action':'read'}
+        def edit(env):
+            capture(env)
+            return {'action':'patch','revision':env.read_revision,'edits':[
+                {'path':'index.html','search':'Counter test','replace':'Updated'}]}
+        def run(env):
+            capture(env);return {'action':'run'}
+        data,_=self.run_actions([{'action':'write','project':project(GOOD)},read,edit,run,{'action':'finish','summary':'Done'}])
+        self.assertEqual(data['stop_reason'],'VERIFIED')
+        self.assertNotIn('patch',offered[0]);self.assertIn('patch',offered[1]);self.assertNotIn('patch',offered[2])
+
+    def test_elapsed_time_does_not_stop_productive_agent_loop(self):
+        clock=[0]
+        r=RunRecord({'model_requests':[],'attempts':[]},lambda:None,lambda e:None,RunLimits(),clock=lambda:clock[0])
+        def query(*args):
+            clock[0]+=100000
+            return {'reason':'Done','action':'finish','summary':'Done'}
+        env=SimpleNamespace(instructions='Generic',action_schema={},execute=lambda *args:{'finished':True})
+        LabAgent(SimpleNamespace(query=query),env,SimpleNamespace(code=None),r).run_task('Generic request')
+        self.assertEqual(r.data['stop_reason'],'VERIFIED')
+        self.assertNotIn('wall_seconds',r.data['limits'])
+        self.assertNotIn('call_seconds',r.data['limits'])
+        self.assertNotIn('prompt_bytes',r.data['limits'])
 
     def test_native_chat_requests_are_immutable_and_metrics_are_per_call(self):
         from lab_model import OllamaModelAdapter
@@ -134,12 +228,6 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(len(r.data['model_requests'][0]['request']['messages']),2)
         self.assertNotIn('prompt',payloads[0]);self.assertEqual(payloads[0]['model'],'swappable-worker')
         self.assertEqual(r.totals()['input_tokens'],20);self.assertEqual(r.totals()['output_tokens'],5)
-
-    def test_wall_clock_limit(self):
-        clock=[0]
-        r=RunRecord({},lambda:None,lambda e:None,RunLimits(wall_seconds=1),clock=lambda:clock[0])
-        clock[0]=2
-        with self.assertRaisesRegex(RuntimeError,'wall-time'):r.step('EXECUTE','tool','test',lambda:None)
 
     def test_safe_atomic_patches_preserve_candidates(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -171,25 +259,48 @@ class AgentTests(unittest.TestCase):
             try:self.assertTrue(code_lab.saved_result('a'*32)['pending'])
             finally:code_lab._ACTIVE_RUNS.discard('a'*32)
 
-    def test_actual_transport_absolute_deadline_despite_chunks(self):
-        from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+    def transport_server(self, handler):
+        from http.server import ThreadingHTTPServer
+        server=ThreadingHTTPServer(('127.0.0.1',0),handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        self.addCleanup(server.server_close);self.addCleanup(server.shutdown)
+        return 'http://127.0.0.1:'+str(server.server_port)
+
+    def test_actual_transport_keeps_valid_output_past_watchdog_interval(self):
+        from http.server import BaseHTTPRequestHandler
         class Handler(BaseHTTPRequestHandler):
             def log_message(self,*args):pass
             def do_POST(self):
                 self.rfile.read(int(self.headers['Content-Length']))
                 self.send_response(200);self.end_headers()
-                try:
-                    while True:
-                        self.wfile.write(b'{"response":"x"}\n');self.wfile.flush();time.sleep(.03)
-                except OSError:pass
-        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
-        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+                for _ in range(15):
+                    self.wfile.write(b'{"response":"x"}\n');self.wfile.flush();time.sleep(.03)
+                self.wfile.write(b'{"done":true}\n');self.wfile.flush()
+        endpoint=self.transport_server(Handler)
         started=time.monotonic()
-        try:
-            with self.assertRaisesRegex(RuntimeError,'deadline'):
-                list(ollama_stream('http://127.0.0.1:'+str(server.server_port),'different-model',{},started+.2))
-            self.assertLess(time.monotonic()-started,1)
-        finally:server.shutdown();server.server_close();thread.join()
+        chunks=list(ollama_stream(endpoint,'different-model',{},.2))
+        self.assertGreater(time.monotonic()-started,.4)
+        self.assertEqual(sum(bool(c.get('response')) for c in chunks),15)
+        self.assertTrue(chunks[-1]['done'])
+
+    def test_actual_transport_watchdog_stops_silent_and_empty_chunk_connections(self):
+        from http.server import BaseHTTPRequestHandler
+        for empty_chunks in [False,True]:
+            class Handler(BaseHTTPRequestHandler):
+                def log_message(self,*args):pass
+                def do_POST(self):
+                    self.rfile.read(int(self.headers['Content-Length']))
+                    self.send_response(200);self.end_headers();self.wfile.flush()
+                    try:
+                        for _ in range(20):
+                            if empty_chunks:self.wfile.write(b'{}\n');self.wfile.flush()
+                            time.sleep(.03)
+                    except OSError:pass
+            endpoint=self.transport_server(Handler)
+            started=time.monotonic()
+            with self.assertRaisesRegex(RuntimeError,'watchdog'):
+                list(ollama_stream(endpoint,'different-model',{},.15))
+            self.assertLess(time.monotonic()-started,.5)
 
     def test_runtime_repairs_reach_configured_limit(self):
         variants=[BROKEN,BROKEN.replace('Counter test','Counter one'),BROKEN.replace('Counter test','Counter two')]

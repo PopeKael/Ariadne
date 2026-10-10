@@ -180,9 +180,9 @@ class CodeLab:
                 raise ValueError(f'Coding model {model} is missing or unavailable.')
             details=self.capabilities(model) if self.capabilities else {}
             if self.capabilities:validate_context(context,details)
-            # Production owns a cancellable HTTP transport; injected test streams
-            # retain their simple callback interface and must cooperate with deadlines.
-            transport=ollama_stream if self.generate is None else lambda endpoint,model,payload,deadline:self.generate(endpoint,model,payload)
+            # Production owns an idle-watchdog HTTP transport; injected test streams
+            # retain their simple callback interface.
+            transport=ollama_stream if self.generate is None else lambda endpoint,model,payload,watchdog_seconds:self.generate(endpoint,model,payload)
             adapter=OllamaModelAdapter(provider.endpoint,model,context,transport,self.admission,self.activity,run,
                 provider_metrics,lambda name,text:atomic_write(directory/name,text),self.hardware)
             adapter.capabilities.update(thinking='thinking' in details.get('capabilities',[]),native=details)

@@ -59,7 +59,7 @@ class CodeLabTests(unittest.TestCase):
         self.assertEqual(saved['instructions'], code_lab.INSTRUCTIONS)
         self.assertEqual(saved['user_prompt'], 'Build a game')
         self.assertTrue(saved['success'])
-        self.assertEqual(saved['request']['format']['oneOf'][1]['properties']['project'], code_lab.SCHEMA)
+        self.assertEqual(saved['request']['format']['oneOf'][0]['properties']['project'], code_lab.SCHEMA)
         self.assertEqual([e['state'] for e in events if e['type']=='state'], ['LOADING MODEL','GENERATING','EXECUTE','GENERATING','EXECUTE','GENERATING','EXECUTE','READY'])
         self.assertEqual(saved['request']['messages'][1]['content'],'Build a game')
 
