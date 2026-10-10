@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watchlist · Ariadne</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/page-shell.css">
+  <link rel="stylesheet" href="/watchlist.css">
+</head>
+<body class="ariadne-page watch-page">
+  <main class="watch-shell">
+    <header class="watch-heading"><div><h1>Watchlist</h1><p>Projects, questions and the little jobs you don’t want to forget.</p></div><div class="watch-heading-actions"><a href="/plugins">Tools</a><button id="check-all">Check all now</button><button id="add-watch" class="primary">+ Add a watch</button></div></header>
+    <div class="watch-toolbar"><nav aria-label="Filter watches"><button data-filter="active" aria-pressed="true">Watching <span id="active-count"></span></button><button data-filter="attention" aria-pressed="false">Needs a look <span id="attention-count"></span></button><button data-filter="paused" aria-pressed="false">Paused</button><button data-filter="archived" aria-pressed="false">Archived</button></nav><a href="/rabbit-hole">Find something new ↗</a></div>
+    <p id="watch-status" role="status" aria-live="polite">Opening your watchlist…</p>
+    <p id="github-budget" class="watch-timing" role="status" aria-live="polite"></p>
+    <section id="watch-list" aria-label="Saved watches"></section>
+    <footer><p id="scheduler-note"></p><p>New watches never replace old ones. Findings are source evidence for you to review; a changed search result is not a confirmed development.</p><button id="import-topics" class="quiet-button">Bring in existing news topics</button></footer>
+  </main>
+  <dialog id="watch-editor" aria-labelledby="editor-title">
+    <form id="watch-form">
+      <div class="dialog-heading"><h2 id="editor-title">What shall we keep an eye on?</h2><button type="button" data-close="watch-editor" aria-label="Close editor">×</button></div>
+      <input name="id" type="hidden">
+      <label>Give it a name<input name="title" maxlength="200" placeholder="AMD Box Watch" required></label>
+      <label>What kind of follow-up?<select name="kind"><option value="topic">A topic or question</option><option value="project">A project</option><option value="reminder">Something I need to do</option></select></label>
+      <label>What are we looking out for?<textarea name="purpose" rows="3" maxlength="2000" placeholder="What would make this useful? What change matters to you?"></textarea></label>
+      <div id="evidence-fields"><label>Search the web for<input name="query" maxlength="500" placeholder="AMD Strix Halo mini PC availability"></label><label>Follow these pages too <span>(one URL per line, up to six)</span><textarea name="sources" rows="3" placeholder="A project, release page, website or article"></textarea></label><p class="field-note">GitHub repository links check the README, latest releases and recently updated issues. Other pages are checked for readable text.</p></div>
+      <div class="form-row"><label><span id="frequency-label">Check every (days)</span><input name="interval_days" type="number" min="1" max="366" value="7" required></label><label>Next check <span>(optional, your local time)</span><input name="next_check" type="datetime-local"></label></div>
+      <p id="reminder-help" class="field-note" hidden>Reminders stay due until you mark them done. The next reminder is scheduled from that acknowledgement. Use 28 days for every four weeks.</p>
+      <p id="editor-status" role="status"></p><div class="form-actions"><button type="button" data-close="watch-editor">Cancel</button><button type="submit" class="primary">Save watch</button></div>
+    </form>
+  </dialog>
+  <dialog id="watch-history" aria-labelledby="history-title"><div class="dialog-heading"><h2 id="history-title">Check history</h2><button data-close="watch-history" aria-label="Close history">×</button></div><div id="history-list"></div><button id="older-checks" hidden>Older checks</button></dialog>
+  <script src="/page-shell.js"></script><script src="/watchlist.js"></script>
+</body>
+</html>

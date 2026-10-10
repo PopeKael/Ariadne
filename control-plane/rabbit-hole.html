@@ -6,24 +6,29 @@
   <title>Rabbit Hole · Ariadne</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/plugin.css">
-  <link rel="stylesheet" href="/rabbit-hole.css">
   <link rel="stylesheet" href="/page-shell.css">
+  <link rel="stylesheet" href="/rabbit-hole.css">
 </head>
-<body class="ariadne-page">
+<body class="ariadne-page rabbit-page">
   <div class="rabbit-shell">
     <header class="rabbit-header">
-      <div><span class="eyebrow">GITHUB EXPLORATION</span><h1>Rabbit Hole</h1><p>Find the projects that make you say, “What the hell is that? Let’s try it.”</p></div>
-      <a class="plugin-action secondary" href="/plugins">Back to Tools</a>
+      <div><h1>Rabbit Hole</h1><p class="rabbit-lead">Find something useful. Keep the ones worth coming back to.</p></div>
+      <a class="rabbit-watch-link" href="/watchlist">Your Watchlist ↗</a>
     </header>
     <main class="rabbit-main">
-      <section class="rabbit-intro">
-        <div><strong>Read-only discovery</strong><p>Rabbit Hole searches public GitHub metadata for recent, active and unusual open-source projects. It never clones, installs or executes anything.</p></div>
-        <button id="rabbit-explore" class="plugin-action rabbit-primary" type="button">Explore GitHub</button>
+      <section class="rabbit-intro" aria-label="Discover projects">
+        <div class="rabbit-intro-copy"><p>Explore up to ten projects. Save the promising ones to your Watchlist.</p><small>Read-only documentation checks. Nothing is installed. Your saved watches stay put.</small></div>
+        <button id="rabbit-explore" class="rabbit-primary" type="button">Find something new <span aria-hidden="true">↗</span></button>
       </section>
-      <p id="rabbit-status" class="rabbit-status" role="status" aria-live="polite">Loading the last completed exploration…</p>
-      <section id="rabbit-results" class="rabbit-results" aria-live="polite"><div class="plugin-empty">No completed exploration yet.</div></section>
+      <section class="rabbit-shortlist" aria-labelledby="shortlist-heading">
+        <div class="rabbit-shortlist-heading"><h2 id="shortlist-heading">On the table</h2><span id="rabbit-count"></span></div>
+        <p id="rabbit-status" class="rabbit-status" role="status" aria-live="polite">Opening the last exploration…</p>
+        <p id="github-budget" class="rabbit-status" role="status" aria-live="polite">Manual discovery · Cached browsing uses no GitHub requests.</p>
+        <div id="rabbit-results" class="rabbit-results"><div class="rabbit-empty">Opening your last shortlist…</div></div>
+        <div class="rabbit-page-actions"><button id="rabbit-next" class="rabbit-primary" type="button">Next ten <span aria-hidden="true">→</span></button><span id="rabbit-next-note">Keep exploring; saved projects stay on your Watchlist.</span></div>
+      </section>
     </main>
-    <footer class="plugin-footer">Public GitHub metadata only <span>•</span> No repository code is touched</footer>
+    <footer class="rabbit-footer"><p>Rabbit Hole finds possibilities. <a href="/watchlist">Watchlist keeps the thread.</a></p><span>Public GitHub discovery · No cloning, installation or execution</span></footer>
   </div>
   <script src="/page-shell.js"></script>
   <script src="/rabbit-hole.js"></script>

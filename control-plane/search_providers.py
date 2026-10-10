@@ -350,8 +350,9 @@ class SearchProviderRegistry:
             "available": route is not None,
         }
 
-    def search(self, query: str, *, limit: int = DEFAULT_RESULT_LIMIT, fetch_limit: int = 3) -> dict[str, Any]:
-        providers = self.compatible()
+    def search(self, query: str, *, limit: int = DEFAULT_RESULT_LIMIT, fetch_limit: int = 3,
+               exclude_provider_ids: tuple[str, ...] = ()) -> dict[str, Any]:
+        providers = [provider for provider in self.compatible() if provider.provider_id not in exclude_provider_ids]
         if not providers:
             return {"ok": False, "provider": None, "results": [], "error": "No enabled search provider is configured.", "attempts": []}
         errors: list[str] = []

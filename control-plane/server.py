@@ -79,6 +79,9 @@ from evidence_router import decide as decide_evidence, external_search_needed
 from conversation_orchestration import (validate_focus, personality_mode, normalize_intensity,
     generation_messages, size, history_candidates, planner_state, assembled_history, context_recipe, turn_context, semantic_receipt)
 from search_providers import SearchProviderRegistry, compact_source_query
+from watchlist import Watchlist
+from rabbit_discovery import excluded_names, visible_result
+from watchlist_sources import collect_evidence
 from plugin_activity import PluginActivityStream
 from plugin_execution import PluginExecutionError, build_plugin_command, load_plugin_callable
 from plugin_registry import PLUGIN_REGISTRY
@@ -348,6 +351,10 @@ NEWS_IMAGE_SYNC_INTERVAL_SECONDS = max(60, int(os.environ.get("ARIADNE_NEWS_IMAG
 NEWS_IMAGE_SYNC_STOP = threading.Event()
 NEWS_IMAGE_SYNC_THREAD: threading.Thread | None = None
 SEARCH_PROVIDER_REGISTRY = SearchProviderRegistry()
+WATCHLIST = Watchlist(
+    Path(os.environ.get("ARIADNE_WATCHLIST_PATH", str(ROOT / "runtime" / "watchlist.sqlite3"))),
+    lambda watch: collect_evidence(watch, SEARCH_PROVIDER_REGISTRY.search),
+)
 HOME_EVENTS_PATH = VAULT_ROOT / "Journal" / "Ariadne Home Events.md"
 HOME_CHAT_STORE = ChatStore(VAULT_ROOT)
 DOCUMENT_WORK_ROOT = ROOT / 'runtime' / 'document_contexts'
@@ -4793,15 +4800,19 @@ def _write_rabbit_hole_result(result: dict[str, object]) -> None:
         raise last_error
 
 
-def rabbit_hole_result_payload() -> dict[str, object]:
+def rabbit_hole_result_payload(*, raw: bool = False) -> dict[str, object]:
+    from github_budget import BUDGET
+    budget = {} if raw else {"github_budget": BUDGET.status()}
     for path in (RABBIT_HOLE_RESULT_PATH, RABBIT_HOLE_FALLBACK_RESULT_PATH):
         try:
             result = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError, json.JSONDecodeError):
             continue
         if isinstance(result, dict) and isinstance(result.get("results"), list):
-            return {"ok": True, "has_result": True, "result": result}
-    return {"ok": True, "has_result": False, "result": None}
+            if not raw:
+                result = visible_result(result, excluded_names(WATCHLIST.snapshot()['watches']))
+            return {"ok": True, "has_result": True, "result": result, **budget}
+    return {"ok": True, "has_result": False, "result": None, **budget}
 
 
 def _run_rabbit_hole_job(job_id: str, record: object, session_id: str) -> None:
@@ -4826,7 +4837,9 @@ def _run_rabbit_hole_job(job_id: str, record: object, session_id: str) -> None:
 
     try:
         adapter = load_plugin_callable(record)  # type: ignore[arg-type]
-        result = adapter({}, report)
+        result = adapter({"mode": job.get("action", "explore"),
+                          "previous": rabbit_hole_result_payload(raw=True).get("result"),
+                          "excluded": sorted(excluded_names(WATCHLIST.snapshot()['watches']))}, report)
         if not isinstance(result, dict):
             raise ValueError("Rabbit Hole returned an invalid result.")
         with SESSION_LOCK:
@@ -4861,7 +4874,7 @@ def _run_rabbit_hole_job(job_id: str, record: object, session_id: str) -> None:
             presenter.failed(f"Rabbit Hole exploration failed: {str(exc)[:300]}")
 
 
-def start_rabbit_hole_action(session_id: str, record: object, *, trigger: str = "manual") -> str:
+def start_rabbit_hole_action(session_id: str, record: object, *, trigger: str = "manual", action: str = "explore") -> str:
     job_id = uuid.uuid4().hex
     reporter = PLUGIN_ACTIVITY_STREAM.reporter(activity_id=job_id, plugin_id="rabbit-hole", capability_id="github.explore")
     presenter = CoreActivityPresenter(reporter, completion_state="success")
@@ -4871,7 +4884,7 @@ def start_rabbit_hole_action(session_id: str, record: object, *, trigger: str = 
         "started": time.monotonic(),
         "state": "running",
         "message": "Searching GitHub for unusual active projects…",
-        "action": "explore",
+        "action": action,
         "trigger": trigger,
         "plugin_id": "rabbit-hole",
         "capability_id": "github.explore",
@@ -4901,9 +4914,9 @@ def run_plugin_action(session_id: str, plugin_id: str, action: str, *, trigger: 
     if active_job:
         raise PluginExecutionError(f"Plugin action already running (job {active_job}).")
     if canonical_plugin_id == "rabbit-hole":
-        if action != "explore":
+        if action not in {"explore", "refill"}:
             raise PluginExecutionError(f"Plugin does not support action: {action}")
-        return start_rabbit_hole_action(session_id, record, trigger=trigger)
+        return start_rabbit_hole_action(session_id, record, trigger=trigger, action=action)
     snapshot = configuration_snapshot()
     raw_plugin_config = snapshot.get("plugins", {}).get(canonical_plugin_id, {})
     if canonical_plugin_id == "cleanup":
@@ -8057,7 +8070,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         # Browser entry points must retain the canonical secure origin. The
         # owned TLS gateway marks its loopback requests to avoid a redirect loop.
-        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/create", "/image", "/system", "/system-details", "/details", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html", "/about"}
+        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/watchlist", "/create", "/image", "/system", "/system-details", "/details", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html", "/about"}
                 and self.headers.get("X-Forwarded-Proto") != "https"):
             self.send_redirect(PUBLIC_ORIGIN + self.path)
             return
@@ -8080,6 +8093,16 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/rabbit-hole/result":
             self.send_json(rabbit_hole_result_payload())
+            return
+        if path == "/api/watchlist":
+            self.send_json(WATCHLIST.snapshot())
+            return
+        watch_history = re.fullmatch(r"/api/watchlist/([a-f0-9]{32})/history", path)
+        if watch_history:
+            try:
+                self.send_json(WATCHLIST.history(watch_history.group(1), parse_qs(parsed.query).get("before", [None])[0]))
+            except ValueError as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
             return
         plugin_match = re.fullmatch(r"/api/plugins/([^/]+)", path)
         if plugin_match:
@@ -8383,6 +8406,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/rabbit-hole":
             self.send_asset("rabbit-hole.html", "text/html; charset=utf-8")
             return
+        if path in {"/watchlist", "/watchlist.js", "/watchlist.css"}:
+            name = "watchlist.html" if path == "/watchlist" else path[1:]
+            content_type = "text/html" if name.endswith(".html") else "text/javascript" if name.endswith(".js") else "text/css"
+            self.send_asset(name, content_type + "; charset=utf-8")
+            return
         if path == "/create":
             self.send_asset("create.html", "text/html; charset=utf-8")
             return
@@ -8519,6 +8547,38 @@ class AriadneHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self.read_json()
+            if path == "/api/watchlist" or path.startswith("/api/watchlist/"):
+                try:
+                    if not isinstance(body, dict):
+                        raise ValueError("Provide a watch object.")
+                    if path == "/api/watchlist":
+                        result = WATCHLIST.save(body)
+                        self.send_json({"ok": True, "watch": result})
+                    elif path == "/api/watchlist/check-all":
+                        self.send_json(WATCHLIST.check_all())
+                    elif path == "/api/watchlist/import-news-topics":
+                        legacy = SIGNAL_SERVICE_CLIENT.watchlist_topics()
+                        if not legacy.get("ok"):
+                            self.send_json({"ok": False, "message": "News topics could not be loaded; nothing was changed."}, 502)
+                            return
+                        imported = []
+                        for topic in legacy.get("topics", []):
+                            title = str(topic.get("topic") or "").strip()
+                            if title:
+                                imported.append(WATCHLIST.save({"title": title, "kind": "topic", "query": title,
+                                    "purpose": "Follow up this existing news topic across the web.", "interval_days": 7,
+                                    "identity": "news-topic:" + str(topic.get("topic_id") or title.casefold())}))
+                        self.send_json({"ok": True, "imported": len(imported)})
+                    else:
+                        match = re.fullmatch(r"/api/watchlist/([a-f0-9]{32})/action", path)
+                        if not match:
+                            self.send_json({"ok": False, "message": "Not found."}, 404)
+                            return
+                        result = WATCHLIST.action(match.group(1), body.get("action"), body.get("days", 1))
+                        self.send_json({"ok": True, "watch": result})
+                except (ValueError, TypeError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                return
             if path == "/api/code-lab/runner":
                 try:
                     self.send_json(lab_runner.launch(str(body.get("run_id") or "")), 202)
@@ -9498,6 +9558,7 @@ def main() -> None:
     # Refresh cached image metadata separately; Home's local card snapshot and
     # final Ariadne ranking remain immediate and do not wait on Signal Service.
     start_news_image_sync()
+    WATCHLIST.start()
     expire_home_chats()
     httpd = ThreadingHTTPServer((HOST, PORT), AriadneHandler)
     if tls is not None:
@@ -9519,6 +9580,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        WATCHLIST.stop()
         if gateway is not None:
             gateway.shutdown()
             gateway.server_close()

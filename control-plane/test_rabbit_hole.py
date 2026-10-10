@@ -9,6 +9,8 @@ import urllib.request
 import uuid
 from pathlib import Path
 from unittest.mock import patch
+from email.message import Message
+from github_budget import GitHubBudget
 
 ROOT = Path(__file__).resolve().parent
 RABBIT_MODULE_PATH = ROOT / "plugins" / "rabbit-hole" / "rabbit_hole.py"
@@ -24,6 +26,7 @@ import server  # noqa: E402
 class FakeResponse:
     def __init__(self, payload):
         self.payload = json.dumps(payload).encode("utf-8")
+        self.headers = Message()
 
     def __enter__(self):
         return self
@@ -31,7 +34,7 @@ class FakeResponse:
     def __exit__(self, *_args):
         return False
 
-    def read(self):
+    def read(self, *_args):
         return self.payload
 
 
@@ -44,6 +47,9 @@ def repository(name, *, language="Python", description="An experimental visual A
         "html_url": f"https://github.com/example/{name}",
         "updated_at": stamp,
         "pushed_at": stamp,
+        "created_at": "2024-01-01T00:00:00Z",
+        "size": 1024,
+        "forks_count": 4,
         "open_issues_count": 3,
         "language": language,
         "topics": topics or ["experimental", "visual"],
@@ -53,7 +59,19 @@ def repository(name, *, language="Python", description="An experimental visual A
     }
 
 
+def inspected(item):
+    item['assessment'] = dict(relevant=True, recommendation='Watch', errors=[], selection_score=10)
+    return item
+
+
 class RabbitHoleAdapterTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        patched = patch.object(rabbit_hole, 'BUDGET', GitHubBudget(Path(temporary.name)/'budget.sqlite3', sleep=lambda _:None))
+        patched.start()
+        self.addCleanup(patched.stop)
+
     def test_explore_returns_small_read_only_candidates_and_platform_notes(self):
         calls = []
         items = [
@@ -63,20 +81,21 @@ class RabbitHoleAdapterTests(unittest.TestCase):
             repository("data-oddity", language="Rust", description="Unusual finance data visualizer", topics=["finance", "visualization"]),
             repository("media-lab", language="JavaScript", description="Generative audio and video experiment", topics=["generative-art", "audio"]),
             repository("too-many", language="Python", description="Another ordinary project", topics=["tool"]),
-        ]
+        ] + [repository(f"extra-{i}", language=language, description="A project to inspect", topics=["tool"]) for i, language in enumerate(["Go", "C#", "Java", "Ruby", "Swift", "Kotlin", "Lua"])]
 
         def fake_urlopen(request, timeout):
             calls.append((request.full_url, dict(request.header_items()), timeout))
             return FakeResponse({"items": items})
 
-        with patch.object(rabbit_hole, "urlopen", side_effect=fake_urlopen):
+        with patch.object(rabbit_hole, "urlopen", side_effect=fake_urlopen), patch.object(rabbit_hole, "enrich", side_effect=inspected):
             result = rabbit_hole.explore()
 
         self.assertTrue(result["ok"])
-        self.assertGreaterEqual(len(result["results"]), 3)
-        self.assertLessEqual(len(result["results"]), 5)
-        self.assertEqual(len(calls), 5)
-        self.assertTrue(all("sort=updated" in call[0] for call in calls))
+        self.assertEqual(len(result["results"]), 10)
+        self.assertEqual(result["results"][0]["metrics"]["created_at"], "2024-01-01T00:00:00Z")
+        self.assertEqual(result["results"][0]["metrics"]["size"], 1024)
+        self.assertEqual(len(calls), len(rabbit_hole._query_strings(rabbit_hole.datetime.now())) + 1)
+        self.assertTrue(all("sort=updated" not in call[0] for call in calls))
         self.assertTrue(all("github_url" in item and item["github_url"].startswith("https://github.com/") for item in result["results"]))
         self.assertIn("GPU-heavy", next(item["platform_concerns"] for item in result["results"] if item["repository_name"].endswith("cuda-camera")))
         self.assertTrue(all("why_interesting" in item and "maintenance_signal" in item for item in result["results"]))
@@ -88,10 +107,41 @@ class RabbitHoleAdapterTests(unittest.TestCase):
             captured["headers"] = dict(request.header_items())
             return FakeResponse({"items": [repository("token-check")]})
 
-        with patch.dict("os.environ", {"ARIADNE_GITHUB_TOKEN": "secret-token"}), patch.object(rabbit_hole, "urlopen", side_effect=fake_urlopen):
+        with patch.dict("os.environ", {"ARIADNE_GITHUB_TOKEN": "secret-token"}), patch.object(rabbit_hole, "urlopen", side_effect=fake_urlopen), patch.object(rabbit_hole, "enrich", side_effect=inspected):
             result = rabbit_hole.explore()
         self.assertEqual(captured["headers"]["Authorization"], "Bearer secret-token")
         self.assertNotIn("secret-token", json.dumps(result))
+
+    def test_screen_before_selection_backfills_and_prefers_documented_fit(self):
+        items = [repository('fresh-trading', description='An experimental trading system', days=0),
+                 repository('mature-inference', description='Local AI inference', days=400),
+                 repository('nvidia-only'), repository('fetch-failed')] + [repository(f'local-{i}') for i in range(12)]
+        def screen(item):
+            inspected(item)
+            name = item['repository_name']
+            if name.endswith('fresh-trading') or name.endswith('nvidia-only'):
+                item['assessment'].update(recommendation='Ignore', relevant=False)
+            if name.endswith('fetch-failed'):
+                item['assessment']['errors'] = ['README HTTP 403']
+            if name.endswith('mature-inference'):
+                item['assessment']['selection_score'] = 85
+            return item
+        with patch.object(rabbit_hole, '_request_json', return_value={'items':items}), patch.object(rabbit_hole, 'enrich', side_effect=screen):
+            result = rabbit_hole.explore()
+        self.assertEqual(len(result['results']), 10)
+        self.assertEqual(result['results'][0]['repository_name'], 'example/mature-inference')
+        self.assertTrue(all(c['assessment']['recommendation'] != 'Ignore' and not c['assessment']['errors'] for c in result['results']))
+        queries = rabbit_hole._query_strings(rabbit_hole.datetime.now())
+        self.assertTrue(all('readme' in q and 'pushed:' not in q and 'created:' not in q for q in queries))
+
+    def test_shortlist_does_not_pad_with_irrelevant_projects(self):
+        def reject(item):
+            inspected(item)
+            item['assessment']['recommendation'] = 'Ignore'
+            return item
+        with patch.object(rabbit_hole, '_request_json', return_value={'items':[repository('trading')]}), patch.object(rabbit_hole, 'enrich', side_effect=reject):
+            result = rabbit_hole.explore()
+        self.assertEqual(result['results'], [])
 
 
 class RabbitHoleServerTests(unittest.TestCase):
@@ -154,7 +204,7 @@ class RabbitHoleServerTests(unittest.TestCase):
             with patch.object(server, "_expire_sessions"), patch.object(server, "load_plugin_callable", return_value=fake_adapter), patch.object(server, "RABBIT_HOLE_RESULT_PATH", result_path):
                 status, html = request("/rabbit-hole")
                 self.assertEqual(status, 200)
-                self.assertIn("Explore GitHub", html)
+                self.assertIn("Find something new", html)
                 self.assertEqual(request("/rabbit-hole.js")[0], 200)
                 self.assertEqual(request("/rabbit-hole.css")[0], 200)
                 _, started = request("/api/plugins/rabbit-hole/run", method="POST", payload={"session_id": session_id, "action": "explore"})

@@ -19,13 +19,22 @@ function pluginSettingsRoute(plugin) {
 
 function renderPlugins(payload) {
   const root = document.querySelector("#plugin-list");
-  const plugins = Array.isArray(payload.plugins) ? payload.plugins : [];
+  const order = {cleanup:0, "rabbit-hole":1, watchlist:2};
+  const plugins = Array.isArray(payload.plugins) ? [...payload.plugins].sort((a,b) =>
+    (order[a.plugin_id] ?? (a.has_ui ? 3 : 4)) - (order[b.plugin_id] ?? (b.has_ui ? 3 : 4)) ||
+    String(a.name || a.plugin_id).localeCompare(String(b.name || b.plugin_id))) : [];
   document.querySelector("#plugin-count").textContent = `${plugins.length} installed`;
   if (!plugins.length) {
     root.replaceChildren(el("div", "plugin-empty", "No plugins are installed. Bundled plugins will appear here when their manifests are present."));
     return;
   }
-  root.replaceChildren(...plugins.map(plugin => {
+  let servicesStarted = false;
+  root.replaceChildren(...plugins.flatMap(plugin => {
+    const section = [];
+    if (!plugin.has_ui && !plugin.has_settings && !(plugin.plugin_id in order) && !servicesStarted) {
+      servicesStarted = true;
+      section.push(el('h2', 'plugin-group-heading', 'Services'));
+    }
     const card = el("article", `plugin-card ${plugin.status === "invalid" ? "plugin-card-invalid" : ""}`);
     const head = el("div", "plugin-card-head");
     const title = el("div", "plugin-title");
@@ -53,7 +62,7 @@ function renderPlugins(payload) {
     }
     if (!actions.children.length) actions.append(el("span", "plugin-action-note", plugin.status === "invalid" ? "Manifest needs attention" : "Invoked by Ariadne when its capability is needed"));
     card.append(head, meta, description, capabilities, detail, actions);
-    return card;
+    return [...section, card];
   }));
 }
 

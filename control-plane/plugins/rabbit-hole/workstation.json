@@ -1,0 +1,7 @@
+{
+  "os": "Windows",
+  "gpu": "AMD Radeon RX 7800 XT",
+  "architecture": "gfx1101 / RDNA3",
+  "vram_gb": 16,
+  "preferred": ["local", "offline", "MCP", "Ollama", "llama.cpp", "OpenAI compatible"]
+}

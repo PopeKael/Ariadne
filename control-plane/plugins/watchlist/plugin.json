@@ -1,0 +1,43 @@
+{
+  "manifest_version": "0.1",
+  "plugin_id": "watchlist",
+  "name": "Watchlist",
+  "version": "0.1.0",
+  "description": "Keep following projects discovered in Rabbit Hole, broader web topics and recurring reminders. Saved watches stay until you archive them.",
+  "author": "Ariadne Core",
+  "plugin_type": "service",
+  "capabilities": [
+    "watchlist.monitor",
+    "watchlist.remind"
+  ],
+  "entry_point": "",
+  "ui": {
+    "available": true,
+    "route": "/watchlist",
+    "label": "Open Watchlist"
+  },
+  "settings": {
+    "available": false,
+    "route": null
+  },
+  "permissions": [
+    "network.request",
+    "filesystem.write"
+  ],
+  "dependencies": [],
+  "hardware_requirements": {},
+  "resource_requirements": {
+    "execution": "Ariadne core scheduler",
+    "storage": "local SQLite watches and check history"
+  },
+  "startup": "application",
+  "enabled": true,
+  "health": {
+    "state": "attention",
+    "detail": "Scheduling runs while Ariadne core is running; current scheduler status is shown inside Watchlist."
+  },
+  "activity": {
+    "supported": false,
+    "transport": "ariadne-core"
+  }
+}

@@ -129,6 +129,10 @@ class SignalServiceClient:
             )
             return {"ok": False, "state": "offline", "message": f"Signal Service unavailable: {str(exc)[:180]}"}
 
+    def watchlist_topics(self) -> dict[str, Any]:
+        """Read existing active news topics without changing their matching ownership."""
+        return self._get("/v1/watchlist/topics")
+
     def briefing(self, limit: int = 6, *, persist_cache: bool = True) -> dict[str, Any]:
         bounded_limit = max(1, min(int(limit), 200))
         result = self._get(f"/v1/briefing?limit={bounded_limit}")

@@ -1,22 +1,33 @@
 """Read-only GitHub repository discovery for Ariadne's Rabbit Hole tool.
 
-This adapter only calls GitHub's public REST search endpoint. It never clones,
-downloads, installs, imports, or executes repository contents.
+This adapter reads public GitHub metadata and bounded documentation. It never
+clones, installs, imports, or executes repository code.
 """
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import importlib.util
 import json
 import math
 import os
 import re
+from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from github_budget import BUDGET, GitHubPaused
+
+# Like the trusted plugin adapter itself, load its assessment helper afresh for
+# each exploration so source fixes do not require restarting the resident core.
+_assessment_spec = importlib.util.spec_from_file_location("ariadne_rabbit_assessment", Path(__file__).resolve().parents[2] / "rabbit_assessment.py")
+_assessment = importlib.util.module_from_spec(_assessment_spec)
+_assessment_spec.loader.exec_module(_assessment)
+enrich = _assessment.enrich
 
 
 GITHUB_SEARCH_URL = "https://api.github.com/search/repositories"
-MAX_RESULTS = 5
+MAX_RESULTS = 10
 MAX_CANDIDATES = 120
 SEARCH_TIMEOUT_SECONDS = 20
 REPORT = Callable[[str, str, float | int | None], None]
@@ -54,18 +65,18 @@ def _age_text(value: object, now: datetime) -> str:
 
 
 def _query_strings(now: datetime) -> list[str]:
-    cutoff = (now - timedelta(days=120)).date().isoformat()
-    base = f"is:public archived:false fork:false pushed:>={cutoff}"
+    # Mature projects remain eligible; recency is a tie-break, not a gate.
+    base = "is:public archived:false fork:false in:name,description,readme"
     return [
-        f"{base} (topic:ai OR topic:agents OR topic:local-ai)",
-        f"{base} (topic:computer-vision OR topic:multimodal OR topic:generative-art)",
-        f"{base} (topic:simulation OR topic:creative-coding OR topic:visualization)",
-        f"{base} (topic:automation OR topic:robotics OR topic:browser-automation)",
-        f'{base} (experimental OR "proof of concept" OR unusual)'
+        f'{base} "RX 7800 XT" inference',
+        f'{base} gfx1101 inference',
+        f'{base} Windows AMD "local AI"',
+        f'{base} Ollama MCP',
+        f'{base} "llama.cpp" Windows',
     ]
 
 
-def _request_json(query: str, token: str | None) -> dict[str, Any]:
+def _request_json(query: str, token: str | None, page: int = 1) -> dict[str, Any]:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "Ariadne-Rabbit-Hole/0.1",
@@ -73,17 +84,14 @@ def _request_json(query: str, token: str | None) -> dict[str, Any]:
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    url = f"{GITHUB_SEARCH_URL}?{urlencode({'q': query, 'sort': 'updated', 'order': 'desc', 'per_page': 30})}"
+    # No explicit sort: GitHub best-match relevance includes README matches.
+    url = f"{GITHUB_SEARCH_URL}?{urlencode({'q': query, 'per_page': 30, 'page': page})}"
     request = Request(url, headers=headers, method="GET")
-    with urlopen(request, timeout=SEARCH_TIMEOUT_SECONDS) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    raw, _ = BUDGET.request(request, urlopen, timeout=SEARCH_TIMEOUT_SECONDS, max_bytes=4_000_000)
+    payload = json.loads(raw)
     if not isinstance(payload, dict):
         raise ValueError("GitHub returned a non-object search response.")
     return payload
-
-
-def _keyword_score(text: str, words: tuple[str, ...], weight: float) -> float:
-    return min(weight, sum(1 for word in words if word in text) * (weight / max(3, len(words))))
 
 
 def _score(item: dict[str, Any], now: datetime) -> float:
@@ -96,14 +104,13 @@ def _score(item: dict[str, Any], now: datetime) -> float:
     recency = 0.0
     if pushed:
         days = max(0, (now - pushed).total_seconds() / 86400)
-        recency = 25.0 if days <= 7 else 18.0 if days <= 30 else 10.0 if days <= 120 else 0.0
-    unusual = _keyword_score(text, ("experimental", "weird", "unusual", "surprising", "playground", "prototype", "generative", "simulation", "toy", "odd"), 25)
-    demo = _keyword_score(text, ("visual", "interactive", "demo", "browser", "camera", "3d", "real-time", "shader", "audio", "video", "game"), 20)
-    useful = _keyword_score(text, ("ai", "agent", "automation", "vision", "multimodal", "local", "offline", "robot", "finance", "data"), 15)
-    language_bonus = 4.0 if str(item.get("language") or "").casefold() in {"python", "javascript", "typescript", "rust", "go"} else 0.0
+        recency = 3.0 if days <= 30 else 1.0 if days <= 120 else 0.0
     stars = item.get("stargazers_count") if isinstance(item.get("stargazers_count"), (int, float)) else 0
     popularity_tiebreak = min(6.0, math.log1p(max(0, stars)) / 2.5)
-    return recency + unusual + demo + useful + language_bonus + popularity_tiebreak
+    hardware = 30 * bool(re.search(r"rx.?7800|gfx1101|rdna.?3", text))
+    integration = 20 * bool(re.search(r"ollama|llama\.cpp|\bmcp\b|openai[- ]compatible|local[- ]ai|inference", text))
+    media = 8 * bool(re.search(r"speech|audio|video|image|vision", text))
+    return hardware + integration + media + recency + popularity_tiebreak
 
 
 def _why_interesting(item: dict[str, Any]) -> str:
@@ -165,32 +172,54 @@ def _candidate(item: dict[str, Any], now: datetime, score: float) -> dict[str, A
         "language": _clean_text(item.get("language"), 40) or "Not stated",
         "topics": [str(topic) for topic in item.get("topics", [])[:8] if isinstance(topic, str)],
         "score": round(score, 2),
+        "metrics": {key: item.get(key) for key in (
+            "created_at", "pushed_at", "updated_at", "stargazers_count", "forks_count",
+            "open_issues_count", "size", "archived", "disabled")},
     }
 
 
-def explore(config: dict[str, Any] | None = None, report: REPORT | None = None) -> dict[str, Any]:
-    """Search GitHub and return 3-5 ranked, read-only exploration candidates."""
-    del config
+def search_candidates(page: int, report: REPORT) -> dict[str, Any]:
+    """Search GitHub and return up to 10 ranked, read-only exploration candidates."""
     now = datetime.now(timezone.utc)
+    try:
+        BUDGET.begin_discovery()
+    except GitHubPaused as exc:
+        return dict(ok=False, candidates=[], warnings=[str(exc)], queries_attempted=0)
     token = os.environ.get("ARIADNE_GITHUB_TOKEN", "").strip() or None
     report = report or (lambda _stage, _status, _progress=None: None)
     found: dict[str, tuple[dict[str, Any], float]] = {}
     warnings: list[str] = []
     queries = _query_strings(now)
+    # User-nominated projects go through the same evidence screening.
+    nominations = []
+    try:
+        nominations = json.loads(Path(__file__).with_name("discovery-sources.json").read_text(encoding="utf-8"))["repositories"][:5]
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    queries += ["repo:" + name for name in nominations if isinstance(name, str) and re.fullmatch(r"[\w.-]+/[\w.-]+", name)]
+    if page > 1:
+        queries = queries[:5]  # Explicit nominations have no second result page.
+    successful = 0
     for index, query in enumerate(queries, start=1):
-        report("searching", f"Searching GitHub for unusual active projects ({index}/{len(queries)})…", (index - 1) / len(queries) * 80)
+        report("searching", f"Searching GitHub for workstation and workflow matches ({index}/{len(queries)})…", (index - 1) / len(queries) * 80)
         try:
-            payload = _request_json(query, token)
+            payload = _request_json(query, token, page)
+            successful += 1
         except Exception as exc:
             warnings.append(f"Search {index} failed: {str(exc)[:180]}")
+            if isinstance(exc, GitHubPaused):
+                break
             continue
-        for item in payload.get("items", []) if isinstance(payload.get("items"), list) else []:
+        for position, item in enumerate(payload.get("items", []) if isinstance(payload.get("items"), list) else []):
             if not isinstance(item, dict) or item.get("archived") or item.get("fork"):
                 continue
             full_name = str(item.get("full_name") or "").casefold()
             if not full_name:
                 continue
-            score = _score(item, now)
+            # Keep README-only matches in contention ahead of source collection.
+            score = _score(item, now) + (30 if index <= 2 else 15) + max(0, 15 - position)
+            if str(item.get("full_name")) in nominations:
+                score += 100
             current = found.get(full_name)
             if current is None or score > current[1]:
                 found[full_name] = (item, score)
@@ -198,30 +227,22 @@ def explore(config: dict[str, Any] | None = None, report: REPORT | None = None) 
 
     ranked = sorted(found.values(), key=lambda pair: (-pair[1], str(pair[0].get("full_name") or "").casefold()))[:MAX_CANDIDATES]
     results: list[dict[str, Any]] = []
-    seen_languages: dict[str, int] = {}
     for item, score in ranked:
-        language = str(item.get("language") or "Not stated").casefold()
-        # Keep the small result set from becoming five near-identical repositories.
-        if seen_languages.get(language, 0) >= 2:
-            continue
         candidate = _candidate(item, now, score)
         if candidate is None:
             continue
         results.append(candidate)
-        seen_languages[language] = seen_languages.get(language, 0) + 1
-        if len(results) == MAX_RESULTS:
-            break
-    report("completed", f"Found {len(results)} rabbit-hole candidate{'s' if len(results) != 1 else ''}.", 100)
-    return {
-        "ok": bool(results),
-        "completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "source": "GitHub public REST repository search",
-        "authenticated": bool(token),
-        "queries_attempted": len(queries),
-        "results": results,
-        "warnings": warnings,
-        "message": "Ariadne found a few things worth trying." if results else "GitHub returned no usable candidates; try again later.",
-    }
+    return dict(ok=bool(successful), candidates=results, search_matches=len(found),
+                queries_attempted=len(queries), warnings=warnings)
+
+
+def explore(config: dict[str, Any] | None = None, report: REPORT | None = None) -> dict[str, Any]:
+    spec = importlib.util.spec_from_file_location('ariadne_rabbit_discovery', Path(__file__).resolve().parents[2] / 'rabbit_discovery.py')
+    discovery = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(discovery)
+    result = discovery.advance(config or {}, search_candidates, enrich, report or (lambda *_: None))
+    result['authenticated'] = bool(os.environ.get('ARIADNE_GITHUB_TOKEN', '').strip())
+    return result
 
 
 __all__ = ["MAX_RESULTS", "explore"]
