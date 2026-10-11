@@ -17,6 +17,17 @@
     <section id="watch-list" aria-label="Saved watches"></section>
     <footer><p id="scheduler-note"></p><p>New watches never replace old ones. Findings are source evidence for you to review; a changed search result is not a confirmed development.</p><button id="import-topics" class="quiet-button">Bring in existing news topics</button></footer>
   </main>
+  <dialog id="project-editor" aria-labelledby="project-title">
+    <form id="project-form">
+      <div class="dialog-heading"><h2 id="project-title">Watch a GitHub project</h2><button type="button" data-close="project-editor" aria-label="Close project editor">×</button></div>
+      <p>Got a link? Paste it here. We’ll name the watch from the repository and check for updates every week.</p>
+      <label>GitHub project link<input name="repository" type="url" placeholder="https://github.com/owner/project" required autofocus></label>
+      <p class="field-note">Follows the README, releases and recent issues. Checks run while Ariadne is running and respect the shared GitHub limits.</p>
+      <details id="project-options"><summary>Optional settings</summary><label>Name <span>(leave blank to use owner/project)</span><input name="title" maxlength="200"></label><label>Check every (days)<input name="interval_days" type="number" min="1" max="366" value="7" required></label></details>
+      <p id="project-status" role="status" aria-live="polite"></p>
+      <div class="form-actions"><button type="button" id="other-watch">Topic, reminder or another source</button><button type="submit" class="primary">Watch project</button></div>
+    </form>
+  </dialog>
   <dialog id="watch-editor" aria-labelledby="editor-title">
     <form id="watch-form">
       <div class="dialog-heading"><h2 id="editor-title">What shall we keep an eye on?</h2><button type="button" data-close="watch-editor" aria-label="Close editor">×</button></div>

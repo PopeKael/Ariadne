@@ -72,7 +72,51 @@
     $("#editor-status").textContent = "";
     updateKind(); editor.showModal();
   }
-  $("#add-watch").addEventListener("click", () => edit());
+  const projectEditor = $('#project-editor'), projectForm = $('#project-form');
+  function addProject() {
+    projectForm.reset();
+    $('#project-options').open = false;
+    $('#project-status').textContent = '';
+    projectEditor.showModal();
+    projectForm.elements.repository.focus();
+  }
+  function projectLink(value) {
+    let url;
+    try { url = new URL(value.trim()); } catch { throw new Error('Paste a GitHub repository link, such as https://github.com/owner/project.'); }
+    const parts = url.pathname.replace(/^\/+|\/+$/g, '').split('/');
+    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || url.username || url.password || url.port || url.search || url.hash || parts.length !== 2) {
+      throw new Error('Use the main https://github.com/owner/project link, without a branch, issue or extra parameters.');
+    }
+    const name = parts.join('/').replace(/\.git$/, '');
+    if (!/^[A-Za-z0-9_-][A-Za-z0-9_.-]*\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(name)) throw new Error('That link needs a GitHub owner and repository name.');
+    return {name, url:'https://github.com/' + name};
+  }
+  $('#add-watch').addEventListener('click', addProject);
+  $('#other-watch').addEventListener('click', () => {projectEditor.close(); edit();});
+  projectForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const submit = projectForm.querySelector('[type="submit"]');
+    if (submit.disabled) return;
+    submit.disabled = true;
+    $('#project-status').textContent = 'Saving your project…';
+    try {
+      const repository = projectLink(projectForm.elements.repository.value);
+      const existing = watches.find(w => w.identity === 'github:' + repository.url.toLowerCase());
+      const result = await api('/api/watchlist', {
+        title:projectForm.elements.title.value.trim() || repository.name, kind:'project',
+        sources:[repository.url], query:'', interval_days:Number(projectForm.elements.interval_days.value),
+        purpose:'Follow releases, README and issues for local Windows use, RX 7800 XT/gfx1101/RDNA3 AMD support, 16 GB VRAM, offline use, disk requirements and a practical Garage Alchemy test.'
+      });
+      projectEditor.close();
+      filter = result.watch.state;
+      document.querySelectorAll('[data-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.filter === filter)));
+      rendered = ''; await load();
+      $('#watch-status').textContent = existing
+        ? `${result.watch.title} is already saved (${result.watch.state}); its settings were kept.`
+        : `Watching ${result.watch.title}. First check queued; then every ${result.watch.interval_days} days. Use Refine to change settings later.`;
+    } catch(error) {$('#project-status').textContent = error.message;}
+    finally {submit.disabled = false;}
+  });
   $("#check-all").addEventListener("click", async event => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -114,6 +158,7 @@
     const button = event.target.closest("button"); if (!button) return;
     if (button.dataset.example) {
       const kind = button.dataset.example;
+      if (kind === 'project') {addProject(); return;}
       edit(kind === "reminder" ? {kind,title:"Review Windows update schedule",purpose:"Review and renew my chosen Windows update schedule.",interval_days:28} : {kind}); return;
     }
     const {id,action} = button.dataset; if (!id) return;

@@ -6,6 +6,7 @@ All notable repository-level changes are recorded here. Entries describe changes
 
 ### Changed
 
+- Simplified Watchlist project creation to a single GitHub link and Watch project action, with automatic naming, weekly checks, optional name/frequency settings and separate access to topics/reminders. Verified the live form and added browser-logic regression coverage.
 - Fixed Image Studio with background render jobs, real ComfyUI stages and sampling progress, persistent prompt/settings drafts, and a completed preview protected from stale status updates. Default output is 1280 × 720 Landscape. Recorded the public-address render and regression checks in [checkpoint notes](docs/checkpoint-2026-10-10-image-studio.md).
 - Updated About, the control-plane guide and Watchlist documentation for the accepted persistent-library milestone; linked the implementation and verification record from the documentation index.
 - Rabbit Hole now keeps a persistent undecided-project library with nine-card desktop pages in three columns, local Previous/Next looping, Dismiss/Undo, saved-watch exclusion and a direct GitHub link check. Supplied projects survive quota pauses with visibly pending analysis. Earlier seen projects are recovered from surviving cached evidence where possible, with incomplete metadata labelled. Next-page progress and failures remain visible beside the controls.

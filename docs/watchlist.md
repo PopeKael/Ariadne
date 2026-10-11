@@ -11,6 +11,27 @@ cap. Archive is reversible; there is deliberately no delete endpoint.
 
 ## Watch types and interaction
 
+### Add a GitHub project (11 October 2026)
+
+On **Tools → Watchlist**, choose **Add a watch**, paste the main GitHub repository
+link and press **Watch project**. That is all the required information. The watch
+uses `owner/project` as its name, queues its first source check and repeats every
+seven days while Ariadne is running, under the existing shared GitHub budget.
+**Optional settings** lets you change the name or frequency. **Refine** remains
+available after saving. Adding an existing repository keeps its settings and
+paused/archived state; it does not create a duplicate or resume it silently.
+
+**Topic, reminder or another source** opens the full editor for non-GitHub watches.
+Rabbit Hole's **Check this project** remains the separate route for assessing a
+supplied repository before deciding whether to watch it.
+
+The one-link dialog and invalid-link feedback were verified on the canonical
+domain. The browser-logic regression covers the generated save payload, default
+name/frequency, link validation before submission, optional settings, preserving
+input after a save failure and access to the general editor. No new live watch
+was created during verification. These are static UI changes; no core restart
+is needed. Refresh the Watchlist page to load them.
+
 - Project: one or more source URLs, with an optional web query.
 - Topic: a saved web query, source URLs, or both.
 - Reminder: a recurring task for Warren; it never searches or changes Windows.
