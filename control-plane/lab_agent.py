@@ -1,5 +1,6 @@
 """Native bounded controller. No provider, browser, or filesystem policy here."""
 import json
+import difflib
 import os
 import time
 from dataclasses import dataclass
@@ -125,6 +126,15 @@ class LabAgent:
                                 'reason':str(action.get('reason',''))[:240] if isinstance(action,dict) else '',
                                 'ok':observation.get('ok'), 'revision':revision,
                                 'error':str(observation.get('error',''))[:240]})
+                if name == 'patch' and observation.get('ok'):
+                    edits = action['edits']
+                    # Record what actually changed, not just the model's
+                    # pre-edit diagnosis. Keep a small shared excerpt budget.
+                    history[-1]['changes'] = [
+                        {'path':edit['path'], 'anchor':edit['search'][:120],
+                         'diff':'\n'.join(difflib.unified_diff(edit['search'].splitlines(),
+                             edit['replace'].splitlines(),n=1))[:max(40,640//len(edits))]}
+                        for edit in edits]
                 state = {'workspace':{'path':'index.html','revision':revision},'action_history':history}
                 messages = trajectory[:2] + [{'role':'user','content':json.dumps({'workspace_state':state},ensure_ascii=False)}]
                 messages.extend(value for key,value in retained.items() if key != 'revision' and value is not latest)

@@ -73,6 +73,10 @@ class ContextTests(unittest.TestCase):
             self.assertNotIn('unrelated source section 299',json.dumps(messages))
         self.assertIn('unrelated source section 299',data['trajectory'][2]['content'])
         self.assertTrue(all(a['revision'] for a in json.loads(calls[-1][2]['content'])['workspace_state']['action_history']))
+        changes = [h['changes'] for h in json.loads(calls[-1][2]['content'])['workspace_state']['action_history'] if 'changes' in h]
+        self.assertEqual(len(changes),3)
+        self.assertIn('-Revision 2',str(changes[-1]))
+        self.assertIn('+Revision 3',str(changes[-1]))
         latest = json.dumps(calls[-1])
         self.assertIn('Current browser receipt 2',latest)
         self.assertNotIn('Current browser receipt 0',latest)
@@ -109,6 +113,18 @@ class ContextTests(unittest.TestCase):
         second = json.loads(calls[3][-1]['content'])['observation']
         self.assertEqual(first['next_offset'],6000)
         self.assertEqual(first['content']+second['content'],source)
+        self.assertEqual(data['stop_reason'],'VERIFIED')
+
+    def test_search_exposes_function_body_and_continuation(self):
+        body = 'function sample() {\n'+''.join('  // source detail '+str(n)+' '+('x'*30)+'\n' for n in range(70))+'}\n'
+        source = GOOD.replace('</body>','\n<script>\n'+body+'</script>\n</body>')
+        data,calls = fixtures.AgentTests().run_actions([{'action':'write','project':project(source)},
+            {'action':'read','search':'function sample() {'},
+            {'action':'run'},{'action':'finish','summary':'Complete'}])
+        snippet = json.loads(calls[2][-1]['content'])['observation']['snippets'][0]
+        self.assertIn('source detail 10',snippet['content'])
+        self.assertTrue(snippet['truncated'])
+        self.assertEqual(snippet['next_offset'],snippet['offset']+2000)
         self.assertEqual(data['stop_reason'],'VERIFIED')
 
     def test_duplicate_patch_failure_reports_actual_match_locations(self):
