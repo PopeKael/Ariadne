@@ -25,6 +25,7 @@ MODEL_STORE = Path(r"F:\AI\Models\Ollama")
 MODEL_LIBRARY = Path("manifests") / "registry.ollama.ai" / "library"
 _LISTENING_LINE = re.compile(r"^\s*TCP\s+(\S+)\s+(\S+)\s+LISTENING\s+(\d+)\s*$", re.IGNORECASE)
 _OWNED_OLLAMA_PROCESS: subprocess.Popen | None = None
+_HOST_RUNTIME_OWNER = False
 
 
 def _safe_is_file(path: Path) -> bool:
@@ -134,7 +135,17 @@ def start_owned_ollama(
     *,
     startup_timeout: float = 45.0,
 ) -> dict[str, object]:
-    """Replace unmanaged Ollama, launch it with F: explicitly, then verify its full catalogue."""
+    """Ask the Rust host to own Ollama; development-only runs use the local fallback."""
+    global _HOST_RUNTIME_OWNER
+    if (
+        os.name == "nt"
+        and os.environ.get("ARIADNE_RUNTIME_SUPERVISOR") == "1"
+        and os.environ.get("ARIADNE_ALLOW_UNSUPERVISED_CORE") != "1"
+    ):
+        store = sync_model_store_environment(required_models)
+        response = _request_host_ollama(endpoint, store, required_models, startup_timeout)
+        _HOST_RUNTIME_OWNER = True
+        return response
     global _OWNED_OLLAMA_PROCESS
     if os.name != "nt":
         raise RuntimeError("Ariadne-owned Ollama startup is only supported on Windows.")
@@ -217,6 +228,9 @@ def start_owned_ollama(
 def stop_owned_ollama() -> None:
     """Stop only the Ollama server process Ariadne launched, including its children."""
     global _OWNED_OLLAMA_PROCESS
+    if _HOST_RUNTIME_OWNER:
+        # The resident Rust host retains the process handle and owns shutdown.
+        return
     process = _OWNED_OLLAMA_PROCESS
     if process is None:
         return
@@ -235,6 +249,61 @@ def stop_owned_ollama() -> None:
 
 
 atexit.register(stop_owned_ollama)
+
+
+def _request_host_ollama(
+    endpoint: str,
+    store: str,
+    required_models: tuple[str, ...],
+    timeout: float,
+) -> dict[str, object]:
+    """Ask the resident Rust host to start or reconcile the Ollama service."""
+    if os.name != "nt":
+        raise RuntimeError("The Rust Ollama supervisor is only available on Windows.")
+    pipe_name = r"\\.\pipe\ariadne-runtime"
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.WaitNamedPipeW.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32]
+    kernel32.WaitNamedPipeW.restype = ctypes.c_int
+    wait_ms = max(1, min(int(timeout * 1000), 60_000))
+    if not kernel32.WaitNamedPipeW(pipe_name, wait_ms):
+        raise RuntimeError("The Rust host runtime supervisor is not accepting requests.")
+    request = {
+        "v": 1,
+        "type": "ensure_ollama",
+        "endpoint": endpoint,
+        "model_store": store,
+        "required_models": list(dict.fromkeys(required_models)),
+    }
+    try:
+        with open(pipe_name, "r+b", buffering=0) as pipe:
+            pipe.write(json.dumps(request, separators=(",", ":")).encode("utf-8") + b"\n")
+            response = bytearray()
+            deadline = time.monotonic() + max(1.0, timeout)
+            while time.monotonic() < deadline:
+                byte = pipe.read(1)
+                if not byte:
+                    break
+                if byte == b"\n":
+                    break
+                response.extend(byte)
+                if len(response) > 32 * 1024:
+                    raise RuntimeError("The Rust runtime supervisor returned an oversized response.")
+        payload = json.loads(response.decode("utf-8"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Could not complete Ollama ownership request with the Rust host: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("v") != 1 or not payload.get("ok"):
+        detail = payload.get("detail") if isinstance(payload, dict) else None
+        raise RuntimeError(str(detail or "The Rust host could not establish Ollama ownership."))
+    return {
+        "state": payload.get("state", "online"),
+        "available": True,
+        "owned": True,
+        "pid": payload.get("pid"),
+        "store": store,
+        "models": payload.get("models", []),
+        "version": payload.get("version"),
+        "detail": payload.get("detail", "Rust host verified the Ariadne Ollama runtime."),
+    }
 
 
 def model_manifest_path(store: str, model: str) -> Path:
@@ -265,6 +334,53 @@ def _request_models(endpoint: str, timeout: float) -> list[str] | None:
         return [str(row["name"]) for row in rows if isinstance(row, dict) and row.get("name")]
     except (OSError, ValueError, TypeError, KeyError, urllib.error.URLError, json.JSONDecodeError):
         return None
+
+
+def runtime_identity(endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
+    """Return non-secret identity details for the Ollama API and its listener."""
+    version: str | None = None
+    request = urllib.request.Request(
+        endpoint.rstrip("/") + "/api/version",
+        headers={"Accept": "application/json", "User-Agent": "Ariadne Ollama runtime monitor"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=DEFAULT_PROBE_TIMEOUT_SECONDS) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        if isinstance(payload, dict) and payload.get("version") is not None:
+            version = str(payload["version"])
+    except (OSError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError):
+        pass
+
+    listener_pids: list[int] = []
+    try:
+        listener_pids = _listener_pids()
+    except RuntimeError:
+        # API version still helps diagnose a changed service when process queries are unavailable.
+        pass
+    return {"version": version, "listener_pids": listener_pids}
+
+
+def ollama_update_in_progress() -> bool:
+    """Avoid racing the Ollama installer while it replaces the owned runtime."""
+    if os.name != "nt":
+        return False
+    try:
+        completed = subprocess.run(
+            ["tasklist.exe", "/FI", "IMAGENAME eq OllamaSetup.exe", "/FO", "CSV", "/NH"],
+            capture_output=True,
+            text=True,
+            timeout=1.5,
+            check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("Could not determine whether the Ollama installer is running.") from exc
+    if completed.returncode != 0:
+        raise RuntimeError("Could not determine whether the Ollama installer is running.")
+    return any(
+        row and row[0].strip().strip('"').casefold() == "ollamasetup.exe"
+        for row in csv.reader(completed.stdout.splitlines())
+    )
 
 
 def _listener_pids(port: int = OLLAMA_PORT) -> list[int]:

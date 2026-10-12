@@ -4,14 +4,16 @@
 
 `ariadne-host.exe` is the small Windows resident process. It owns the
 system-tray icon and menu, the per-user single-instance mutex, Python-core
-startup/shutdown/restart, the desktop avatar overlay, and the local named-pipe
-receiver. It does not reason about queries, access the Vault, call Ollama, or
-replace Ariadne's HTTP server.
+startup/shutdown/restart, the Ollama server process lifecycle, the desktop
+avatar overlay, and local named-pipe receivers. It does not reason about
+queries, access the Vault, run inference, or replace Ariadne's HTTP server.
 
 The Python Core remains `control-plane/server.py`. It owns Ariadne Home, the
-HTTP API, retrieval, Vault access, routing, models, tools, and workload
-lifecycle. Home emits optional presentation hints through `avatar_events.py`;
-transport failure is deliberately ignored by the core.
+HTTP API, retrieval, Vault access, routing, inference requests, tools, and the
+GPU/model-residency arbiter. It asks the Rust host to start or reconcile
+Ollama; the host retains and monitors the process handle. Home emits optional
+presentation hints through `avatar_events.py`; transport failure is
+deliberately ignored by the core.
 
 ## Build and manual run
 
@@ -52,6 +54,27 @@ Canonical states are: `idle`, `listening`, `thinking`, `searching_vault`,
 
 Python callers should use `avatar_events.emit_state()` or the other helpers;
 they must not open the pipe directly in request code.
+
+## Ollama runtime protocol v1
+
+Pipe: `\\.\pipe\ariadne-runtime`
+
+The pipe uses a protected DACL for its owner, LocalSystem, and Administrators,
+and rejects remote clients. Python opens it only when launched by the resident
+host. Requests and responses are UTF-8, newline-delimited JSON. The current
+request asks the host to ensure a local Ollama endpoint, model-store path, and
+required model catalogue:
+
+```json
+{"v":1,"type":"ensure_ollama","endpoint":"http://127.0.0.1:11434","model_store":"F:\\AI\\Models\\Ollama","required_models":["qwen3.5:9b-q4_K_M"]}
+```
+
+The host validates the required manifests, starts Ollama with the selected
+`OLLAMA_MODELS`, and verifies that the owned PID still listens on port 11434
+and exposes the required catalogue. It logs process/version changes and
+reconciles after an installer finishes. The Python arbiter remains responsible
+for model residency and GPU workload transitions. Host lifecycle details are
+written to `%LOCALAPPDATA%\Ariadne\host.log`.
 
 ## Avatar assets
 

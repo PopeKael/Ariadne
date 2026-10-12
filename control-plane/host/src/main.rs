@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod idle_webm;
+mod ollama_supervisor;
 mod startup_trace;
 
 use serde::{Deserialize, Serialize};
@@ -397,6 +398,7 @@ fn spawn_core(
     log_line(format!("launching Python core: {}", command_text));
     startup_trace::mark("core_spawn_start", "started", serde_json::json!({}));
     let mut command = Command::new(&launcher);
+    command.env("ARIADNE_RUNTIME_SUPERVISOR", "1");
     if let Some(run_id) = startup_trace::run_id() {
         command.env("ARIADNE_STARTUP_RUN_ID", run_id);
     }
@@ -537,15 +539,32 @@ impl CoreSupervisor {
         let (tx, rx) = std::sync::mpsc::channel();
         let join = thread::spawn(move || {
             let mut process = spawn_core(&project_root, ui.clone());
+            let mut restart_at: Option<Instant> = process.is_none().then(|| Instant::now() + Duration::from_secs(1));
+            let mut restart_attempt = 0u32;
             loop {
                 if let Some(current) = process.as_ref() {
                     if current.wait_rx.try_recv().is_ok() {
+                        log_line("Python core exited unexpectedly; Rust host will restart it");
                         process = None;
+                        restart_at = Some(Instant::now() + Duration::from_secs(1));
                     }
+                }
+                if process.is_none() && restart_at.is_some_and(|at| Instant::now() >= at) {
+                    restart_attempt = restart_attempt.saturating_add(1);
+                    log_line(format!("automatic Python core restart attempt {}", restart_attempt));
+                    process = spawn_core(&project_root, ui.clone());
+                    let delay = 1u64 << restart_attempt.min(5);
+                    restart_at = if process.is_some() {
+                        None
+                    } else {
+                        Some(Instant::now() + Duration::from_secs(delay.min(30)))
+                    };
                 }
                 match rx.recv_timeout(Duration::from_millis(500)) {
                     Ok(SupervisorCommand::Restart) => {
                         log_line("restart requested");
+                        restart_at = None;
+                        restart_attempt = 0;
                         if let Some(current) = process.as_ref() {
                             terminate_core(current);
                         }
@@ -553,6 +572,10 @@ impl CoreSupervisor {
                             let _ = current.wait_rx.recv_timeout(Duration::from_secs(10));
                         }
                         process = spawn_core(&project_root, ui.clone());
+                        if process.is_none() {
+                            restart_attempt = 1;
+                            restart_at = Some(Instant::now() + Duration::from_secs(2));
+                        }
                     }
                     Ok(SupervisorCommand::Stop)
                     | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
@@ -2720,6 +2743,12 @@ fn run(origin: Instant) -> Result<(), String> {
             owner_pid,
             GetCurrentProcessId()
         ));
+        let runtime_supervisor = ollama_supervisor::OllamaSupervisor::start();
+        let stop_runtime_pipe = Arc::new(AtomicBool::new(false));
+        let runtime_pipe_thread = ollama_supervisor::pipe_receiver(
+            runtime_supervisor.clone(),
+            stop_runtime_pipe.clone(),
+        );
         let stop_pipe = Arc::new(AtomicBool::new(false));
         let pipe_thread = pipe_receiver(queue.clone(), stop_pipe.clone());
         let supervisor = CoreSupervisor::start(project_root.clone(), queue.clone());
@@ -2815,6 +2844,10 @@ fn run(origin: Instant) -> Result<(), String> {
         // read alive long enough to prevent the host from reaching orderly
         // shutdown completion.
         supervisor.stop();
+        runtime_supervisor.stop();
+        stop_runtime_pipe.store(true, Ordering::Release);
+        ollama_supervisor::wake_pipe_receiver();
+        let _ = runtime_pipe_thread.join();
         stop_pipe.store(true, Ordering::Release);
         wake_pipe_receiver();
         let _ = pipe_thread.join();

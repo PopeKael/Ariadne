@@ -73,7 +73,12 @@ from librarian_harness import (
     interpret_and_resolve,
     request_needs_personal_context,
 )
-from ollama_runtime import start_owned_ollama, stop_owned_ollama
+from ollama_runtime import (
+    ollama_update_in_progress,
+    runtime_identity,
+    start_owned_ollama,
+    stop_owned_ollama,
+)
 from tls_transport import client_context, server_context
 from https_gateway import load_gateway, start_gateway
 from evidence_router import decide as decide_evidence, external_search_needed
@@ -509,6 +514,10 @@ MODEL_RESIDENCY_TRACE_INTERVAL_SECONDS = max(
 HOME_MODEL_PRELOAD_LOCK = threading.Lock()
 HOME_MODEL_PRELOAD_THREAD: threading.Thread | None = None
 HOME_MODEL_PRELOAD_STATUS: dict[str, object] = {"state": "unknown", "model": HOME_CHAT_MODEL, "detail": "Home model residency has not been checked."}
+OLLAMA_RUNTIME_IDENTITY: dict[str, object] | None = None
+OLLAMA_RECOVERY_LOCK = threading.Lock()
+OLLAMA_RECOVERY_LAST_ATTEMPT: float | None = None
+OLLAMA_RECOVERY_BACKOFF_SECONDS = 120.0
 MODEL_SWITCH_LOCK = threading.Lock()
 LAB_RESIDENT_MODEL: str | None = None
 GPU_ARBITRATION_LOCK = threading.RLock()
@@ -1670,15 +1679,97 @@ def ollama_catalog() -> dict[str, object]:
         return {"available": False, "models": [], "loaded": [], "loaded_details": [], "detail": str(exc)}
 
 
+def observe_ollama_runtime_identity(*, reason: str) -> tuple[bool, dict[str, object]]:
+    """Log Ollama API-version or listener-PID changes without recording user content."""
+    global OLLAMA_RUNTIME_IDENTITY
+    current = runtime_identity(OLLAMA_URL)
+    previous = OLLAMA_RUNTIME_IDENTITY
+    changed = previous is not None and current != previous
+    if previous is None:
+        STARTUP_TRACE.mark("ollama_runtime_identity_observed", reason=reason, **current)
+        record_model_residency_event("ollama_runtime_identity_observed", reason=reason, detail=current)
+    elif changed:
+        STARTUP_TRACE.mark(
+            "ollama_runtime_identity_changed", reason=reason,
+            previous=previous, current=current,
+        )
+        record_model_residency_event(
+            "ollama_runtime_identity_changed", reason=reason,
+            detail={"previous": previous, "current": current},
+        )
+    OLLAMA_RUNTIME_IDENTITY = current
+    return changed, current
+
+
+def ollama_chat_endpoint_status() -> tuple[bool, str]:
+    """Probe the chat route with a deliberately missing model, so no model can load."""
+    request = urllib.request.Request(
+        f"{OLLAMA_URL}/api/chat",
+        data=json.dumps({"model": "__ariadne_route_probe_missing_model__", "messages": [], "stream": False}).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=2.0):
+            return True, "Ollama chat endpoint is responding."
+    except urllib.error.HTTPError as exc:
+        if exc.code in {400, 422}:
+            return True, "Ollama chat endpoint is present."
+        if exc.code == 404:
+            try:
+                body = exc.read(2048).decode("utf-8", errors="replace")
+                payload = json.loads(body)
+                message = str(payload.get("error") or "") if isinstance(payload, dict) else ""
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                message = ""
+            if "model" in message.casefold() and "not found" in message.casefold():
+                return True, "Ollama chat endpoint is present; the probe model is intentionally absent."
+        return False, f"Ollama /api/chat returned HTTP {exc.code}."
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        return False, f"Ollama /api/chat could not be reached: {exc}."
+
+
 def ollama_status() -> dict[str, object]:
     catalog = ollama_catalog()
     if not catalog["available"]:
         return {"available": False, "state": "offline", "detail": catalog.get("detail", "Ollama is unavailable.")}
     models = catalog["models"]
     loaded_names = catalog["loaded"]
+    available_models = {str(item.get("name") or "") for item in models if isinstance(item, dict)}
+    if HOME_CHAT_MODEL not in available_models:
+        return {
+            "available": False,
+            "state": "degraded",
+            "detail": f"Ollama responds, but Ariadne's core model {HOME_CHAT_MODEL} is missing from its catalogue.",
+            "models": len(models),
+            "loaded": loaded_names,
+            "loaded_details": catalog.get("loaded_details", []),
+            "loaded_vram_gb": round(float(catalog.get("loaded_vram_bytes") or 0) / 1024**3, 1),
+        }
+    chat_ready, chat_detail = ollama_chat_endpoint_status()
+    if not chat_ready:
+        return {
+            "available": False,
+            "state": "degraded",
+            "detail": chat_detail,
+            "models": len(models),
+            "loaded": loaded_names,
+            "loaded_details": catalog.get("loaded_details", []),
+            "loaded_vram_gb": round(float(catalog.get("loaded_vram_bytes") or 0) / 1024**3, 1),
+        }
+    if HOME_CHAT_MODEL not in loaded_names:
+        return {
+            "available": False,
+            "state": "degraded",
+            "detail": f"Ariadne's core model {HOME_CHAT_MODEL} is installed but not resident in memory.",
+            "models": len(models),
+            "loaded": loaded_names,
+            "loaded_details": catalog.get("loaded_details", []),
+            "loaded_vram_gb": round(float(catalog.get("loaded_vram_bytes") or 0) / 1024**3, 1),
+        }
     detail = f"{len(models)} local model{'s' if len(models) != 1 else ''} available"
     if loaded_names:
-        detail = f"{loaded_names[0]} loaded"
+        detail = f"{HOME_CHAT_MODEL} loaded and verified resident"
     return {
         "available": True,
         "state": "online",
@@ -1759,12 +1850,97 @@ def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object]
 
 def monitor_ollama_models() -> dict[str, object]:
     """Release idle resident models without deleting their installed files."""
+    global OLLAMA_RECOVERY_LAST_ATTEMPT, HOME_MODEL_PRELOAD_STATUS, OLLAMA_RUNTIME_IDENTITY
+    try:
+        if ollama_update_in_progress():
+            return {"state": "deferred", "unloaded": [], "detail": "Ollama is updating; Ariadne will recheck when installation finishes."}
+    except RuntimeError as exc:
+        return {"state": "deferred", "unloaded": [], "detail": str(exc)}
     with GPU_ARBITRATION_LOCK:
-        if GPU_VAULT_RESERVATION or GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+        if GPU_VAULT_RESERVATION or GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS:
             return {"state": "deferred", "unloaded": [], "detail": "GPU arbitration is handling a workload transition."}
+    with MODEL_ACTIVITY_LOCK:
+        if MODEL_IN_FLIGHT:
+            return {"state": "deferred", "unloaded": [], "detail": "An AI model request is still active."}
+    runtime_changed, runtime_details = observe_ollama_runtime_identity(reason="lifecycle_monitor")
     catalog = ollama_catalog()
-    if not catalog.get("available"):
-        return {"state": "offline", "unloaded": [], "detail": catalog.get("detail", "Ollama is unavailable.")}
+    core_loaded = bool(
+        catalog.get("available")
+        and HOME_CHAT_MODEL in {str(name) for name in catalog.get("loaded", [])}
+    )
+    chat_ready, chat_detail = (
+        ollama_chat_endpoint_status()
+        if catalog.get("available")
+        else (False, str(catalog.get("detail") or "Ollama is unavailable."))
+    )
+    if not core_loaded or not chat_ready or runtime_changed:
+        now = time.monotonic()
+        if (
+            not runtime_changed
+            and OLLAMA_RECOVERY_LAST_ATTEMPT is not None
+            and now - OLLAMA_RECOVERY_LAST_ATTEMPT < OLLAMA_RECOVERY_BACKOFF_SECONDS
+        ):
+            return {"state": "degraded", "unloaded": [], "detail": str(HOME_MODEL_PRELOAD_STATUS.get("detail") or chat_detail)}
+        if not OLLAMA_RECOVERY_LOCK.acquire(blocking=False):
+            return {"state": "recovering", "unloaded": [], "detail": "Ariadne Ollama recovery is already in progress."}
+        recovery_reason = "runtime_identity_changed" if runtime_changed else "runtime_readiness_check"
+        try:
+            OLLAMA_RECOVERY_LAST_ATTEMPT = time.monotonic()
+            STARTUP_TRACE.mark("ollama_recovery_start", "started", reason=recovery_reason)
+            record_model_residency_event(
+                "ollama_runtime_recovery_started", model=HOME_CHAT_MODEL, reason=recovery_reason,
+                detail={"catalog_available": bool(catalog.get("available")), "core_loaded": core_loaded,
+                        "chat_endpoint_ready": chat_ready, "runtime": runtime_details},
+            )
+            if runtime_changed or not catalog.get("available") or not chat_ready or HOME_CHAT_MODEL not in {
+                str(item.get("name") or "")
+                for item in catalog.get("models", [])
+                if isinstance(item, dict)
+            }:
+                startup = start_owned_ollama(
+                    OLLAMA_URL,
+                    tuple(dict.fromkeys((HOME_CHAT_MODEL, PLANNER_MODEL))),
+                )
+                record_model_residency_event(
+                    "ollama_runtime_reclaimed", model=HOME_CHAT_MODEL, reason=recovery_reason,
+                    detail={"pid": startup.get("pid"), "state": startup.get("state")},
+                )
+            if not core_loaded or HOME_CHAT_MODEL not in {
+                str(name) for name in ollama_catalog().get("loaded", [])
+            }:
+                with ai_gpu_admission():
+                    with model_activity(HOME_CHAT_MODEL):
+                        loaded = preload_ollama_model(
+                            HOME_CHAT_MODEL, keep_alive=HOME_MODEL_KEEP_ALIVE,
+                            reason=recovery_reason,
+                        )
+                if not loaded.get("ok"):
+                    raise RuntimeError(str(loaded.get("detail") or "Core model preload failed."))
+            verified = ollama_status()
+            if not verified.get("available") or verified.get("state") != "online":
+                raise RuntimeError(str(verified.get("detail") or "Ariadne runtime readiness verification failed."))
+            HOME_MODEL_PRELOAD_STATUS = {
+                "state": "resident", "model": HOME_CHAT_MODEL,
+                "detail": f"{HOME_CHAT_MODEL} is resident; Ollama chat API is verified.",
+            }
+            OLLAMA_RUNTIME_IDENTITY = runtime_identity(OLLAMA_URL)
+            STARTUP_TRACE.mark("ollama_recovery_end", "ready", model=HOME_CHAT_MODEL,
+                               runtime=OLLAMA_RUNTIME_IDENTITY)
+            record_model_residency_event(
+                "ollama_runtime_recovery_finished", model=HOME_CHAT_MODEL, reason=recovery_reason,
+                detail={"state": "resident", "runtime": OLLAMA_RUNTIME_IDENTITY},
+            )
+            catalog = ollama_catalog()
+        except Exception as exc:
+            HOME_MODEL_PRELOAD_STATUS = {"state": "error", "model": HOME_CHAT_MODEL, "detail": str(exc)}
+            STARTUP_TRACE.mark("ollama_recovery_end", "error", model=HOME_CHAT_MODEL, error_type=type(exc).__name__)
+            record_model_residency_event(
+                "ollama_runtime_recovery_failed", model=HOME_CHAT_MODEL, reason=recovery_reason,
+                detail={"error_type": type(exc).__name__},
+            )
+            return {"state": "degraded", "unloaded": [], "detail": str(exc)}
+        finally:
+            OLLAMA_RECOVERY_LOCK.release()
     gpu = gpu_status()
     policy = model_residency_policy(gpu)
     free_gb = float(gpu.get("free_gb") or 0)
@@ -1792,14 +1968,16 @@ def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, obj
         return {"state": "offline", "available": False, "detail": catalog.get("detail", "Ollama is unavailable.")}
     gpu = gpu if isinstance(gpu, dict) else gpu_status()
     policy = model_residency_policy(gpu)
+    loaded = catalog.get("loaded_details", [])
+    core_resident = HOME_CHAT_MODEL in {str(item.get("name") or "") for item in loaded if isinstance(item, dict)}
     return {
-        "state": "pressure" if gpu.get("state") == "critical" else "online",
-        "available": True,
+        "state": "pressure" if gpu.get("state") == "critical" else "online" if core_resident else "degraded",
+        "available": core_resident,
         "policy": policy,
-        "loaded": catalog.get("loaded_details", []),
+        "loaded": loaded,
         "loaded_vram_gb": round(float(catalog.get("loaded_vram_bytes") or 0) / 1024**3, 1),
         "gpu_free_gb": gpu.get("free_gb"),
-        "detail": "Installed models remain reloadable; only resident memory is governed.",
+        "detail": "Core model is resident; idle secondary models remain governed." if core_resident else f"Ariadne core model {HOME_CHAT_MODEL} is not resident.",
     }
 
 
@@ -1904,9 +2082,10 @@ def start_home_chat_model_preload() -> dict[str, object]:
 def model_control_payload() -> dict[str, object]:
     """Return the globally selected model and the real local Ollama catalogue."""
     catalog = ollama_catalog()
+    status = ollama_status()
     route = INFERENCE_REGISTRY.route("home_chat")
     return {
-        "ok": bool(catalog.get("available")),
+        "ok": bool(status.get("available")),
         "active_model": HOME_CHAT_MODEL,
         "planner_model": PLANNER_MODEL,
         "provider_id": route.provider_id if route else None,
@@ -1918,7 +2097,7 @@ def model_control_payload() -> dict[str, object]:
         "gpu_owner": gpu_owner_status(),
         "in_flight": ai_gpu_work_in_flight(),
         "home_model_residency": dict(HOME_MODEL_PRELOAD_STATUS),
-        "detail": catalog.get("detail", "Installed Ollama models are available to Ariadne."),
+        "detail": str(status.get("detail") or catalog.get("detail") or "Installed Ollama models are available to Ariadne."),
     }
 
 
@@ -5758,7 +5937,7 @@ def home_health_payload() -> dict[str, object]:
     ollama = ollama_status()
     add(
         "Ollama",
-        "healthy" if ollama.get("state") == "online" else "offline",
+        "healthy" if ollama.get("state") == "online" else "attention" if ollama.get("state") == "degraded" else "offline",
         str(ollama.get("detail") or "Ollama is unavailable."),
     )
     index = home_index_status()
@@ -9607,19 +9786,33 @@ def main() -> None:
     except Exception as exc:
         STARTUP_TRACE.mark("ollama_end", "error", error_type=type(exc).__name__)
         raise
-    STARTUP_TRACE.mark("ollama_ready", pid=ollama_startup.get("pid"), state=ollama_startup.get("state"), meaning="owned listener and full model catalogue validated")
-    STARTUP_TRACE.mark("background_jobs_start", "started")
-    STARTUP_TRACE.mark("background_news_start", "started")
-    STARTUP_TRACE.mark("background_images_start", "started")
+    _, runtime_details = observe_ollama_runtime_identity(reason="startup")
+    STARTUP_TRACE.mark(
+        "ollama_ready", pid=ollama_startup.get("pid"), state=ollama_startup.get("state"),
+        runtime=runtime_details, meaning="owned listener and full model catalogue validated",
+    )
     print(
         "Ariadne Ollama ownership: "
         f"{ollama_startup.get('state')} · {ollama_startup.get('detail')}"
     )
-    # Disk is loaded when NEWS_BRIEFING_CACHE is constructed. Start Hera sync
-    # asynchronously after the owned local model service has passed validation.
+    preload = start_home_chat_model_preload()
+    if not preload.get("ok"):
+        raise RuntimeError(str(preload.get("detail") or "Ariadne could not schedule its core model preload."))
+    preload_wait = _wait_for_home_model_preload(timeout_seconds=300.0)
+    if not preload_wait.get("ok") or HOME_MODEL_PRELOAD_STATUS.get("state") != "resident":
+        recovery = monitor_ollama_models()
+        if HOME_MODEL_PRELOAD_STATUS.get("state") != "resident":
+            detail = HOME_MODEL_PRELOAD_STATUS.get("detail") or recovery.get("detail") or preload_wait.get("detail")
+            raise RuntimeError(str(detail or "Ariadne core model did not become resident."))
+    runtime_status = ollama_status()
+    if not runtime_status.get("available") or runtime_status.get("state") != "online":
+        raise RuntimeError(str(runtime_status.get("detail") or "Ariadne Ollama runtime failed its final startup check."))
+    STARTUP_TRACE.mark("runtime_ready", model=HOME_CHAT_MODEL, meaning="Ollama API, catalogue, and resident core model verified")
+    # Do not start optional background AI work until the core model is resident.
+    STARTUP_TRACE.mark("background_jobs_start", "started")
+    STARTUP_TRACE.mark("background_news_start", "started")
+    STARTUP_TRACE.mark("background_images_start", "started")
     NEWS_BRIEFING_CACHE.start_background_sync()
-    # Refresh cached image metadata separately; Home's local card snapshot and
-    # final Ariadne ranking remain immediate and do not wait on Signal Service.
     start_news_image_sync()
     WATCHLIST.start()
     expire_home_chats()
@@ -9634,7 +9827,6 @@ def main() -> None:
     STARTUP_TRACE.mark("background_lifecycle_start", "started")
     start_lifecycle_watchdog()
     STARTUP_TRACE.worker_done("lifecycle", True)
-    start_home_chat_model_preload()
     print(f"Ariadne listening at {'https' if tls is not None else 'http'}://{HOST}:{PORT}")
     gateway_worker = start_gateway(gateway) if gateway is not None else None
     STARTUP_TRACE.mark("core_listening", meaning="socket bound; readiness confirmed by first served readiness/UI request")
