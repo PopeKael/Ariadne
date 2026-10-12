@@ -388,7 +388,10 @@ function markVaultSessionLost(message = "Start an Ariadne session first.") {
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
   vaultSessionId = null;
+  vaultIngestionModel = null;
   vaultSessionLabel("Session lost", "offline");
+  const modelBadge = document.querySelector("#vault-query-model");
+  if (modelBadge) modelBadge.textContent = "MODEL · SESSION LOST";
   const status = document.querySelector("#vault-query-status");
   if (status) {
     status.className = "vault-status error";
@@ -421,13 +424,17 @@ function renderVaultJob(job) {
       : paused || stopped ? "Checkpoint saved. Resume keeps accepted work."
       : "Pause or Stop saves the current segment before taking effect.";
   }
-  title.textContent = job.action ? `Knowledge Vault · ${job.action}` : "Knowledge Vault operation";
+  title.textContent = job.action
+    ? `Knowledge Vault${job.model ? ` · ${job.model}` : ""} · ${job.action}`
+    : "Knowledge Vault operation";
   if (job.state === "starting") {
     vaultJobLastOutput = null;
     vaultJobLastOutputAt = Date.now();
   }
-  if (typeof job.output === "string" && job.output !== vaultJobLastOutput) {
-    vaultJobLastOutput = job.output;
+  const visibleProgress = typeof job.output === "string" && job.output.trim()
+    ? job.output : (job.message || "");
+  if (visibleProgress !== vaultJobLastOutput) {
+    vaultJobLastOutput = visibleProgress;
     vaultJobLastOutputAt = Date.now();
   }
   const baseState = job.stage ? `${job.state || "running"} · ${job.stage}` : (job.state || "running");
@@ -446,11 +453,7 @@ function renderVaultJob(job) {
   state.classList.toggle("monitor-warning", job.state === "status unavailable" || job.state === "error");
   state.classList.toggle("monitor-reconnecting", job.stage === "monitor reconnecting");
   state.classList.toggle("monitor-stalled", quietSeconds >= 60 && !job.stage);
-  if (typeof job.output === "string") {
-    output.textContent = job.output || job.message || "Waiting for worker output…";
-  } else if (job.state === "starting" || !output.textContent) {
-    output.textContent = job.message || "Waiting for worker output…";
-  }
+  output.textContent = visibleProgress || "Waiting for worker output…";
   output.scrollTop = output.scrollHeight;
 }
 
@@ -474,6 +477,9 @@ function activateVaultSession(session, surface) {
   vaultHeartbeatInFlight = false;
   vaultSessionId = session.session_id;
   vaultIngestionModel = session.gpu?.ingestion_model || null;
+  const modelBadge = document.querySelector("#vault-query-model");
+  if (modelBadge) modelBadge.textContent = vaultIngestionModel
+    ? `MODEL · ${vaultIngestionModel} · 16K CONTEXT` : "MODEL · UNAVAILABLE";
   const gpuDetail = session.gpu?.detail ? ` · ${session.gpu.detail}` : "";
   const homeModelDetail = session.home_model?.model
     ? ` · Home model ${session.home_model.state}: ${session.home_model.model}`
@@ -515,6 +521,8 @@ async function startVaultSession(surface = document.body.classList.contains("con
   vaultSessionLabel(surface === "knowledge-vault"
     ? `Preparing Knowledge Vault: checking GPU, clearing other Ariadne models, then loading the configured ingestion model…`
     : "Starting Home session…", "starting");
+  const modelBadge = document.querySelector("#vault-query-model");
+  if (modelBadge && surface === "knowledge-vault") modelBadge.textContent = "MODEL · 16K CONTEXT · LOADING";
   setVaultControlsDisabled(true);
   updateSessionButtons();
   try {
@@ -539,6 +547,9 @@ function closeVaultSession() {
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
   vaultSessionId = null;
+  vaultIngestionModel = null;
+  const modelBadge = document.querySelector("#vault-query-model");
+  if (modelBadge) modelBadge.textContent = "MODEL · SESSION STOPPED";
   if (!sessionId) {
     updateSessionButtons();
     return;
@@ -624,7 +635,12 @@ function renderVaultResult(result, mode) {
     return;
   }
   const sources = (result.sources || []).map((source) => `<li><strong>[Source ${source.source_number}]</strong> ${esc(source.citation_text || "")}</li>`).join("");
-  root.innerHTML = `<article class="vault-result"><strong>${mode === "answer" ? "Librarian answer" : "Vault summary"}</strong><p>${esc(result.summary || "No summary was returned.")}</p>${sources ? `<small><strong>Sources</strong><ul>${sources}</ul></small>` : ""}</article>`;
+  const model = result.model || vaultIngestionModel;
+  const contextLabel = result.context_tokens ? `${Math.round(result.context_tokens / 1024)}K context` : "";
+  const heading = mode === "answer"
+    ? `Vault answer${model ? ` · ${model}` : ""}${contextLabel ? ` · ${contextLabel}` : ""}`
+    : "Vault summary";
+  root.innerHTML = `<article class="vault-result"><strong>${esc(heading)}</strong><p>${esc(result.summary || "No summary was returned.")}</p>${sources ? `<small><strong>Sources</strong><ul>${sources}</ul></small>` : ""}</article>`;
 }
 
 async function runVaultAction(button) {
@@ -711,7 +727,8 @@ async function controlVaultJob(button) {
   }
 }
 
-async function runVaultQuery(mode) {
+async function runVaultQuery() {
+  const mode = "answer";
   if (!vaultSessionId) return;
   const input = document.querySelector("#vault-query-input");
   const status = document.querySelector("#vault-query-status");
@@ -720,19 +737,20 @@ async function runVaultQuery(mode) {
   setVaultControlsDisabled(true);
   document.querySelector("#vault-query-results").innerHTML = "";
   status.className = "vault-status";
-  status.textContent = mode === "answer" ? "Starting the local librarian…" : mode === "summary" ? "Retrieving evidence and preparing a summary…" : "Searching the vault…";
-  renderVaultJob({action: `query · ${mode}`, state: "starting", message: status.textContent});
+  const selectedModel = vaultIngestionModel || "the session model";
+  status.textContent = `Asking ${selectedModel} to plan a vault search, retrieve evidence, and write a cited answer…`;
+  renderVaultJob({action: "vault question", model: vaultIngestionModel, state: "starting", stage: "connecting to model", message: status.textContent});
   let jobStarted = false;
   try {
     const started = await postJson("/api/vault/query", {session_id: vaultSessionId, query, mode, limit: mode === "answer" ? 6 : 8});
     jobStarted = true;
     const finished = await waitForVaultJob(
       started.job_id,
-      (job) => { status.textContent = job.message || "Working…"; renderVaultJob(job); },
+      (job) => { status.textContent = job.message || "Working…"; renderVaultJob({...job, model: vaultIngestionModel}); },
       (attempt, retrySeconds) => {
         const message = `Lost contact with Ariadne’s job monitor; retrying status in ${retrySeconds}s (attempt ${attempt}).`;
         status.textContent = message;
-        renderVaultJob({action: `query · ${mode}`, state: "running", stage: "monitor reconnecting", message});
+        renderVaultJob({action: "vault question", model: vaultIngestionModel, state: "running", stage: "monitor reconnecting", message});
       },
     );
     if (finished.state !== "complete") {
@@ -741,12 +759,15 @@ async function runVaultQuery(mode) {
       return;
     }
     renderVaultResult(finished.result || {}, mode);
-    status.textContent = mode === "search" ? `${finished.result?.match_count || 0} matching passages found.` : "Vault response ready.";
+    const sourceCount = Array.isArray(finished.result?.sources) ? finished.result.sources.length : 0;
+    status.textContent = sourceCount
+      ? `Answer ready · ${sourceCount} cited vault sources · ${finished.result?.model || selectedModel} · ${Math.round((finished.result?.context_tokens || 16_384) / 1024)}K context.`
+      : `The vault search found no passages to cite. ${finished.result?.model || selectedModel} did not invent an answer.`;
   } catch (error) {
     status.className = "vault-status error";
     status.textContent = error.message;
-    if (jobStarted) renderVaultJobStatusError(`query · ${mode}`, error);
-    else renderVaultJob({action: `query · ${mode}`, state: "error", message: error.message, output: error.message});
+    if (jobStarted) renderVaultJobStatusError("vault question", error);
+    else renderVaultJob({action: "vault question", model: vaultIngestionModel, state: "error", message: error.message, output: error.message});
   } finally {
     setVaultControlsDisabled(!vaultSessionId);
   }
@@ -972,9 +993,7 @@ function setupViewModes() {
 function setupVaultControls() {
   document.querySelectorAll("[data-vault-action]").forEach((button) => button.addEventListener("click", () => runVaultAction(button)));
   document.querySelectorAll("[data-vault-control]").forEach((button) => button.addEventListener("click", () => controlVaultJob(button)));
-  document.querySelector("#vault-query-form")?.addEventListener("submit", (event) => { event.preventDefault(); runVaultQuery("search"); });
-  document.querySelector("#vault-summary-button")?.addEventListener("click", () => runVaultQuery("summary"));
-  document.querySelector("#vault-librarian-button")?.addEventListener("click", () => runVaultQuery("answer"));
+  document.querySelector("#vault-query-form")?.addEventListener("submit", (event) => { event.preventDefault(); runVaultQuery(); });
 }
 function setupLaunchActions() {
   const launch = document.querySelector('a[href="/launch/lmstudio"]');

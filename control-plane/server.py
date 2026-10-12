@@ -109,6 +109,8 @@ LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
 PUBLIC_ORIGIN = "https://ariadne.dia.net.au"
 OLLAMA_URL = "http://127.0.0.1:11434"
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
+VAULT_QUERY_CONTEXT_TOKENS = 16_384
+VAULT_QUERY_OUTPUT_TOKENS = 2_048
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 HOME_MODEL_KEEP_ALIVE = -1
 HOME_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_CTX", "16384")))
@@ -4569,10 +4571,18 @@ def _start_vault_session_model_cooldown(session_id: object, model: str) -> bool:
     return True
 
 
-def _start_process(command: list[str], cwd: Path) -> subprocess.Popen:
+def _start_process(command: list[str], cwd: Path, *, chat_model: str | None = None,
+                   context_tokens: int | None = None, output_tokens: int | None = None,
+                   ollama_url: str | None = None) -> subprocess.Popen:
     child_environment = os.environ.copy()
     child_environment["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
-    child_environment["ARIADNE_CHAT_MODEL"] = str(OLLAMA_CHAT_MODEL)
+    child_environment["ARIADNE_CHAT_MODEL"] = str(chat_model or OLLAMA_CHAT_MODEL)
+    if context_tokens is not None:
+        child_environment["ARIADNE_NUM_CTX"] = str(context_tokens)
+    if output_tokens is not None:
+        child_environment["ARIADNE_NUM_PREDICT"] = str(output_tokens)
+    if ollama_url is not None:
+        child_environment["ARIADNE_OLLAMA_URL"] = ollama_url
     return subprocess.Popen(
         command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace",
@@ -5188,15 +5198,33 @@ def start_plugin_action(session_id: str, plugin_id: str, action: str, *, confirm
 
 
 def start_vault_query(session_id: str, query: str, mode: str, limit: int) -> str:
+    with SESSION_LOCK:
+        session = SESSIONS.get(session_id)
+        if not session or session.get("surface") != "knowledge-vault":
+            raise RuntimeError("Start a Knowledge Vault session before asking a question.")
+        if not session.get("ingestion_model_protected"):
+            raise RuntimeError("The Vault model is no longer protected for this session. Restart the Vault session before asking.")
+        query_model = str(session.get("ingestion_model") or "").strip()
+        if not query_model:
+            raise RuntimeError("The Vault session has no reserved query model.")
     VAULT_JOB_ROOT.mkdir(parents=True, exist_ok=True)
     job_id = uuid.uuid4().hex
     spec_path = VAULT_JOB_ROOT / f"{job_id}.json"
     status_path = Path(str(spec_path) + ".status.json")
     spec_path.write_text(json.dumps({"query": query, "mode": mode, "limit": limit}, ensure_ascii=False), encoding="utf-8")
     status_path.write_text(json.dumps({"state": "starting", "stage": "starting", "message": "Starting vault worker…", "completed": 0, "total": 0}), encoding="utf-8")
-    process = _start_process([sys.executable, "-u", str(VAULT_WORKER_PATH), str(spec_path)], VAULT_ROOT)
+    process = _start_process(
+        [sys.executable, "-u", str(VAULT_WORKER_PATH), str(spec_path)],
+        VAULT_ROOT,
+        chat_model=query_model,
+        context_tokens=VAULT_QUERY_CONTEXT_TOKENS,
+        output_tokens=VAULT_QUERY_OUTPUT_TOKENS,
+        ollama_url=OLLAMA_URL,
+    )
     job = {"session_id": session_id, "kind": "query", "process": process, "started": time.monotonic(),
-           "state": "running", "message": "Starting vault worker…", "spec_path": spec_path, "status_path": status_path, "mode": mode}
+           "state": "running", "message": f"Connecting to {query_model} with a 16K context…",
+           "spec_path": spec_path, "status_path": status_path, "mode": mode,
+           "model": query_model, "context_tokens": VAULT_QUERY_CONTEXT_TOKENS}
     with SESSION_LOCK:
         JOBS[job_id] = job
         SESSIONS[session_id].setdefault("jobs", set()).add(job_id)
@@ -5227,7 +5255,19 @@ def job_payload(job_id: str) -> dict[str, object] | None:
         status_path = job.get("status_path")
         if isinstance(status_path, Path) and status_path.is_file():
             try:
-                result.update(json.loads(status_path.read_text(encoding="utf-8")))
+                worker_status = json.loads(status_path.read_text(encoding="utf-8"))
+                result.update(worker_status)
+                if (job.get("kind") == "query"
+                        and worker_status.get("state") in {"complete", "error", "cancelled"}
+                        and job.get("state") == "running"):
+                    # The Vault worker writes its durable terminal status before
+                    # exiting. Reflect it in the in-memory job too, so the GPU
+                    # admission tracker and session status do not treat a
+                    # finished query as permanently in flight.
+                    job["state"] = worker_status["state"]
+                    job["message"] = worker_status.get("message") or job.get("message")
+                    if "result" in worker_status:
+                        job["result"] = worker_status["result"]
             except (OSError, ValueError, json.JSONDecodeError):
                 pass
         result["job_id"] = job_id
@@ -5288,7 +5328,7 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
         if not ingestion_model:
             return {"ok": False, "state": "unconfigured", "detail": "Knowledge Vault ingestion model is not configured."}
         ingestion_model_loaded = True
-        loaded = preload_ollama_model(ingestion_model, keep_alive=-1,
+        loaded = preload_ollama_model(ingestion_model, options={"num_ctx": VAULT_QUERY_CONTEXT_TOKENS}, keep_alive=-1,
                                       reason="vault_ingestion_page_entry")
         if not loaded.get("ok"):
             return {"ok": False, "state": "model_load_failed",
@@ -5301,8 +5341,15 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
             MODEL_IN_FLIGHT[ingestion_model] = MODEL_IN_FLIGHT.get(ingestion_model, 0) + 1
             MODEL_LAST_USED[ingestion_model] = time.monotonic()
             ingestion_model_protected = True
+        loaded_detail = next((item for item in resident.get("loaded_details", [])
+                              if isinstance(item, dict) and item.get("name") == ingestion_model), {})
+        actual_context = loaded_detail.get("context_length") if isinstance(loaded_detail, dict) else None
+        if not isinstance(actual_context, int) or actual_context < VAULT_QUERY_CONTEXT_TOKENS:
+            actual_context_label = f"{actual_context:,}" if isinstance(actual_context, int) else "unknown"
+            return {"ok": False, "state": "context_unverified",
+                    "detail": f"Vault model {ingestion_model} reports {actual_context_label} context tokens; this page requires a verified {VAULT_QUERY_CONTEXT_TOKENS:,}-token context."}
         preflight_succeeded = True
-        return {"ok": True, "state": "ready", "detail": f"Ariadne GPU is clear; ingestion model {ingestion_model} is resident and protected for this page session.",
+        return {"ok": True, "state": "ready", "detail": f"Ariadne GPU is clear; Vault model {ingestion_model} is resident and protected with a {VAULT_QUERY_CONTEXT_TOKENS:,}-token query context.",
                 "models_released": release.get("unloaded", []), "ingestion_model": OLLAMA_CHAT_MODEL}
     finally:
         if not preflight_succeeded:

@@ -6,6 +6,7 @@ All notable repository-level changes are recorded here. Entries describe changes
 
 ### Changed
 
+- Moved the dedicated Knowledge Vault question box above management, routed it through the protected resident 20B model with a verified 16K context, and corrected the worker to load the authoritative KnowledgeVault librarian. Verified the browser query returned a cited September 2026 video result.
 - Simplified Watchlist project creation to a single GitHub link and Watch project action, with automatic naming, weekly checks, optional name/frequency settings and separate access to topics/reminders. Verified the live form and added browser-logic regression coverage.
 - Fixed Image Studio with background render jobs, real ComfyUI stages and sampling progress, persistent prompt/settings drafts, and a completed preview protected from stale status updates. Default output is 1280 × 720 Landscape. Recorded the public-address render and regression checks in [checkpoint notes](docs/checkpoint-2026-10-10-image-studio.md).
 - Followed up The Lab's live compact-context test with useful source-body search snippets and factual bounded edit diffs in history, so compaction retains what changed. The live Dungeon attempt avoided context overflow but stopped at the existing repair limit; no completed-game claim is made.

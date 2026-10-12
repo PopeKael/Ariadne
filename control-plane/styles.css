@@ -144,3 +144,7 @@
 .muted-badge.starting{color:var(--yellow);background:rgba(240,198,110,.13)}
 .muted-badge.error{color:#ff9ba9;background:rgba(228,79,103,.12)}
 .muted-badge.ready{color:var(--green);background:rgba(54,142,95,.15)}
+.vault-query{margin:0 20px 18px;border:1px solid rgba(104,216,219,.34);border-radius:11px;background:rgba(5,13,28,.42)}
+.vault-query-actions button[type="submit"]{min-width:150px;background:#176072;border-color:#54bbc1;font-size:13px}
+.vault-query-actions button[type="submit"]:hover{background:#1d7481}
+.vault-management-head{margin:0 20px 12px}.vault-management-head h3{margin:0;font-size:15px}.vault-management-head p{margin:4px 0 0;color:var(--muted);font-size:12px}

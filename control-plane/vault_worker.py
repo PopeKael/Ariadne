@@ -7,11 +7,9 @@ from pathlib import Path
 
 from vault_config import VAULT_ROOT
 
-ROOT = Path(__file__).resolve().parent
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
-PROJECT_ROOT = ROOT.parent
-MCP_MODULE_PATH = PROJECT_ROOT / "00_System" / "ariadne_mcp.py"
-sys.path.insert(0, str(PROJECT_ROOT / "00_System"))
+MCP_MODULE_PATH = VAULT_SYSTEM / "ariadne_mcp.py"
+sys.path.insert(0, str(VAULT_SYSTEM))
 import importlib.util
 
 spec = importlib.util.spec_from_file_location("ariadne_mcp_active_vault_worker", MCP_MODULE_PATH)
