@@ -2,6 +2,18 @@
 
 Preserve the existing architecture. Inspect runtime evidence before changing it.
 
+## Ariadne North Star
+
+The canonical product picture is:
+
+- **Avatar = presence.** The desktop avatar is Ariadne’s always-available presence; clicking it opens the conversation.
+- **Chat = primary interface.** From chat, Warren should eventually be able to ask questions, work with his knowledge, manage projects, use tools and connected services, check mail, calendar and news, and delegate work without navigating separate specialist interfaces.
+- **Ariadne backend = persistent intelligence.** It should operate in the background, understand available system resources, avoid disrupting foreground work, and choose or defer models and tools appropriately.
+- **Models/providers/tools = interchangeable machinery.** Ariadne remains local-first and provider-independent; local models, external APIs, tools, memory, background jobs and future agent capabilities serve the chat experience.
+- **Configuration/Lab pages = workshop behind the curtain.** Configuration, diagnostics, Labs and specialist pages remain important supporting interfaces, not the primary user experience.
+
+Evaluate every substantial architectural change against this North Star while implementing changes incrementally and testably.
+
 ## Networking changes
 
 Map the complete request/service topology (browser, TLS edge, control plane,
