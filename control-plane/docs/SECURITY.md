@@ -22,7 +22,10 @@
 
 - Bind development services to loopback unless remote access is deliberately enabled.
 - Do not put credentials in browser local storage.
-- Use a private authenticated channel between the Synology deployment and the Windows agent.
+- Use a private authenticated channel between separately hosted services and the
+  Windows agent; Synology is one optional deployment example. The generic
+  [network contract](../../docs/NETWORKING-AND-HTTPS.md) permits isolated internal
+  HTTP and requires deliberate TLS/access controls for browser-facing networking.
 - Keep the Windows agent least-privileged; use a narrowly scoped elevated helper only for approved actions.
 - Treat dashboard status as telemetry, not proof of authorisation.
 - Add secret scanning before the first public push.

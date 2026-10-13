@@ -62,7 +62,8 @@ from ariadne_config import (
     save_avatar,
     save_storage,
 )
-from inference import InferenceRegistry, default_providers
+from inference import InferenceRegistry, default_providers, ollama_model_catalogue
+import credential_store
 import code_lab
 import lab_runner
 from avatar_events import clear_status, emit, emit_say, emit_state, host_status
@@ -568,7 +569,7 @@ def apply_runtime_configuration() -> dict[str, object]:
     INFERENCE_REGISTRY.reload()
     home_route = INFERENCE_REGISTRY.route("home_chat")
     planner_route = INFERENCE_REGISTRY.route("planner")
-    if home_route and home_route.model_id:
+    if home_route and home_route.model_id and home_route.provider_type == "ollama":
         HOME_CHAT_MODEL = home_route.model_id
     if planner_route and planner_route.model_id:
         PLANNER_MODEL = planner_route.model_id
@@ -5901,6 +5902,102 @@ def configuration_payload(snapshot: dict[str, object] | None = None) -> dict[str
     }
 
 
+def inference_model_catalogue() -> dict[str, object]:
+    """Discover models from configured providers without exposing credentials."""
+    providers = INFERENCE_REGISTRY.providers
+    catalogues: dict[str, dict[str, object]] = {}
+
+    def request_json(url: str, *, headers: dict[str, str] | None = None,
+                     payload: dict[str, object] | None = None) -> dict[str, object]:
+        data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        request = urllib.request.Request(
+            url, data=data,
+            headers={"Accept": "application/json", **({"Content-Type": "application/json"} if data else {}), **(headers or {})},
+            method="POST" if data is not None else "GET",
+        )
+        context = client_context() if url.startswith("https://") else None
+        with urllib.request.urlopen(request, timeout=8.0, context=context) as response:
+            parsed = json.loads(response.read().decode("utf-8"))
+        return parsed if isinstance(parsed, dict) else {}
+
+    # Ollama exposes one local catalogue for several task-specific profiles.
+    # Read it once, then share the same deduplicated models across those profiles.
+    ollama_profiles = [item for item in providers if item.provider_type == "ollama"]
+    for endpoint in dict.fromkeys(item.endpoint.rstrip("/") for item in ollama_profiles if item.endpoint):
+        try:
+            payload = request_json(f"{endpoint}/api/tags")
+            entries = payload.get("models") if isinstance(payload.get("models"), list) else []
+            models = ollama_model_catalogue(entries)
+            for provider in ollama_profiles:
+                if provider.endpoint.rstrip("/") == endpoint:
+                    catalogues[provider.provider_id] = {"state": "available", "models": models}
+        except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError):
+            for provider in ollama_profiles:
+                if provider.endpoint.rstrip("/") == endpoint:
+                    catalogues[provider.provider_id] = {"state": "unavailable", "models": []}
+
+    for provider in providers:
+        if provider.provider_type == "ollama":
+            continue
+        api_key = credential_store.get_credential(provider.credential_reference) if provider.credential_reference else ""
+        if not api_key:
+            catalogues[provider.provider_id] = {"state": "key_missing", "models": []}
+            continue
+        try:
+            if provider.provider_type == "groq-openai-compatible":
+                payload = request_json(
+                    f"{provider.endpoint.rstrip('/')}/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                entries = payload.get("data") if isinstance(payload.get("data"), list) else []
+                model_ids = sorted({
+                    str(entry.get("id") or "").strip()
+                    for entry in entries if isinstance(entry, dict)
+                    and entry.get("active", True) is not False and str(entry.get("id") or "").strip()
+                }, key=str.casefold)
+                catalogues[provider.provider_id] = {"state": "available", "models": [{"id": model_id, "capabilities": ["chat"]} for model_id in model_ids]}
+            elif provider.provider_type == "google-generative-language":
+                model_ids: set[str] = set()
+                page_token = ""
+                for _ in range(10):
+                    query = {"pageSize": "100"}
+                    if page_token:
+                        query["pageToken"] = page_token
+                    url = "https://generativelanguage.googleapis.com/v1beta/models?" + urllib.parse.urlencode(query)
+                    payload = request_json(url, headers={"x-goog-api-key": api_key})
+                    entries = payload.get("models") if isinstance(payload.get("models"), list) else []
+                    for entry in entries:
+                        if not isinstance(entry, dict):
+                            continue
+                        methods = entry.get("supportedGenerationMethods")
+                        name = str(entry.get("name") or "").strip()
+                        if name and isinstance(methods, list) and "generateContent" in methods:
+                            model_ids.add(name.removeprefix("models/"))
+                    page_token = str(payload.get("nextPageToken") or "")
+                    if not page_token:
+                        break
+                catalogues[provider.provider_id] = {"state": "available", "models": [{"id": model_id, "capabilities": ["chat", "structured_output", "classification"]} for model_id in sorted(model_ids, key=str.casefold)]}
+            elif provider.provider_type == "openai-compatible":
+                payload = request_json(
+                    f"{provider.endpoint.rstrip('/')}/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                entries = payload.get("data") if isinstance(payload.get("data"), list) else []
+                model_ids = sorted({
+                    str(entry.get("id") or "").strip()
+                    for entry in entries if isinstance(entry, dict)
+                    and entry.get("active", True) is not False and str(entry.get("id") or "").strip()
+                }, key=str.casefold)
+                catalogues[provider.provider_id] = {"state": "available", "models": [{"id": model_id, "capabilities": ["chat", "structured_output"]} for model_id in model_ids]}
+            else:
+                catalogues[provider.provider_id] = {"state": "unsupported", "models": []}
+        except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError):
+            # Error detail may contain request metadata; keep the UI response
+            # generic and never echo an API key or an authenticated URL.
+            catalogues[provider.provider_id] = {"state": "unavailable", "models": []}
+    return {"ok": True, "providers": catalogues}
+
+
 def configuration_health_payload(snapshot: dict[str, object] | None = None) -> dict[str, object]:
     """Operational diagnostics kept separate from persisted settings loading."""
     snapshot = snapshot or configuration_snapshot()
@@ -7392,8 +7489,28 @@ def _home_current_source_answer(answer: str, live_source_count: int, search_atte
 
 def _home_model_chat(mcp: object, messages: list[dict[str, str]], timing: dict[str, object],
                      on_delta: Callable[[str], None] | None = None) -> str:
-    """Use Home's explicit generation budget without changing its context budget."""
+    """Use the selected Home chat provider and preserve its explicit output budget."""
     request_id = str(timing.get("trace_request_id") or "") or None
+    provider = INFERENCE_REGISTRY.route("home_chat")
+    if provider and provider.provider_type in {"groq-openai-compatible", "google-generative-language", "openai-compatible"}:
+        provider_name = "google-gemini" if provider.provider_type == "google-generative-language" else "groq-cloud" if provider.provider_type == "groq-openai-compatible" else provider.provider_id
+        record_model_residency_event(
+            "home_model_request_started", request_id=request_id, model=provider.model_id,
+            reason="home_chat_generation", detail={"provider": provider_name, "message_count": len(messages)},
+        )
+        try:
+            answer = _openai_compatible_chat(provider, messages, timing, on_delta)
+        except Exception as exc:
+            record_model_residency_event(
+                "home_model_request_failed", request_id=request_id, model=provider.model_id,
+                reason="home_chat_generation", detail={"provider": provider_name, "error_type": type(exc).__name__},
+            )
+            raise
+        record_model_residency_event(
+            "home_model_request_completed", request_id=request_id, model=provider.model_id,
+            reason="home_chat_generation", detail={"provider": provider_name},
+        )
+        return answer
     arguments = {
         "model": HOME_CHAT_MODEL,
         "context_tokens": HOME_CONTEXT_TOKENS,
@@ -7426,8 +7543,69 @@ def _home_model_chat(mcp: object, messages: list[dict[str, str]], timing: dict[s
     return answer
 
 
+def _openai_compatible_chat(provider: object, messages: list[dict[str, str]], timing: dict[str, object],
+                            on_delta: Callable[[str], None] | None = None) -> str:
+    """Stream a Home conversation through a configured OpenAI-compatible API."""
+    provider_name = provider.display_name or ("Google Gemini" if provider.provider_type == "google-generative-language" else "Groq" if provider.provider_type == "groq-openai-compatible" else "External provider")
+    api_key = credential_store.get_credential(provider.credential_reference)
+    if not api_key:
+        raise RuntimeError(f"{provider_name} is selected for Home chat, but its API key is not configured.")
+    payload = json.dumps({
+        "model": provider.model_id,
+        "messages": messages,
+        "max_tokens": HOME_OUTPUT_TOKENS,
+        "stream": True,
+    }, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        provider.endpoint.rstrip("/") + "/chat/completions", data=payload,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST",
+    )
+    started = time.monotonic()
+    fragments: list[str] = []
+    finish_reason = ""
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8", errors="replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                event = line[5:].strip()
+                if event == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(event)
+                except (ValueError, TypeError):
+                    continue
+                choices = chunk.get("choices") or []
+                if not choices:
+                    continue
+                choice = choices[0]
+                finish_reason = str(choice.get("finish_reason") or finish_reason)
+                delta = choice.get("delta") or {}
+                content = delta.get("content")
+                if isinstance(content, str) and content:
+                    fragments.append(content)
+                    if on_delta is not None:
+                        on_delta(content)
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"{provider_name} chat request failed with HTTP {exc.code}.") from None
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise RuntimeError(f"{provider_name} chat service could not be reached.") from exc
+    answer = "".join(fragments).strip()
+    timing.setdefault(f"{provider.provider_id.split('-')[0]}_calls", []).append({
+        "provider_id": provider.provider_id, "model": provider.model_id,
+        "elapsed_ms": round((time.monotonic() - started) * 1000), "finish_reason": finish_reason,
+    })
+    if not answer:
+        raise RuntimeError(f"{provider_name} returned no final answer.")
+    return answer
+
+
 def _generation_status(timing: dict[str, object]) -> str:
-    calls = timing.get("ollama_calls") if isinstance(timing.get("ollama_calls"), list) else []
+    calls = [
+        *(timing.get("ollama_calls") if isinstance(timing.get("ollama_calls"), list) else []),
+        *(timing.get("groq_calls") if isinstance(timing.get("groq_calls"), list) else []),
+    ]
     last_call = calls[-1] if calls and isinstance(calls[-1], dict) else {}
     reason = str(last_call.get("done_reason") or last_call.get("finish_reason") or "").casefold()
     if reason in {"length", "max_tokens", "max_token", "token_limit"}:
@@ -8428,6 +8606,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/configuration":
             self.send_json(configuration_payload())
             return
+        if path == "/api/inference/models":
+            self.send_json(inference_model_catalogue())
+            return
         if path == "/api/configuration/health":
             self.send_json(configuration_health_payload())
             return
@@ -8908,6 +9089,54 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     name="ariadne-shutdown",
                     daemon=True,
                 ).start()
+                return
+            credential_path_id = path.rsplit("/", 1)[-1] if path.startswith("/api/configuration/credential/") else ""
+            credential_provider_id = {"groq": "groq-cloud"}.get(credential_path_id, credential_path_id)
+            credential_names = {"groq-cloud": ("Groq", "GROQ_API_KEY"), "google-cloud": ("Google Gemini", os.environ.get("ARIADNE_GOOGLE_CREDENTIAL_REFERENCE", "GOOGLE_API_KEY"))}
+            custom_credential_provider = next((item for item in INFERENCE_REGISTRY.providers if item.provider_id == credential_provider_id and item.provider_type == "openai-compatible" and item.credential_reference), None)
+            if custom_credential_provider:
+                credential_names[credential_provider_id] = (custom_credential_provider.display_name or "External provider", custom_credential_provider.credential_reference)
+            if credential_provider_id in credential_names:
+                credential_label, credential_reference = credential_names[credential_provider_id]
+                origin = urlsplit(self.headers.get("Origin", ""))
+                request_host = self.headers.get("Host", "")
+                public_origin = urlsplit(PUBLIC_ORIGIN)
+                same_backend_origin = bool(origin.netloc) and origin.netloc.casefold() == request_host.casefold()
+                same_public_origin = (
+                    bool(origin.netloc)
+                    and origin.scheme.casefold() == public_origin.scheme.casefold()
+                    and origin.netloc.casefold() == public_origin.netloc.casefold()
+                )
+                if not (same_backend_origin or same_public_origin) or self.headers.get("Sec-Fetch-Site", "") != "same-origin":
+                    self.send_json({"ok": False, "message": f"{credential_label} credentials can be changed only from Ariadne Setup on this same origin."}, 403)
+                    return
+                action = str(body.get("action") or "").strip().casefold()
+                try:
+                    if action == "reveal":
+                        secret = credential_store.get_credential(credential_reference)
+                        if not secret:
+                            self.send_json({"ok": False, "message": f"No {credential_label} API key is saved."}, 404)
+                            return
+                        self.send_json({"ok": True, "api_key": secret})
+                        return
+                    if action == "save":
+                        secret = body.get("api_key")
+                        if not isinstance(secret, str) or len(secret) > 4096:
+                            raise ValueError(f"Enter a valid {credential_label} API key.")
+                        credential_store.save_credential(credential_reference, secret)
+                    elif action == "remove":
+                        credential_store.delete_credential(credential_reference)
+                    else:
+                        raise ValueError("Choose reveal, save, or remove for this provider key.")
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                    return
+                except OSError:
+                    self.send_json({"ok": False, "message": f"Windows Credential Manager could not update the {credential_label} key."}, 500)
+                    return
+                INFERENCE_REGISTRY.reload()
+                provider = next((item for item in INFERENCE_REGISTRY.providers if item.provider_id == credential_provider_id), None)
+                self.send_json({"ok": True, "credential_state": INFERENCE_REGISTRY.credential_state(provider) if provider else "Missing"})
                 return
             if path == "/api/configuration":
                 storage = body.get("storage")

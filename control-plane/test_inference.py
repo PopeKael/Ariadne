@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from inference import InferenceRegistry, Provider, default_providers
+import credential_store
+from inference import InferenceRegistry, Provider, default_providers, normalize_ollama_model_id, ollama_model_catalogue
 
 
 class InferenceRegistryTests(unittest.TestCase):
@@ -51,6 +52,50 @@ class InferenceRegistryTests(unittest.TestCase):
             }, clear=False):
                 registry = InferenceRegistry(path)
             self.assertEqual(registry.route("home_chat").provider_id, "ollama-planner")
+
+    def test_ollama_latest_alias_matches_untagged_model_without_rewriting_saved_route(self):
+        self.assertEqual(normalize_ollama_model_id("nomic-embed-text"), "nomic-embed-text")
+        self.assertEqual(normalize_ollama_model_id("nomic-embed-text:latest"), "nomic-embed-text")
+        catalogue = ollama_model_catalogue([
+            {"name": "nomic-embed-text:latest", "details": {"family": "nomic-bert"}},
+            {"model": "nomic-embed-text", "details": {"family": "nomic-bert"}},
+        ])
+        self.assertEqual([item["id"] for item in catalogue], ["nomic-embed-text"])
+        self.assertEqual(catalogue[0]["capabilities"], ["embeddings"])
+        self.assertEqual(credential_store._target("ARIADNE_EXTERNAL_012345abcdef_API_KEY"), "Ariadne/ExternalProviders/012345abcdef/API_KEY")
+        with self.assertRaises(ValueError):
+            credential_store._target("ARIADNE_EXTERNAL_not-a-safe-id_API_KEY")
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "configuration.json"
+            saved = {"inference": {"routes": {"embedding": "ollama-embedding"}, "providers": [
+                {**next(item.as_dict() for item in default_providers() if item.provider_id == "ollama-embedding"), "model_id": "nomic-embed-text"},
+            ]}}
+            path.write_text(json.dumps(saved), encoding="utf-8")
+            registry = InferenceRegistry(path)
+            route = registry.route("embedding")
+            self.assertEqual(route.model_id, "nomic-embed-text")
+            self.assertEqual(registry.routes["embedding"], "ollama-embedding")
+            self.assertEqual(registry.snapshot()["routes"]["embedding"]["route_selection"], "ollama-embedding")
+
+    def test_added_openai_compatible_provider_preserves_route_and_label(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "configuration.json"
+            model_id = "provider-model-v2"
+            saved_route = f"external-012345abcdef::{model_id}"
+            provider = {
+                "provider_id": "external-012345abcdef", "provider_type": "openai-compatible",
+                "display_name": "Workshop API", "model_id": "default-model",
+                "endpoint": "https://api.example.test/v1",
+                "credential_reference": "ARIADNE_EXTERNAL_012345ABCDEF_API_KEY",
+                "capabilities": ["chat", "structured_output"], "location": "cloud",
+                "enabled": True, "priority": 70,
+            }
+            path.write_text(json.dumps({"inference": {"routes": {"home_chat": saved_route}, "providers": [provider]}}), encoding="utf-8")
+            registry = InferenceRegistry(path)
+            route = registry.route("home_chat")
+            self.assertEqual(route.model_id, model_id)
+            self.assertEqual(route.display_name, "Workshop API")
+            self.assertEqual(registry.routes["home_chat"], saved_route)
 
 
 if __name__ == "__main__":

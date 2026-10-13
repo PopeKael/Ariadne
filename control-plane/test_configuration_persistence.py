@@ -22,6 +22,7 @@ class ConfigurationPersistenceTests(unittest.TestCase):
             "knowledge_vault": str(vault),
             "documents": str(root / "Documents"),
             "images": str(root / "Images"),
+            "music": str(root / "Music"),
             "videos": str(root / "Videos"),
             "screenshots": str(root / "Screenshots"),
             "intake_root": str(root / "Downloads"),

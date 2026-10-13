@@ -6,6 +6,12 @@ Knowledge Vault and control panel from the public repository.
 It is a Windows-first, local deployment. GitHub stores the source and history;
 the application and personal Vault run on the user's own computer.
 
+For local HTTP, private HTTPS and optional single-machine service deployment,
+read [Networking and HTTPS](NETWORKING-AND-HTTPS.md). No Synology, Wazza-owned
+domain or home-network layout is required. The current checkout has documented
+browser-origin and service-default portability gaps; this guide does not imply
+those runtime gaps have been fixed.
+
 ## The four GitHub words that matter
 
 - **Fork** creates a separate GitHub copy under your account. Use this when
@@ -67,9 +73,9 @@ Install that only when you intend to run the authenticated MCP HTTP endpoint.
 
 ## 4. Choose your Vault location
 
-The default Vault root is the Ariadne repository itself. This is convenient
-for a new local test installation, while private Vault folders remain ignored
-by Git.
+Choose your own Vault location explicitly. The current configured storage default
+is specific to Wazza's installation; the repository is not automatically the
+active Vault. Private Vault folders and generated state must remain outside Git.
 
 To use an existing Vault somewhere else, set the root for the current
 PowerShell session before starting Ariadne:
@@ -88,8 +94,13 @@ generated indexes.
 For the simplest first run:
 
 ```powershell
+$env:ARIADNE_ALLOW_UNSUPERVISED_CORE = '1'
 .\.venv\Scripts\python.exe .\control-plane\server.py
 ```
+
+This is an explicit development run: on Windows the current core otherwise
+requires its resident Rust host. Normal operation uses that host's supervised
+lifecycle. Setting this override does not enable network access or HTTPS.
 
 Open this address in a browser:
 
@@ -97,6 +108,13 @@ Open this address in a browser:
 
 The server binds to loopback only. It is not exposed to the local network by
 default.
+
+This is the intended simple local browser contract, requiring no certificates
+or proxy. **Current limitation:** browser pages redirect to an installation-
+specific HTTPS domain and launchers use that domain. A separate portability fix
+is needed before a fresh clone can fulfill the local browser contract. See
+[the source-verified gaps](NETWORKING-AND-HTTPS.md#current-configuration-and-portability-gaps);
+do not reproduce Wazza's DNS/certificates or add global forwarding as a workaround.
 
 For the legacy Python tray and browser launch flow, use another PowerShell window:
 
@@ -154,9 +172,12 @@ The repository provides the reusable Ariadne structure:
 - controlled Toolshed and service adapters;
 - the browser Workspace/interface and Windows launcher.
 
-Each user still supplies their own knowledge, identity material, Ollama or
-other local models, WSL/Docker services, hardware, and operating choices. A
-clone does not reproduce Wazza's private memory or machine environment.
+Each user supplies their own knowledge, identity material, models as needed,
+hardware and operating choices. WSL, Docker, NAS and other external services are
+optional supporting infrastructure for selected features, not mandatory first-run
+requirements. They may run on the same machine or existing private infrastructure;
+future packaging may supervise more of them. A clone does not reproduce Wazza's
+private memory or machine environment.
 
 ## Working on your fork
 
@@ -187,6 +208,7 @@ notes, reports, identity files, diagrams, logs, and home-lab references.
 The repository's architecture and security references are:
 
 - [Four parcels](FOUR-PARCELS.md)
+- [Networking and HTTPS](NETWORKING-AND-HTTPS.md)
 - [Current handover](HANDOVER-2026-08-15.md)
 - [Control-plane security](../control-plane/docs/SECURITY.md)
 - [Public/private boundary](../.gitignore)

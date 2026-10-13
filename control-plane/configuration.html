@@ -43,9 +43,22 @@
         </section>
         <section id="adaptive-settings" class="configuration-grid">
           <article class="configuration-card inference-card">
-            <div class="card-heading"><div><span class="eyebrow">AI / INFERENCE</span><h2>Task routing</h2><p>See the provider, model, location, capability and runtime state selected for each ordinary Ariadne task.</p></div><span class="card-mark">⌁</span></div>
+            <div class="card-heading"><div><span class="eyebrow">AI / INFERENCE</span><h2>Providers</h2></div><button id="add-provider-button" class="secondary-button add-provider-button" type="button">+ Add provider</button><span class="card-mark">⌁</span></div>
+            <div id="inference-providers" class="inference-providers"><div class="loading-row">Reading providers…</div></div>
+            <dialog id="add-provider-dialog" class="provider-dialog" aria-labelledby="add-provider-title">
+              <div id="add-provider-form">
+                <div class="compact-heading"><div><span class="eyebrow">OPENAI-COMPATIBLE</span><h3 id="add-provider-title">Add external provider</h3></div><button class="dialog-close" type="button" data-close-provider-dialog aria-label="Close">×</button></div>
+                <p class="configuration-note">Add a chat provider that exposes an OpenAI-compatible API.</p>
+                <label class="path-field"><span class="field-label">Provider name</span><input name="provider_name" type="text" maxlength="48" required autocomplete="off" placeholder="Provider name"></label>
+                <label class="path-field"><span class="field-label">API base URL</span><input name="provider_endpoint" type="url" required autocomplete="url" placeholder="https://api.example.com/v1"></label>
+                <label class="path-field"><span class="field-label">Default model</span><input name="provider_model" type="text" autocomplete="off" placeholder="Model ID from the provider"></label>
+                <label class="path-field"><span class="field-label">API key <small>Stored in Windows Credential Manager.</small></span><input name="external_provider_secret_v1" type="password" autocomplete="new-password" data-lpignore="true" data-form-type="other" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true" placeholder="Optional; you can add it later"></label>
+                <p id="add-provider-status" class="field-status" role="status"></p>
+                <div class="compact-actions"><button class="secondary-button" type="button" data-close-provider-dialog>Cancel</button><button id="add-provider-submit" class="primary-button" type="button">Add provider</button></div>
+              </div>
+            </dialog>
+            <div class="inference-section-heading"><h3>Task Routing</h3><small>Choose an available provider model for each task.</small></div>
             <div id="inference-routes" class="inference-routes"><div class="loading-row">Reading inference routes…</div></div>
-            <p class="configuration-note">Secrets stay in the runtime environment. Setup shows only Configured, Missing, or Unavailable.</p>
           </article>
           <article class="configuration-card personality-card">
             <div class="card-heading"><div><span class="eyebrow">PERSONALITY / VOICE</span><h2>How Ariadne speaks</h2><p>Guidance is separate from factual memory and is sent with every Home conversation.</p></div><span id="identity-badge" class="active-vault-badge">Checking</span></div>

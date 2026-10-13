@@ -20,6 +20,7 @@ class ConfigurationPageTests(unittest.TestCase):
             "knowledge_vault": str(vault),
             "documents": str(root / "Documents"),
             "images": str(root / "Images"),
+            "music": str(root / "Music"),
             "videos": str(root / "Videos"),
             "screenshots": str(root / "Screenshots"),
             "intake_root": str(root / "Downloads"),
@@ -96,6 +97,12 @@ class ConfigurationPageTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertEqual(json.loads(body), health_payload)
 
+            model_catalogue = {"ok": True, "providers": {"ollama-embedding": {"state": "available", "models": [{"id": "nomic-embed-text", "capabilities": ["embeddings"]}]}}}
+            with patch.object(server, "_expire_sessions"), patch.object(server, "inference_model_catalogue", return_value=model_catalogue):
+                status, _, body = get("/api/inference/models")
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(body), model_catalogue)
+
             with patch.object(server, "_expire_sessions"):
                 status, content_type, body = get("/configuration-state.js")
                 self.assertEqual(status, 200)
@@ -130,6 +137,11 @@ class ConfigurationPageTests(unittest.TestCase):
         self.assertIn('class="field-label">Interest name', html)
         self.assertIn('class="field-label">What does this interest mean to Ariadne?', html)
         self.assertIn('id="interest-form-status"', html)
+        self.assertIn('id="add-provider-button"', html)
+        self.assertIn('id="add-provider-dialog"', html)
+        self.assertIn("openai-compatible", javascript)
+        self.assertIn("addExternalProvider", javascript)
+        self.assertIn("inferenceModelIdentity", javascript)
         self.assertIn('</form>\n      <section class="configuration-card adaptive-management-card">', html)
         self.assertIn("Describe the subject naturally", html)
         self.assertIn('if (!payload.ok || !payload.interest)', javascript)

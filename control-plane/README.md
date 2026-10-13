@@ -26,7 +26,11 @@ The active Ollama model store is `F:\AI\Models\Ollama`. The previous C: store is
 as `C:\Users\Warren\.ollama\models.rollback-20260817` until the new location
 has had normal use. Native model behaviour can be adjusted with
 `ARIADNE_CHAT_MODEL` and `ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE`.
-The local Ollama API and browser-facing Ariadne pages use `localhost`.
+The local Ollama API uses loopback. The portable first-run browser contract is
+`http://localhost:8765`, without HTTPS infrastructure; current browser redirects
+and launchers still use an installation-specific HTTPS origin. See
+[Networking and HTTPS](../docs/NETWORKING-AND-HTTPS.md) for this portability gap
+and optional private-network deployment choices.
 
 At Ariadne startup, the Python core performs a bounded Ollama preflight. It
 checks the configured model catalogue without loading a model. It restarts an

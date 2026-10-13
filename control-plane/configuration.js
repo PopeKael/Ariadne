@@ -10,6 +10,8 @@ let cleanupHeartbeat = null;
 let cleanupRun = null;
 let cleanupRunPollTimer = null;
 let inferenceProviders = [];
+let inferenceModelCatalog = {};
+let inferenceRoutes = {};
 let managedInterests = new Map();
 const interestPriorityEdits = new Map();
 const CleanupState = window.AriadneCleanupState;
@@ -146,17 +148,236 @@ function renderRuntimeUnavailable() {
 }
 
 function renderInference(payload) {
-  const root = document.querySelector("#inference-routes");
-  if (!root) return;
   const inference = payload.inference || {};
   inferenceProviders = Array.isArray(inference.providers) ? inference.providers : [];
-  const routes = inference.routes || {};
+  inferenceRoutes = inference.routes || {};
+  renderInferenceRoutes();
+  renderInferenceProviders(inferenceProviders, inferenceRoutes);
+}
+
+function inferenceTaskCapability(task) {
+  return task === "embedding" ? "embeddings" : task === "coding" ? "coding" : task === "planner" ? "structured_output" : task === "summarization_classification" ? "classification" : "chat";
+}
+
+function inferenceModelValue(providerId, modelId) {
+  return `${providerId}::${encodeURIComponent(modelId)}`;
+}
+
+function inferenceModelIdentity(provider, modelId) {
+  const value = String(modelId || "").trim();
+  return provider?.provider_type === "ollama" ? value.replace(/:latest$/i, "") : value;
+}
+
+function inferenceModelOptions(task, route, currentValue = "") {
+  const required = inferenceTaskCapability(task);
+  const selectedProvider = currentValue ? currentValue.split("::", 1)[0] : route.provider_id;
+  const candidates = [];
+  const compatibleProfiles = inferenceProviders.filter(provider => provider.enabled !== false && Array.isArray(provider.capabilities) && provider.capabilities.includes(required));
+  compatibleProfiles.sort((a, b) => Number(b.provider_id === selectedProvider) - Number(a.provider_id === selectedProvider) || Number(a.priority || 100) - Number(b.priority || 100) || a.provider_id.localeCompare(b.provider_id));
+  const seen = new Set();
+  const savedSelection = route.route_selection || (route.provider_id && route.model_id ? inferenceModelValue(route.provider_id, route.model_id) : "");
+  const selectedParts = (currentValue || savedSelection).split("::");
+  const selectedModel = selectedParts.length > 1 ? decodeURIComponent(selectedParts.slice(1).join("::")) : route.model_id || "";
+  for (const provider of compatibleProfiles) {
+    const discovered = inferenceModelCatalog[provider.provider_id]?.models;
+    if (!Array.isArray(discovered)) continue;
+    for (const model of discovered) {
+      if (!model?.id || !Array.isArray(model.capabilities) || !model.capabilities.includes(required)) continue;
+      const identity = inferenceModelIdentity(provider, model.id);
+      const uniqueKey = `${provider.provider_type}\u001f${identity}`;
+      if (seen.has(uniqueKey)) continue;
+      seen.add(uniqueKey);
+      const preserveSelectedAlias = provider.provider_id === selectedParts[0] && inferenceModelIdentity(provider, selectedModel) === identity;
+      candidates.push({provider, modelId: preserveSelectedAlias ? selectedModel : model.id, identity});
+    }
+  }
+  const selectedValue = currentValue || savedSelection;
+  const candidateValue = ({provider, modelId, identity}) => !currentValue && route.route_selection === provider.provider_id && inferenceModelIdentity(provider, provider.model_id) === identity ? provider.provider_id : inferenceModelValue(provider.provider_id, modelId);
+  const selectedFound = candidates.some(item => candidateValue(item) === selectedValue);
+  const options = candidates.map(({provider, modelId, identity}) => {
+    const value = candidateValue({provider, modelId, identity});
+    const label = `${providerLabel(provider.provider_id)} · ${modelId} · ${provider.location}`;
+    return `<option value="${htmlEscape(value)}" ${value === selectedValue ? "selected" : ""}>${htmlEscape(label)}</option>`;
+  });
+  if (selectedValue && !selectedFound && route.provider_id && route.model_id) {
+    options.unshift(`<option value="${htmlEscape(selectedValue)}" selected>${htmlEscape(`${providerLabel(route.provider_id)} · ${route.model_id} · saved selection (not in discovered list)`)}</option>`);
+  }
+  if (!options.length) options.push(`<option value="" disabled selected>Model catalogue unavailable</option>`);
+  return options.join("");
+}
+
+function renderInferenceRoutes() {
+  const root = document.querySelector("#inference-routes");
+  if (!root) return;
   const labels = {home_chat: "Home conversation", planner: "Planner", embedding: "Semantic matching", summarization_classification: "Classification / summarisation"};
-  root.innerHTML = Object.entries(routes).map(([task, route]) => {
-    const options = inferenceProviders.filter(provider => provider.enabled !== false && Array.isArray(provider.capabilities) && provider.capabilities.some(capability => (task === "embedding" ? capability === "embeddings" : task === "planner" ? capability === "structured_output" : task === "summarization_classification" ? capability === "classification" : capability === "chat"))).map(provider => `<option value="${htmlEscape(provider.provider_id)}" ${provider.provider_id === route.provider_id ? "selected" : ""}>${htmlEscape(provider.provider_id)} · ${htmlEscape(provider.model_id || "model not selected")} · ${htmlEscape(provider.location)}</option>`).join("");
-    return `<div class="inference-route" data-inference-task="${htmlEscape(task)}"><div><strong>${htmlEscape(labels[task] || task)}</strong><small>${htmlEscape(route.provider_type || "No compatible provider")} · ${htmlEscape(route.model_id || "No model selected")} · ${htmlEscape(route.location || "—")}</small></div><div class="inference-route-controls"><select data-inference-select aria-label="${htmlEscape(labels[task] || task)} provider">${options || `<option value="">No compatible provider</option>`}</select><span class="active-vault-badge ${route.state === "Configured" ? "active" : "attention"}">${htmlEscape(route.state || "Unavailable")}</span></div></div>`;
+  const currentSelections = new Map([...root.querySelectorAll("[data-inference-task]")].map(row => [row.dataset.inferenceTask, row.querySelector("[data-inference-select]")?.value || ""]));
+  root.innerHTML = Object.entries(inferenceRoutes).map(([task, route]) => {
+    const options = inferenceModelOptions(task, route, currentSelections.get(task));
+    return `<div class="inference-route" data-inference-task="${htmlEscape(task)}"><div><strong>${htmlEscape(labels[task] || task)}</strong><small>${htmlEscape(route.provider_type || "No compatible provider")} · ${htmlEscape(route.model_id || "No model selected")} · ${htmlEscape(route.location || "—")}</small></div><div class="inference-route-controls"><select data-inference-select aria-label="${htmlEscape(labels[task] || task)} provider and model">${options}</select><span class="active-vault-badge ${route.state === "Configured" ? "active" : "attention"}">${htmlEscape(route.state || "Unavailable")}</span></div></div>`;
   }).join("") || `<p class="configuration-note">No compatible inference routes are configured.</p>`;
   root.querySelectorAll("[data-inference-select]").forEach(select => select.addEventListener("change", () => { dirty = true; }));
+}
+
+async function loadInferenceModelCatalogue() {
+  try {
+    const payload = await configurationJson("/api/inference/models");
+    inferenceModelCatalog = payload.providers || {};
+  } catch {
+    inferenceModelCatalog = {};
+  }
+  renderInferenceRoutes();
+}
+
+function providerLabel(providerId) {
+  return ({"ollama-coding": "Ollama", "ollama-desktop": "Ollama", "ollama-planner": "Ollama", "ollama-embedding": "Ollama", "groq-cloud": "Groq", "google-cloud": "Google / Gemini"})[providerId] || inferenceProviders.find(provider => provider.provider_id === providerId)?.display_name || providerId;
+}
+
+function providerCardMarkup(provider, label, kind) {
+  const configured = provider?.credential_state === "Configured";
+  const model = provider?.model_id || "Model not selected";
+  const title = kind === "groq" ? "Groq" : kind === "google" ? "Google Gemini" : provider?.display_name || "External provider";
+  const safeKind = String(kind).replace(/[^a-z0-9-]/gi, "");
+  const keyId = `ariadne-${safeKind}-provider-secret-v4`;
+  const keyName = `ariadne_${safeKind.replaceAll("-", "_")}_provider_secret_v4`;
+  return `<article class="provider-card"><div class="provider-card-top"><strong>${htmlEscape(label)}</strong><span class="active-vault-badge ${configured ? "active" : "attention"}">${configured ? "Key saved" : "Key missing"}</span></div><small>Optional · ${htmlEscape(provider?.location || "cloud")}</small><div class="provider-model">${htmlEscape(model)}</div><details class="provider-edit"><summary>Edit provider</summary><div class="provider-edit-fields"><label class="path-field"><span class="field-label">Default model</span><input type="text" value="${htmlEscape(model === "Model not selected" ? "" : model)}" data-provider-model="${htmlEscape(provider?.provider_id || "")}" autocomplete="off" spellcheck="false"></label><label class="path-field"><span class="field-label">${htmlEscape(title)} API key <small>Stored in Windows Credential Manager.</small></span><span class="groq-key-input-wrap"><input id="${keyId}" name="${keyName}" type="text" class="groq-key-masked" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="${configured ? "••••••••••••••••" : `Enter ${htmlEscape(title)} API key`}" data-provider-key data-provider-id="${htmlEscape(provider?.provider_id || "")}" data-lpignore="true" data-form-type="other" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true"><button class="groq-key-visibility" type="button" data-provider-key-action="visibility" data-provider-id="${htmlEscape(provider?.provider_id || "")}" data-has-stored-key="${configured}" aria-label="Show saved ${htmlEscape(title)} API key" aria-pressed="false" title="Show saved API key" ${configured ? "" : "disabled"}><svg class="groq-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="groq-eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.9-.5"/></svg></button></span></label><div class="compact-actions"><button class="secondary-button" type="button" data-provider-key-action="save" data-provider-id="${htmlEscape(provider?.provider_id || "")}">Save key securely</button><button class="secondary-button" type="button" data-provider-key-action="remove" data-provider-id="${htmlEscape(provider?.provider_id || "")}">Remove saved key</button></div></div></details></article>`;
+}
+
+function renderInferenceProviders(providers, routes) {
+  const root = document.querySelector("#inference-providers");
+  if (!root) return;
+  const ollama = providers.find(provider => provider.provider_id === "ollama-desktop");
+  const homeRoute = routes.home_chat || {};
+  root.innerHTML = [
+    `<article class="provider-card"><div class="provider-card-top"><strong>Ollama</strong><span class="active-vault-badge ${homeRoute.provider_id?.startsWith("ollama-") ? "active" : ""}">${homeRoute.provider_id?.startsWith("ollama-") ? "Default" : "Local"}</span></div><small>Local · ${htmlEscape(homeRoute.state || ollama?.state || "Configured")}</small><div class="provider-model">${htmlEscape(homeRoute.model_id || ollama?.model_id || "No model selected")}</div></article>`,
+    providerCardMarkup(providers.find(provider => provider.provider_id === "groq-cloud"), "Groq", "groq"),
+    providerCardMarkup(providers.find(provider => provider.provider_id === "google-cloud"), "Google / Gemini", "google"),
+    ...providers.filter(provider => provider.provider_type === "openai-compatible").map(provider => providerCardMarkup(provider, provider.display_name || provider.provider_id, provider.provider_id)),
+  ].join("");
+  root.querySelectorAll("[data-provider-model]").forEach(input => input.addEventListener("input", () => { dirty = true; }));
+  root.querySelectorAll("[data-provider-key-action]").forEach(button => button.addEventListener("click", () => {
+    const providerId = button.dataset.providerId;
+    const action = button.dataset.providerKeyAction;
+    if (action === "visibility") void toggleProviderKeyVisibility(providerId);
+    else void saveProviderCredential(providerId, action === "remove");
+  }));
+  root.querySelectorAll("[data-provider-key]").forEach(input => input.addEventListener("input", () => {
+    const button = root.querySelector(`[data-provider-key-action="visibility"][data-provider-id="${input.dataset.providerId}"]`);
+    if (button) button.disabled = !input.value && button.dataset.hasStoredKey !== "true";
+  }));
+  const dialog = document.querySelector("#add-provider-dialog");
+  const addButton = document.querySelector("#add-provider-button");
+  if (addButton && dialog) addButton.onclick = () => dialog.showModal();
+  if (dialog) dialog.onkeydown = event => { if (event.key === "Enter" && event.target instanceof HTMLInputElement) { event.preventDefault(); void addExternalProvider(event); } };
+  document.querySelectorAll("[data-close-provider-dialog]").forEach(button => { button.onclick = () => dialog?.close(); });
+  const addForm = document.querySelector("#add-provider-form");
+  const addSubmit = document.querySelector("#add-provider-submit");
+  if (addSubmit) addSubmit.onclick = addExternalProvider;
+}
+
+async function addExternalProvider(event) {
+  event.preventDefault();
+  const form = document.querySelector("#add-provider-form");
+  if (!form) return;
+  const status = document.querySelector("#add-provider-status");
+  const setFormStatus = message => { if (status) status.textContent = message; };
+  const field = name => form.querySelector(`[name="${name}"]`);
+  const name = field("provider_name")?.value.trim() || "";
+  const modelId = field("provider_model")?.value.trim() || "";
+  const apiKey = field("external_provider_secret_v1")?.value.trim() || "";
+  let endpoint;
+  try {
+    endpoint = new URL(field("provider_endpoint")?.value.trim() || "");
+    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname.toLowerCase());
+    if (!name || !endpoint.hostname || (endpoint.protocol !== "https:" && !(endpoint.protocol === "http:" && loopback)) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new Error("Use HTTPS, or HTTP on this computer only, without embedded credentials or URL parameters.");
+  } catch (error) {
+    setFormStatus(error.message || "Enter a valid API base URL.");
+    return;
+  }
+  const suffix = crypto.randomUUID().replaceAll("-", "").slice(0, 12).toLowerCase();
+  const providerId = `external-${suffix}`;
+  const provider = {provider_id: providerId, provider_type: "openai-compatible", display_name: name, model_id: modelId, endpoint: endpoint.href.replace(/\/+$/, ""), credential_reference: `ARIADNE_EXTERNAL_${suffix.toUpperCase()}_API_KEY`, capabilities: ["chat", "structured_output"], location: endpoint.protocol === "https:" ? "cloud" : "desktop", enabled: true, priority: 70, embedding_version: "v1"};
+  inferenceProviders = [...inferenceProviders, provider];
+  const submit = document.querySelector("#add-provider-submit");
+  if (submit) submit.disabled = true;
+  setFormStatus("Saving provider profile…");
+  let providerProfileSaved = false;
+  try {
+    const inference = formInference();
+    const payload = await configurationJson("/api/configuration", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({storage: formStorage(), inference, personality: formPersonality()})});
+    if (!payload.persistence?.verified) throw new Error("The provider profile was not verified after saving.");
+    providerProfileSaved = true;
+    dirty = false;
+    render(payload);
+    if (apiKey) {
+      setFormStatus("Saving the API key securely…");
+      await configurationJson(`/api/configuration/credential/${providerId}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action: "save", api_key: apiKey})});
+      field("external_provider_secret_v1").value = "";
+      render(await configurationJson("/api/configuration"));
+      void loadInferenceModelCatalogue();
+    }
+    for (const input of form.querySelectorAll("input")) input.value = "";
+    document.querySelector("#add-provider-dialog")?.close();
+    setStatus(`${name} added as an optional provider. Existing routes are unchanged.`, "success");
+  } catch (error) {
+    if (!providerProfileSaved) inferenceProviders = inferenceProviders.filter(item => item.provider_id !== providerId);
+    setFormStatus(error.message || "The provider could not be added.");
+    setStatus(`Provider setup needs attention: ${error.message}`, "error");
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+function setProviderKeyVisibility(providerId, visible) {
+  const input = document.querySelector(`[data-provider-key][data-provider-id="${providerId}"]`);
+  const button = document.querySelector(`[data-provider-key-action="visibility"][data-provider-id="${providerId}"]`);
+  if (!input || !button) return;
+  if (!visible && input.dataset.revealedStoredKey === "true") { input.value = ""; input.dataset.revealedStoredKey = "false"; }
+  input.classList.toggle("groq-key-masked", !visible);
+  if (!visible && button.dataset.hasStoredKey === "true" && !input.value) input.placeholder = "••••••••••••••••";
+  button.setAttribute("aria-pressed", String(visible));
+  const label = visible ? `Hide ${providerLabel(providerId)} API key` : `Show saved ${providerLabel(providerId)} API key`;
+  button.setAttribute("aria-label", label);
+  button.title = label;
+}
+
+async function toggleProviderKeyVisibility(providerId) {
+  const input = document.querySelector(`[data-provider-key][data-provider-id="${providerId}"]`);
+  const button = document.querySelector(`[data-provider-key-action="visibility"][data-provider-id="${providerId}"]`);
+  if (!input || !button) return;
+  if (!input.classList.contains("groq-key-masked")) { setProviderKeyVisibility(providerId, false); return; }
+  if (input.value) { setProviderKeyVisibility(providerId, true); return; }
+  if (button.dataset.hasStoredKey !== "true") return;
+  button.disabled = true;
+  try {
+    const payload = await configurationJson(`/api/configuration/credential/${providerId}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action: "reveal"})});
+    input.value = payload.api_key;
+    input.dataset.revealedStoredKey = "true";
+    setProviderKeyVisibility(providerId, true);
+  } catch (error) {
+    setStatus(`${providerLabel(providerId)} key could not be revealed: ${error.message}`, "error");
+  } finally { button.disabled = false; }
+}
+
+async function saveProviderCredential(providerId, remove = false) {
+  const input = document.querySelector(`[data-provider-key][data-provider-id="${providerId}"]`);
+  const button = document.querySelector(`[data-provider-key-action="${remove ? "remove" : "save"}"][data-provider-id="${providerId}"]`);
+  if (!remove && !input?.value.trim()) {
+    const keyAlreadySaved = document.querySelector(`[data-provider-key-action="visibility"][data-provider-id="${providerId}"]`)?.dataset.hasStoredKey === "true";
+    setStatus(keyAlreadySaved ? `A ${providerLabel(providerId)} key is already saved. Enter a replacement only if you want to change it.` : "Enter an API key before saving it.", keyAlreadySaved ? "quiet" : "error");
+    return;
+  }
+  if (button) button.disabled = true;
+  setStatus(remove ? `Removing the saved ${providerLabel(providerId)} API key…` : `Saving the ${providerLabel(providerId)} API key in Windows Credential Manager…`);
+  try {
+    await configurationJson(`/api/configuration/credential/${providerId}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(remove ? {action: "remove"} : {action: "save", api_key: input.value})});
+    if (input) { input.value = ""; input.classList.add("groq-key-masked"); }
+    setProviderKeyVisibility(providerId, false);
+    setStatus(remove ? `Saved ${providerLabel(providerId)} key removed from Windows Credential Manager.` : `${providerLabel(providerId)} API key saved securely. Existing routes remain unchanged.`, "success");
+    renderInference(await configurationJson("/api/configuration"));
+    void loadInferenceModelCatalogue();
+  } catch (error) {
+    setStatus(`${providerLabel(providerId)} key could not be ${remove ? "removed" : "saved"}: ${error.message}`, "error");
+  } finally { if (button) button.disabled = false; }
 }
 
 function renderPersonality(payload) {
@@ -237,7 +458,12 @@ function ensureInterestVisible(interest) {
 function formInference() {
   const routes = {};
   document.querySelectorAll("[data-inference-task]").forEach(row => { const select = row.querySelector("[data-inference-select]"); if (select?.value) routes[row.dataset.inferenceTask] = select.value; });
-  return {routes};
+  const providers = inferenceProviders.map(provider => {
+    const model = document.querySelector(`[data-provider-model="${provider.provider_id}"]`);
+    const {credential_state, state, ...savedProvider} = provider;
+    return model ? {...savedProvider, model_id: model.value.trim()} : savedProvider;
+  });
+  return {routes, providers};
 }
 
 function formPersonality() {
@@ -357,6 +583,7 @@ function render(payload) {
   renderStorage(payload);
   renderAvatar(payload.avatar);
   renderInference(payload);
+  void loadInferenceModelCatalogue();
   renderPersonality(payload);
   const selectedPlugin = renderPluginConfigurations(payload);
   if (payload.runtime || payload.vault) renderRuntime(payload);

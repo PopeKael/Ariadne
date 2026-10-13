@@ -11,6 +11,8 @@ local control-plane interface that presents and operates those capabilities.
 - [`docs/`](docs/README.md) — project design, standards, and roadmaps.
 - [`docs/CLONE-AND-DEPLOY.md`](docs/CLONE-AND-DEPLOY.md) — the plain-language
   starting guide for somebody building their own local Ariadne.
+- [`docs/NETWORKING-AND-HTTPS.md`](docs/NETWORKING-AND-HTTPS.md) — local HTTP,
+  private HTTPS and independent deployment choices, with current portability gaps.
 - Knowledge folders — the user-owned Markdown knowledge store, with private content excluded by [`.gitignore`](.gitignore).
 
 ## Four architectural parcels
@@ -52,6 +54,13 @@ the Start menu. The Python core refuses an ordinary direct launch unless the
 explicit development override above is set; this prevents a headless backend
 from being mistaken for a running Ariadne session.
 
-Open `http://localhost:8765`. The control plane uses the repository root as
-the default Vault root. Set `ARIADNE_VAULT_ROOT` only for a deliberate
-transition or compatibility run against another local Vault location.
+The simple local deployment contract is `http://localhost:8765`, loopback-only,
+with no HTTPS infrastructure required. The current checkout still redirects
+browser pages to an installation-specific HTTPS origin; see the
+[networking guide's portability limitation](docs/NETWORKING-AND-HTTPS.md#start-local-add-a-network-edge-when-needed)
+before treating this as a working generic first run. No networking changes are
+made by that guide.
+
+Choose your own Vault using Configuration or `ARIADNE_VAULT_ROOT`. The current
+default is an installation-specific path, not the repository root. Do not copy
+Wazza's private Vault or network configuration to make a clone work.

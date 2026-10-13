@@ -1,5 +1,11 @@
 # Ariadne HTTPS cutover design
 
+This is a historical record of Wazza's installation, including dated status
+snapshots and subsequent activation notes. Its Synology topology, named hosts,
+certificate assignments and stronger end-to-end TLS objective are not generic
+clone requirements. For portable choices, the local HTTP first-run contract and
+current implementation gaps, see [Networking and HTTPS](NETWORKING-AND-HTTPS.md).
+
 Status: Synology certificate issued and assigned; desktop TLS prepared but not
 activated. Semantic matching remains broken. DNS, firewall rules, listener
 ports, proxy upstreams and containers remain unchanged.

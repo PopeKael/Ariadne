@@ -2,6 +2,14 @@
 
 Preserve the existing architecture. Inspect runtime evidence before changing it.
 
+## Networking changes
+
+Map the complete request/service topology (browser, TLS edge, control plane,
+models, MCP/tools and supporting services) before altering networking. Do not
+create machine-global forwarding, firewall or certificate changes simply to make
+a test pass. Preserve localhost-safe defaults and use installation-owned endpoints;
+see [Networking and HTTPS](docs/NETWORKING-AND-HTTPS.md).
+
 ## KStore / Hera access
 
 Read [the SSH runbook](docs/hera-ssh-access.md) before NAS work. On 2026-10-07,
