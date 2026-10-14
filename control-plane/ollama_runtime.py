@@ -6,6 +6,7 @@ import ctypes
 import atexit
 import csv
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -14,6 +15,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from typing import Callable
 
 
@@ -137,11 +139,9 @@ def start_owned_ollama(
 ) -> dict[str, object]:
     """Ask the Rust host to own Ollama; development-only runs use the local fallback."""
     global _HOST_RUNTIME_OWNER
-    if (
-        os.name == "nt"
-        and os.environ.get("ARIADNE_RUNTIME_SUPERVISOR") == "1"
-        and os.environ.get("ARIADNE_ALLOW_UNSUPERVISED_CORE") != "1"
-    ):
+    if os.name == "nt" and os.environ.get("ARIADNE_ALLOW_UNSUPERVISED_CORE") != "1":
+        if os.environ.get("ARIADNE_RUNTIME_SUPERVISOR") != "1":
+            raise RuntimeError("Windows Ollama lifecycle is owned by the Rust host; start Ariadne through the Rust host.")
         store = sync_model_store_environment(required_models)
         response = _request_host_ollama(endpoint, store, required_models, startup_timeout)
         _HOST_RUNTIME_OWNER = True
@@ -304,6 +304,79 @@ def _request_host_ollama(
         "version": payload.get("version"),
         "detail": payload.get("detail", "Rust host verified the Ariadne Ollama runtime."),
     }
+
+
+def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
+                        lease_id: str | None = None, force: bool | None = None,
+                        preserve_models: list[str] | None = None,
+                        timeout: float = 20.0) -> dict[str, object]:
+    """Transport a residency request to the Rust host; policy lives there."""
+    if os.name != "nt":
+        raise RuntimeError("Rust-host GPU admission is only available on Windows.")
+    pipe_name = r"\\.\pipe\ariadne-runtime"
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.WaitNamedPipeW.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32]
+    kernel32.WaitNamedPipeW.restype = ctypes.c_int
+    if not kernel32.WaitNamedPipeW(pipe_name, max(1, min(int(timeout * 1000), 60_000))):
+        raise RuntimeError("The Rust host residency custodian is not accepting requests; local inference is blocked.")
+    request: dict[str, object] = {"v": 1, "type": kind, "endpoint": endpoint}
+    if model is not None:
+        request["model"] = model
+    if lease_id is not None:
+        request["lease_id"] = lease_id
+    if force is not None:
+        request["force"] = force
+    if preserve_models is not None:
+        request["preserve_models"] = preserve_models
+    try:
+        with open(pipe_name, "r+b", buffering=0) as pipe:
+            pipe.write(json.dumps(request, separators=(",", ":")).encode("utf-8") + b"\n")
+            response = bytearray()
+            deadline = time.monotonic() + max(1.0, timeout)
+            while time.monotonic() < deadline:
+                byte = pipe.read(1)
+                if not byte or byte == b"\n":
+                    break
+                response.extend(byte)
+                if len(response) > 32 * 1024:
+                    raise RuntimeError("The Rust host returned an oversized residency response.")
+        payload = json.loads(response.decode("utf-8"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Rust-host residency request failed; local inference is blocked: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("v") != 1 or not payload.get("ok"):
+        detail = payload.get("detail") if isinstance(payload, dict) else None
+        raise RuntimeError(str(detail or "Rust host denied local inference."))
+    return payload
+
+
+@contextmanager
+def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT):
+    """Admit local inference only after the Rust host checks Ollama and WDDM residency."""
+    result = _request_host_model("admit_model", endpoint=endpoint, model=model)
+    lease_id = str(result.get("lease_id") or "")
+    if not lease_id:
+        raise RuntimeError("Rust host admitted inference without returning a lease; request blocked.")
+    try:
+        yield result
+    finally:
+        try:
+            _request_host_model("release_model", endpoint=endpoint, lease_id=lease_id, timeout=20.0)
+        except Exception as exc:
+            # Do not hide an inference result, but leave a durable warning for
+            # the host's next reconciliation and operational diagnostics.
+            logging.getLogger(__name__).error("Could not release inference lease %s: %s", lease_id, exc)
+
+
+def host_unload_model(model: str, endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
+    """Ask Rust to unload a model after it checks ownership and active leases."""
+    return _request_host_model("unload_model", endpoint=endpoint, model=model, timeout=20.0)
+
+
+def host_release_idle_models(*, endpoint: str = DEFAULT_ENDPOINT, force: bool = False,
+                             preserve_models: list[str] | None = None) -> dict[str, object]:
+    """Ask Rust to release idle models and report the verified result."""
+    return _request_host_model("release_idle_models", endpoint=endpoint, force=force,
+                               preserve_models=preserve_models or [], timeout=30.0)
 
 
 def model_manifest_path(store: str, model: str) -> Path:

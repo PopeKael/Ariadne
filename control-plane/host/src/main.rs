@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod idle_webm;
+mod gpu_residency;
 mod ollama_supervisor;
 mod startup_trace;
 
@@ -506,6 +507,7 @@ fn spawn_core(
         job,
         wait_rx,
         readiness_stop,
+        started_at: core_started,
     })
 }
 
@@ -514,6 +516,7 @@ struct ProcessState {
     job: windows::Win32::Foundation::HANDLE,
     wait_rx: std::sync::mpsc::Receiver<()>,
     readiness_stop: Arc<AtomicBool>,
+    started_at: Instant,
 }
 
 impl Drop for ProcessState {
@@ -544,9 +547,14 @@ impl CoreSupervisor {
             loop {
                 if let Some(current) = process.as_ref() {
                     if current.wait_rx.try_recv().is_ok() {
-                        log_line("Python core exited unexpectedly; Rust host will restart it");
+                        if current.started_at.elapsed() >= Duration::from_secs(60) {
+                            restart_attempt = 0;
+                        }
+                        restart_attempt = restart_attempt.saturating_add(1);
+                        let delay = (1u64 << restart_attempt.min(5)).min(30);
+                        log_line(format!("Python core exited unexpectedly; restart attempt {} is delayed {} seconds", restart_attempt, delay));
                         process = None;
-                        restart_at = Some(Instant::now() + Duration::from_secs(1));
+                        restart_at = Some(Instant::now() + Duration::from_secs(delay));
                     }
                 }
                 if process.is_none() && restart_at.is_some_and(|at| Instant::now() >= at) {

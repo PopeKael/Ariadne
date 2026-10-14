@@ -9,19 +9,20 @@ avatar overlay, and local named-pipe receivers. It does not reason about
 queries, access the Vault, run inference, or replace Ariadne's HTTP server.
 
 The Python Core remains `control-plane/server.py`. It owns Ariadne Home, the
-HTTP API, retrieval, Vault access, routing, inference requests, tools, and the
-GPU/model-residency arbiter. It asks the Rust host to start or reconcile
-Ollama; the host retains and monitors the process handle. Home emits optional
-presentation hints through `avatar_events.py`; transport failure is
-deliberately ignored by the core.
+HTTP API, retrieval, Vault access, routing, and tools. It sends model requests
+through the Rust host's admission and residency IPC; Rust owns Ollama startup,
+memory preflight, model admission, unloading and residency release. GPU
+workload transitions unrelated to model residency remain coordinated by the
+existing Python services. Home emits optional presentation hints through
+`avatar_events.py`; transport failure is deliberately ignored by the core.
 
 ## Build and manual run
 
 From the repository root, with Rust installed:
 
 ```powershell
-cargo build --release --manifest-path .\control-plane\host\Cargo.toml
-Start-Process .\control-plane\host\target\release\ariadne-host.exe -WorkingDirectory (Get-Location)
+cargo build --release --manifest-path .\control-plane\host\Cargo.toml --target-dir .\control-plane\host\target-msvc
+Start-Process .\control-plane\host\target-msvc\release\ariadne-host.exe -WorkingDirectory (Get-Location)
 ```
 
 The host resolves Python in this order: `ARIADNE_PYTHON`, the repository
@@ -72,9 +73,10 @@ required model catalogue:
 The host validates the required manifests, starts Ollama with the selected
 `OLLAMA_MODELS`, and verifies that the owned PID still listens on port 11434
 and exposes the required catalogue. It logs process/version changes and
-reconciles after an installer finishes. The Python arbiter remains responsible
-for model residency and GPU workload transitions. Host lifecycle details are
-written to `%LOCALAPPDATA%\Ariadne\host.log`.
+reconciles after an installer finishes. All model inference, explicit unloads,
+startup cleanup, and idle/pressure release decisions pass through the Rust
+custodian. Host lifecycle details are written to
+`%LOCALAPPDATA%\Ariadne\host.log`.
 
 ## Avatar assets
 

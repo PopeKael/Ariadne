@@ -75,6 +75,9 @@ from librarian_harness import (
     request_needs_personal_context,
 )
 from ollama_runtime import (
+    host_release_idle_models,
+    host_unload_model,
+    inference_lease,
     ollama_update_in_progress,
     runtime_identity,
     start_owned_ollama,
@@ -1621,7 +1624,7 @@ def ai_gpu_admission():
 
 @contextmanager
 def model_activity(model: str):
-    """Mark a model in-flight so the memory governor cannot evict it mid-request."""
+    """Track activity locally while Rust owns admission and residency decisions."""
     ensure_ai_gpu_access()
     name = str(model or "").strip()
     if name:
@@ -1629,7 +1632,11 @@ def model_activity(model: str):
             MODEL_IN_FLIGHT[name] = MODEL_IN_FLIGHT.get(name, 0) + 1
             MODEL_LAST_USED[name] = time.monotonic()
     try:
-        yield
+        if name:
+            with inference_lease(name, OLLAMA_URL):
+                yield
+        else:
+            yield
     finally:
         if name:
             with MODEL_ACTIVITY_LOCK:
@@ -1787,10 +1794,10 @@ def ollama_status() -> dict[str, object]:
 def unload_ollama_model(name: str, *, reason: str = "explicit") -> bool:
     record_model_residency_event("model_unload_requested", model=name, reason=reason)
     try:
-        post_json(f"{OLLAMA_URL}/api/generate", {"model": name, "keep_alive": 0}, timeout=8.0)
+        result = host_unload_model(name, OLLAMA_URL)
         record_model_residency_event("model_unload_completed", model=name, reason=reason)
-        return True
-    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return bool(result.get("ok"))
+    except (OSError, RuntimeError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
         record_model_residency_event("model_unload_failed", model=name, reason=reason,
                                      detail={"error_type": type(exc).__name__})
         return False
@@ -1798,57 +1805,15 @@ def unload_ollama_model(name: str, *, reason: str = "explicit") -> bool:
 
 def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object] | None = None,
                                pressure: bool = False, preserve_models: set[str] | None = None) -> dict[str, object]:
-    """The single Ollama residency release path used by monitoring and transitions."""
-    catalog = ollama_catalog()
-    if not catalog.get("available"):
-        return {"unloaded": [], "protected": [], "remaining": [], "available": False}
-    policy = policy or model_residency_policy()
-    now = time.monotonic()
-    idle_limit = float(policy.get("idle_seconds", 900))
-    expired_vault_pins: list[str] = []
-    with MODEL_ACTIVITY_LOCK:
-        last_used_snapshot = dict(MODEL_LAST_USED)
-    with SESSION_LOCK:
-        for session in SESSIONS.values():
-            model = str(session.get("ingestion_model") or "")
-            if (session.get("surface") == "knowledge-vault" and model
-                    and session.get("ingestion_model_protected") and session.get("ingestion_model_cooldown")
-                    and now - last_used_snapshot.get(model, now) >= idle_limit):
-                session["ingestion_model_protected"] = False
-                session["ingestion_model_cooldown"] = False
-                expired_vault_pins.append(model)
-    if expired_vault_pins:
-        with MODEL_ACTIVITY_LOCK:
-            for model in expired_vault_pins:
-                remaining = MODEL_IN_FLIGHT.get(model, 1) - 1
-                if remaining > 0:
-                    MODEL_IN_FLIGHT[model] = remaining
-                else:
-                    MODEL_IN_FLIGHT.pop(model, None)
-    with MODEL_ACTIVITY_LOCK:
-        protected = set(MODEL_IN_FLIGHT)
-        last_used = dict(MODEL_LAST_USED)
-    preserved = {str(name) for name in (preserve_models or set()) if str(name).strip()}
-    preferred = {HOME_CHAT_MODEL, PLANNER_MODEL}
-    unloaded: list[str] = []
-    blocked: list[str] = []
-    for item in catalog.get("loaded_details", []):
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or "")
-        if not name:
-            continue
-        if name in preserved:
-            continue
-        if name in protected:
-            blocked.append(name)
-            continue
-        idle_seconds = now - last_used.get(name, now)
-        limit = float(policy["preferred_idle_seconds"] if name in preferred else policy["idle_seconds"])
-        if force or pressure or idle_seconds >= limit:
-            if unload_ollama_model(name, reason="residency_governor"):
-                unloaded.append(name)
-    return {"unloaded": unloaded, "protected": blocked, "remaining": [], "available": True}
+    """Delegate all Ollama residency release decisions and unloads to the Rust custodian."""
+    try:
+        result = host_release_idle_models(endpoint=OLLAMA_URL, force=force,
+                                         preserve_models=sorted(str(name) for name in (preserve_models or set())))
+        unloaded = result.get("models") if isinstance(result.get("models"), list) else []
+        return {"unloaded": unloaded, "protected": [], "remaining": [], "available": True,
+                "detail": result.get("detail", "Rust host completed model residency release.")}
+    except (OSError, RuntimeError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return {"unloaded": [], "protected": [], "remaining": [], "available": False, "detail": str(exc)}
 
 
 def monitor_ollama_models() -> dict[str, object]:
@@ -1955,6 +1920,10 @@ def monitor_ollama_models() -> dict[str, object]:
                 MODEL_LAST_USED.setdefault(str(item["name"]), now)
     preserved = {HOME_CHAT_MODEL} | ({LAB_RESIDENT_MODEL} if LAB_RESIDENT_MODEL else set())
     release = release_idle_ollama_models(policy=policy, pressure=pressure, preserve_models=preserved)
+    if not release.get("available"):
+        return {"state": "custodian_unavailable", "policy": policy,
+                "free_vram_gb": round(free_gb, 1), "unloaded": [],
+                "detail": f"Rust host could not complete model residency review: {release.get('detail', 'no detail')}"}
     unloaded = release["unloaded"]
     return {
         "state": "pressure" if pressure else "nominal",
@@ -2005,7 +1974,8 @@ def preload_ollama_model(model: str | None = None, *, options: dict[str, object]
     record_model_residency_event("model_load_requested", model=selected_model, reason=reason,
                                  detail={"keep_alive": selected_keep_alive})
     try:
-        response = post_json(f"{OLLAMA_URL}/api/generate", payload, timeout=300.0)
+        with inference_lease(selected_model, OLLAMA_URL):
+            response = post_json(f"{OLLAMA_URL}/api/generate", payload, timeout=300.0)
         load_duration = response.get("load_duration")
         detail = f"{selected_model} is loaded in memory"
         if isinstance(load_duration, int):
@@ -2472,11 +2442,12 @@ def _ollama_generate_stream(model: str, payload: dict[str, object], timeout: flo
         headers={"Content-Type": "application/json", "Accept": "application/x-ndjson"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        for raw_line in response:
-            line = raw_line.decode("utf-8").strip()
-            if line:
-                yield json.loads(line)
+    with inference_lease(model, endpoint or OLLAMA_URL):
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8").strip()
+                if line:
+                    yield json.loads(line)
 
 
 def code_lab_service():
@@ -2605,7 +2576,8 @@ def run_model_lab(body: dict[str, object], on_event: Callable[[dict[str, object]
                         _model_lab_event(on_event, {"type": "response", "delta": answer})
             else:
                 request_payload["stream"] = False
-                response = post_json(f"{OLLAMA_URL}/api/generate", request_payload, timeout=300.0)
+                with inference_lease(model, OLLAMA_URL):
+                    response = post_json(f"{OLLAMA_URL}/api/generate", request_payload, timeout=300.0)
         response["thinking"] = "".join(thinking_chunks) if thinking_chunks else str(response.get("thinking") or "")
         response["response"] = "".join(answer_chunks) if answer_chunks else str(response.get("response") or "")
         telemetry = {

@@ -11,6 +11,7 @@ import hashlib
 import json
 import math
 import os
+import sys
 import tempfile
 import time
 import urllib.error
@@ -24,6 +25,15 @@ from typing import Any, Callable
 INDEX_VERSION = 3
 DEFAULT_MODEL = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")
 DEFAULT_OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434")
+
+
+def host_inference_lease(model: str, base_url: str):
+    """Load the Rust-host IPC adapter from either the core or standalone MCP process."""
+    control_plane = Path(__file__).resolve().parents[1] / "control-plane"
+    if control_plane.is_dir() and str(control_plane) not in sys.path:
+        sys.path.insert(0, str(control_plane))
+    from ollama_runtime import inference_lease
+    return inference_lease(model, base_url)
 
 
 def index_path(root: Path) -> Path:
@@ -79,8 +89,9 @@ def ollama_embed(text: str, model: str = DEFAULT_MODEL, base_url: str = DEFAULT_
         data=json.dumps({"model": model, "input": text, "truncate": True}).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        with host_inference_lease(model, base_url):
+            with urllib.request.urlopen(request, timeout=120) as response:
+                payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Ollama is unavailable at {base_url}: {exc.reason}") from exc
     except (TimeoutError, json.JSONDecodeError) as exc:
@@ -101,8 +112,9 @@ def ollama_embed_many(texts: list[str], model: str = DEFAULT_MODEL, base_url: st
         data=json.dumps({"model": model, "input": texts, "truncate": True}).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            vectors = json.loads(response.read().decode("utf-8")).get("embeddings")
+        with host_inference_lease(model, base_url):
+            with urllib.request.urlopen(request, timeout=120) as response:
+                vectors = json.loads(response.read().decode("utf-8")).get("embeddings")
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Ollama is unavailable at {base_url}: {exc.reason}") from exc
     if not isinstance(vectors, list) or len(vectors) != len(texts) or not all(isinstance(v, list) and v for v in vectors):

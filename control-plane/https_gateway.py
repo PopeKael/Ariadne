@@ -66,6 +66,15 @@ def create_gateway(settings):
                 except (ValueError, TypeError) as exc:
                     self.error(400, str(exc))
                     return
+            model_lease = None
+            if internal and self.command == "POST":
+                try:
+                    from ollama_runtime import inference_lease
+                    model_lease = inference_lease("nomic-embed-text", settings["ollama_url"])
+                    model_lease.__enter__()
+                except (ImportError, OSError, RuntimeError, ValueError) as exc:
+                    self.error(503, f"Rust-host model admission denied this embedding request: {exc}")
+                    return
             origin = origins["ollama_url" if internal else "core_url"]
             headers = {key: value for key, value in self.headers.items() if key.casefold() not in HOP_HEADERS | {"host"}}
             headers["Host"] = origin.netloc
@@ -101,6 +110,8 @@ def create_gateway(settings):
             finally:
                 self.close_connection = True
                 upstream.close()
+                if model_lease is not None:
+                    model_lease.__exit__(None, None, None)
 
         do_GET = forward
         do_POST = forward
