@@ -6,7 +6,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import credential_store
-from inference import InferenceRegistry, Provider, default_providers, normalize_ollama_model_id, ollama_model_catalogue
+from inference import (
+    DEFAULT_CONTEXT_TOKENS, InferenceRegistry, Provider, default_providers,
+    effective_context_tokens, normalize_ollama_model_id, ollama_model_catalogue,
+    resolve_ollama_model_id,
+)
 
 
 class InferenceRegistryTests(unittest.TestCase):
@@ -76,6 +80,65 @@ class InferenceRegistryTests(unittest.TestCase):
             self.assertEqual(route.model_id, "nomic-embed-text")
             self.assertEqual(registry.routes["embedding"], "ollama-embedding")
             self.assertEqual(registry.snapshot()["routes"]["embedding"]["route_selection"], "ollama-embedding")
+
+    def test_ollama_aliases_resolve_to_the_installed_latest_tag(self):
+        self.assertEqual(resolve_ollama_model_id("nomic-embed-text", ["nomic-embed-text:latest"]), "nomic-embed-text:latest")
+        self.assertEqual(resolve_ollama_model_id("nomic-embed-text:latest", ["nomic-embed-text:latest"]), "nomic-embed-text:latest")
+        self.assertEqual(Provider.from_dict({"provider_type": "ollama", "model_id": "nomic-embed-text:latest"}).model_id,
+                         "nomic-embed-text")
+
+    def test_same_weights_and_configuration_group_as_one_canonical_model(self):
+        entries = [
+            {"name": "qwen3.5:9b-q4_K_M", "digest": "base-manifest", "size": 700, "details": {"family": "qwen35"}},
+            {"name": "ariadne-qwen-code:9b-32k", "digest": "coding-manifest", "size": 701, "details": {"family": "qwen35"}},
+        ]
+        common = {
+            "modelfile": "FROM F:\\AI\\Models\\Ollama\\blobs\\sha256-shared\nPARAMETER temperature 1\n",
+            "template": "{{ .Prompt }}", "system": "",
+            "model_info": {"qwen35.context_length": 262144, "qwen35.block_count": 32},
+            "capabilities": ["completion", "vision", "tools"],
+        }
+        metadata = {
+            "qwen3.5:9b-q4_K_M": {**common, "parameters": "temperature 1"},
+            "ariadne-qwen-code:9b-32k": {**common, "parameters": "num_ctx 32768\ntemperature 1"},
+        }
+        catalogue = ollama_model_catalogue(entries, metadata)
+        self.assertEqual(len(catalogue), 1)
+        self.assertEqual(catalogue[0]["canonical_name"], "qwen3.5:9b-q4_K_M")
+        self.assertEqual(catalogue[0]["effective_context_tokens"], 32768)
+        self.assertIn({"name": "ariadne-qwen-code:9b-32k", "purpose": "coding alias", "role": "Coding"}, catalogue[0]["aliases"])
+        self.assertIn("Coding", catalogue[0]["roles"])
+        self.assertIn("Chat", catalogue[0]["roles"])
+
+        tag_entries = [
+            {"name": "qwen3.8-27b:ctx32k", "digest": "ctx", "details": {"family": "qwen35"}},
+            {"name": "qwen3.8-27b:latest", "digest": "latest", "details": {"family": "qwen35"}},
+        ]
+        shared = {"modelfile": "FROM /models/blobs/sha256-shared\n", "template": "x", "parameters": ""}
+        aliases = ollama_model_catalogue(tag_entries, {"qwen3.8-27b:ctx32k": shared, "qwen3.8-27b:latest": shared})
+        self.assertEqual(aliases[0]["canonical_name"], "qwen3.8-27b")
+        self.assertEqual(resolve_ollama_model_id("qwen3.8-27b", [row["name"] for row in tag_entries], aliases),
+                         "qwen3.8-27b:ctx32k")
+
+    def test_default_context_is_32k_and_clamps_only_to_declared_model_limit(self):
+        self.assertEqual(DEFAULT_CONTEXT_TOKENS, 32768)
+        self.assertEqual(effective_context_tokens(262144), 32768)
+        self.assertEqual(effective_context_tokens(16384), 16384)
+        self.assertEqual(effective_context_tokens(None), 32768)
+
+    def test_embedding_only_model_is_not_chat_capable(self):
+        catalogue = ollama_model_catalogue([
+            {"name": "nomic-embed-text:latest", "details": {"family": "nomic-bert"}},
+            {"name": "qwen3.5:9b", "details": {"family": "qwen35"}},
+        ], {
+            "nomic-embed-text:latest": {"capabilities": ["embedding"]},
+            "qwen3.5:9b": {"capabilities": ["completion", "vision"]},
+        })
+        embedding = next(item for item in catalogue if item["role"] == "Embedding")
+        chat = next(item for item in catalogue if item["canonical_name"] == "qwen3.5:9b")
+        self.assertFalse(embedding["can_chat"])
+        self.assertTrue(chat["can_chat"])
+        self.assertIn("chat", chat["capabilities"])
 
     def test_added_openai_compatible_provider_preserves_route_and_label(self):
         with tempfile.TemporaryDirectory() as temporary:

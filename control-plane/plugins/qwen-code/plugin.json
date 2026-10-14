@@ -1,0 +1,21 @@
+{
+  "manifest_version": "0.1",
+  "plugin_id": "qwen-code",
+  "name": "Qwen Code",
+  "version": "1.0.0",
+  "description": "General local coding capability routed through Ariadne's Rust Host resource custodian.",
+  "author": "Ariadne Core",
+  "plugin_type": "capability",
+  "capabilities": ["coding.execute", "coding.inspect", "coding.verify"],
+  "entry_point": "",
+  "ui": {"available": false, "route": null},
+  "settings": {"available": false, "route": null},
+  "permissions": ["workspace.read", "workspace.write", "commands.execute", "local_model.inference"],
+  "dependencies": [],
+  "hardware_requirements": {"gpu_admission": "Ariadne Rust Host"},
+  "resource_requirements": {"execution": "on_demand", "workspace_root": "F:\\AriadneLab\\agent-workspaces"},
+  "startup": "on_demand",
+  "enabled": true,
+  "health": {"state": "healthy", "detail": "Uses the installed Qwen Code launcher and Ariadne Rust Host model leases."},
+  "activity": {"supported": true, "transport": "ariadne-core", "progress": true}
+}

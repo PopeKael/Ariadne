@@ -62,10 +62,23 @@ from ariadne_config import (
     save_avatar,
     save_storage,
 )
-from inference import InferenceRegistry, default_providers, ollama_model_catalogue
+from inference import (DEFAULT_CONTEXT_TOKENS, InferenceRegistry, default_providers,
+                       effective_context_tokens, ollama_model_catalogue,
+                       resolve_ollama_model_id)
 import credential_store
 import code_lab
 import lab_runner
+from coding_agent import (
+    DEFAULT_CONTEXT_TOKENS as CODING_DEFAULT_CONTEXT_TOKENS,
+    DEFAULT_MODEL as CODING_DEFAULT_MODEL,
+    coding_preview_entry,
+    coding_preview_file,
+    coding_run_result,
+    inspect_coding_workspace,
+    is_coding_intent,
+    record_coding_verification,
+    run_qwen_code_task,
+)
 from avatar_events import clear_status, emit, emit_say, emit_state, host_status
 from librarian_events import LibrarianEventStream
 from librarian_harness import (
@@ -117,7 +130,8 @@ VAULT_QUERY_CONTEXT_TOKENS = 16_384
 VAULT_QUERY_OUTPUT_TOKENS = 2_048
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 HOME_MODEL_KEEP_ALIVE = -1
-HOME_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_CTX", "16384")))
+HOME_CONTEXT_POLICY_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_CTX", str(DEFAULT_CONTEXT_TOKENS))))
+HOME_CONTEXT_TOKENS = HOME_CONTEXT_POLICY_TOKENS
 HOME_OUTPUT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_HOME_NUM_PREDICT", "4096")))
 ARTICLE_CACHE_URL = os.environ.get("ARIADNE_ARTICLE_CACHE_URL", "http://192.168.1.200:8790").rstrip("/")
 ARTICLE_CACHE_TIMEOUT_SECONDS = max(0.2, float(os.environ.get("ARIADNE_ARTICLE_CACHE_TIMEOUT", "3")))
@@ -126,12 +140,16 @@ PLANNER_MODEL = os.environ.get("ARIADNE_PLANNER_MODEL", "qwen3.5:9b-q4_K_M")
 PLANNER_KEEP_ALIVE: int | str = os.environ.get("ARIADNE_PLANNER_KEEP_ALIVE", "adaptive")
 if isinstance(PLANNER_KEEP_ALIVE, str) and PLANNER_KEEP_ALIVE.strip().lstrip("-").isdigit():
     PLANNER_KEEP_ALIVE = int(PLANNER_KEEP_ALIVE)
-PLANNER_CONTEXT_TOKENS = max(1_024, int(os.environ.get("ARIADNE_PLANNER_NUM_CTX", "4096")))
+PLANNER_CONTEXT_POLICY_TOKENS = max(1_024, int(os.environ.get("ARIADNE_PLANNER_NUM_CTX", str(DEFAULT_CONTEXT_TOKENS))))
+PLANNER_CONTEXT_TOKENS = PLANNER_CONTEXT_POLICY_TOKENS
 PLANNER_OUTPUT_TOKENS = max(64, int(os.environ.get("ARIADNE_PLANNER_NUM_PREDICT", "256")))
 STARTUP_TRACE.mark("inference_config_start", "started")
 INFERENCE_REGISTRY = InferenceRegistry()
 STARTUP_TRACE.mark("inference_config_end")
 MODEL_MONITOR_INTERVAL_SECONDS = 30.0
+MODEL_INDEX_CACHE_LOCK = threading.RLock()
+MODEL_INDEX_CACHE_SIGNATURE: tuple[tuple[str, str], ...] | None = None
+MODEL_INDEX_CACHE_ROWS: list[dict[str, object]] = []
 HOME_EVENT_LOCK = threading.Lock()
 HOME_VISIBLE_EVENT_KINDS = frozenset({
     "planner_fallback",
@@ -576,6 +594,7 @@ def apply_runtime_configuration() -> dict[str, object]:
         HOME_CHAT_MODEL = home_route.model_id
     if planner_route and planner_route.model_id:
         PLANNER_MODEL = planner_route.model_id
+    _apply_model_context_policy()
     # The retrieval module and its World State companion resolve ROOT at load
     # time.  Force the next Home request to load them against this same root.
     sys.modules.pop("ariadne_mcp_active_vault", None)
@@ -1662,6 +1681,8 @@ def ollama_catalog() -> dict[str, object]:
                 "name": str(item["name"]),
                 "size": item.get("size"),
                 "modified_at": item.get("modified_at"),
+                "digest": str(item.get("digest") or ""),
+                "details": item.get("details") if isinstance(item.get("details"), dict) else {},
             })
         loaded_rows = []
         for item in loaded:
@@ -1687,6 +1708,46 @@ def ollama_catalog() -> dict[str, object]:
         }
     except (OSError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
         return {"available": False, "models": [], "loaded": [], "loaded_details": [], "detail": str(exc)}
+
+
+def _ollama_model_index(entries: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Build a cached canonical model index from installed Ollama metadata."""
+    global MODEL_INDEX_CACHE_SIGNATURE, MODEL_INDEX_CACHE_ROWS
+    signature = tuple(sorted(
+        (str(item.get("name") or ""), str(item.get("digest") or ""))
+        for item in entries if isinstance(item, dict) and item.get("name")
+    ))
+    with MODEL_INDEX_CACHE_LOCK:
+        if signature == MODEL_INDEX_CACHE_SIGNATURE:
+            return [dict(row) for row in MODEL_INDEX_CACHE_ROWS]
+        metadata: dict[str, dict[str, object]] = {}
+        for item in entries:
+            name = str(item.get("name") or "").strip()
+            if not name:
+                continue
+            try:
+                shown = post_json(f"{OLLAMA_URL}/api/show", {"model": name}, timeout=8.0)
+                metadata[name] = shown if isinstance(shown, dict) else {}
+            except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError):
+                metadata[name] = {}
+        rows = ollama_model_catalogue(entries, metadata)
+        MODEL_INDEX_CACHE_SIGNATURE = signature
+        MODEL_INDEX_CACHE_ROWS = rows
+        return [dict(row) for row in rows]
+
+
+def _context_for_model(model: str, requested: int) -> int:
+    """Apply the default context subject to the selected model's declared limit."""
+    details = ollama_model_capability_details(model)
+    if not details.get("available"):
+        return requested
+    return effective_context_tokens(details.get("context_max"), requested)
+
+
+def _apply_model_context_policy() -> None:
+    global HOME_CONTEXT_TOKENS, PLANNER_CONTEXT_TOKENS
+    HOME_CONTEXT_TOKENS = _context_for_model(HOME_CHAT_MODEL, HOME_CONTEXT_POLICY_TOKENS)
+    PLANNER_CONTEXT_TOKENS = _context_for_model(PLANNER_MODEL, PLANNER_CONTEXT_POLICY_TOKENS)
 
 
 def observe_ollama_runtime_identity(*, reason: str) -> tuple[bool, dict[str, object]]:
@@ -2057,16 +2118,30 @@ def model_control_payload() -> dict[str, object]:
     catalog = ollama_catalog()
     status = ollama_status()
     route = INFERENCE_REGISTRY.route("home_chat")
+    model_index = _ollama_model_index(catalog.get("models", [])) if catalog.get("available") else []
+    loaded_details = catalog.get("loaded_details", [])
+    for model in model_index:
+        installed_names = {str(name).casefold() for name in model.get("installed_names", [])}
+        resident = next((item for item in loaded_details if isinstance(item, dict)
+                         and str(item.get("name") or "").casefold() in installed_names), None)
+        model["size_vram"] = resident.get("size_vram") if isinstance(resident, dict) else None
+        model["resident"] = bool(resident)
+    active = next((item for item in model_index
+                   if HOME_CHAT_MODEL.casefold() in {str(item.get("canonical_name") or "").casefold(),
+                                                     str(item.get("runtime_model") or "").casefold(),
+                                                     *(str(name).casefold() for name in item.get("installed_names", []))}), None)
     return {
         "ok": bool(status.get("available")),
-        "active_model": HOME_CHAT_MODEL,
+        "active_model": str(active.get("canonical_name") if active else HOME_CHAT_MODEL),
         "planner_model": PLANNER_MODEL,
+        "active_context_tokens": HOME_CONTEXT_TOKENS,
         "provider_id": route.provider_id if route else None,
         "provider_type": route.provider_type if route else None,
         "location": route.location if route else None,
-        "models": catalog.get("models", []),
-        "loaded": catalog.get("loaded", []),
-        "loaded_details": catalog.get("loaded_details", []),
+        "models": [item for item in model_index if item.get("can_chat")],
+        "catalogue": model_index,
+        "loaded": [str(item.get("canonical_name")) for item in model_index if item.get("resident")],
+        "loaded_details": loaded_details,
         "gpu_owner": gpu_owner_status(),
         "in_flight": ai_gpu_work_in_flight(),
         "home_model_residency": dict(HOME_MODEL_PRELOAD_STATUS),
@@ -2666,9 +2741,10 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL
     global GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
 
-    requested = str(model or "").strip() if isinstance(model, str) else ""
-    if not requested:
+    requested_label = str(model or "").strip() if isinstance(model, str) else ""
+    if not requested_label:
         return {"ok": False, "message": "Choose an installed Ollama model."}, 400
+    requested = requested_label
 
     if not MODEL_SWITCH_LOCK.acquire(blocking=False):
         return {"ok": False, "message": "Ariadne is already switching models."}, 409
@@ -2686,13 +2762,17 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
         catalog = ollama_catalog()
         if not catalog.get("available"):
             return {"ok": False, "message": "Ollama is unavailable; the active model was not changed."}, 503
-        installed = {
-            str(item.get("name") or "")
-            for item in catalog.get("models", [])
-            if isinstance(item, dict) and item.get("name")
-        }
-        if requested not in installed:
-            return {"ok": False, "message": f"{requested} is not installed in the configured Ollama library."}, 400
+        installed = [str(item.get("name") or "") for item in catalog.get("models", [])
+                     if isinstance(item, dict) and item.get("name")]
+        model_index = _ollama_model_index(catalog.get("models", []))
+        try:
+            requested = resolve_ollama_model_id(requested_label, installed, model_index)
+        except ValueError:
+            return {"ok": False, "message": f"{requested_label} is not installed in the configured Ollama library."}, 400
+        selected_identity = next((item for item in model_index
+                                  if requested in item.get("installed_names", [])), None)
+        if not selected_identity or not selected_identity.get("can_chat"):
+            return {"ok": False, "message": f"{requested_label} is not a conversation model."}, 400
         capabilities = ollama_model_capabilities(requested)
         if capabilities and "completion" not in capabilities:
             return {"ok": False, "message": f"{requested} is not a conversation model; Ollama reports {', '.join(capabilities)} capability."}, 400
@@ -5899,7 +5979,7 @@ def inference_model_catalogue() -> dict[str, object]:
         try:
             payload = request_json(f"{endpoint}/api/tags")
             entries = payload.get("models") if isinstance(payload.get("models"), list) else []
-            models = ollama_model_catalogue(entries)
+            models = _ollama_model_index(entries)
             for provider in ollama_profiles:
                 if provider.endpoint.rstrip("/") == endpoint:
                     catalogues[provider.provider_id] = {"state": "available", "models": models}
@@ -6077,6 +6157,12 @@ def home_health_payload() -> dict[str, object]:
         "planner": "Configured" if str(ollama.get("state")) == "online" else "Unavailable",
     }
     inference = INFERENCE_REGISTRY.snapshot(inference_health)
+    model_catalog = ollama_catalog()
+    model_index = _ollama_model_index(model_catalog.get("models", [])) if model_catalog.get("available") else []
+    active_model_row = next((row for row in model_index
+                             if HOME_CHAT_MODEL.casefold() in {str(row.get("canonical_name") or "").casefold(),
+                                                               str(row.get("runtime_model") or "").casefold(),
+                                                               *(str(name).casefold() for name in row.get("installed_names", []))}), None)
     add("Inference routing", "healthy" if all(item.get("state") == "Configured" for item in inference.get("routes", {}).values() if item.get("provider_id")) else "attention", "Selected task routes are visible in Setup.")
     search_providers = SEARCH_PROVIDER_REGISTRY.snapshot()
     add(
@@ -6091,6 +6177,7 @@ def home_health_payload() -> dict[str, object]:
         "overall": overall,
         "services": services,
         "resident_model": HOME_CHAT_MODEL,
+        "canonical_model": str(active_model_row.get("canonical_name") if active_model_row else HOME_CHAT_MODEL),
         "context_tokens": HOME_CONTEXT_TOKENS,
         "planner_model": PLANNER_MODEL,
         "planner_keep_alive": PLANNER_KEEP_ALIVE,
@@ -6327,8 +6414,16 @@ def _home_mcp():
     # its ROOT is configured separately to the authoritative live Vault.
     module_path = MCP_MODULE_PATH
     module_name = "ariadne_mcp_active_vault"
-    if str(VAULT_SYSTEM) not in sys.path:
-        sys.path.insert(0, str(VAULT_SYSTEM))
+    # Load implementation dependencies from the same checkout as the MCP
+    # module. The Vault is the data root, but its older files may have the
+    # same import names with a different API contract (for example,
+    # ariadne_embeddings.host_inference_lease).
+    source_system = str(module_path.resolve().parent)
+    vault_system = str(VAULT_SYSTEM.resolve())
+    for search_path in (source_system, vault_system):
+        while search_path in sys.path:
+            sys.path.remove(search_path)
+    sys.path[:0] = [source_system, vault_system]
     cached = sys.modules.get(module_name)
     if cached is not None:
         return cached
@@ -6341,6 +6436,11 @@ def _home_mcp():
     try:
         sys.modules[module_name] = module
         spec.loader.exec_module(module)
+    except Exception:
+        # A failed import must not leave a partial module cached. A later
+        # health or chat request can then retry cleanly after the cause clears.
+        sys.modules.pop(module_name, None)
+        raise
     finally:
         if previous_root is None:
             os.environ.pop("ARIADNE_VAULT_ROOT", None)
@@ -7657,7 +7757,10 @@ def _home_research_query(query: str, planner_result: dict[str, object], article:
 
 def home_chat_payload(query: str, history: object, vault_mode: str = "all", chat_id: str | None = None,
                       tool_ids: object = None, on_event: Callable[[dict[str, object]], None] | None = None,
-                      article_tldr: bool = False, focus: object = None) -> dict[str, object]:
+                      article_tldr: bool = False, focus: object = None,
+                      coding_options: dict[str, object] | None = None) -> dict[str, object]:
+    if not article_tldr and is_coding_intent(query):
+        return _home_coding_chat_payload(query, chat_id, on_event, coding_options or {})
     request_id = uuid.uuid4().hex
     if not article_tldr:
         return _home_chat_payload_impl(
@@ -7669,6 +7772,144 @@ def home_chat_payload(query: str, history: object, vault_mode: str = "all", chat
             query, history, vault_mode, chat_id, tool_ids, on_event,
             article_tldr=article_tldr, request_id=request_id, focus=focus,
         )
+
+
+def _is_client_transport_error(exc: BaseException) -> bool:
+    """Identify a disconnected streaming client, including Windows socket errors."""
+    if isinstance(exc, (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+        return True
+    return isinstance(exc, OSError) and getattr(exc, "winerror", None) in {10053, 10054, 10058}
+
+
+@contextmanager
+def _coding_resource_admission(model: str):
+    """Serialize against Ariadne GPU workloads and hold the Rust Host model lease."""
+    with ai_gpu_admission(), inference_lease(model, OLLAMA_URL):
+        yield
+
+
+def _home_coding_chat_payload(query: str, chat_id: str | None,
+                              on_event: Callable[[dict[str, object]], None] | None,
+                              options: dict[str, object]) -> dict[str, object]:
+    """Route coding requests directly to the registered Qwen Code capability."""
+    if not chat_id:
+        raise ValueError("A durable Home chat_id is required for a coding task.")
+    request_id = uuid.uuid4().hex
+    model = str(options.get("model") or CODING_DEFAULT_MODEL)
+    context_tokens = _context_for_model(model, int(options.get("context_tokens") or CODING_DEFAULT_CONTEXT_TOKENS))
+    workspace = options.get("workspace")
+    constraints = options.get("constraints")
+    if not isinstance(constraints, (list, tuple)):
+        constraints = []
+    identity_kernel = home_identity_kernel_metadata()
+    turn_id, turn_record = HOME_CHAT_STORE.begin_turn(
+        chat_id, query, f"Qwen Code ({model})", identity_kernel,
+        semantic={"intent": "coding_task", "tasks": [query], "tool": "coding-agent"},
+    )
+    assistant_message_id = next(
+        (str(item.get("message_id")) for item in reversed(turn_record.get("messages", []))
+         if item.get("role") == "assistant" and item.get("turn_id") == turn_id and item.get("message_id")),
+        turn_id,
+    )
+    record_home_event("coding_task_started", f"model={model} · context={context_tokens} · chat_id={chat_id} · request_id={request_id}")
+    CORE_INTERACTION_STREAM.emit(
+        "turn_started", conversation_id=chat_id, turn_id=turn_id,
+        data={"surface": "chat", "model": f"Qwen Code ({model})", "coding_agent": True},
+    )
+    reporter = PLUGIN_ACTIVITY_STREAM.reporter(
+        activity_id=request_id, plugin_id="qwen-code", capability_id="coding.execute"
+    )
+    cancel_event = threading.Event()
+
+    def send_coding_event(payload: dict[str, object]) -> None:
+        if not on_event:
+            return
+        try:
+            on_event(payload)
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            cancel_event.set()
+
+    def progress(stage: str, detail: str) -> None:
+        if stage in {"started", "output"}:
+            try:
+                payload = json.loads(detail)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                payload = {"detail": detail}
+            if stage == "started":
+                send_coding_event({"type": "coding_started", "job": payload})
+            else:
+                send_coding_event({"type": "coding_output", **(payload if isinstance(payload, dict) else {"line": str(payload)})})
+            if stage == "output":
+                return
+        state = "started" if stage in {"admission", "started"} else "running" if stage == "running" else "completed" if stage == "completed" else "cancelled" if stage == "cancelled" else "failed"
+        reporter.report(state, detail[:450], progress=0 if state == "started" else 100 if state == "completed" else None, stage=stage)
+        activity_state = "reading" if stage == "admission" else "thinking" if stage == "running" else "complete" if state in {"completed", "cancelled"} else "error" if state == "failed" else "thinking"
+        activity = publish_home_activity(chat_id, activity_state, detail[:450])
+        send_coding_event({"type": "activity", "stage": stage, "label": detail[:450], "activity": activity})
+
+    try:
+        result = run_qwen_code_task(
+            query, workspace=workspace if isinstance(workspace, str) else None,
+            model=model, context_tokens=context_tokens, constraints=constraints,
+            resource_admission=lambda: _coding_resource_admission(model),
+            progress=progress,
+            cancel_requested=cancel_event.is_set,
+        )
+        lines = [
+            f"Coding task: {result['status']}",
+            f"Workspace: {result['workspace']}",
+            f"Model/context: {result['model']} · {result['context_tokens']:,} tokens",
+            f"Elapsed: {result['elapsed_time_seconds']:.1f}s · model calls: {result['model_calls'] if result['model_calls'] is not None else 'not reported'} · tool calls: {result['tool_call_count']}",
+        ]
+        if result["changed_files"]:
+            lines.extend(["Changed files:", *[f"- {path}" for path in result["changed_files"][:60]]])
+        else:
+            lines.append("Changed files: none")
+        if result["tests"]:
+            lines.extend(["Verification commands:", *[f"- {item['command']} — {item.get('result', 'run')}" for item in result["tests"]]])
+        else:
+            lines.append("Verification commands: none reported by Qwen Code")
+        lines.extend(["", "Summary:", str(result["summary"])])
+        if result["errors"]:
+            lines.extend(["", "Errors:", *[f"- {item}" for item in result["errors"][:10]]])
+        answer = "\n".join(lines)
+        presentation_result = {key: result.get(key) for key in (
+            "run_id", "status", "workspace", "model", "context_tokens", "changed_files", "tests",
+            "elapsed_time_seconds", "tool_call_count", "model_calls", "errors", "summary",
+            "exit_code", "cancelled", "host_admission",
+        )}
+        timing = {"coding_agent": presentation_result, "total_ms": round(result["elapsed_time_seconds"] * 1000)}
+        HOME_CHAT_STORE.complete_turn(
+            chat_id, turn_id, answer, model=f"Qwen Code ({model})", used_vault=False,
+            sources=[], retrieval={"route": "coding-agent", "workspace": result["workspace"]},
+            timing=timing, identity_kernel=identity_kernel,
+        )
+        CORE_INTERACTION_STREAM.emit(
+            "response_completed", conversation_id=chat_id, turn_id=turn_id,
+            response_id=turn_id, data={"coding_agent": True, "status": result["status"]},
+        )
+        record_home_event("coding_task_completed", f"status={result['status']} · workspace={result['workspace']} · model={model}")
+        send_coding_event({"type": "coding_result", "result": presentation_result})
+        progress("completed" if result["status"] == "SUCCESS" else "failed", result["summary"] or result["status"])
+        send_coding_event({"type": "delta", "text": answer})
+        return {
+            "ok": True, "answer": answer, "model": f"Qwen Code ({model})",
+            "context_tokens": context_tokens, "used_vault": False, "used_documents": False,
+            "sources": [], "timing": timing, "generation_status": "complete",
+            "generation_truncated": False, "continue_available": False,
+            "planner": {"plan": {"intent": "coding_task", "tools": ["coding-agent"]}, "fallback": False,
+                        "telemetry": {"route": "coding-intent"}},
+            "coding_result": presentation_result, "chat_id": chat_id, "turn_id": turn_id,
+            "message_id": assistant_message_id, "identity_kernel": identity_kernel,
+        }
+    except Exception as exc:
+        HOME_CHAT_STORE.interrupt_turn(chat_id, turn_id, str(exc))
+        CORE_INTERACTION_STREAM.emit(
+            "response_interrupted", conversation_id=chat_id, turn_id=turn_id,
+            response_id=turn_id, data={"coding_agent": True, "error": str(exc)[:420]},
+        )
+        reporter.failed(f"Coding task failed: {str(exc)[:420]}")
+        raise
 
 
 def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all",
@@ -7692,7 +7933,15 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     request_started = time.perf_counter()
     def emit_stream_event(event: dict[str, object]) -> None:
         if on_event is not None:
-            on_event(event)
+            try:
+                on_event(event)
+            except Exception as exc:
+                if _is_client_transport_error(exc):
+                    # This event helper is used before and during generation;
+                    # reset immediately so even an early browser disconnect
+                    # cannot strand the desktop avatar in a busy/error state.
+                    publish_home_activity(chat_id, "complete", "Idle")
+                raise
     def emit_activity(label: str, stage: str) -> None:
         record_model_residency_event(
             "home_chat_stage", request_id=request_id, model=HOME_CHAT_MODEL,
@@ -8213,11 +8462,12 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
             "identity_kernel": response_identity,
         }
     except Exception as exc:
+        client_disconnected = _is_client_transport_error(exc)
         if turn_id:
-            failure_stage = ("client_transport" if isinstance(exc, (BrokenPipeError, ConnectionResetError))
+            failure_stage = ("client_transport" if client_disconnected
                 else "malformed_model_response" if isinstance(exc, json.JSONDecodeError) or "no final answer" in str(exc).casefold()
                 else "generation_or_infrastructure")
-            recipe["generation"] = {"status": "failed", "failure_stage": failure_stage,
+            recipe["generation"] = {"status": "interrupted" if client_disconnected else "failed", "failure_stage": failure_stage,
                 "error_type": type(exc).__name__}
             record_recipe()
             HOME_CHAT_STORE.interrupt_turn(chat_id, turn_id, str(exc))
@@ -8225,10 +8475,16 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
                 "response_interrupted", conversation_id=chat_id, turn_id=turn_id, response_id=turn_id,
                 data={"error": str(exc)[:420]},
             )
-        if document_activity:
+        if document_activity and not client_disconnected:
             document_activity.report("failed", f"Document analysis failed: {str(exc)[:420]}")
-        emit_activity("Error", "error")
-        record_home_event("significant_error", f"Ask Ariadne failed: {exc}", source="Ariadne Home")
+        if client_disconnected:
+            # The browser/socket went away; this is not a model or Ariadne
+            # failure. Return the shared avatar/activity state to idle instead
+            # of leaving a stale red error pose on the desktop.
+            emit_activity("Idle", "complete")
+        else:
+            emit_activity("Error", "error")
+            record_home_event("significant_error", f"Ask Ariadne failed: {exc}", source="Ariadne Home")
         raise
 
 
@@ -8460,6 +8716,64 @@ class AriadneHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
+        if path == "/code-lab.js" or path == "/api/code-lab" or (path.startswith("/api/code-lab/") and path != "/api/code-lab/runner/status"):
+            self.send_json({"ok": False, "state": "retired", "message": "The legacy 14B Chat Lab workflow has been retired. Use the coding capability in Chat."}, 410)
+            return
+        coding_preview = re.fullmatch(r"/coding-preview/([a-f0-9]{32})(?:/(.*))?", path)
+        if coding_preview:
+            run_id, relative = coding_preview.groups()
+            relative = unquote(relative or "")
+            if not relative:
+                try:
+                    _, entry = coding_preview_entry(run_id)
+                except (ValueError, OSError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 404)
+                    return
+                destination = f"/coding-preview/{run_id}/{urllib.parse.quote(entry, safe='/')}"
+                if parsed.query:
+                    destination += "?" + parsed.query
+                self.send_redirect(PUBLIC_ORIGIN + destination)
+                return
+            try:
+                preview_root, target, content = coding_preview_file(run_id, relative)
+                content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+                if target.suffix.casefold() in {".html", ".htm"}:
+                    page = content.decode("utf-8-sig")
+                    app_root = target.relative_to(preview_root).parent.as_posix()
+                    prefix = f"/coding-preview/{run_id}/" + ("" if app_root == "." else app_root.rstrip("/") + "/")
+                    page = re.sub(r"(?i)(\b(?:src|href|action)\s*=\s*['\"])/(?!/)", lambda match: match.group(1) + prefix, page)
+                    page = re.sub(r"(?i)url\(\s*(['\"]?)/(?!/)", lambda match: "url(" + match.group(1) + prefix, page)
+                    token = parse_qs(parsed.query).get("token", [""])[0]
+                    if not re.fullmatch(r"[a-f0-9]{32}", token):
+                        token = ""
+                    bridge = (ROOT / "coding-preview-bridge.js").read_text(encoding="utf-8")
+                    config = json.dumps({"run_id": run_id, "token": token}, ensure_ascii=False).replace("<", "\\u003c")
+                    bootstrap = f"<script>window.__ariadneCodingPreview={config};</script><script>{bridge}</script>"
+                    if re.search(r"<head[^>]*>", page, re.IGNORECASE):
+                        page = re.sub(r"<head([^>]*)>", lambda match: match.group(0) + bootstrap, page, count=1, flags=re.IGNORECASE)
+                    else:
+                        page = bootstrap + page
+                    content = page.encode("utf-8")
+                    content_type = "text/html; charset=utf-8"
+                    self.send_response(200)
+                    self.send_header("Content-Type", content_type)
+                    self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self'; img-src data: blob: 'self'; media-src data: blob: 'self'; font-src data: 'self'; connect-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts")
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Length", str(len(content)))
+                    self.end_headers()
+                    self.wfile.write(content)
+                    return
+                if target.suffix.casefold() == ".css":
+                    style = content.decode("utf-8-sig")
+                    app_root = target.relative_to(preview_root).parent.as_posix()
+                    prefix = f"/coding-preview/{run_id}/" + ("" if app_root == "." else app_root.rstrip("/") + "/")
+                    style = re.sub(r"(?i)url\(\s*(['\"]?)/(?!/)", lambda match: "url(" + match.group(1) + prefix, style)
+                    content = style.encode("utf-8")
+                self.send_bytes(content, content_type)
+            except (ValueError, OSError, UnicodeDecodeError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 404)
+            return
         if path == "/api/core/ready":
             STARTUP_TRACE.mark("core_ready")
             self.send_json({"ok": True, "public_origin": PUBLIC_ORIGIN})
@@ -8526,6 +8840,34 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": "A chat_id is required."}, 400)
                 return
             self.send_json(home_activity_state_payload(chat_id))
+            return
+        if path == "/api/coding-agent/workspace":
+            query = parse_qs(parsed.query)
+            run_id = query.get("run_id", [""])[0]
+            relative = query.get("path", [""])[0]
+            action = query.get("action", ["list"])[0]
+            try:
+                if action == "meta":
+                    snapshot = inspect_coding_workspace(run_id)
+                    result = coding_run_result(run_id)
+                    self.send_json({**snapshot, "state": result.get("status") if result else "RUNNING", "result": result})
+                elif action == "read":
+                    self.send_json(inspect_coding_workspace(run_id, relative, read_file=True))
+                elif action == "list":
+                    self.send_json(inspect_coding_workspace(run_id, relative))
+                else:
+                    self.send_json({"ok": False, "message": "Unknown workspace view action."}, 400)
+            except FileNotFoundError as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 404)
+            except ValueError as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
+            return
+        if path in {"/api/coding-agent/runner/status", "/api/code-lab/runner/status"}:
+            try:
+                token = parse_qs(parsed.query).get("launch_id", [""])[0]
+                self.send_json(lab_runner.status(token))
+            except ValueError as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 404)
             return
         if path == "/api/home/adaptive":
             self.send_json(home_adaptive_payload())
@@ -8624,13 +8966,6 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/lab-runner.js":
             self.send_asset("lab-runner.js", "text/javascript; charset=utf-8")
-            return
-        if path == "/api/code-lab/runner/status":
-            try:
-                token = parse_qs(urlparse(self.path).query).get("launch_id", [""])[0]
-                self.send_json(lab_runner.status(token))
-            except ValueError as exc:
-                self.send_json({"ok": False, "message": str(exc)}, 404)
             return
         if path == "/api/code-lab":
             try:
@@ -8860,8 +9195,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/home.js":
             self.send_asset("home.js", "text/javascript; charset=utf-8")
             return
-        if path == "/code-lab.js":
-            self.send_asset("code-lab.js", "text/javascript; charset=utf-8")
+        if path == "/coding-job-ui.js":
+            self.send_asset("coding-job-ui.js", "text/javascript; charset=utf-8")
             return
         if path == "/signal-popover-position.js":
             self.send_asset("signal-popover-position.js", "text/javascript; charset=utf-8")
@@ -8955,6 +9290,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         _expire_sessions()
         path = urlparse(self.path).path
+        if (path.startswith("/api/code-lab/") and path != "/api/code-lab/runner/status") or path in {"/api/home/chat/lab-run"}:
+            self.send_json({"ok": False, "state": "retired", "message": "The legacy 14B Chat Lab workflow has been retired. Use the coding capability in Chat."}, 410)
+            return
         try:
             body = self.read_json()
             if path == '/api/rabbit-hole/library':
@@ -9006,7 +9344,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 except (ValueError, OSError) as exc:
                     self.send_json({"ok": False, "message": str(exc)}, 409)
                 return
-            if path == "/api/code-lab/runner/status":
+            if path in {"/api/coding-agent/runner/status", "/api/code-lab/runner/status"}:
                 try:
                     lab_runner.report(body)
                     self.send_json({"ok": True})
@@ -9692,6 +10030,54 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     return
                 self.send_json({"ok": True, "job_id": job_id, "plugin_id": plugin_id, "action": action.strip().casefold(), "trigger": trigger.strip().casefold()})
                 return
+            if path == "/api/coding-agent/run":
+                try:
+                    task = body.get("task")
+                    if not isinstance(task, str) or not task.strip():
+                        raise ValueError("A coding task is required.")
+                    constraints = body.get("constraints", [])
+                    if not isinstance(constraints, list) or any(not isinstance(item, str) for item in constraints):
+                        raise ValueError("constraints must be a list of text rules.")
+                    coding_model = str(body.get("model") or CODING_DEFAULT_MODEL)
+                    context_tokens = _context_for_model(
+                        coding_model, int(body.get("context_tokens") or CODING_DEFAULT_CONTEXT_TOKENS)
+                    )
+                    with ai_gpu_admission():
+                        result = run_qwen_code_task(
+                            task, workspace=body.get("workspace") if isinstance(body.get("workspace"), str) else None,
+                            model=coding_model, context_tokens=context_tokens,
+                            constraints=constraints,
+                            resource_admission=lambda: inference_lease(coding_model, OLLAMA_URL),
+                        )
+                    self.send_json({"ok": True, "result": result})
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                except RuntimeError as exc:
+                    self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
+                except Exception as exc:
+                    self.send_json({"ok": False, "message": f"Coding task failed: {str(exc)[:420]}"}, 500)
+                return
+            if path == "/api/coding-agent/runner":
+                try:
+                    self.send_json(lab_runner.launch(str(body.get("run_id") or "")), 202)
+                except (ValueError, OSError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                return
+            if path == "/api/coding-agent/verification":
+                try:
+                    run_id = str(body.get("run_id") or "")
+                    report = body.get("report")
+                    if not isinstance(report, dict):
+                        raise ValueError("Interactive verification report is required.")
+                    result = record_coding_verification(run_id, report)
+                    self.send_json({"ok": True, "run_id": run_id, "verification": result["verification"]})
+                except FileNotFoundError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                except OSError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 500)
+                return
             if path == "/api/home/chat/select":
                 requested_chat_id = body.get("chat_id")
                 if not isinstance(requested_chat_id, str):
@@ -9924,11 +10310,13 @@ class AriadneHandler(BaseHTTPRequestHandler):
                                 self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode("utf-8"))
                                 self.wfile.flush()
                             result = home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids,
-                                                       on_event=write_event, article_tldr=article_tldr, focus=body.get("focus"))
+                                                       on_event=write_event, article_tldr=article_tldr, focus=body.get("focus"),
+                                                       coding_options=body.get("coding") if isinstance(body.get("coding"), dict) else None)
                             write_event({"type": "final", **result})
                         else:
                             self.send_json(home_chat_payload(query, history, vault_mode, active_chat_id, tool_ids,
-                                                             article_tldr=article_tldr, focus=body.get("focus")))
+                                                             article_tldr=article_tldr, focus=body.get("focus"),
+                                                             coding_options=body.get("coding") if isinstance(body.get("coding"), dict) else None))
                 except RuntimeError as exc:
                     if path == "/api/home/chat/stream" and write_event is not None:
                         try: write_event({"type": "error", "message": str(exc), "gpu": gpu_owner_status()})
@@ -10034,6 +10422,7 @@ def main() -> None:
     except Exception as exc:
         STARTUP_TRACE.mark("ollama_end", "error", error_type=type(exc).__name__)
         raise
+    _apply_model_context_policy()
     _, runtime_details = observe_ollama_runtime_identity(reason="startup")
     STARTUP_TRACE.mark(
         "ollama_ready", pid=ollama_startup.get("pid"), state=ollama_startup.get("state"),

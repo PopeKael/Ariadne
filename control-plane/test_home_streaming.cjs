@@ -19,7 +19,7 @@ test('Chat renders arriving chunks and replaces the draft with the checked final
       articleTldrPending: false, contextMutationInFlight: false};
     let body;
     const context = vm.createContext({state, CHAT_PAGE: true, currentFocus: null,
-      HOME_REQUEST_TIMEOUT_MS: 240000, AbortController,
+      ARTICLE_FETCH_WATCHDOG_MS: 240000, AbortController,
       document: {querySelector: selector => nodes[selector],
         body: {classList: {add() {}}}, documentElement: {scrollHeight: 1000}},
       window: {innerHeight: 1000, scrollY: 0, scrollTo() {}, setTimeout() {return 1;}, clearTimeout() {}},
@@ -57,4 +57,43 @@ test('Chat renders arriving chunks and replaces the draft with the checked final
     assert.equal(nodes['#ask-status'].textContent, 'Complete.');
     assert.equal(nodes['#ask-submit'].disabled, false);
   }
+});
+
+test('Closed coding workbench reopens from the edge tab and on hover', () => {
+  const source = fs.readFileSync(require.resolve('./home.js'), 'utf8');
+  const start = source.indexOf('const workbenchToggle =');
+  const end = source.indexOf('const webSearchToggle =', start);
+  assert.notEqual(start, -1); assert.notEqual(end, -1);
+  class Button {
+    constructor() { this.hidden = false; this.attributes = {}; this.handlers = {}; }
+    getAttribute(name) { return this.attributes[name] ?? null; }
+    setAttribute(name, value) { this.attributes[name] = value; }
+    addEventListener(name, callback) { this.handlers[name] = callback; }
+    focus() { this.focused = true; }
+    fire(name) { this.handlers[name]?.({}); }
+  }
+  const elements = Object.fromEntries([
+    '#workbench-toggle', '#workbench-close', '#workbench-reopen',
+    '#diagnostics-toggle', '#diagnostics-close', '#workbench', '#diagnostics-drawer'
+  ].map(selector => [selector, new Button()]));
+  elements['#workbench-toggle'].attributes['aria-expanded'] = 'false';
+  elements['#diagnostics-toggle'].attributes['aria-expanded'] = 'false';
+  const classes = new Set();
+  const context = vm.createContext({
+    document: {body: {classList: {
+      toggle(name, force) { if (force) classes.add(name); else classes.delete(name); },
+      contains(name) { return classes.has(name); }
+    }}, querySelector: selector => elements[selector]},
+    window: {addEventListener() {}},
+    addEventListener() {}
+  });
+  vm.runInContext(source.slice(start, end), context);
+  vm.runInContext('window.setCodingWorkbenchAvailable(true)', context);
+  assert.equal(elements['#workbench-reopen'].hidden, false);
+  elements['#workbench-reopen'].fire('mouseenter');
+  assert.equal(elements['#workbench'].hidden, false);
+  assert.equal(elements['#workbench-reopen'].hidden, true);
+  elements['#workbench-close'].fire('click');
+  assert.equal(elements['#workbench'].hidden, true);
+  assert.equal(elements['#workbench-reopen'].hidden, false);
 });

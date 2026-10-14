@@ -761,7 +761,7 @@ async function runVaultQuery() {
     renderVaultResult(finished.result || {}, mode);
     const sourceCount = Array.isArray(finished.result?.sources) ? finished.result.sources.length : 0;
     status.textContent = sourceCount
-      ? `Answer ready · ${sourceCount} cited vault sources · ${finished.result?.model || selectedModel} · ${Math.round((finished.result?.context_tokens || 16_384) / 1024)}K context.`
+      ? `Answer ready · ${sourceCount} cited vault sources · ${finished.result?.model || selectedModel} · ${Math.round((finished.result?.context_tokens || 32_768) / 1024)}K context.`
       : `The vault search found no passages to cite. ${finished.result?.model || selectedModel} did not invent an answer.`;
   } catch (error) {
     status.className = "vault-status error";

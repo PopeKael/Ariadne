@@ -187,16 +187,26 @@ function inferenceModelOptions(task, route, currentValue = "") {
       const uniqueKey = `${provider.provider_type}\u001f${identity}`;
       if (seen.has(uniqueKey)) continue;
       seen.add(uniqueKey);
-      const preserveSelectedAlias = provider.provider_id === selectedParts[0] && inferenceModelIdentity(provider, selectedModel) === identity;
-      candidates.push({provider, modelId: preserveSelectedAlias ? selectedModel : model.id, identity});
+      const purposeAlias = required === "coding" && Array.isArray(model.aliases)
+        ? model.aliases.find(alias => alias?.role === "Coding")?.name : null;
+      const providerAliasMatches = Array.isArray(model.aliases) && model.aliases.some(alias => alias?.name === provider.model_id);
+      const preserveSelectedAlias = provider.provider_id === selectedParts[0]
+        && (inferenceModelIdentity(provider, selectedModel) === identity ||
+            (Array.isArray(model.aliases) && model.aliases.some(alias => alias?.name === selectedModel)));
+      candidates.push({provider, modelId: preserveSelectedAlias ? selectedModel : purposeAlias || model.id, identity, model,
+        selectedRouteModel: inferenceModelIdentity(provider, provider.model_id) === identity || providerAliasMatches});
     }
   }
   const selectedValue = currentValue || savedSelection;
-  const candidateValue = ({provider, modelId, identity}) => !currentValue && route.route_selection === provider.provider_id && inferenceModelIdentity(provider, provider.model_id) === identity ? provider.provider_id : inferenceModelValue(provider.provider_id, modelId);
+  const candidateValue = ({provider, modelId, identity, selectedRouteModel}) => !currentValue && route.route_selection === provider.provider_id && selectedRouteModel ? provider.provider_id : inferenceModelValue(provider.provider_id, modelId);
   const selectedFound = candidates.some(item => candidateValue(item) === selectedValue);
-  const options = candidates.map(({provider, modelId, identity}) => {
-    const value = candidateValue({provider, modelId, identity});
-    const label = `${providerLabel(provider.provider_id)} · ${modelId} · ${provider.location}`;
+  const options = candidates.map(({provider, modelId, identity, model: modelInfo, selectedRouteModel}) => {
+    const value = candidateValue({provider, modelId, identity, selectedRouteModel});
+    const modelName = modelInfo?.canonical_name || modelInfo?.name || modelId;
+    const role = Array.isArray(modelInfo?.roles) && modelInfo.roles.length ? modelInfo.roles.join("/") : modelInfo?.role || "Chat";
+    const context = Math.round(Number(modelInfo?.effective_context_tokens || 32768) / 1024);
+    const purpose = modelId !== modelName ? ` · alias ${modelId}` : "";
+    const label = `${providerLabel(provider.provider_id)} · ${modelName} · ${role} · ${context}K${purpose} · ${provider.location}`;
     return `<option value="${htmlEscape(value)}" ${value === selectedValue ? "selected" : ""}>${htmlEscape(label)}</option>`;
   });
   if (selectedValue && !selectedFound && route.provider_id && route.model_id) {

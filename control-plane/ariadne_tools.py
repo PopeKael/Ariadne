@@ -86,6 +86,13 @@ TOOL_REGISTRY.register(ToolDefinition(
     capabilities=("search", "fetch sources", "verify current claims"),
     supported_input_types=("text/plain",),
 ))
+TOOL_REGISTRY.register(ToolDefinition(
+    tool_id="coding-agent",
+    display_name="Coding Agent",
+    description="Inspect, edit and verify a project through Ariadne's Host-managed Qwen Code installation.",
+    capabilities=("inspect repositories", "write code", "repair bugs", "run tests", "report verification"),
+    supported_input_types=("text/plain", "local repository workspace"),
+))
 
 
 def _atomic_write(path: Path, value: dict[str, Any]) -> None:

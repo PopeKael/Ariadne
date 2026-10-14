@@ -226,6 +226,38 @@ class HomeSourceRoutingTests(unittest.TestCase):
         self.assertEqual(server.home_activity_state_payload(chat["chat_id"])["activity"], activity_events[-1])
         self.assertEqual(self.avatar_activity[-1], ("idle", "Idle"))
 
+    def test_disconnected_chat_stream_returns_avatar_to_idle_without_system_error(self):
+        chat_id = server.HOME_CHAT_STORE.create()["chat_id"]
+        recorded = []
+        server.record_home_event = lambda *args, **kwargs: recorded.append((args, kwargs))
+
+        disconnected_once = False
+
+        def disconnected(event):
+            nonlocal disconnected_once
+            if not disconnected_once and event.get("type") == "activity" and event.get("stage") == "answering":
+                disconnected_once = True
+                raise ConnectionAbortedError(10053, "client connection was aborted")
+
+        with self.assertRaises(ConnectionAbortedError):
+            server.home_chat_payload("Say hello.", [], "never", chat_id, [], on_event=disconnected)
+
+        self.assertEqual(server.HOME_ACTIVITY_STREAM.current_snapshot().state, "complete")
+        self.assertEqual(self.avatar_activity[-1], ("idle", "Idle"))
+        self.assertFalse(any(args and args[0] == "significant_error" for args, _ in recorded))
+
+    def test_early_disconnected_chat_stream_does_not_leave_avatar_thinking(self):
+        chat_id = server.HOME_CHAT_STORE.create()["chat_id"]
+
+        def disconnected(_event):
+            raise ConnectionAbortedError(10053, "client connection was aborted")
+
+        with self.assertRaises(ConnectionAbortedError):
+            server.home_chat_payload("Say hello.", [], "never", chat_id, [], on_event=disconnected)
+
+        self.assertEqual(server.HOME_ACTIVITY_STREAM.current_snapshot().state, "complete")
+        self.assertEqual(self.avatar_activity[-1], ("idle", "Idle"))
+
     def test_pow_article_followup_preserves_documents_and_enriches_search(self):
         fixture = json.loads((ROOT / "test-fixtures" /
             "article-followup-08e15e7d1a4748ecbd8fa930c913d87c.json").read_text(encoding="utf-8"))

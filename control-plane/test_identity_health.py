@@ -51,6 +51,49 @@ class IdentityKernelLoaderTests(unittest.TestCase):
             self.assertIsNone(metadata["source"])
             self.assertIn("stable behavioural guidance", runtime)
 
+    def test_home_mcp_imports_dependencies_from_its_own_checkout(self):
+        with tempfile.TemporaryDirectory(dir=CONTROL_ROOT) as temporary:
+            root = Path(temporary)
+            source_system = root / "ariadne" / "00_System"
+            vault_system = root / "vault" / "00_System"
+            source_system.mkdir(parents=True)
+            vault_system.mkdir(parents=True)
+            (source_system / "ariadne_embeddings.py").write_text(
+                "def host_inference_lease(model, endpoint):\n    return ('app', model, endpoint)\n",
+                encoding="utf-8",
+            )
+            (vault_system / "ariadne_embeddings.py").write_text(
+                "# Older Vault-side copy without the Ariadne host lease adapter.\n",
+                encoding="utf-8",
+            )
+            (source_system / "ariadne_mcp.py").write_text(
+                "from ariadne_embeddings import host_inference_lease\n"
+                "def identity_system_prefix():\n"
+                "    return '', {'version': '1.1.0', 'source': 'test'}\n",
+                encoding="utf-8",
+            )
+
+            module_name = "ariadne_mcp_active_vault"
+            previous_modules = {
+                name: sys.modules.pop(name)
+                for name in (module_name, "ariadne_embeddings")
+                if name in sys.modules
+            }
+            original_path = list(sys.path)
+            try:
+                with patch.object(server, "MCP_MODULE_PATH", source_system / "ariadne_mcp.py"), \
+                     patch.object(server, "VAULT_SYSTEM", vault_system):
+                    loaded = server._home_mcp()
+                    lease = sys.modules["ariadne_embeddings"].host_inference_lease("model", "endpoint")
+                self.assertEqual(loaded.identity_system_prefix()[1]["version"], "1.1.0")
+                self.assertEqual(lease, ("app", "model", "endpoint"))
+                self.assertEqual(Path(sys.modules["ariadne_embeddings"].__file__).parent, source_system)
+            finally:
+                sys.path[:] = original_path
+                sys.modules.pop(module_name, None)
+                sys.modules.pop("ariadne_embeddings", None)
+                sys.modules.update(previous_modules)
+
 
 class IdentityHealthTests(unittest.TestCase):
     def test_setup_and_home_share_canonical_identity_and_show_eris_provenance(self):

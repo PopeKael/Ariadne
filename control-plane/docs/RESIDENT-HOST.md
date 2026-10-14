@@ -175,19 +175,21 @@ require a Rust toolchain and a desktop session.
 ## Lab Runner ownership
 
 The host accepts `launch_lab_runner` with two lowercase 32-character hexadecimal
-identifiers: run_id and launch_id. It constructs the canonical HTTPS Runner URL,
+identifiers: run_id and launch_id. It constructs the canonical HTTPS Coding Runner URL,
 launches installed Edge with fullscreen kiosk flags in a dedicated local profile,
 and acknowledges LAUNCHED / FAILED / CLOSED to the core loopback callback.
-The core validates saved successful projects before asking the host to launch;
-the Runner wrapper separately reports READY after the sandboxed build loads.
+The core validates a successful Qwen Code workspace, passing tests and saved
+interactive preview checks before asking the host to launch; the Runner wrapper
+separately reports READY after the sandboxed workspace preview loads.
 Only one presentation session may run at once. Alt+F4 closes the session and the
 host restores the avatar if it was visible before launch. Preview stays in Chat's
-unchanged Workbench pane. Each launch has a separate profile under
+Workbench pane. Each launch has a separate profile under
 %LOCALAPPDATA%/Ariadne/LabRunner/Sessions/<launch_id>, retained as owned runtime
 state for session diagnostics and never committed. A kill-on-close Windows job
 owns Edge and its descendants so host shutdown cannot leave an orphan kiosk.
 Separate profiles prevent Chromium from delegating a new launch to an older
-session. Workbench displays launch progress and errors next to its launch button.
+session. The coding-job view displays launch progress and errors next to its
+Runner button.
 Session completion follows the Windows job's active process count, not the exit
 of Edge's starter, which can hand off to a child process. Host diagnostics record
 the starter exit status and owned process count for failed-launch investigation.

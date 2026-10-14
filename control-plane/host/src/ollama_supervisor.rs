@@ -396,25 +396,35 @@ pub fn wake_pipe_receiver() {
 
 fn ensure_locked(state: &mut State, endpoint: String, store: String, models: Vec<String>) -> Result<RuntimeResponse, String> {
     prune_expired_leases(state);
-    if !state.inference_leases.is_empty() {
-        return Err(format!("Ollama reconciliation is waiting for active Rust-host inference lease(s): {:?}.", state.inference_leases.values().map(|lease| lease.model.as_str()).collect::<Vec<_>>()));
-    }
-    if installer_running()? { return Err("Ollama update installer is active; reconciliation is waiting for it to finish.".into()); }
     let existing_runtime_healthy = if let Some(runtime) = state.runtime.as_mut() {
         if runtime.child.try_wait().map_err(|error| error.to_string())?.is_none()
             && runtime.endpoint == endpoint && runtime.model_store == store && runtime.required_models == models
         {
-            if let Ok(response) = runtime_health(runtime) {
-                clear_idle_resident_models(&endpoint, &state.inference_leases)?;
-                Some(response)
-            } else {
-                None
-            }
+            runtime_health(runtime).ok()
         } else { None }
     } else { None };
-    if let Some(response) = existing_runtime_healthy {
-        log_line(&format!("Ariadne startup reused the healthy Rust-owned Ollama runtime after idle model-pool cleanup; state='{}'.", response.state));
-        return Ok(response);
+    match reconciliation_plan(existing_runtime_healthy.is_some(), !state.inference_leases.is_empty()) {
+        ReconciliationPlan::ReuseAndClearIdleModels => {
+            clear_idle_resident_models(&endpoint, &state.inference_leases)?;
+            let response = existing_runtime_healthy.expect("reuse plan requires a healthy runtime");
+            log_line(&format!("Ariadne startup reused the healthy Rust-owned Ollama runtime after idle model-pool cleanup; state='{}'.", response.state));
+            return Ok(response);
+        }
+        ReconciliationPlan::ReusePreservingActiveLeases => {
+            let response = existing_runtime_healthy.expect("reuse plan requires a healthy runtime");
+            log_line(&format!(
+                "Ariadne core startup reused the healthy Rust-owned Ollama runtime and preserved active inference lease(s): {:?}.",
+                state.inference_leases.values().map(|lease| lease.model.as_str()).collect::<Vec<_>>()
+            ));
+            return Ok(response);
+        }
+        ReconciliationPlan::WaitForActiveLeases => {
+            return Err(format!("Ollama reconciliation is waiting for active Rust-host inference lease(s): {:?}.", state.inference_leases.values().map(|lease| lease.model.as_str()).collect::<Vec<_>>()));
+        }
+        ReconciliationPlan::ReplaceRuntime => {}
+    }
+    if installer_running()? {
+        return Err("Ollama update installer is active; reconciliation is waiting for it to finish.".into());
     }
     prepare_existing_ollama_for_restart(&endpoint, &state.inference_leases)?;
     state.runtime = None;
@@ -455,6 +465,60 @@ fn ensure_locked(state: &mut State, endpoint: String, store: String, models: Vec
         if let Ok(response) = runtime_health(runtime) { return Ok(response); }
         if Instant::now() >= deadline { return Err("Rust-owned Ollama did not expose its required model catalogue within 45 seconds.".into()); }
         thread::sleep(Duration::from_millis(250));
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ReconciliationPlan {
+    ReuseAndClearIdleModels,
+    ReusePreservingActiveLeases,
+    WaitForActiveLeases,
+    ReplaceRuntime,
+}
+
+fn reconciliation_plan(runtime_healthy: bool, has_active_leases: bool) -> ReconciliationPlan {
+    match (runtime_healthy, has_active_leases) {
+        (true, false) => ReconciliationPlan::ReuseAndClearIdleModels,
+        (true, true) => ReconciliationPlan::ReusePreservingActiveLeases,
+        (false, true) => ReconciliationPlan::WaitForActiveLeases,
+        (false, false) => ReconciliationPlan::ReplaceRuntime,
+    }
+}
+
+#[cfg(test)]
+mod reconciliation_plan_tests {
+    use super::{reconciliation_plan, ReconciliationPlan};
+
+    #[test]
+    fn healthy_runtime_is_reused_without_unloading_models_held_by_live_leases() {
+        assert_eq!(
+            reconciliation_plan(true, true),
+            ReconciliationPlan::ReusePreservingActiveLeases
+        );
+    }
+
+    #[test]
+    fn healthy_runtime_clears_idle_pool_when_no_leases_exist() {
+        assert_eq!(
+            reconciliation_plan(true, false),
+            ReconciliationPlan::ReuseAndClearIdleModels
+        );
+    }
+
+    #[test]
+    fn unhealthy_runtime_waits_for_active_leases_before_replacement() {
+        assert_eq!(
+            reconciliation_plan(false, true),
+            ReconciliationPlan::WaitForActiveLeases
+        );
+    }
+
+    #[test]
+    fn unhealthy_runtime_is_reconciled_when_no_leases_exist() {
+        assert_eq!(
+            reconciliation_plan(false, false),
+            ReconciliationPlan::ReplaceRuntime
+        );
     }
 }
 
@@ -649,29 +713,29 @@ fn preflight_model(
     leases: &std::collections::HashMap<String, String>,
 ) -> Result<(String, serde_json::Value, String), String> {
     if model.trim().is_empty() { return Err("Inference request did not specify a model; blocked by Rust-host preflight.".into()); }
-    let model_row = ollama_tags(endpoint)?.into_iter().find(|row| row.get("name").and_then(|v| v.as_str()) == Some(model))
+    let model_row = ollama_tags(endpoint)?.into_iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)))
         .ok_or_else(|| format!("Requested model '{model}' is not in Ollama's local catalogue; inference blocked."))?;
     let model_bytes = model_row.get("size").and_then(|v| v.as_u64()).unwrap_or(0);
     if model_bytes == 0 { return Err(format!("Ollama did not report a model size for '{model}'; GPU admission cannot be established.")); }
     let mut resident = ollama_models(endpoint)?;
-    let target_was_resident = resident.iter().any(|row| row.get("name").and_then(|v| v.as_str()) == Some(model));
+    let target_was_resident = resident.iter().any(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)));
     for row in &resident {
         let Some(name) = row.get("name").and_then(|v| v.as_str()) else { continue };
-        if name == model { continue; }
-        if leases.values().any(|leased| leased == name) {
+        if ollama_model_name_matches(model, name) { continue; }
+        if leases.values().any(|leased| ollama_model_name_matches(leased, name)) {
             return Err(format!("GPU preflight found Ollama model '{name}' resident and in active use; '{model}' must wait."));
         }
     }
     for row in &resident {
         let Some(name) = row.get("name").and_then(|v| v.as_str()) else { continue };
-        if name != model { unload_model(endpoint, name)?; }
+        if !ollama_model_name_matches(model, name) { unload_model(endpoint, name)?; }
     }
     let deadline = Instant::now() + Duration::from_secs(20);
     loop {
         resident = ollama_models(endpoint)?;
-        if resident.iter().all(|row| row.get("name").and_then(|v| v.as_str()) == Some(model)) { break; }
+        if resident.iter().all(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name))) { break; }
         if Instant::now() >= deadline {
-            return Err(format!("Ollama did not release competing resident model(s) within 20 seconds: {}", resident.iter().filter_map(|r| r.get("name").and_then(|v| v.as_str()).filter(|name| *name != model)).collect::<Vec<_>>().join(", ")));
+            return Err(format!("Ollama did not release competing resident model(s) within 20 seconds: {}", resident.iter().filter_map(|r| r.get("name").and_then(|v| v.as_str()).filter(|name| !ollama_model_name_matches(model, name))).collect::<Vec<_>>().join(", ")));
         }
         thread::sleep(Duration::from_millis(400));
     }
@@ -688,6 +752,11 @@ fn preflight_model(
     let lease_id = format!("{}-{}", std::process::id(), uuid_like());
     let detail = format!("Rust-host GPU preflight admitted '{model}' ({} MiB free, {} MiB model, 1024 MiB headroom); {}.", gpu.free_bytes / 1_048_576, model_bytes / 1_048_576, if target_was_resident { "reusing resident model" } else { "prior Ollama models unloaded and model may load" });
     Ok((lease_id, inventory, detail))
+}
+
+fn ollama_model_name_matches(requested: &str, available: &str) -> bool {
+    requested == available
+        || (!requested.contains(':') && available == format!("{requested}:latest"))
 }
 
 fn uuid_like() -> String {
@@ -711,6 +780,19 @@ fn ollama_models(endpoint: &str) -> Result<Vec<serde_json::Value>, String> {
 fn ollama_tags(endpoint: &str) -> Result<Vec<serde_json::Value>, String> {
     let payload = ollama_http(endpoint, "GET", "/api/tags", None)?;
     Ok(payload.get("models").and_then(|value| value.as_array()).cloned().unwrap_or_default())
+}
+
+#[cfg(test)]
+mod model_name_tests {
+    use super::ollama_model_name_matches;
+
+    #[test]
+    fn untagged_requested_model_matches_ollama_latest_alias() {
+        assert!(ollama_model_name_matches("nomic-embed-text", "nomic-embed-text:latest"));
+        assert!(ollama_model_name_matches("nomic-embed-text", "nomic-embed-text"));
+        assert!(!ollama_model_name_matches("nomic-embed-text:latest", "nomic-embed-text"));
+        assert!(!ollama_model_name_matches("nomic-embed-text", "nomic-embed-text:other"));
+    }
 }
 
 fn unload_model(endpoint: &str, model: &str) -> Result<(), String> {

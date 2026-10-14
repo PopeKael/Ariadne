@@ -50,15 +50,54 @@ class ModelControlTests(unittest.TestCase):
             "loaded_details": [{"name": name, "size_vram": 1_000} for name in loaded],
         }
 
+    @staticmethod
+    def index(*names: str) -> list[dict[str, object]]:
+        return [{"id": name, "name": name, "canonical_name": name, "runtime_model": name,
+                 "installed_names": [name], "aliases": [], "role": "Chat", "roles": ["Chat"],
+                 "capabilities": ["chat", "structured_output"], "can_chat": True,
+                 "context_max": 262144, "effective_context_tokens": 32768, "size": 1000}
+                for name in names]
+
     def test_model_payload_separates_installed_and_resident_models(self):
-        with patch.object(server, "ollama_catalog", return_value=self.catalog("alpha", "beta", loaded=("alpha",))):
+        index = self.index("alpha", "beta")
+        with patch.object(server, "ollama_catalog", return_value=self.catalog("alpha", "beta", loaded=("alpha",))), \
+             patch.object(server, "ollama_status", return_value={"available": True}), \
+             patch.object(server, "_ollama_model_index", return_value=index):
             payload = server.model_control_payload()
-        self.assertEqual([item["name"] for item in payload["models"]], ["alpha", "beta"])
+        self.assertEqual([item["canonical_name"] for item in payload["models"]], ["alpha", "beta"])
         self.assertEqual(payload["loaded"], ["alpha"])
         self.assertEqual(payload["active_model"], server.HOME_CHAT_MODEL)
 
+    def test_normal_chat_model_selection_excludes_embedding_only_models(self):
+        original_model = server.HOME_CHAT_MODEL
+        server.HOME_CHAT_MODEL = "chat-model"
+        index = [
+            {"id": "chat-model", "name": "chat-model", "canonical_name": "chat-model", "runtime_model": "chat-model",
+             "installed_names": ["chat-model"], "aliases": [], "role": "Chat", "roles": ["Chat"],
+             "can_chat": True, "context_max": 262144, "effective_context_tokens": 32768, "size": 1000},
+            {"id": "embed-model", "name": "embed-model", "canonical_name": "embed-model", "runtime_model": "embed-model",
+             "installed_names": ["embed-model"], "aliases": [], "role": "Embedding", "roles": ["Embedding"],
+             "can_chat": False, "context_max": 2048, "effective_context_tokens": 2048, "size": 1000},
+        ]
+        try:
+            with patch.object(server, "ollama_catalog", return_value=self.catalog("chat-model", "embed-model")), \
+                 patch.object(server, "ollama_status", return_value={"available": True}), \
+                 patch.object(server, "_ollama_model_index", return_value=index):
+                payload = server.model_control_payload()
+        finally:
+            server.HOME_CHAT_MODEL = original_model
+        self.assertEqual([item["canonical_name"] for item in payload["models"]], ["chat-model"])
+        self.assertEqual(len(payload["catalogue"]), 2)
+
+    def test_runtime_context_uses_32k_or_declared_model_limit(self):
+        with patch.object(server, "ollama_model_capability_details", return_value={"available": True, "context_max": 262144}):
+            self.assertEqual(server._context_for_model("qwen", 32768), 32768)
+        with patch.object(server, "ollama_model_capability_details", return_value={"available": True, "context_max": 16384}):
+            self.assertEqual(server._context_for_model("phi", 32768), 16384)
+
     def test_switch_rejects_model_not_in_installed_catalogue(self):
         with patch.object(server, "ollama_catalog", return_value=self.catalog("alpha")), \
+             patch.object(server, "_ollama_model_index", return_value=self.index("alpha")), \
              patch.object(server, "save_configuration") as save:
             payload, status = server.switch_active_model("missing")
         self.assertEqual(status, 400)
@@ -67,6 +106,7 @@ class ModelControlTests(unittest.TestCase):
 
     def test_switch_rejects_embedding_only_model(self):
         with patch.object(server, "ollama_catalog", return_value=self.catalog("embed-model")), \
+             patch.object(server, "_ollama_model_index", return_value=[{**self.index("embed-model")[0], "can_chat": False, "role": "Embedding"}]), \
              patch.object(server, "ollama_model_capabilities", return_value=("embedding",)), \
              patch.object(server, "save_configuration") as save:
             payload, status = server.switch_active_model("embed-model")
@@ -76,7 +116,8 @@ class ModelControlTests(unittest.TestCase):
 
     def test_switch_is_blocked_while_renderer_owns_gpu(self):
         server.GPU_OWNER = "RENDERER"
-        with patch.object(server, "ollama_catalog", return_value=self.catalog("alpha")):
+        with patch.object(server, "ollama_catalog", return_value=self.catalog("alpha")), \
+             patch.object(server, "_ollama_model_index", return_value=self.index("alpha")):
             payload, status = server.switch_active_model("alpha")
         self.assertEqual(status, 409)
         self.assertIn("video renderer", payload["message"])
@@ -91,6 +132,7 @@ class ModelControlTests(unittest.TestCase):
             return {}
 
         with patch.object(server, "ollama_catalog", return_value=self.catalog("old-model", "new-model", loaded=("old-model",))), \
+             patch.object(server, "_ollama_model_index", return_value=self.index("old-model", "new-model")), \
              patch.object(server, "ollama_model_capabilities", return_value=("completion",)), \
              patch.object(server, "unload_ollama_model", return_value=True) as unload, \
              patch.object(server, "preload_ollama_model", return_value={"ok": True, "model": "new-model", "detail": "loaded"}) as preload, \
@@ -101,8 +143,9 @@ class ModelControlTests(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertTrue(payload["ok"])
-        unload.assert_called_once_with("old-model")
-        preload.assert_called_once_with("new-model", keep_alive=server.HOME_MODEL_KEEP_ALIVE)
+        unload.assert_called_once_with("old-model", reason="selected_model_switch")
+        preload.assert_called_once_with("new-model", keep_alive=server.HOME_MODEL_KEEP_ALIVE,
+                                        reason="selected_model_switch")
         inference = save.call_args.kwargs["inference"]
         self.assertEqual(inference["routes"]["home_chat"], "ollama-desktop")
         self.assertEqual(inference["routes"]["planner"], "ollama-planner")
@@ -113,9 +156,10 @@ class ModelControlTests(unittest.TestCase):
         with server.ai_gpu_admission():
             self.assertEqual(server.GPU_AI_ADMISSIONS, 1)
             server.GPU_TRANSITION_STATE = "SWITCHING_MODEL"
-            with self.assertRaises(RuntimeError):
-                with server.ai_gpu_admission():
-                    pass
+            with patch.object(server, "GPU_ADMISSION_WAIT_SECONDS", 0.05):
+                with self.assertRaises(RuntimeError):
+                    with server.ai_gpu_admission():
+                        pass
             server.GPU_TRANSITION_STATE = "IDLE"
         self.assertEqual(server.GPU_AI_ADMISSIONS, 0)
 
@@ -125,6 +169,7 @@ class ModelControlTests(unittest.TestCase):
         previous_providers = [provider.as_dict() for provider in server.INFERENCE_REGISTRY.providers]
         previous_routes = dict(server.INFERENCE_REGISTRY.routes)
         with patch.object(server, "ollama_catalog", return_value=self.catalog("old-model", "new-model")), \
+             patch.object(server, "_ollama_model_index", return_value=self.index("old-model", "new-model")), \
              patch.object(server, "ollama_model_capabilities", return_value=("completion",)), \
              patch.object(server, "preload_ollama_model", return_value={"ok": True, "model": "new-model"}), \
              patch.object(server, "save_configuration", return_value={"updated_at": "now"}) as save, \

@@ -1,7 +1,7 @@
-const HOME_REQUEST_TIMEOUT_MS = 240000;
+const ARTICLE_FETCH_WATCHDOG_MS = 240000;
 const TLDR_PROMPT = "Give me a clear, plain-English summary of this article in 200 to 300 words. Focus on what happened, why it matters, and any important uncertainty.";
 const CHAT_PAGE = document.body.classList.contains("chat-page");
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, lastActivitySequence: 0, requestTimeout: null, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, lastActivitySequence: 0, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
 
 function chatUrl({chatId = "", prompt = "", signalId = "", tldrStartedAt = "", articleId = "", articleAction = "", articleStartedAt = "", vaultMode = "", toolIds = []} = {}) {
   const url = new URL("/chat", window.location.origin);
@@ -289,13 +289,10 @@ function renderHealth(payload) {
   }
   document.querySelector("#health-updated").textContent = "Updated " + new Date(payload.timestamp).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
   const homeRoute = payload.inference?.routes?.home_chat || {};
-  const modelLabel = homeRoute.model_id || payload.resident_model || "No Home model selected";
-  const contextLabel = `${Math.round((payload.context_tokens || 16384) / 1024)}K context · ${homeRoute.provider_id || "unconfigured"} · ${homeRoute.location || "—"}`;
-  window.ariadneLab?.rememberConversation(modelLabel, contextLabel);
-  if (!window.ariadneLab?.active()) {
-    document.querySelector("#model-name").textContent = modelLabel;
-    document.querySelector("#model-context").textContent = contextLabel;
-  }
+  const modelLabel = payload.canonical_model || homeRoute.model_id || payload.resident_model || "No Home model selected";
+  const contextLabel = `${Math.round((payload.context_tokens || 32768) / 1024)}K context · ${homeRoute.provider_id || "unconfigured"} · ${homeRoute.location || "—"}`;
+  document.querySelector("#model-name").textContent = modelLabel;
+  document.querySelector("#model-context").textContent = contextLabel;
 }
 function formatInformationNumber(value, digits = 1) {
   const number = Number(value);
@@ -1108,7 +1105,7 @@ function watchSignalArticle(signalId, documentId, button, status) {
 async function waitForSignalArticleReady(signalId) {
   const tldrStartedAt = Number(new URLSearchParams(window.location.search).get("tldr_started_at")) || 0;
   const started = Date.now();
-  while (Date.now() - started < HOME_REQUEST_TIMEOUT_MS) {
+  while (Date.now() - started < ARTICLE_FETCH_WATCHDOG_MS) {
     const result = await postWithSessionRecovery("/api/home/signals/promote/status", {
       session_id: state.sessionId,
       chat_id: state.chatId,
@@ -1332,24 +1329,6 @@ async function startNewChat() {
     button.disabled = false;
   }
 }
-window.ariadneLabChat = {
-  context: () => ({session_id: state.sessionId, chat_id: state.chatId}),
-  record: async (runId, context) => {
-    if (!state.sessionId && !(await startSession())) throw new Error('Start a Chat session first.');
-    context = context?.chat_id ? context : {session_id: state.sessionId, chat_id: state.chatId};
-    if (context.chat_id !== state.chatId) throw new Error('Return to the build conversation before saving its result.');
-    const result = await postWithSessionRecovery('/api/home/chat/lab-run', {...context, run_id: runId});
-    restoreMessages(result.chat.messages || []);
-    await loadRecentChats();
-    return result.chat;
-  },
-  save: async (runId, context) => {
-    await window.ariadneLabChat.record(runId, context);
-    const result = await postWithSessionRecovery('/api/home/chat/save', {session_id: state.sessionId, chat_id: state.chatId});
-    await loadRecentChats();
-    return result;
-  },
-};
 async function saveCurrentChat() {
   if (!state.sessionId || !state.chatId) return;
   try {
@@ -1598,7 +1577,7 @@ function applyChatActivity(activity, {record = false} = {}) {
   const changedAt = Number(activity.changed_at || 0) * 1000;
   const elapsed = changedAt ? formatClock(Math.max(0, Date.now() - changedAt)) : "0.0s";
   const status = document.querySelector("#ask-status");
-  if (status && !window.ariadneLab?.active() && !window.ariadneLab?.switching()) status.textContent = label + " · " + elapsed;
+  if (status) status.textContent = label + " · " + elapsed;
   const pendingBody = document.querySelector("#chat-log .message.assistant.activity-placeholder .message-body");
   if (pendingBody) {
     pendingBody.textContent = label;
@@ -1842,6 +1821,16 @@ function addMessage(role, content, metadata) {
     }
     if (metadata.used_vault) meta.append(el("span", "vault-badge", "Vault evidence used"));
     if (metadata.used_documents) meta.append(el("span", "message-attachment-badge", "Temporary document used"));
+    const codingResult = metadata.timing?.coding_agent;
+    if (codingResult && /^[a-f0-9]{32}$/.test(String(codingResult.run_id || ""))) {
+      const codingButton = el("button", "read-button", "Open coding job");
+      codingButton.type = "button";
+      codingButton.addEventListener("click", async () => {
+        try { await window.ariadneCodingJob?.open(codingResult); }
+        catch (error) { document.querySelector("#ask-status").textContent = `Coding evidence unavailable: ${error.message}`; }
+      });
+      meta.append(codingButton);
+    }
     const timing = formatTiming(metadata.timing);
     if (timing) {
       const telemetryTrigger = el("span", "telemetry-trigger");
@@ -1879,12 +1868,11 @@ function addMessage(role, content, metadata) {
     meta.append(readButton);
     if (String(content || "").includes("```") || /!\[[^\]]*\]\([^)]*\)/.test(String(content || ""))) {
       const hasCode = String(content || "").includes("```");
-      const workbenchButton = el("button", "read-button", metadata.lab_run_id ? "Open Lab build" : hasCode ? "Open code" : "Open in Workbench");
+      const workbenchButton = el("button", "read-button", metadata.lab_run_id ? "Open saved code" : hasCode ? "Open code" : "Open in Workbench");
       workbenchButton.type = "button";
       workbenchButton.addEventListener("click", async () => {
         try {
-          if (metadata.lab_run_id && window.ariadneLab) await window.ariadneLab.openSaved(metadata.lab_run_id);
-          else showInWorkbench(String(content || ""), hasCode ? "Generated code" : "Conversation output");
+          showInWorkbench(String(content || ""), hasCode ? "Saved code" : "Conversation output");
         } catch (error) { document.querySelector("#ask-status").textContent = error.message; }
       });
       meta.append(workbenchButton);
@@ -2273,12 +2261,9 @@ async function ask(event) {
   event.preventDefault();
   const input = document.querySelector("#ask-input");
   const submit = document.querySelector("#ask-submit");
+  const cancel = document.querySelector("#ask-cancel");
   const status = document.querySelector("#ask-status");
   const message = input.value.trim();
-  if (CHAT_PAGE && window.ariadneLab?.active()) {
-    await window.ariadneLab.build(message, {session_id: state.sessionId, chat_id: state.chatId});
-    return;
-  }
   if (!message) {
     if (!CHAT_PAGE) {
       submit.disabled = true;
@@ -2322,12 +2307,12 @@ async function ask(event) {
   const streamingBody = streamingMessage?.querySelector(".message-body");
   input.value = "";
   submit.disabled = true;
+  if (cancel) { cancel.hidden = false; cancel.disabled = false; }
   setContextMutationState(true);
   showChatActivity();
   beginRequestStatus();
   const controller = new AbortController();
   state.requestAbortController = controller;
-  state.requestTimeout = window.setTimeout(() => controller.abort(), HOME_REQUEST_TIMEOUT_MS);
   try {
     let streamedAnswer = "";
     const articleTldr = state.articleTldrPending;
@@ -2344,6 +2329,12 @@ async function ask(event) {
     }, event => {
       if (event.type === "activity") {
         pushChatActivity(event.activity);
+      } else if (event.type === "coding_started") {
+        window.ariadneCodingJob?.begin(event);
+      } else if (event.type === "coding_output") {
+        window.ariadneCodingJob?.output(event);
+      } else if (event.type === "coding_result") {
+        window.ariadneCodingJob?.complete(event.result);
       } else if (event.type === "delta") {
         streamedAnswer += String(event.text || "");
         if (streamingBody) streamingBody.innerHTML = renderMarkdown(streamedAnswer);
@@ -2369,18 +2360,17 @@ async function ask(event) {
     loadRecentChats();
   } catch (error) {
     streamingMessage?.remove();
-    const timedOut = error && error.name === "AbortError";
-    const message = timedOut
-      ? "The local Home request exceeded 4 minutes without returning an answer. Check the chat before retrying."
+    const cancelled = error && error.name === "AbortError";
+    const message = cancelled
+      ? "Cancellation requested. Ariadne is stopping the active agent and releasing its model lease."
       : "I could not complete that locally: " + error.message;
     addMessage("assistant", message);
     finishChatActivity();
   } finally {
-    if (state.requestTimeout) window.clearTimeout(state.requestTimeout);
-    state.requestTimeout = null;
     state.requestAbortController = null;
     endRequestStatus();
     submit.disabled = false;
+    if (cancel) { cancel.hidden = true; cancel.disabled = false; }
     setContextMutationState(false);
     input.focus();
   }
@@ -2456,6 +2446,7 @@ async function initializeChatPage() {
 }
 const workbenchToggle = document.querySelector("#workbench-toggle");
 const workbenchClose = document.querySelector("#workbench-close");
+const workbenchReopen = document.querySelector("#workbench-reopen");
 const diagnosticsToggle = document.querySelector("#diagnostics-toggle");
 const diagnosticsClose = document.querySelector("#diagnostics-close");
 const sidebarToggle = document.querySelector("#sidebar-toggle");
@@ -2540,13 +2531,28 @@ function setOptionalDrawer(drawerId, open) {
   target.setAttribute("aria-hidden", String(!open));
   targetToggle?.setAttribute("aria-expanded", String(open));
   document.body.classList.toggle("workbench-open", workbench && open);
+  workbenchReopen?.setAttribute("aria-expanded", String(workbench && open));
+  if (workbenchReopen) {
+    workbenchReopen.hidden = workbench && open
+      || !document.body.classList.contains("coding-workbench-available")
+      || Boolean(diagnosticsToggle?.getAttribute("aria-expanded") === "true" && !workbench);
+  }
 }
 
 function setWorkbenchOpen(open) {
   setOptionalDrawer("workbench", open);
 }
+window.setCodingWorkbenchAvailable = available => {
+  document.body.classList.toggle("coding-workbench-available", Boolean(available));
+  if (workbenchReopen) workbenchReopen.hidden = !available || workbenchToggle?.getAttribute("aria-expanded") === "true" || diagnosticsToggle?.getAttribute("aria-expanded") === "true";
+};
 if (workbenchToggle) workbenchToggle.addEventListener("click", () => setWorkbenchOpen(workbenchToggle.getAttribute("aria-expanded") !== "true"));
 if (workbenchClose) workbenchClose.addEventListener("click", () => setWorkbenchOpen(false));
+if (workbenchReopen) {
+  workbenchReopen.addEventListener("click", () => { setWorkbenchOpen(true); workbenchClose?.focus(); });
+  workbenchReopen.addEventListener("mouseenter", () => setWorkbenchOpen(true));
+  workbenchReopen.addEventListener("focus", () => { setWorkbenchOpen(true); workbenchClose?.focus(); });
+}
 if (diagnosticsToggle) diagnosticsToggle.addEventListener("click", () => setOptionalDrawer("diagnostics", diagnosticsToggle.getAttribute("aria-expanded") !== "true"));
 if (diagnosticsClose) diagnosticsClose.addEventListener("click", () => setOptionalDrawer("diagnostics", false));
 window.addEventListener("keydown", event => {
@@ -2573,6 +2579,13 @@ document.querySelector("#knowledge-mode")?.addEventListener("change", () => {
 initializeChatSidebar();
 const askForm = document.querySelector("#ask-form");
 if (askForm) askForm.addEventListener("submit", ask);
+const askCancel = document.querySelector("#ask-cancel");
+if (askCancel) askCancel.addEventListener("click", () => {
+  if (!state.requestAbortController) return;
+  askCancel.disabled = true;
+  document.querySelector("#ask-status").textContent = "Cancellation requested…";
+  state.requestAbortController.abort();
+});
 const documentInput = document.querySelector("#document-input");
 if (documentInput) documentInput.addEventListener("change", async event => {
   for (const file of Array.from(event.target.files || [])) await attachFile(file);

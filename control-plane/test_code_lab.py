@@ -238,17 +238,19 @@ class CodeLabTests(unittest.TestCase):
         result, _ = self.lab.run({'prompt': 'Build a game'})
         with self.assertRaises(ValueError): code_lab.preview_html(result['run']['run_id'], 'a' * 32)
 
-    def test_ui_sandbox_and_explicit_lab_toggle(self):
+    def test_chat_coding_job_reuses_lab_workspace_and_preview_surface(self):
         base = Path(__file__).parent
-        js = (base / 'code-lab.js').read_text()
+        js = (base / 'coding-job-ui.js').read_text()
         html = (base / 'chat.html').read_text()
-        self.assertIn('>The Lab</button>', html)
-        self.assertIn("setAttribute('sandbox', 'allow-scripts')", js)
+        self.assertNotIn('id="lab-toggle"', html)
+        self.assertNotIn('src="/code-lab.js"', html)
+        self.assertIn('src="/coding-job-ui.js"', html)
+        self.assertIn('The former Lab toggle', (base / 'about.html').read_text())
+        self.assertIn('coding-agent/workspace', js)
+        self.assertIn('coding-preview/', js)
+        self.assertIn('setAttribute("sandbox", "allow-scripts")', js)
         self.assertNotIn('allow-same-origin', js)
-        self.assertIn("event.source !== frame.contentWindow", js)
-        self.assertIn("event.origin !== 'null'", js)
-        self.assertIn("frame.csp = csp", js)
-        self.assertIn("['Preview', preview], ['Code', code], ['Metrics', metrics]", js)
+        self.assertIn('ariadne-coding-verify', (base / 'coding-preview-bridge.js').read_text())
 
 
 if __name__ == '__main__': unittest.main()
