@@ -12,10 +12,19 @@ import server
 
 
 class VaultV2ControlTests(unittest.TestCase):
-    def test_five_buttons_dispatch_external_vault_wrappers(self):
+    def test_worker_process_receives_authoritative_control_plane_path(self):
+        with patch.object(server.subprocess, "Popen") as popen:
+            server._start_process(["worker"], Path(server.ROOT))
+
+        child_environment = popen.call_args.kwargs["env"]
+        self.assertEqual(Path(child_environment["ARIADNE_CONTROL_PLANE"]), Path(server.ROOT))
+        self.assertTrue((Path(child_environment["ARIADNE_CONTROL_PLANE"]) / "ollama_runtime.py").is_file())
+
+    def test_vault_buttons_dispatch_external_vault_wrappers(self):
         system = Path(__file__).resolve().parents[2] / "KnowledgeVault/00_System"
         actions = {"ingest": ("Daily-Ingest.ps1", []), "audit_failures": ("Audit-Failed-Ingestion.ps1", []),
                    "embedding_rebuild": ("Build-Embeddings.ps1", ["-Rebuild"]),
+                   "embedding_calibrate": ("Build-Embeddings.ps1", ["-Rebuild", "-CalibrateRuntimeProfile"]),
                    "full_rebuild": ("Full-Vault-Rebuild.ps1", []),
                    "regression_tests": ("Run-Rebuild-Tests.ps1", [])}
         page = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
@@ -77,7 +86,7 @@ class VaultV2ControlTests(unittest.TestCase):
         self.assertLess(script.index("Invoke-VaultV2.ps1"), script.index("exit $LASTEXITCODE"))
         self.assertLess(script.index("exit $LASTEXITCODE"), script.index("$MenuPath"))
 
-    def test_standalone_v2_menu_has_all_five_matching_dispatch_actions(self):
+    def test_standalone_v2_menu_has_all_matching_dispatch_actions(self):
         system = Path(__file__).resolve().parents[2] / "KnowledgeVault/00_System"
         page = (system / "Ariadne-Control.html").read_text(encoding="utf-8")
         dispatch = (system / "Start-AriadneControl.ps1").read_text(encoding="utf-8-sig")
@@ -85,6 +94,7 @@ class VaultV2ControlTests(unittest.TestCase):
         self.assertIn("$Path -ne '/run'", dispatch)
         self.assertNotIn("rebuild-v1", page)
         for action, script in (("ingest", "Daily-Ingest.ps1"), ("audit_failures", "Audit-Failed-Ingestion.ps1"),
+                               ("embedding_calibrate", "Build-Embeddings.ps1"),
                                ("embedding_rebuild", "Build-Embeddings.ps1"), ("full_rebuild", "Full-Vault-Rebuild.ps1"),
                                ("regression_tests", "Run-Rebuild-Tests.ps1")):
             self.assertIn(f'data-action="{action}"', page)

@@ -10,6 +10,8 @@ import unittest
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from contextlib import nullcontext
+from unittest.mock import patch
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -41,6 +43,7 @@ class Upstream(BaseHTTPRequestHandler):
     def do_POST(self):
         self.calls.append(self.path)
         payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        self.server.received_post_payloads = getattr(self.server, "received_post_payloads", []) + [payload]
         body = json.dumps({"embeddings": [[0.1, 0.2] for _ in payload["input"]]}).encode()
         self.send_response(200)
         self.send_header("Content-Length", str(len(body)))
@@ -53,6 +56,8 @@ class Upstream(BaseHTTPRequestHandler):
 
 class GatewayTests(unittest.TestCase):
     def setUp(self):
+        self.host_lease_patch = patch("ollama_runtime.inference_lease", return_value=nullcontext())
+        self.host_lease_mock = self.host_lease_patch.start()
         self.temporary = tempfile.TemporaryDirectory()
         root = Path(self.temporary.name)
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -70,6 +75,7 @@ class GatewayTests(unittest.TestCase):
         self.context = ssl.create_default_context(cafile=str(self.certificate))
         Upstream.calls = []
         self.upstream = ThreadingHTTPServer(("127.0.0.1", 0), Upstream)
+        self.upstream.received_post_payloads = []
         self.upstream_worker = start_gateway(self.upstream)
         self.settings = {"bind": "127.0.0.1", "port": 0, "allowed_peers": ["127.0.0.1"], "certificate": str(self.certificate), "private_key": str(self.private_key), "core_url": f"http://127.0.0.1:{self.upstream.server_port}", "ollama_url": f"http://127.0.0.1:{self.upstream.server_port}"}
         self.gateway = create_gateway(self.settings)
@@ -82,6 +88,7 @@ class GatewayTests(unittest.TestCase):
             server.server_close()
             worker.join(timeout=3)
         self.temporary.cleanup()
+        self.host_lease_patch.stop()
 
     def request(self, path, payload=None):
         request = urllib.request.Request(self.url + path, data=json.dumps(payload).encode() if payload is not None else None, headers={"Content-Type": "application/json"})
@@ -94,14 +101,33 @@ class GatewayTests(unittest.TestCase):
             self.assertEqual(json.load(response)["models"], [{"name": "nomic-embed-text:latest"}])
 
     def test_embedding_only_route_rejects_model_operations(self):
+        # The gateway adds a verified context option. Its forwarded length
+        # must match the rewritten JSON body, including when the caller omits
+        # options and the gateway body grows.
         with self.request("/internal/ollama/api/embed", {"model": "nomic-embed-text", "input": ["test"]}) as response:
             self.assertEqual(len(json.load(response)["embeddings"]), 1)
+        self.assertEqual(self.upstream.received_post_payloads, [{
+            "model": "nomic-embed-text", "input": ["test"], "options": {"num_ctx": 2048},
+        }])
+        self.host_lease_mock.assert_called_once()
+        self.assertEqual(self.host_lease_mock.call_args.kwargs["inference_kind"], "embed")
+        self.assertEqual(self.host_lease_mock.call_args.kwargs["context_length"], 2048)
         before = list(Upstream.calls)
-        for path, payload in (("/internal/ollama/api/pull", {}), ("/internal/ollama/api/embed", {"model": "qwen3.5:9b", "input": ["test"]})):
+        for path, payload in (("/internal/ollama/api/pull", {}),
+                              ("/internal/ollama/api/embed", {"model": "qwen3.5:9b", "input": ["test"]}),
+                              ("/internal/ollama/api/embed", {"model": "nomic-embed-text", "input": ["test"], "options": {"num_ctx": 4096}})):
             with self.subTest(path=path), self.assertRaises(urllib.error.HTTPError) as error:
                 self.request(path, payload)
             self.assertIn(error.exception.code, {400, 404})
         self.assertEqual(Upstream.calls, before)
+
+    def test_shutdown_closes_gateway_before_new_embedding_leases(self):
+        self.gateway.admissions_closed.set()
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            self.request("/internal/ollama/api/embed", {"model": "nomic-embed-text", "input": ["test"]})
+        self.assertEqual(error.exception.code, 503)
+        self.host_lease_mock.assert_not_called()
+        self.assertEqual(Upstream.calls, [])
 
     def test_unapproved_peer_cannot_reach_either_backend(self):
         denied = create_gateway({**self.settings, "allowed_peers": ["192.168.1.200"]})

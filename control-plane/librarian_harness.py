@@ -6,6 +6,7 @@ import re
 import time
 from typing import Any
 from conversation_orchestration import turn_schema, validate_turn
+from ollama_runtime import host_ollama_residency
 
 from semantic_planner import (
     PLANNER_CONTEXT_TOKENS,
@@ -201,7 +202,7 @@ def interpret_request(
     if model.casefold().startswith("qwen3"):
         body["think"] = False
     started = time.perf_counter()
-    loaded_before = _loaded_models(_get_json(endpoint.rstrip("/") + "/api/ps", min(timeout, 3.0)))
+    loaded_before = _loaded_models({"models": host_ollama_residency(endpoint)})
     response = _post_json(endpoint.rstrip("/") + "/api/chat", body, timeout)
     elapsed_ms = round((time.perf_counter() - started) * 1000)
     message = response.get("message") if isinstance(response, dict) else None
@@ -209,7 +210,7 @@ def interpret_request(
     if not isinstance(content, str) or not content.strip():
         raise ValueError("Semantic interpreter returned no JSON content.")
     semantic = validate_interpretation(_extract_json(content))
-    loaded_models = _loaded_models(_get_json(endpoint.rstrip("/") + "/api/ps", min(timeout, 3.0)))
+    loaded_models = _loaded_models({"models": host_ollama_residency(endpoint)})
     telemetry = {
         "planner_model": model,
         "interpreter_model": model,

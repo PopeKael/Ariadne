@@ -5,7 +5,9 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from contextlib import nullcontext
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parent
@@ -50,9 +52,21 @@ class HomeServerPersistenceTests(unittest.TestCase):
     def setUp(self):
         self.original_planner = server.home_planner_request
         server.home_planner_request = fake_home_planner
+        self.gpu_lease_patch = patch.object(server, "host_gpu_lease", side_effect=lambda *_a, **_k: nullcontext("test-gpu-lease"))
+        self.inference_lease_patch = patch.object(server, "inference_lease", side_effect=lambda *_a, **_k: nullcontext({"lease_id": "test-model-lease"}))
+        self.host_model_lease_patch = patch.object(server, "host_acquire_model_lease", return_value="test-home-model-lease")
+        self.host_model_release_patch = patch.object(server, "host_release_model_lease")
+        self.gpu_lease_patch.start()
+        self.inference_lease_patch.start()
+        self.host_model_lease_patch.start()
+        self.host_model_release_patch.start()
 
     def tearDown(self):
         server.home_planner_request = self.original_planner
+        self.gpu_lease_patch.stop()
+        self.inference_lease_patch.stop()
+        self.host_model_lease_patch.stop()
+        self.host_model_release_patch.stop()
 
     def post(self, port, path, payload):
         request = urllib.request.Request(

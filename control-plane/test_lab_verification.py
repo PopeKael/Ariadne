@@ -58,7 +58,7 @@ def lab_for(sources):
             value={'action':'read'}
         yield {'response':json.dumps({'reason':'Scripted fixture action',**value}),'done':True,'done_reason':'stop'}
     return code_lab.CodeLab(registry,lambda _:{'available':True,'models':[{'name':'fixture'}]},generate,
-                            nullcontext,lambda _:nullcontext(),lambda:{},lambda _:None)
+                            nullcontext,lambda _model,**_kwargs:nullcontext(),lambda:{},lambda _:None)
 
 class VerificationTests(unittest.TestCase):
     def setUp(self):

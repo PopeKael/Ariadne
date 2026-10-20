@@ -37,6 +37,8 @@ class HomeAttachmentRetentionTests(unittest.TestCase):
         }.items():
             self.stack.enter_context(patch.object(server, name, value))
         self.stack.enter_context(patch.object(server.CORE_INTERACTION_STREAM, "emit", return_value=None))
+        self.stack.enter_context(patch.object(server, "host_acquire_model_lease", return_value="test-home-model-lease"))
+        self.stack.enter_context(patch.object(server, "host_release_model_lease"))
 
     def article_chat(self):
         record = server.HOME_CHAT_STORE.create()

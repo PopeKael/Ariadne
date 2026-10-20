@@ -101,10 +101,12 @@ class ImageGenerationTests(unittest.TestCase):
                 patch.object(server, "json_http", return_value=history),
                 patch.object(server, "_comfy_output_bytes", return_value=b"png"),
                 patch.object(server, "configuration_snapshot", return_value={"storage": {"images": str(root / "images")}}),
-                patch.object(server, "ai_gpu_admission", return_value=nullcontext()),
+                patch.object(server, "host_gpu_lease", return_value=nullcontext("image-test-lease")),
+                patch.object(server, "host_verify_gpu_lease_capacity") as verify_capacity,
             ):
                 result, status = server.generate_image({"project_id": project["project_id"], "prompt": "A rainy Bangkok alley", "model": "sdxl-base-1.0", "seed": 42})
             self.assertEqual(status, 200)
+            verify_capacity.assert_called_once_with("image-test-lease", 0, server.OLLAMA_URL)
             self.assertEqual(result["asset"]["status"], "candidate")
             self.assertEqual(result["asset"]["provenance"]["prompt"], "A rainy Bangkok alley")
             self.assertEqual(result["image"]["width"], 1280)

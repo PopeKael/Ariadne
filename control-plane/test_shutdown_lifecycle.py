@@ -1,4 +1,6 @@
 import unittest
+import threading
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import server
@@ -35,6 +37,7 @@ class ShutdownLifecycleTests(unittest.TestCase):
         self.old_profile = server.ACTIVE_PROFILE
         self.old_http_server = server.HTTP_SERVER
         self.old_shutdown_status = server.SHUTDOWN_STATUS
+        self.old_gateway = server.HTTPS_GATEWAY
         server.SESSIONS = {}
         server.JOBS = {}
         server.WSL_SESSION_PROCESSES = {}
@@ -58,6 +61,7 @@ class ShutdownLifecycleTests(unittest.TestCase):
         server.ACTIVE_PROFILE = self.old_profile
         server.HTTP_SERVER = self.old_http_server
         server.SHUTDOWN_STATUS = self.old_shutdown_status
+        server.HTTPS_GATEWAY = self.old_gateway
 
     def test_shutdown_stops_tracked_jobs_and_managed_wsl_helpers(self):
         plugin = FakeProcess()
@@ -103,6 +107,37 @@ class ShutdownLifecycleTests(unittest.TestCase):
             server.shutdown_all_workloads(stop_server=False)
 
         self.assertEqual(process.terminated, 1)
+
+    def test_shutdown_closes_gateway_admission_before_cleanup(self):
+        admissions_closed = threading.Event()
+        server.HTTPS_GATEWAY = SimpleNamespace(admissions_closed=admissions_closed)
+        server.SESSIONS["home-session"] = {
+            "surface": "home", "jobs": set(), "host_model_lease_id": "home-host-lease",
+        }
+        with patch.object(server, "_send_avatar_event_with_retry", return_value=True), \
+             patch.object(server, "host_release_model_lease") as release_model_lease, \
+             patch.object(server, "_unload_ollama_models"), \
+             patch.object(server, "stop_owned_ollama"), \
+             patch.object(server, "release_workloads"):
+            server.shutdown_all_workloads(stop_server=False)
+        self.assertTrue(admissions_closed.is_set())
+        release_model_lease.assert_called_once_with("home-host-lease", server.OLLAMA_URL)
+
+    def test_post_requests_are_rejected_after_shutdown_starts(self):
+        class Handler:
+            path = "/api/session/start"
+
+            def __init__(self):
+                self.response = None
+
+            def send_json(self, payload, status=200):
+                self.response = (payload, status)
+
+        server.SHUTDOWN_REQUESTED = True
+        handler = Handler()
+        server.AriadneHandler.do_POST(handler)
+        self.assertEqual(handler.response[1], 503)
+        self.assertEqual(handler.response[0]["state"], "stopping")
 
 
 if __name__ == "__main__":

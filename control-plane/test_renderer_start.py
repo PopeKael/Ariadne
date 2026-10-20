@@ -28,6 +28,7 @@ class RendererStartTests(unittest.TestCase):
                 def status(*, ignore_transition=False):
                     return {"state": "offline", "detail": "offline"} if ignore_transition else {"state": "starting", "lifecycle_state": "STARTING_WSL", "detail": "transition pending"}
                 with patch.object(server, "wan2gp_status", side_effect=status), \
+                     patch.object(server, "announce_media_lifecycle"), \
                      patch.object(server.threading, "Thread", return_value=fake_thread):
                     result = server.start_wan2gp()
             self.assertTrue(result["ok"])

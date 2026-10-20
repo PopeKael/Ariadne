@@ -12,6 +12,8 @@ def main() -> int:
     parser.add_argument("--rebuild", action="store_true")
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--calibrate-runtime-profile", action="store_true",
+                        help="Explicitly calibrate an unknown full-GPU profile through Rust Host before embedding.")
     args = parser.parse_args()
     if args.status:
         index = load_index(ROOT)
@@ -23,7 +25,8 @@ def main() -> int:
         print(json.dumps({"status": "ready", "path": str(index_path(ROOT)), "model": index.get("model"),
                           "dimensions": index.get("dimensions"), "chunks": len(index.get("entries", {})),
                           "failures": len(index.get("failures", {})), "storage_bytes": index_path(ROOT).stat().st_size}, indent=2)); return 0
-    report = build_index(ROOT, list(chunk_records()), rebuild=args.rebuild, model=args.model)
+    report = build_index(ROOT, list(chunk_records()), rebuild=args.rebuild, model=args.model,
+                         allow_calibration=args.calibrate_runtime_profile)
     print(json.dumps(report, indent=2))
     return 0
 if __name__ == "__main__": raise SystemExit(main())

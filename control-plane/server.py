@@ -89,13 +89,19 @@ from librarian_harness import (
 )
 from ollama_runtime import (
     host_acquire_model_lease,
+    host_acquire_gpu_lease,
+    host_gpu_snapshot,
+    host_ollama_residency,
+    host_release_gpu_lease,
     host_release_model_lease,
     host_resume_after_external_workload,
     host_release_idle_models,
     host_renew_model_lease,
     host_suspend_for_external_workload,
     host_unload_model,
+    host_verify_gpu_lease_capacity,
     inference_lease,
+    gpu_lease as host_gpu_lease,
     ollama_update_in_progress,
     runtime_identity,
     start_owned_ollama,
@@ -171,7 +177,6 @@ CORE_INTERACTIONS_PATH = Path(os.environ.get("ARIADNE_CORE_INTERACTIONS_PATH", s
 CORE_INTERACTION_STREAM = CoreInteractionStream(CORE_INTERACTIONS_PATH)
 PLUGIN_ACTIVITY_PATH = Path(os.environ.get("ARIADNE_PLUGIN_ACTIVITY_PATH", str(ROOT / "runtime" / "plugin-activity.jsonl")))
 PLUGIN_ACTIVITY_STREAM = PluginActivityStream(PLUGIN_ACTIVITY_PATH)
-OLLAMA_PRELOAD_KEEP_ALIVE = os.environ.get("ARIADNE_OLLAMA_PRELOAD_KEEP_ALIVE", "adaptive")
 OPEN_WEBUI_URL = os.environ.get("ARIADNE_OPEN_WEBUI_URL", "http://localhost:3000/")
 MODEL_LAB_RUNS_PATH = Path(os.environ.get("ARIADNE_MODEL_LAB_RUNS_PATH", str(ROOT / "runtime" / "model-lab-runs.jsonl")))
 MODEL_LAB_FIXTURE_ROOT = ROOT / "model-lab-fixtures"
@@ -514,6 +519,7 @@ BROWSER_HEARTBEAT_TIMEOUT_SECONDS = 20
 LAST_BROWSER_HEARTBEAT = time.monotonic()
 LIFECYCLE_THREAD: threading.Thread | None = None
 HTTP_SERVER: ThreadingHTTPServer | None = None
+HTTPS_GATEWAY: ThreadingHTTPServer | None = None
 SHUTDOWN_LOCK = threading.Lock()
 SHUTDOWN_REQUESTED = False
 SHUTDOWN_STATUS_LOCK = threading.Lock()
@@ -541,6 +547,7 @@ MODEL_RESIDENCY_TRACE_INTERVAL_SECONDS = max(
     0.5, float(os.environ.get("ARIADNE_MODEL_RESIDENCY_TRACE_INTERVAL", "1"))
 )
 HOME_MODEL_PRELOAD_LOCK = threading.Lock()
+HOME_MODEL_LIFECYCLE_LOCK = threading.RLock()
 HOME_MODEL_PRELOAD_THREAD: threading.Thread | None = None
 HOME_MODEL_PRELOAD_STATUS: dict[str, object] = {"state": "unknown", "model": HOME_CHAT_MODEL, "detail": "Home model residency has not been checked."}
 OLLAMA_RUNTIME_IDENTITY: dict[str, object] | None = None
@@ -565,6 +572,7 @@ RENDERER_STOP_THREAD: threading.Thread | None = None
 RENDERER_OPERATION_ID: str | None = None
 RENDERER_STOP_REQUESTED = False
 RENDERER_LIFECYCLE_STATE = "STOPPED"
+RENDERER_GPU_LEASE_ID: str | None = None
 RENDERER_LIFECYCLE_ERROR: str | None = None
 RENDERER_START_DEADLINE_SECONDS = max(60.0, float(os.environ.get("ARIADNE_RENDERER_START_DEADLINE", "180")))
 RENDERER_MIN_FREE_VRAM_GB = max(1.0, float(os.environ.get("ARIADNE_RENDERER_MIN_FREE_VRAM_GB", "4")))
@@ -581,6 +589,7 @@ VAULT_ACTIONS = {
     "downloads_apply": ("Organize-Downloads.ps1", []),
     "audit_failures": ("Audit-Failed-Ingestion.ps1", []),
     "embedding_rebuild": ("Build-Embeddings.ps1", ["-Rebuild"]),
+    "embedding_calibrate": ("Build-Embeddings.ps1", ["-Rebuild", "-CalibrateRuntimeProfile"]),
     "full_rebuild": ("Full-Vault-Rebuild.ps1", []),
 }
 
@@ -1336,94 +1345,30 @@ def memory_status() -> dict[str, object]:
     }
 
 
-def gpu_adapters() -> tuple[list[str], int]:
-    """Read the 64-bit VRAM capacity exposed by Windows display drivers."""
-    if os.name != "nt":
-        return [], 0
-
-    try:
-        import winreg
-
-        root = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"
-        names: list[str] = []
-        total = 0
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, root) as base:
-            for index in range(winreg.QueryInfoKey(base)[0]):
-                try:
-                    subkey_name = winreg.EnumKey(base, index)
-                    with winreg.OpenKey(base, subkey_name) as adapter:
-                        name = winreg.QueryValueEx(adapter, "DriverDesc")[0]
-                        capacity = winreg.QueryValueEx(adapter, "HardwareInformation.qwMemorySize")[0]
-                        if name and isinstance(capacity, int) and capacity > 0:
-                            names.append(str(name))
-                            total += capacity
-                except OSError:
-                    continue
-        return names, total
-    except (ImportError, OSError):
-        return [], 0
-
-
-def typeperf_sum(counter: str) -> float | None:
-    raw = run_readonly(["typeperf.exe", counter, "-sc", "1"], timeout=4.0)
-    if raw.startswith("unavailable:"):
-        return None
-
-    for row in csv.reader(io.StringIO(raw)):
-        if len(row) < 2:
-            continue
-        try:
-            values = [float(value) for value in row[1:]]
-        except ValueError:
-            continue
-        if values:
-            return sum(values)
-    return None
-
-
 def gpu_status() -> dict[str, object]:
-    names, total = gpu_adapters()
-    used = typeperf_sum(r"\GPU Adapter Memory(*)\Dedicated Usage")
-
-    # NVIDIA systems can provide a complete reading when Windows adapter
-    # registry fields are absent or incomplete.
-    if not total or used is None:
-        raw = run_readonly(
-            [
-                "nvidia-smi.exe",
-                "--query-gpu=name,memory.total,memory.used",
-                "--format=csv,noheader,nounits",
-            ],
-            timeout=4.0,
-        )
-        nvidia_rows = []
-        for line in raw.splitlines():
-            parts = [part.strip() for part in line.split(",")]
-            if len(parts) == 3:
-                try:
-                    nvidia_rows.append((parts[0], float(parts[1]), float(parts[2])))
-                except ValueError:
-                    continue
-        if nvidia_rows:
-            names = [row[0] for row in nvidia_rows]
-            total = int(sum(row[1] for row in nvidia_rows) * 1024**2)
-            used = sum(row[2] for row in nvidia_rows) * 1024**2
-
-    if not total or used is None:
+    """Present the Rust host's authoritative WDDM allocation snapshot."""
+    try:
+        snapshot = host_gpu_snapshot(OLLAMA_URL)
+    except (OSError, RuntimeError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return {"available": False, "detail": str(exc)}
+    total = int(snapshot.get("total_bytes") or 0)
+    used = int(snapshot.get("used_bytes") or 0)
+    free = int(snapshot.get("free_bytes") or 0)
+    if total <= 0:
         return {"available": False, "detail": "GPU memory telemetry is unavailable."}
-
-    total = int(total)
-    used = min(total, max(0, int(used)))
-    free = total - used
-    used_percent = round((used / total) * 100, 1) if total else 0
+    used_percent = round((used / total) * 100, 1)
     return {
         "available": True,
-        "name": ", ".join(dict.fromkeys(names)) or "GPU",
+        "name": ", ".join(str(name) for name in snapshot.get("adapters", [])) or "GPU",
         "used_gb": round(used / 1024**3, 1),
         "total_gb": round(total / 1024**3, 1),
         "free_gb": round(free / 1024**3, 1),
         "used_percent": used_percent,
         "state": usage_state(used_percent),
+        "total_bytes": total,
+        "used_bytes": used,
+        "free_bytes": free,
+        "process_allocations": snapshot.get("process_allocations", []),
     }
 
 
@@ -1441,40 +1386,6 @@ def json_http(url: str, timeout: float = 2.5) -> dict[str, object]:
     context = client_context() if url.startswith("https://") else None
     with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
         return json.loads(response.read().decode("utf-8"))
-
-
-def model_residency_policy(gpu: dict[str, object] | None = None) -> dict[str, object]:
-    """Choose model idle/pressure limits from the actual GPU capacity."""
-    gpu = gpu if isinstance(gpu, dict) else gpu_status()
-    total_gb = float(gpu.get("total_gb") or 0)
-    if total_gb >= 24:
-        return {
-            "tier": "relaxed",
-            "idle_seconds": 1_800,
-            "preferred_idle_seconds": 3_600,
-            "pressure_free_gb": 4.0,
-            "detail": "Higher VRAM capacity; resident models may remain warm longer.",
-        }
-    if total_gb >= 16:
-        return {
-            "tier": "balanced",
-            "idle_seconds": 900,
-            "preferred_idle_seconds": 1_800,
-            "pressure_free_gb": 3.0,
-            "detail": "Balanced VRAM policy; idle non-preferred models are released after 15 minutes.",
-        }
-    return {
-        "tier": "constrained",
-        "idle_seconds": 300,
-        "preferred_idle_seconds": 900,
-        "pressure_free_gb": 2.0,
-        "detail": "Constrained VRAM policy; idle models are released sooner to protect active work.",
-    }
-
-
-def adaptive_model_keep_alive() -> str:
-    """Return a reversible standby duration; zero is reserved for explicit unloads."""
-    return f"{int(model_residency_policy().get('idle_seconds', 900))}s"
 
 
 def log_renderer_lifecycle(operation: str, **data: object) -> None:
@@ -1606,46 +1517,18 @@ def ai_gpu_work_in_flight() -> dict[str, object]:
     return {"admissions": admissions, "local_models": local_models, "vault_jobs": jobs, "busy": bool(admissions or local_models or jobs)}
 
 
-def ensure_ai_gpu_access() -> None:
-    global GPU_OWNER
-    with GPU_ARBITRATION_LOCK:
-        if GPU_VAULT_RESERVATION:
-            raise RuntimeError("GPU is reserved for Knowledge Vault ingestion.")
-        if GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE":
-            raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {GPU_TRANSITION_DETAIL}")
-        GPU_OWNER = "AI"
-
-
 @contextmanager
 def ai_gpu_admission():
-    """Reserve AI ownership across a complete Ariadne request, including retrieval.
-
-    A renderer handoff is transient. Waiting here prevents a normal chat request
-    from losing its turn merely because it arrived during the final seconds of
-    a legitimate renderer shutdown or startup. A renderer that is already
-    ready still keeps ownership and is rejected immediately.
-    """
+    """Hold the Rust-host GPU workload lease across a complete Ariadne operation."""
     global GPU_AI_ADMISSIONS, GPU_OWNER
-    deadline = time.monotonic() + GPU_ADMISSION_WAIT_SECONDS
-    while True:
-        with GPU_ARBITRATION_LOCK:
-            if GPU_VAULT_RESERVATION:
-                raise RuntimeError("GPU is reserved for Knowledge Vault ingestion.")
-            if GPU_OWNER == "DUNGEON" and GPU_TRANSITION_STATE == "IDLE":
-                raise RuntimeError(GPU_TRANSITION_DETAIL)
-            if GPU_OWNER == "RENDERER" and GPU_TRANSITION_STATE == "IDLE":
-                raise RuntimeError(f"GPU is reserved for renderer: {GPU_TRANSITION_DETAIL}")
-            if GPU_TRANSITION_STATE == "IDLE":
-                GPU_OWNER = "AI"
-                GPU_AI_ADMISSIONS += 1
-                break
-            remaining = deadline - time.monotonic()
-            detail = GPU_TRANSITION_DETAIL
-        if remaining <= 0:
-            raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {detail}")
-        time.sleep(min(0.25, remaining))
+    lease = host_gpu_lease("ai", OLLAMA_URL)
+    with GPU_ARBITRATION_LOCK:
+        GPU_AI_ADMISSIONS += 1
+        if GPU_OWNER == "NONE":
+            GPU_OWNER = "AI"
     try:
-        yield
+        with lease:
+            yield
     finally:
         with GPU_ARBITRATION_LOCK:
             GPU_AI_ADMISSIONS = max(0, GPU_AI_ADMISSIONS - 1)
@@ -1654,7 +1537,6 @@ def ai_gpu_admission():
 @contextmanager
 def tracked_model_activity(model: str):
     """Track local activity without acquiring a second Rust-host lease."""
-    ensure_ai_gpu_access()
     name = str(model or "").strip()
     if name:
         with MODEL_ACTIVITY_LOCK:
@@ -1689,8 +1571,7 @@ def ollama_catalog() -> dict[str, object]:
     try:
         tags = json_http(f"{OLLAMA_URL}/api/tags")
         models = tags.get("models", []) if isinstance(tags, dict) else []
-        running = json_http(f"{OLLAMA_URL}/api/ps")
-        loaded = running.get("models", []) if isinstance(running, dict) else []
+        loaded = host_ollama_residency(OLLAMA_URL)
         model_rows = []
         for item in models:
             if not isinstance(item, dict) or not item.get("name"):
@@ -1724,7 +1605,7 @@ def ollama_catalog() -> dict[str, object]:
                 if isinstance(item.get("size_vram"), (int, float))
             ),
         }
-    except (OSError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
+    except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
         return {"available": False, "models": [], "loaded": [], "loaded_details": [], "detail": str(exc)}
 
 
@@ -1882,12 +1763,10 @@ def unload_ollama_model(name: str, *, reason: str = "explicit") -> bool:
         return False
 
 
-def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object] | None = None,
-                               pressure: bool = False, preserve_models: set[str] | None = None) -> dict[str, object]:
+def release_idle_ollama_models(*, force: bool = False) -> dict[str, object]:
     """Delegate all Ollama residency release decisions and unloads to the Rust custodian."""
     try:
-        result = host_release_idle_models(endpoint=OLLAMA_URL, force=force,
-                                         preserve_models=sorted(str(name) for name in (preserve_models or set())))
+        result = host_release_idle_models(endpoint=OLLAMA_URL, force=force)
         unloaded = result.get("models") if isinstance(result.get("models"), list) else []
         return {"unloaded": unloaded, "protected": [], "remaining": [], "available": True,
                 "detail": result.get("detail", "Rust host completed model residency release.")}
@@ -1896,19 +1775,21 @@ def release_idle_ollama_models(*, force: bool = False, policy: dict[str, object]
 
 
 def monitor_ollama_models() -> dict[str, object]:
+    """Serialize model recovery with page-session closure and idle release."""
+    with HOME_MODEL_LIFECYCLE_LOCK:
+        return _monitor_ollama_models_locked()
+
+
+def _monitor_ollama_models_locked() -> dict[str, object]:
     """Release idle resident models without deleting their installed files."""
     global OLLAMA_RECOVERY_LAST_ATTEMPT, HOME_MODEL_PRELOAD_STATUS, OLLAMA_RUNTIME_IDENTITY
+    if SHUTDOWN_REQUESTED:
+        return {"state": "stopping", "unloaded": [], "detail": "Model recovery is disabled during Ariadne shutdown."}
     try:
         if ollama_update_in_progress():
             return {"state": "deferred", "unloaded": [], "detail": "Ollama is updating; Ariadne will recheck when installation finishes."}
     except RuntimeError as exc:
         return {"state": "deferred", "unloaded": [], "detail": str(exc)}
-    with GPU_ARBITRATION_LOCK:
-        if GPU_VAULT_RESERVATION or GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS:
-            return {"state": "deferred", "unloaded": [], "detail": "GPU arbitration is handling a workload transition."}
-    with MODEL_ACTIVITY_LOCK:
-        if MODEL_IN_FLIGHT:
-            return {"state": "deferred", "unloaded": [], "detail": "An AI model request is still active."}
     runtime_changed, runtime_details = observe_ollama_runtime_identity(reason="lifecycle_monitor")
     catalog = ollama_catalog()
     core_loaded = bool(
@@ -1952,13 +1833,34 @@ def monitor_ollama_models() -> dict[str, object]:
                     "ollama_runtime_reclaimed", model=HOME_CHAT_MODEL, reason=recovery_reason,
                     detail={"pid": startup.get("pid"), "state": startup.get("state")},
                 )
+            with SESSION_LOCK:
+                home_session_active = any(
+                    session.get("surface") == "home" for session in SESSIONS.values()
+                )
+            if not core_loaded and not home_session_active:
+                verified = ollama_status()
+                if not verified.get("available") or verified.get("state") != "online":
+                    raise RuntimeError(str(verified.get("detail") or "Ariadne runtime readiness verification failed."))
+                OLLAMA_RUNTIME_IDENTITY = runtime_identity(OLLAMA_URL)
+                HOME_MODEL_PRELOAD_STATUS = {
+                    "state": "inactive", "model": HOME_CHAT_MODEL,
+                    "detail": "Home model remains unloaded because no Home page session is active.",
+                }
+                record_model_residency_event(
+                    "ollama_runtime_recovery_finished", model=HOME_CHAT_MODEL, reason=recovery_reason,
+                    detail={"state": "inactive", "runtime": OLLAMA_RUNTIME_IDENTITY,
+                            "detail": "No active Home page session."},
+                )
+                return {"state": "inactive", "unloaded": [],
+                        "detail": "Home model remains unloaded because no Home page session is active."}
             if not core_loaded or HOME_CHAT_MODEL not in {
                 str(name) for name in ollama_catalog().get("loaded", [])
             }:
                 with ai_gpu_admission():
                     with tracked_model_activity(HOME_CHAT_MODEL):
                         loaded = preload_ollama_model(
-                            HOME_CHAT_MODEL, keep_alive=HOME_MODEL_KEEP_ALIVE,
+                            HOME_CHAT_MODEL,
+                            options={"num_ctx": HOME_CONTEXT_TOKENS},
                             reason=recovery_reason, allow_calibration=True,
                         )
                 if not loaded.get("ok"):
@@ -1988,28 +1890,20 @@ def monitor_ollama_models() -> dict[str, object]:
             return {"state": "degraded", "unloaded": [], "detail": str(exc)}
         finally:
             OLLAMA_RECOVERY_LOCK.release()
-    gpu = gpu_status()
-    policy = model_residency_policy(gpu)
-    free_gb = float(gpu.get("free_gb") or 0)
-    pressure = bool(gpu.get("available") and free_gb < float(policy["pressure_free_gb"]))
     with MODEL_ACTIVITY_LOCK:
         now = time.monotonic()
         for item in catalog.get("loaded_details", []):
             if isinstance(item, dict) and item.get("name"):
                 MODEL_LAST_USED.setdefault(str(item["name"]), now)
-    preserved = {HOME_CHAT_MODEL} | ({LAB_RESIDENT_MODEL} if LAB_RESIDENT_MODEL else set())
-    release = release_idle_ollama_models(policy=policy, pressure=pressure, preserve_models=preserved)
+    release = release_idle_ollama_models()
     if not release.get("available"):
-        return {"state": "custodian_unavailable", "policy": policy,
-                "free_vram_gb": round(free_gb, 1), "unloaded": [],
+        return {"state": "custodian_unavailable", "unloaded": [],
                 "detail": f"Rust host could not complete model residency review: {release.get('detail', 'no detail')}"}
     unloaded = release["unloaded"]
     return {
-        "state": "pressure" if pressure else "nominal",
-        "policy": policy,
-        "free_vram_gb": round(free_gb, 1),
+        "state": "released" if unloaded else "nominal",
         "unloaded": unloaded,
-        "detail": f"Released {len(unloaded)} idle model(s)." if unloaded else "No idle models required release.",
+        "detail": str(release.get("detail") or (f"Released {len(unloaded)} idle model(s)." if unloaded else "No idle models required release.")),
     }
 
 
@@ -2018,13 +1912,11 @@ def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, obj
     if not catalog.get("available"):
         return {"state": "offline", "available": False, "detail": catalog.get("detail", "Ollama is unavailable.")}
     gpu = gpu if isinstance(gpu, dict) else gpu_status()
-    policy = model_residency_policy(gpu)
     loaded = catalog.get("loaded_details", [])
     core_resident = HOME_CHAT_MODEL in {str(item.get("name") or "") for item in loaded if isinstance(item, dict)}
     return {
         "state": "pressure" if gpu.get("state") == "critical" else "online" if core_resident else "degraded",
         "available": core_resident,
-        "policy": policy,
         "loaded": loaded,
         "loaded_vram_gb": round(float(catalog.get("loaded_vram_bytes") or 0) / 1024**3, 1),
         "gpu_free_gb": gpu.get("free_gb"),
@@ -2033,41 +1925,29 @@ def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, obj
 
 
 def preload_ollama_model(model: str | None = None, *, options: dict[str, object] | None = None,
-                         thinking: str | None = None, keep_alive: int | str | None = None,
                          reason: str = "explicit", allow_calibration: bool = False) -> dict[str, object]:
     selected_model = (model or OLLAMA_CHAT_MODEL).strip() or OLLAMA_CHAT_MODEL
-    selected_keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE if keep_alive is None else keep_alive
-    if keep_alive is None and OLLAMA_PRELOAD_KEEP_ALIVE.casefold() == "adaptive":
-        selected_keep_alive = adaptive_model_keep_alive()
-    elif keep_alive is None and OLLAMA_PRELOAD_KEEP_ALIVE.strip().lstrip("-").isdigit():
-        selected_keep_alive = int(OLLAMA_PRELOAD_KEEP_ALIVE)
-    payload = {
-        "model": selected_model,
-        "stream": False,
-        "keep_alive": selected_keep_alive,
-    }
-    if options:
-        payload["options"] = dict(options)
-    if thinking is not None:
-        payload["think"] = False if thinking == "off" else thinking
+    if SHUTDOWN_REQUESTED:
+        return {"ok": False, "model": selected_model, "detail": "Rust Host admission is closed during Ariadne shutdown."}
     record_model_residency_event("model_load_requested", model=selected_model, reason=reason,
-                                 detail={"keep_alive": selected_keep_alive})
+                                 detail={"context_tokens": (options or {}).get("num_ctx", 4096)})
     try:
         requested_context = (options or {}).get("num_ctx", 4096)
         with inference_lease(selected_model, OLLAMA_URL,
                              context_length=int(requested_context) if isinstance(requested_context, int) else 4096,
-                             allow_calibration=allow_calibration):
-            response = post_json(f"{OLLAMA_URL}/api/generate", payload, timeout=300.0)
-        load_duration = response.get("load_duration")
-        detail = f"{selected_model} is loaded in memory"
-        if isinstance(load_duration, int):
-            detail += f" · load {load_duration / 1_000_000_000:.1f}s"
+                             allow_calibration=allow_calibration) as admission:
+            # Rust Host performs the preload, WDDM sampling, /api/ps checks,
+            # context validation, profile recording, and lease issuance.
+            # Python does not send a second model-loading request to Ollama.
+            host_detail = str(admission.get("detail") or f"Rust Host admitted {selected_model}.")
+            residency = admission.get("residency")
+        detail = host_detail
         record_model_residency_event(
             "model_load_completed", model=selected_model, reason=reason,
-            detail={"keep_alive": selected_keep_alive, "load_duration_ns": load_duration},
+            detail={"host_admission": host_detail},
         )
-        return {"ok": True, "model": selected_model, "detail": detail, "response": response}
-    except (OSError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return {"ok": True, "model": selected_model, "detail": detail, "residency": residency}
+    except (OSError, RuntimeError, urllib.error.URLError, ValueError, TypeError, json.JSONDecodeError) as exc:
         record_model_residency_event("model_load_failed", model=selected_model, reason=reason,
                                      detail={"error_type": type(exc).__name__})
         return {"ok": False, "model": selected_model, "detail": f"Model preload failed: {exc}"}
@@ -2079,26 +1959,15 @@ def _preload_home_chat_model_worker(model: str) -> None:
     record_model_residency_event("home_model_preload_started", model=model, reason="home_session_start")
     try:
         with ai_gpu_admission():
-            catalog = ollama_catalog()
-            loaded = {str(name) for name in catalog.get("loaded", [])}
-            if not catalog.get("available"):
-                HOME_MODEL_PRELOAD_STATUS = {"state": "unavailable", "model": model,
-                                             "detail": str(catalog.get("detail") or "Ollama is unavailable.")}
-                return
-            if model in loaded:
-                HOME_MODEL_PRELOAD_STATUS = {"state": "resident", "model": model, "detail": f"{model} is resident."}
-                record_model_residency_event("home_model_preload_already_resident", model=model,
-                                             reason="home_session_start")
-                return
             with tracked_model_activity(model):
-                result = preload_ollama_model(model, keep_alive=HOME_MODEL_KEEP_ALIVE,
+                result = preload_ollama_model(model, options={"num_ctx": HOME_CONTEXT_TOKENS},
                                               reason="home_session_preload", allow_calibration=True)
             if not result.get("ok"):
                 raise RuntimeError(str(result.get("detail") or "Home model preload failed."))
-            verified = ollama_catalog()
-            if not verified.get("available") or model not in {str(name) for name in verified.get("loaded", [])}:
-                raise RuntimeError(f"Ollama did not confirm {model} resident after preload.")
-            HOME_MODEL_PRELOAD_STATUS = {"state": "resident", "model": model, "detail": f"{model} loaded and verified resident."}
+            HOME_MODEL_PRELOAD_STATUS = {
+                "state": "resident", "model": model,
+                "detail": str(result.get("detail") or f"Rust Host verified {model} residency."),
+            }
     except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
         HOME_MODEL_PRELOAD_STATUS = {"state": "error", "model": model, "detail": str(exc)}
     finally:
@@ -2114,6 +1983,8 @@ def _preload_home_chat_model_worker(model: str) -> None:
 def start_home_chat_model_preload() -> dict[str, object]:
     """Schedule the selected Home model without delaying page startup."""
     global HOME_MODEL_PRELOAD_THREAD, HOME_MODEL_PRELOAD_STATUS
+    if SHUTDOWN_REQUESTED:
+        return {"ok": False, "state": "stopping", "detail": "Home model preload is disabled during Ariadne shutdown."}
     model = str(HOME_CHAT_MODEL or "").strip()
     if not model:
         STARTUP_TRACE.mark("model_preload_end", "degraded", reason="no_model_configured")
@@ -2151,6 +2022,13 @@ def model_control_payload() -> dict[str, object]:
                    if HOME_CHAT_MODEL.casefold() in {str(item.get("canonical_name") or "").casefold(),
                                                      str(item.get("runtime_model") or "").casefold(),
                                                      *(str(name).casefold() for name in item.get("installed_names", []))}), None)
+    home_residency = dict(HOME_MODEL_PRELOAD_STATUS)
+    if not (active and active.get("resident")) and home_residency.get("state") == "resident":
+        home_residency.update(
+            state="unavailable",
+            model=HOME_CHAT_MODEL,
+            detail=f"Rust Host reports {HOME_CHAT_MODEL} is not resident in Ollama /api/ps.",
+        )
     return {
         "ok": bool(status.get("available")),
         "active_model": str(active.get("canonical_name") if active else HOME_CHAT_MODEL),
@@ -2165,7 +2043,7 @@ def model_control_payload() -> dict[str, object]:
         "loaded_details": loaded_details,
         "gpu_owner": gpu_owner_status(),
         "in_flight": ai_gpu_work_in_flight(),
-        "home_model_residency": dict(HOME_MODEL_PRELOAD_STATUS),
+        "home_model_residency": home_residency,
         "detail": str(status.get("detail") or catalog.get("detail") or "Installed Ollama models are available to Ariadne."),
     }
 
@@ -2532,13 +2410,16 @@ def _model_lab_avatar_transition(record: dict[str, object], state: str, message:
 
 
 def _ollama_generate_stream(model: str, payload: dict[str, object], timeout: float = 300.0, *, endpoint: str | None = None):
+    options = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+    context_length = options.get("num_ctx", 4096)
+    context_length = int(context_length) if isinstance(context_length, (int, float)) else 4096
     request = urllib.request.Request(
         f"{endpoint or OLLAMA_URL}/api/generate",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json", "Accept": "application/x-ndjson"},
         method="POST",
     )
-    with inference_lease(model, endpoint or OLLAMA_URL):
+    with inference_lease(model, endpoint or OLLAMA_URL, context_length=context_length):
         with urllib.request.urlopen(request, timeout=timeout) as response:
             for raw_line in response:
                 line = raw_line.decode("utf-8").strip()
@@ -2566,7 +2447,7 @@ def code_lab_service():
 
 @contextmanager
 def lab_model_transition(model):
-    """Use the existing selection lock and GPU state for a temporary mode switch."""
+    """Use Rust Host as the exclusive owner during a temporary mode switch."""
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL
     global GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
     if not MODEL_SWITCH_LOCK.acquire(blocking=False):
@@ -2574,15 +2455,10 @@ def lab_model_transition(model):
     entered = False
     outcome = {"success": False}
     previous_owner = GPU_OWNER
+    gpu_lease_id = ""
     try:
+        gpu_lease_id = host_acquire_gpu_lease("transition", OLLAMA_URL, model=str(model))
         with GPU_ARBITRATION_LOCK:
-            if GPU_VAULT_RESERVATION or GPU_OWNER in {"RENDERER", "DUNGEON"}:
-                raise RuntimeError("The GPU is reserved for another workload. Finish it before switching modes.")
-            if GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS:
-                raise RuntimeError("Finish the active Ariadne workload before switching modes.")
-            with MODEL_ACTIVITY_LOCK:
-                if any(count > 0 for count in MODEL_IN_FLIGHT.values()):
-                    raise RuntimeError("A local model is still processing. Try again when it finishes.")
             GPU_OWNER = "TRANSITION"
             GPU_TRANSITION_STATE = "SWITCHING_MODEL"
             GPU_TRANSITION_DETAIL = f"Loading {model} for Chat."
@@ -2591,6 +2467,8 @@ def lab_model_transition(model):
             entered = True
         yield outcome
     finally:
+        if gpu_lease_id:
+            host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
         if entered:
             with GPU_ARBITRATION_LOCK:
                 GPU_OWNER = "AI" if outcome["success"] else previous_owner
@@ -2626,10 +2504,9 @@ def prepare_code_lab_model(body):
             MODEL_LAST_USED[model] = time.monotonic()
 
     return code_lab.prepare_working_model(
-        config, catalog=ollama_catalog, capabilities=ollama_model_capability_details,
-        transition=lab_model_transition, preload=preload_ollama_model, unload=unload_ollama_model,
+        config, capabilities=ollama_model_capability_details,
+        transition=lab_model_transition, preload=preload_ollama_model,
         remember=remember, avatar=lambda state: _send_avatar_event_with_retry(lambda: emit_state(state)),
-        unload_candidates={HOME_CHAT_MODEL, PLANNER_MODEL, LAB_RESIDENT_MODEL} - {None},
     )
 
 
@@ -2648,7 +2525,8 @@ def run_model_lab(body: dict[str, object], on_event: Callable[[dict[str, object]
     answer_chunks: list[str] = []
     response: dict[str, object] = {}
     try:
-        with ai_gpu_admission(), model_activity(model):
+        context_length = int((request_payload.get("options") or {}).get("num_ctx") or 4096)
+        with ai_gpu_admission(), tracked_model_activity(model):
             _model_lab_event(on_event, {"type": "state", "state": "LOADING MODEL"})
             if request_payload.get("think"):
                 _model_lab_avatar_transition(record, "thinking", "Model Lab is reasoning through the benchmark.", on_event)
@@ -2672,7 +2550,7 @@ def run_model_lab(body: dict[str, object], on_event: Callable[[dict[str, object]
                         _model_lab_event(on_event, {"type": "response", "delta": answer})
             else:
                 request_payload["stream"] = False
-                with inference_lease(model, OLLAMA_URL):
+                with inference_lease(model, OLLAMA_URL, context_length=context_length):
                     response = post_json(f"{OLLAMA_URL}/api/generate", request_payload, timeout=300.0)
         response["thinking"] = "".join(thinking_chunks) if thinking_chunks else str(response.get("thinking") or "")
         response["response"] = "".join(answer_chunks) if answer_chunks else str(response.get("response") or "")
@@ -2778,6 +2656,7 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
     }
     configuration_persisted = False
     succeeded = False
+    host_transition_lease = ""
     operation_id = uuid.uuid4().hex
     try:
         catalog = ollama_catalog()
@@ -2800,33 +2679,21 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
         if requested == HOME_CHAT_MODEL and requested == PLANNER_MODEL:
             return {**model_control_payload(), "ok": True, "message": f"{requested} is already Ariadne's active model."}, 200
 
+        try:
+            host_transition_lease = host_acquire_gpu_lease("transition", OLLAMA_URL, model=requested)
+        except RuntimeError as exc:
+            return {"ok": False, "message": str(exc)}, 409
         with GPU_ARBITRATION_LOCK:
-            if GPU_OWNER in {"RENDERER", "DUNGEON"}:
-                return {"ok": False, "message": "Stop the video renderer before switching Ariadne's model."}, 409
-            if GPU_TRANSITION_STATE != "IDLE":
-                return {"ok": False, "message": f"GPU transition {GPU_TRANSITION_STATE} is still active."}, 409
-            if GPU_AI_ADMISSIONS:
-                return {"ok": False, "message": "Finish the active Ariadne response before switching models."}, 409
-            with MODEL_ACTIVITY_LOCK:
-                if any(count > 0 for count in MODEL_IN_FLIGHT.values()):
-                    return {"ok": False, "message": "A local model is still processing; try again when it finishes."}, 409
             GPU_OWNER = "TRANSITION"
             GPU_TRANSITION_STATE = "SWITCHING_MODEL"
             GPU_TRANSITION_DETAIL = f"Loading {requested} for Ariadne."
             GPU_TRANSITION_OPERATION = operation_id
             GPU_TRANSITION_STARTED_AT = time.monotonic()
 
-        loaded = {str(name) for name in catalog.get("loaded", [])}
-        for old_model in {HOME_CHAT_MODEL, PLANNER_MODEL}:
-            if old_model and old_model != requested and old_model in loaded:
-                unload_ollama_model(old_model, reason="selected_model_switch")
-
-        preload = preload_ollama_model(requested, keep_alive=HOME_MODEL_KEEP_ALIVE,
-                                       reason="selected_model_switch", allow_calibration=True)
+        preload = preload_ollama_model(requested, reason="selected_model_switch", allow_calibration=True)
         if not preload.get("ok"):
             if previous_model and previous_model != requested:
-                preload_ollama_model(previous_model, keep_alive=HOME_MODEL_KEEP_ALIVE,
-                                     reason="selected_model_switch_rollback", allow_calibration=True)
+                preload_ollama_model(previous_model, reason="selected_model_switch_rollback", allow_calibration=True)
             return {"ok": False, "message": str(preload.get("detail") or "The selected model could not be loaded.")}, 503
 
         saved = save_configuration(inference=_inference_configuration_for_model(requested))
@@ -2858,6 +2725,11 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
                 rollback_detail = f" Configuration rollback also needs attention: {rollback_error}"
         return {"ok": False, "message": f"The model switch was not completed: {exc}.{rollback_detail}"}, 500
     finally:
+        if host_transition_lease:
+            try:
+                host_release_gpu_lease(host_transition_lease, OLLAMA_URL)
+            except Exception as exc:
+                print(f"[model-switch] Rust-host transition lease release failed: {exc}", flush=True)
         with GPU_ARBITRATION_LOCK:
             if GPU_TRANSITION_OPERATION == operation_id:
                 GPU_OWNER = "AI" if succeeded else previous_owner
@@ -3232,7 +3104,7 @@ def enhance_music_caption(body: dict[str, object]) -> tuple[dict[str, object], i
     metrics: dict[str, object] = {}
     try:
         with ai_gpu_admission():
-            with model_activity(HOME_CHAT_MODEL):
+            with tracked_model_activity(HOME_CHAT_MODEL):
                 caption = _home_mcp().ollama_chat(
                     messages,
                     model=HOME_CHAT_MODEL,
@@ -3643,20 +3515,6 @@ def generate_music(body: dict[str, object], *, progress_job_id: str | None = Non
         runtime = LOCAL_MUSIC_ENGINE.status()
         if not runtime["available"]:
             return {"ok": False, "message": "The local MiniMax audio.cpp runtime is not installed.", "runtime": runtime}, 409
-        video = wan2gp_status(ignore_transition=True)
-        if str(video.get("state") or "") in {"online", "starting"}:
-            return {"ok": False, "message": "Stop the video renderer before generating music."}, 409
-        resource_release = release_idle_ollama_models(force=True)
-        if resource_release.get("protected"):
-            return {"ok": False, "message": "A local LLM is still processing; wait for the MiniMax pre-flight to finish before generating.", "resource_release": resource_release}, 409
-        gpu = gpu_status()
-        if gpu.get("available") and float(gpu.get("free_gb") or 0) < MUSIC_MINIMUM_FREE_GB:
-            return {"ok": False, "message": f"Music needs at least {MUSIC_MINIMUM_FREE_GB:g} GB free VRAM; Ariadne currently sees {gpu.get('free_gb')} GB.", "gpu": gpu}, 409
-        preflight = {
-            "llm": {"model": caption_preflight.get("model") or HOME_CHAT_MODEL, "completed": True, "caption_reviewed": True, "metrics": caption_preflight.get("metrics", {})},
-            "lyrics": {"validated": True, "normalized": True, "tag_count": lyric_check.get("tag_count"), "section_count": lyric_check.get("section_count")},
-            "resource_release": resource_release,
-        }
         request = MusicRequest(lyrics=lyrics, style=enhanced_caption, duration_seconds=duration, seed=seed, inference_steps=steps)
         job_id = uuid.uuid4().hex
         candidate_root = SEQUENCE_PROJECTS.music_candidate_directory(project_id) if project_id else music_candidate_root()
@@ -3669,11 +3527,23 @@ def generate_music(body: dict[str, object], *, progress_job_id: str | None = Non
                     progress_job.update({"log_path": str(log_path), "output_path": str(output), "target_seconds": duration})
         MUSIC_GENERATION_ACTIVE = True
         announce_media_lifecycle("Music", "BUSY", "Generating a local MiniMax song candidate.")
-        with ai_gpu_admission():
-            try:
+        try:
+            admission = host_gpu_lease(
+                "music", OLLAMA_URL,
+                min_free_bytes=int(MUSIC_MINIMUM_FREE_GB * 1024**3),
+            )
+            with admission as music_gpu_lease_id:
+                preflight = {
+                    "llm": {"model": caption_preflight.get("model") or HOME_CHAT_MODEL, "completed": True, "caption_reviewed": True, "metrics": caption_preflight.get("metrics", {})},
+                    "lyrics": {"validated": True, "normalized": True, "tag_count": lyric_check.get("tag_count"), "section_count": lyric_check.get("section_count")},
+                    "gpu_lease": "Rust Host released idle Ollama models and verified the configured music reserve.",
+                }
                 completed = LOCAL_MUSIC_ENGINE.generate(request, output, log_path, MUSIC_GENERATION_TIMEOUT_SECONDS)
-            except subprocess.TimeoutExpired:
-                return {"ok": False, "message": "The music render exceeded its time limit; the candidate was not promoted."}, 504
+                host_verify_gpu_lease_capacity(music_gpu_lease_id, 0, OLLAMA_URL)
+        except RuntimeError as exc:
+            return {"ok": False, "message": str(exc)}, 409
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "message": "The music render exceeded its time limit; the candidate was not promoted."}, 504
         if completed.returncode != 0 or not output.is_file() or output.stat().st_size < 44:
             detail = (completed.stderr or completed.stdout or "audio.cpp did not write a WAV output").strip()
             return {"ok": False, "message": f"MiniMax generation failed: {detail[-600:]}"}, 502
@@ -3776,12 +3646,6 @@ def start_image_engine() -> dict[str, object]:
     current = image_engine_status()
     if current["state"] in {"online", "starting"}:
         return {"ok": True, "image": current}
-    video = wan2gp_status(ignore_transition=True)
-    if str(video.get("state") or "") in {"online", "starting"}:
-        return {"ok": False, "message": "Stop the video renderer before starting the image process.", "image": current}
-    with GPU_ARBITRATION_LOCK:
-        if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER in {"RENDERER", "DUNGEON"}:
-            return {"ok": False, "message": GPU_TRANSITION_DETAIL, "image": current}
     if not IMAGE_ENGINE_ROOT.is_dir() or not IMAGE_ENGINE_PYTHON.is_file():
         announce_media_lifecycle("Image", "ERROR", f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}")
         return {
@@ -3792,14 +3656,19 @@ def start_image_engine() -> dict[str, object]:
     try:
         IMAGE_ENGINE_LOG.parent.mkdir(parents=True, exist_ok=True)
         log_handle = IMAGE_ENGINE_LOG.open("a", encoding="utf-8")
-        IMAGE_ENGINE_PROCESS = subprocess.Popen(
-            [str(IMAGE_ENGINE_PYTHON), "main.py", "--listen", "127.0.0.1", "--port", str(IMAGE_ENGINE_PORT)],
-            cwd=str(IMAGE_ENGINE_ROOT),
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
+        with host_gpu_lease("image", OLLAMA_URL):
+            IMAGE_ENGINE_PROCESS = subprocess.Popen(
+                [str(IMAGE_ENGINE_PYTHON), "main.py", "--listen", "127.0.0.1", "--port", str(IMAGE_ENGINE_PORT)],
+                cwd=str(IMAGE_ENGINE_ROOT),
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
         log_handle.close()
+    except RuntimeError as exc:
+        IMAGE_ENGINE_PROCESS = None
+        log_handle.close()
+        return {"ok": False, "message": str(exc), "image": current}
     except OSError as exc:
         IMAGE_ENGINE_PROCESS = None
         announce_media_lifecycle("Image", "ERROR", f"Could not start ComfyUI: {exc}")
@@ -3914,14 +3783,11 @@ def generate_image(body: dict[str, object], on_progress=None) -> tuple[dict[str,
         current = image_engine_status()
         if current["state"] != "online":
             return {"ok": False, "message": "Start the image process before generating.", "image": current}, 409
-        video = wan2gp_status(ignore_transition=True)
-        if str(video.get("state") or "") in {"online", "starting"}:
-            return {"ok": False, "message": "Stop the video renderer before generating an image."}, 409
         IMAGE_GENERATION_ACTIVE = True
         client_id = str(uuid.uuid4())
         if on_progress:
             on_progress(stage="Waiting for GPU")
-        with ai_gpu_admission(), (comfy_progress(IMAGE_ENGINE_URL, client_id, on_progress) if on_progress else nullcontext()):
+        with host_gpu_lease("image", OLLAMA_URL) as image_gpu_lease_id, (comfy_progress(IMAGE_ENGINE_URL, client_id, on_progress) if on_progress else nullcontext()):
             if on_progress:
                 on_progress(stage="Submitting image workflow")
             queued = post_json(f"{IMAGE_ENGINE_URL}/prompt", {"client_id": client_id, "prompt_id": client_id, "prompt": image_prompt_workflow(str(model["filename"]), prompt, negative_prompt, width, height, seed)}, timeout=30.0)
@@ -3950,6 +3816,10 @@ def generate_image(body: dict[str, object], on_progress=None) -> tuple[dict[str,
                 time.sleep(1.0)
             if result is None:
                 return {"ok": False, "message": "The image render timed out before producing an output.", "job_id": prompt_id}, 504
+            # The checkpoint is loaded by ComfyUI on workflow execution, after
+            # the initial Host admission snapshot. Check the actual WDDM reserve
+            # before accepting or publishing the generated image.
+            host_verify_gpu_lease_capacity(image_gpu_lease_id, 0, OLLAMA_URL)
             try:
                 if on_progress:
                     on_progress(stage="Saving PNG and provenance", step=None, total_steps=None)
@@ -3983,45 +3853,6 @@ def generate_image(body: dict[str, object], on_progress=None) -> tuple[dict[str,
     finally:
         IMAGE_GENERATION_ACTIVE = False
         IMAGE_GENERATION_LOCK.release()
-
-
-def release_ollama_for_renderer(operation_id: str) -> dict[str, object]:
-    """Use the shared residency governor to release idle AI models for rendering."""
-    started = time.monotonic()
-    before_gpu = gpu_status()
-    release = release_idle_ollama_models(force=True, policy=model_residency_policy(before_gpu))
-    unloaded = release["unloaded"]
-    blocked = release["protected"]
-    deadline = time.monotonic() + 20.0
-    after_gpu = before_gpu
-    remaining: list[str] = []
-    while time.monotonic() < deadline:
-        after_catalog = ollama_catalog()
-        remaining = [
-            str(item.get("name")) for item in after_catalog.get("loaded_details", [])
-            if isinstance(item, dict) and item.get("name")
-        ]
-        after_gpu = gpu_status()
-        if not remaining:
-            break
-        time.sleep(1)
-    log_renderer_lifecycle(
-        "ollama_release",
-        operation_id=operation_id,
-        vram_before=before_gpu,
-        vram_after=after_gpu,
-        unloaded=unloaded,
-        protected=blocked,
-        remaining=remaining,
-        elapsed_seconds=round(time.monotonic() - started, 2),
-    )
-    if remaining:
-        raise RuntimeError(f"Ollama models remain resident: {', '.join(remaining)}")
-    if blocked:
-        raise RuntimeError(f"Ollama inference is still in flight: {', '.join(blocked)}")
-    if after_gpu.get("available") and float(after_gpu.get("free_gb") or 0) < RENDERER_MIN_FREE_VRAM_GB:
-        raise RuntimeError(f"Only {after_gpu.get('free_gb')} GB VRAM is free after Ollama release; renderer requires at least {RENDERER_MIN_FREE_VRAM_GB:g} GB.")
-    return {"before": before_gpu, "after": after_gpu, "unloaded": unloaded}
 
 
 def _start_wan2gp_backend() -> dict[str, object]:
@@ -4097,32 +3928,25 @@ def _start_wan2gp_backend() -> dict[str, object]:
 def _renderer_start_worker(operation_id: str) -> None:
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
     global GPU_TRANSITION_STARTED_AT, RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR
+    global RENDERER_GPU_LEASE_ID
     started = time.monotonic()
+    gpu_lease_id = ""
     try:
         if RENDERER_STOP_REQUESTED:
             raise RuntimeError("Renderer startup was cancelled.")
         with GPU_ARBITRATION_LOCK:
-            GPU_TRANSITION_STATE = "AI_DRAINING"
-            GPU_TRANSITION_DETAIL = "Finishing active AI work before rendering takes GPU ownership."
+            GPU_TRANSITION_STATE = "HOST_GPU_ADMISSION"
+            GPU_TRANSITION_DETAIL = "Requesting exclusive GPU ownership from Rust Host."
             RENDERER_LIFECYCLE_STATE = "STARTING_WSL"
-        deadline = time.monotonic() + 60.0
-        while time.monotonic() < deadline:
-            if RENDERER_STOP_REQUESTED:
-                raise RuntimeError("Renderer startup was cancelled.")
-            in_flight = ai_gpu_work_in_flight()
-            if not in_flight["busy"]:
-                break
-            with GPU_ARBITRATION_LOCK:
-                GPU_TRANSITION_DETAIL = "Finishing AI work before renderer startup."
-            time.sleep(0.5)
-        else:
-            raise RuntimeError("AI work did not finish before the renderer transition deadline.")
-
-        with GPU_ARBITRATION_LOCK:
-            GPU_TRANSITION_STATE = "UNLOADING_OLLAMA"
-            GPU_TRANSITION_DETAIL = "Unloading resident Ollama models safely."
-            RENDERER_LIFECYCLE_STATE = "STARTING_WSL"
-        release_ollama_for_renderer(operation_id)
+        if RENDERER_STOP_REQUESTED:
+            raise RuntimeError("Renderer startup was cancelled.")
+        # Rust Host performs the exclusive-lease check against active model and
+        # GPU-workload leases. Python counters remain diagnostic only.
+        gpu_lease_id = host_acquire_gpu_lease(
+            "renderer", OLLAMA_URL,
+            min_free_bytes=int(RENDERER_MIN_FREE_VRAM_GB * 1024**3),
+        )
+        RENDERER_GPU_LEASE_ID = gpu_lease_id
 
         with GPU_ARBITRATION_LOCK:
             GPU_TRANSITION_STATE = "STARTING_WSL"
@@ -4142,6 +3966,13 @@ def _renderer_start_worker(operation_id: str) -> None:
                 raise RuntimeError("Renderer startup was cancelled.")
             status = wan2gp_status(ignore_transition=True)
             if status.get("state") == "online" and status.get("lifecycle_state") in {"READY", "BUSY"}:
+                # Admission checks the free reserve before the renderer starts;
+                # verify it again after its GPU backend has initialized.
+                host_verify_gpu_lease_capacity(
+                    gpu_lease_id,
+                    int(RENDERER_MIN_FREE_VRAM_GB * 1024**3),
+                    OLLAMA_URL,
+                )
                 with GPU_ARBITRATION_LOCK:
                     GPU_OWNER = "RENDERER"
                     GPU_TRANSITION_STATE = "IDLE"
@@ -4158,6 +3989,18 @@ def _renderer_start_worker(operation_id: str) -> None:
             time.sleep(RENDERER_POLL_INTERVAL_SECONDS)
         raise TimeoutError(f"Renderer did not become ready within {RENDERER_START_DEADLINE_SECONDS:g} seconds.")
     except Exception as exc:
+        # A failed post-load reserve check (or startup health check) must not
+        # leave an unleased renderer consuming GPU memory.
+        try:
+            _stop_wan2gp_backend()
+        except Exception:
+            pass
+        if gpu_lease_id:
+            try:
+                host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
+            except Exception:
+                pass
+        RENDERER_GPU_LEASE_ID = None
         with GPU_ARBITRATION_LOCK:
             GPU_OWNER = "NONE"
             GPU_TRANSITION_STATE = "IDLE"
@@ -4184,8 +4027,8 @@ def start_wan2gp() -> dict[str, object]:
             return {"ok": True, "wan2gp": wan2gp_status()}
         operation_id = uuid.uuid4().hex
         GPU_OWNER = "TRANSITION"
-        GPU_TRANSITION_STATE = "AI_DRAINING"
-        GPU_TRANSITION_DETAIL = "Preparing the GPU transition to video rendering."
+        GPU_TRANSITION_STATE = "HOST_GPU_ADMISSION"
+        GPU_TRANSITION_DETAIL = "Preparing an exclusive GPU lease for video rendering."
         GPU_TRANSITION_OPERATION = operation_id
         GPU_TRANSITION_STARTED_AT = time.monotonic()
         RENDERER_OPERATION_ID = operation_id
@@ -4222,6 +4065,7 @@ def _stop_wan2gp_backend() -> dict[str, object]:
 def _renderer_stop_worker(operation_id: str) -> None:
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
     global GPU_TRANSITION_STARTED_AT, RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR
+    global RENDERER_GPU_LEASE_ID
     started = time.monotonic()
     vram_before = gpu_status()
     try:
@@ -4247,6 +4091,10 @@ def _renderer_stop_worker(operation_id: str) -> None:
                     lifecycle_state = "STOPPED"
                     lifecycle_error = None
                     gpu_detail = "GPU is available to the next approved workload."
+                gpu_lease_id = RENDERER_GPU_LEASE_ID
+                if gpu_lease_id:
+                    host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
+                RENDERER_GPU_LEASE_ID = None
                 with GPU_ARBITRATION_LOCK:
                     GPU_OWNER = "NONE"
                     GPU_TRANSITION_STATE = "IDLE"
@@ -4393,40 +4241,37 @@ def begin_dungeon_handoff() -> dict[str, object]:
         return {"ok": False, "state": "busy", "message": "Ariadne is already changing GPU ownership."}
     operation_id = uuid.uuid4().hex
     prior_models: list[str] = []
+    dungeon_gpu_lease_id = ""
     prior_profile = ACTIVE_PROFILE
     image_engine_was_running = False
     gods_eye_was_running = False
     interactive_wsl_was_running = INTERACTIVE_PROCESS is not None and INTERACTIVE_PROCESS.poll() is None
+    workloads_released = False
+    suspend_requested = False
     stage = "preflight"
     log_dungeon_handoff("started", status="started", operation_id=operation_id,
                         profile=prior_profile)
     try:
+        # Capture restorable residency before Rust's exclusive lease releases
+        # it. The subsequent Host lease remains the actual admission decision.
+        catalog = ollama_catalog()
+        if not catalog.get("available"):
+            log_dungeon_handoff("rejected", status="error", operation_id=operation_id,
+                                reason="ollama_catalog_unavailable")
+            raise RuntimeError("Ariadne cannot verify its Ollama runtime.")
+        prior_models = [str(name) for name in catalog.get("loaded", [])]
+        dungeon_gpu_lease_id = host_acquire_gpu_lease("dungeon", OLLAMA_URL)
         with GPU_ARBITRATION_LOCK:
-            if GPU_OWNER in {"RENDERER", "DUNGEON", "TRANSITION"} or GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
-                log_dungeon_handoff("rejected", status="busy", operation_id=operation_id,
-                                    reason="gpu_or_vault_busy",
-                                    gpu_ai_admissions=GPU_AI_ADMISSIONS,
-                                    vault_reservation_active=bool(GPU_VAULT_RESERVATION))
-                return {"ok": False, "state": "busy", "message": "Finish the current Ariadne GPU workload before starting Dungeon."}
-            with MODEL_ACTIVITY_LOCK:
-                active_models = {name: count for name, count in MODEL_IN_FLIGHT.items() if count > 0}
-                if active_models:
-                    log_dungeon_handoff("rejected", status="busy", operation_id=operation_id,
-                                        reason="model_in_flight", model_in_flight=active_models)
-                    return {"ok": False, "state": "busy", "message": "An Ariadne model is still processing."}
-            catalog = ollama_catalog()
-            if not catalog.get("available"):
-                log_dungeon_handoff("rejected", status="error", operation_id=operation_id,
-                                    reason="ollama_catalog_unavailable")
-                return {"ok": False, "state": "error", "message": "Ariadne cannot verify its Ollama runtime."}
-            prior_models = [str(name) for name in catalog.get("loaded", [])]
+            # The Rust-host lease is the admission decision. Python state here
+            # is only transition progress for the UI and diagnostics.
             GPU_OWNER = "TRANSITION"
             GPU_TRANSITION_STATE = "DUNGEON_DRAINING"
             GPU_TRANSITION_DETAIL = "Releasing Ariadne workloads and resident models for Dungeon."
             GPU_TRANSITION_OPERATION = operation_id
             GPU_TRANSITION_STARTED_AT = time.monotonic()
         ARIADNE_DELEGATION.update(state="DRAINING", operation_id=operation_id, models=prior_models,
-                                  profile=prior_profile, detail=GPU_TRANSITION_DETAIL)
+                                  profile=prior_profile, detail=GPU_TRANSITION_DETAIL,
+                                  gpu_lease_id=dungeon_gpu_lease_id)
         log_dungeon_handoff("draining", status="started", operation_id=operation_id,
                             resident_models=prior_models)
         stage = "stop_managed_workloads"
@@ -4443,16 +4288,13 @@ def begin_dungeon_handoff() -> dict[str, object]:
             _terminate_process(IMAGE_ENGINE_PROCESS)
             IMAGE_ENGINE_PROCESS = None
         release_workloads(force=True, terminate_wsl=interactive_wsl_was_running)
-        stage = "release_ollama_models"
-        released = release_idle_ollama_models(force=True)
-        log_dungeon_handoff("models_released", status="ready" if released.get("available") and not released.get("remaining") else "error",
-                            operation_id=operation_id, available=released.get("available"),
-                            remaining=released.get("remaining", []), detail=str(released.get("detail", ""))[:500])
-        if not released.get("available") or released.get("remaining"):
-            raise RuntimeError(str(released.get("detail") or "Ariadne models could not be verified as unloaded."))
+        workloads_released = True
         stage = "suspend_ollama_runtime"
         log_dungeon_handoff("runtime_suspend_requested", status="started", operation_id=operation_id)
+        suspend_requested = True
         suspension = host_suspend_for_external_workload(OLLAMA_URL)
+        if not suspension.get("ok"):
+            raise RuntimeError(str(suspension.get("detail") or "Rust Host did not confirm Ollama suspension."))
         log_dungeon_handoff("runtime_suspended", status="ready", operation_id=operation_id,
                             runtime_state=suspension.get("state"), detail=str(suspension.get("detail", ""))[:500])
         with GPU_ARBITRATION_LOCK:
@@ -4480,39 +4322,51 @@ def begin_dungeon_handoff() -> dict[str, object]:
             GPU_OWNER = "TRANSITION"
             GPU_TRANSITION_STATE = "DUNGEON_RECOVERING"
             GPU_TRANSITION_DETAIL = "Restoring Ariadne after a failed Dungeon handoff."
-        try:
-            recovery = host_resume_after_external_workload(OLLAMA_URL)
-            log_dungeon_handoff("runtime_recovery", status="ready", operation_id=operation_id,
-                                runtime_state=recovery.get("state"), detail=str(recovery.get("detail", ""))[:500])
-        except Exception as restore_error:
-            log_dungeon_handoff("runtime_recovery", status="error", operation_id=operation_id,
-                                error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
-            print(f"[dungeon] runtime recovery after failed launch: {restore_error}", flush=True)
-        try:
-            set_profile(prior_profile)
-            log_dungeon_handoff("profile_recovery", status="ready", operation_id=operation_id,
-                                profile=prior_profile)
-        except Exception as restore_error:
-            log_dungeon_handoff("profile_recovery", status="error", operation_id=operation_id,
-                                error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
-            print(f"[dungeon] profile recovery after failed launch: {restore_error}", flush=True)
-        try:
-            restore_dungeon_suspended_workloads()
-            log_dungeon_handoff("workload_recovery", status="ready", operation_id=operation_id)
-        except Exception as restore_error:
-            log_dungeon_handoff("workload_recovery", status="error", operation_id=operation_id,
-                                error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
-            print(f"[dungeon] workload recovery after failed launch: {restore_error}", flush=True)
+        recovery_errors = []
+        if suspend_requested:
+            try:
+                recovery = host_resume_after_external_workload(OLLAMA_URL)
+                if not recovery.get("ok"):
+                    raise RuntimeError(str(recovery.get("detail") or "Rust Host did not confirm runtime recovery."))
+                log_dungeon_handoff("runtime_recovery", status="ready", operation_id=operation_id,
+                                    runtime_state=recovery.get("state"), detail=str(recovery.get("detail", ""))[:500])
+            except Exception as restore_error:
+                recovery_errors.append(f"runtime: {restore_error}")
+                log_dungeon_handoff("runtime_recovery", status="error", operation_id=operation_id,
+                                    error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
+                print(f"[dungeon] runtime recovery after failed launch: {restore_error}", flush=True)
+        if workloads_released:
+            try:
+                restore_dungeon_suspended_workloads()
+                log_dungeon_handoff("workload_recovery", status="ready", operation_id=operation_id)
+            except Exception as restore_error:
+                recovery_errors.append(f"workloads: {restore_error}")
+                log_dungeon_handoff("workload_recovery", status="error", operation_id=operation_id,
+                                    error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
+                print(f"[dungeon] workload recovery after failed launch: {restore_error}", flush=True)
+        if not recovery_errors and dungeon_gpu_lease_id:
+            try:
+                host_release_gpu_lease(dungeon_gpu_lease_id, OLLAMA_URL)
+                ARIADNE_DELEGATION.pop("gpu_lease_id", None)
+            except Exception as release_error:
+                recovery_errors.append(f"GPU lease: {release_error}")
+                log_dungeon_handoff("gpu_lease_recovery", status="error", operation_id=operation_id,
+                                    error_type=type(release_error).__name__, error=str(release_error)[:500])
         with GPU_ARBITRATION_LOCK:
-            GPU_OWNER = "NONE"
-            GPU_TRANSITION_STATE = "IDLE"
-            GPU_TRANSITION_DETAIL = "Ariadne is available after a failed Dungeon handoff."
-            GPU_TRANSITION_OPERATION = None
-            GPU_TRANSITION_STARTED_AT = None
-        ARIADNE_DELEGATION.update(state="ARIADNE_ACTIVE", operation_id=None, detail=str(exc))
-        log_dungeon_handoff("recovered", status="ready", operation_id=operation_id,
-                            original_error=str(exc)[:1000])
-        return {"ok": False, "state": "failed", "message": str(exc)}
+            GPU_OWNER = "TRANSITION" if recovery_errors else "NONE"
+            GPU_TRANSITION_STATE = "DUNGEON_RECOVERY_FAILED" if recovery_errors else "IDLE"
+            GPU_TRANSITION_DETAIL = ("Ariadne recovery needs attention: " + "; ".join(recovery_errors)) if recovery_errors else "Ariadne is available after a failed Dungeon handoff."
+            GPU_TRANSITION_OPERATION = operation_id if recovery_errors else None
+            GPU_TRANSITION_STARTED_AT = time.monotonic() if recovery_errors else None
+        ARIADNE_DELEGATION.update(state="RECOVERY_FAILED" if recovery_errors else "ARIADNE_ACTIVE",
+                                  operation_id=operation_id if recovery_errors else None,
+                                  detail=GPU_TRANSITION_DETAIL if recovery_errors else str(exc))
+        log_dungeon_handoff("recovered", status="error" if recovery_errors else "ready", operation_id=operation_id,
+                            original_error=str(exc)[:1000], recovery_errors=recovery_errors)
+        message = str(exc)
+        if recovery_errors:
+            message += " Recovery remains blocked: " + "; ".join(recovery_errors)
+        return {"ok": False, "state": "recovery_failed" if recovery_errors else "failed", "message": message}
     finally:
         ARIADNE_DELEGATION_LOCK.release()
 
@@ -4547,6 +4401,10 @@ def report_dungeon_handoff(body: dict[str, object]) -> dict[str, object]:
             GPU_TRANSITION_STATE = "DUNGEON_RESTORING"
             GPU_TRANSITION_DETAIL = "Restoring Ariadne after Dungeon."
         host_resume_after_external_workload(OLLAMA_URL)
+        gpu_lease_id = str(ARIADNE_DELEGATION.get("gpu_lease_id") or "")
+        if gpu_lease_id:
+            host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
+            ARIADNE_DELEGATION.pop("gpu_lease_id", None)
         set_profile(str(ARIADNE_DELEGATION.get("profile") or "RUN"))
         with GPU_ARBITRATION_LOCK:
             GPU_OWNER = "NONE"
@@ -4563,13 +4421,11 @@ def report_dungeon_handoff(body: dict[str, object]) -> dict[str, object]:
         return {"ok": True, "state": "ARIADNE_ACTIVE"}
     except Exception as exc:
         with GPU_ARBITRATION_LOCK:
-            GPU_OWNER = "NONE"
-            GPU_TRANSITION_STATE = "IDLE"
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "DUNGEON_RECOVERING"
             GPU_TRANSITION_DETAIL = f"Ariadne runtime recovery needs attention: {exc}"
-            GPU_TRANSITION_OPERATION = None
-            GPU_TRANSITION_STARTED_AT = None
-        ARIADNE_DELEGATION.update(state="ARIADNE_ACTIVE", operation_id=None, detail=str(exc))
-        return {"ok": False, "state": "ARIADNE_ACTIVE", "message": str(exc)}
+        ARIADNE_DELEGATION.update(state="RECOVERY_FAILED", detail=str(exc))
+        return {"ok": False, "state": "RECOVERY_FAILED", "message": str(exc)}
     finally:
         ARIADNE_DELEGATION_LOCK.release()
 
@@ -4582,6 +4438,8 @@ def start_lifecycle_watchdog() -> None:
         last_model_monitor = 0.0
         while True:
             time.sleep(5)
+            if SHUTDOWN_REQUESTED:
+                return
             now = time.monotonic()
             if now - last_model_monitor >= MODEL_MONITOR_INTERVAL_SECONDS:
                 try:
@@ -4668,7 +4526,7 @@ def shutdown_idle_workloads() -> None:
         if IDLE_SHUTDOWN_DONE:
             return
         IDLE_SHUTDOWN_DONE = True
-    release_idle_ollama_models(force=True, preserve_models={HOME_CHAT_MODEL})
+    release_idle_ollama_models(force=True)
     release_workloads(force=True)
 
 
@@ -4702,6 +4560,13 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
         SHUTDOWN_REQUESTED = True
         _set_shutdown_status("requested", "Ariadne shutdown cleanup is in progress.")
 
+    # Close the TLS edge's admission gate before any cleanup runs. A queued
+    # embedding request must not acquire a new Rust Host lease during exit.
+    if HTTPS_GATEWAY is not None:
+        admissions_closed = getattr(HTTPS_GATEWAY, "admissions_closed", None)
+        if isinstance(admissions_closed, threading.Event):
+            admissions_closed.set()
+
     try:
         # Tray Exit already presents this state before calling the supervisor;
         # keeping it here makes the existing shutdown endpoint identical for the
@@ -4717,6 +4582,19 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
             }
             jobs = [JOBS.get(job_id) for job_id in job_ids]
             SESSIONS.clear()
+        for session in sessions:
+            model_lease_id = str(session.get("host_model_lease_id") or "")
+            if model_lease_id:
+                try:
+                    host_release_model_lease(model_lease_id, OLLAMA_URL)
+                except Exception as exc:
+                    print(f"[shutdown] Rust-host model lease release failed: {exc}", flush=True)
+            gpu_lease_id = str(session.get("host_gpu_lease_id") or "")
+            if gpu_lease_id:
+                try:
+                    host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
+                except Exception as exc:
+                    print(f"[shutdown] Rust-host GPU lease release failed: {exc}", flush=True)
         for job in jobs:
             if not isinstance(job, dict):
                 continue
@@ -4769,6 +4647,13 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
 
 
 def _close_session(session_id: str) -> bool:
+    """Close page ownership atomically with watchdog model recovery."""
+    with HOME_MODEL_LIFECYCLE_LOCK:
+        return _close_session_locked(session_id)
+
+
+def _close_session_locked(session_id: str) -> bool:
+    global GPU_OWNER, GPU_VAULT_RESERVATION
     with SESSION_LOCK:
         session = SESSIONS.pop(session_id, None)
         if not session:
@@ -4792,7 +4677,16 @@ def _close_session(session_id: str) -> bool:
             job["gpu_state"] = gpu_release
         if isinstance(presenter, CoreActivityPresenter):
             presenter.cancelled("Cleanup activity cancelled when the Ariadne page closed.")
+    model_lease_released = True
+    host_lease_id = str(session.pop("host_model_lease_id", "") or "")
+    if host_lease_id:
+        try:
+            host_release_model_lease(host_lease_id, OLLAMA_URL)
+        except Exception as exc:
+            model_lease_released = False
+            print(f"[session] Rust-host model lease release failed: {exc}", flush=True)
     if session.get("surface") == "knowledge-vault":
+        gpu_lease_released = False
         model = str(session.get("ingestion_model") or "")
         if model and session.pop("ingestion_model_protected", False):
             with MODEL_ACTIVITY_LOCK:
@@ -4802,16 +4696,23 @@ def _close_session(session_id: str) -> bool:
                 else:
                     MODEL_IN_FLIGHT.pop(model, None)
                 MODEL_LAST_USED[model] = time.monotonic()
-            lease_released = True
-            host_lease_id = str(session.pop("host_model_lease_id", "") or "")
-            if host_lease_id:
+            lease_released = model_lease_released
+            gpu_lease_id = str(session.pop("host_gpu_lease_id", "") or "")
+            if gpu_lease_id:
                 try:
-                    host_release_model_lease(host_lease_id, OLLAMA_URL)
+                    host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
+                    gpu_lease_released = True
                 except Exception as exc:
                     lease_released = False
-                    print(f"[vault-session] Rust-host model lease release failed: {exc}", flush=True)
+                    print(f"[vault-session] Rust-host GPU workload lease release failed: {exc}", flush=True)
             if lease_released:
                 unload_ollama_model(model, reason="knowledge_vault_page_exit")
+        if gpu_lease_released:
+            with GPU_ARBITRATION_LOCK:
+                if GPU_VAULT_RESERVATION == session.get("gpu_reservation_id"):
+                    GPU_VAULT_RESERVATION = None
+                    if GPU_OWNER == "VAULT":
+                        GPU_OWNER = "AI" if GPU_AI_ADMISSIONS else "NONE"
     if last_session:
         shutdown_idle_workloads()
     if session.get("surface") == "knowledge-vault":
@@ -4877,6 +4778,7 @@ def _start_process(command: list[str], cwd: Path, *, chat_model: str | None = No
                    ollama_url: str | None = None) -> subprocess.Popen:
     child_environment = os.environ.copy()
     child_environment["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
+    child_environment["ARIADNE_CONTROL_PLANE"] = str(ROOT)
     child_environment["ARIADNE_CHAT_MODEL"] = str(chat_model or OLLAMA_CHAT_MODEL)
     if context_tokens is not None:
         child_environment["ARIADNE_NUM_CTX"] = str(context_tokens)
@@ -4957,60 +4859,33 @@ def _structured_organiser_summary(payload: dict[str, object], fallback: dict[str
 
 
 def _acquire_vault_ingestion_gpu(job_id: str) -> dict[str, object]:
-    """Reserve the shared GPU arbiter and pin the configured ingestion model."""
+    """Track a batch inside the Vault's existing Rust-host workload lease."""
     global GPU_OWNER, GPU_VAULT_RESERVATION
     model = str(OLLAMA_CHAT_MODEL or "").strip()
     if not model:
         raise RuntimeError("No Knowledge Vault ingestion model is configured.")
-    admission = ai_gpu_admission()
-    admission.__enter__()
+    # The Vault page already holds an exclusive Rust-host `vault` workload
+    # lease. A nested `ai` lease would conflict with that owner.
     activity = model_activity(model, context_length=VAULT_QUERY_CONTEXT_TOKENS)
     activity_entered = False
     try:
         activity.__enter__()
         activity_entered = True
         with GPU_ARBITRATION_LOCK:
-            if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER in {"RENDERER", "DUNGEON"}:
-                raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold()}: {GPU_TRANSITION_DETAIL}")
-            if GPU_AI_ADMISSIONS != 1 or GPU_VAULT_RESERVATION:
-                raise RuntimeError("Another Ariadne workload is using the GPU. Wait for it to finish before ingestion.")
-            GPU_VAULT_RESERVATION = job_id
             GPU_OWNER = "VAULT"
-        with MODEL_ACTIVITY_LOCK:
-            other_models = set(MODEL_IN_FLIGHT) - {model}
-        if other_models:
-            raise RuntimeError(f"Another Ariadne model is active: {', '.join(sorted(other_models))}.")
-        catalog = ollama_catalog()
-        if not catalog.get("available"):
-            raise RuntimeError(str(catalog.get("detail") or "Ollama is unavailable; ingestion was not started."))
-        released = release_idle_ollama_models(force=True, preserve_models={model})
-        if not released.get("available"):
-            raise RuntimeError("Could not verify Ollama model residency; ingestion was not started.")
-        remaining_models = ollama_catalog()
-        if not remaining_models.get("available"):
-            raise RuntimeError("Ollama became unavailable while clearing competing resident models.")
-        unexpected = {str(name) for name in remaining_models.get("loaded", [])} - {model}
-        if unexpected:
-            raise RuntimeError(f"Could not release competing resident models: {', '.join(sorted(unexpected))}.")
-        preload = preload_ollama_model(model, options={"num_ctx": VAULT_QUERY_CONTEXT_TOKENS},
-                                       keep_alive=-1, reason="vault_ingestion_preflight",
-                                       allow_calibration=True)
-        if not preload.get("ok"):
-            raise RuntimeError(str(preload.get("detail") or "The ingestion model could not be loaded."))
-        catalog = ollama_catalog()
-        if not catalog.get("available") or model not in {str(name) for name in catalog.get("loaded", [])}:
-            raise RuntimeError(f"Ollama did not report {model} resident after preload; ingestion was not started.")
+        # The Rust Host model lease performs any required load, profile check,
+        # full-GPU verification and idle-model release before this point.
         return {"state": "resident", "model": model, "detail": f"{model} loaded and protected for this batch.",
-                "_activity": activity, "_admission": admission}
+                "_activity": activity}
     except Exception:
         _release_vault_ingestion_gpu({"gpu_reservation_id": job_id, "gpu_activity": activity if activity_entered else None,
-                                      "gpu_admission": admission, "gpu_model": model})
+                                      "gpu_model": model})
         raise
 
 
 def _release_vault_ingestion_gpu(job: dict[str, object]) -> dict[str, object] | None:
     """Release batch arbitration while leaving residency to the normal idle governor."""
-    global GPU_OWNER, GPU_VAULT_RESERVATION
+    global GPU_OWNER
     job_id = job.get("gpu_reservation_id")
     if not job_id:
         return None
@@ -5018,33 +4893,30 @@ def _release_vault_ingestion_gpu(job: dict[str, object]) -> dict[str, object] | 
         if job.get("gpu_released"):
             return None
         job["gpu_released"] = True
-        owns_reservation = GPU_VAULT_RESERVATION == job_id
     model = str(job.get("gpu_model") or "")
     activity = job.get("gpu_activity")
-    admission = job.get("gpu_admission")
     try:
         if activity is not None:
             activity.__exit__(None, None, None)
     finally:
-        if admission is not None:
-            admission.__exit__(None, None, None)
+        with SESSION_LOCK:
+            vault_session_active = any(item.get("surface") == "knowledge-vault" for item in SESSIONS.values())
         with GPU_ARBITRATION_LOCK:
-            if GPU_VAULT_RESERVATION == job_id:
-                GPU_VAULT_RESERVATION = None
+            # The page-level Rust-host Vault lease remains active between
+            # batches. Keep its local display marker until the session closes.
+            if not vault_session_active:
                 GPU_OWNER = "AI" if GPU_AI_ADMISSIONS else "NONE"
-    catalog = ollama_catalog() if model and owns_reservation else {"available": False, "loaded": []}
+    catalog = ollama_catalog() if model else {"available": False, "loaded": []}
     resident = bool(catalog.get("available") and model in {str(name) for name in catalog.get("loaded", [])})
-    policy = model_residency_policy()
-    idle_minutes = int(float(policy.get("idle_seconds") or 900) / 60)
     verified = bool(catalog.get("available"))
     if not verified:
         detail = f"Batch arbitration is released, but {model} residency could not be verified. Check local Ollama status before the next batch."
     elif resident:
-        detail = f"{model} remains resident and protected for a {idle_minutes}-minute idle cooldown; the normal VRAM governor takes over after that. Closing this page unloads it immediately."
+        detail = f"{model} remains resident until the Rust-host residency governor releases it. Closing this page unloads it immediately."
     else:
         detail = f"{model} is no longer resident; it will be verified and loaded before the next batch."
     return {"state": "cooldown", "model": model, "resident": resident, "verified": verified,
-            "idle_seconds": policy.get("idle_seconds"), "unloaded": False, "detail": detail}
+            "unloaded": False, "detail": detail}
 
 
 def _watch_action(job_id: str, process: subprocess.Popen) -> None:
@@ -5243,7 +5115,6 @@ def start_vault_action(session_id: str, action: str, *, resume_run: Path | None 
         if gpu_state:
             _release_vault_ingestion_gpu({"gpu_reservation_id": job_id,
                                           "gpu_activity": gpu_state.get("_activity"),
-                                          "gpu_admission": gpu_state.get("_admission"),
                                           "gpu_model": gpu_state["model"]})
         raise
     gpu_public_state = {key: value for key, value in gpu_state.items() if not key.startswith("_")} if gpu_state else None
@@ -5255,7 +5126,7 @@ def start_vault_action(session_id: str, action: str, *, resume_run: Path | None 
         job.update(control_path=control_path, control_status_path=Path(str(control_path) + ".status.json"), controllable=True)
     if gpu_state:
         job.update(gpu_reservation_id=job_id, gpu_model=gpu_state["model"],
-                   gpu_activity=gpu_state["_activity"], gpu_admission=gpu_state["_admission"])
+                   gpu_activity=gpu_state["_activity"])
     with SESSION_LOCK:
         JOBS[job_id] = job
         SESSIONS[session_id].setdefault("jobs", set()).add(job_id)
@@ -5545,7 +5416,7 @@ def job_payload(job_id: str) -> dict[str, object] | None:
         if isinstance(process, subprocess.Popen) and process.poll() is not None and job.get("state") == "running" and not job.get("controllable"):
             job["state"] = "error"
             job["message"] = "Worker exited before reporting a result."
-        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "cancel_event", "config_runtime_path", "result_runtime_path", "gpu_reservation_id", "gpu_model", "gpu_activity", "gpu_admission", "gpu_released", "control_path", "control_status_path"}}
+        result = {key: value for key, value in job.items() if key not in {"process", "spec_path", "status_path", "activity_presenter", "cancel_event", "config_runtime_path", "result_runtime_path", "gpu_reservation_id", "gpu_model", "gpu_activity", "gpu_released", "control_path", "control_status_path"}}
         control_status = _vault_control_status(job)
         if control_status and (control_status.get("state") in {"paused", "stopped"} or job.get("state") == "running"):
             result.update(control_status)
@@ -5592,68 +5463,45 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
     home_preload = _wait_for_home_model_preload()
     if not home_preload.get("ok"):
         return home_preload
-    with GPU_ARBITRATION_LOCK:
-        if GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE":
-            return {"ok": False, "state": "busy", "detail": f"GPU is reserved for {GPU_OWNER.casefold()}: {GPU_TRANSITION_DETAIL}"}
-        if GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
-            return {"ok": False, "state": "busy", "detail": "An Ariadne GPU workload is still active. Wait for it to finish before opening Knowledge Vault."}
-    with MODEL_ACTIVITY_LOCK:
-        active_models = sorted(name for name, count in MODEL_IN_FLIGHT.items() if count > 0)
-    if active_models:
-        return {"ok": False, "state": "busy", "detail": f"Ariadne models are still active: {', '.join(active_models)}."}
-    with GPU_ARBITRATION_LOCK:
-        if GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
-            return {"ok": False, "state": "busy", "detail": "A GPU workload started during Knowledge Vault preflight. Wait for it to finish and retry."}
-        reservation_id = f"vault-preflight-{uuid.uuid4().hex}"
-        GPU_VAULT_RESERVATION = reservation_id
-        GPU_OWNER = "VAULT"
+    reservation_id = f"vault-preflight-{uuid.uuid4().hex}"
     preflight_succeeded = False
-    ingestion_model_loaded = False
     ingestion_model_protected = False
     host_model_lease_id = ""
+    host_gpu_lease_id = ""
     try:
-        with MODEL_ACTIVITY_LOCK:
-            active_models = sorted(name for name, count in MODEL_IN_FLIGHT.items() if count > 0)
-        if active_models:
-            return {"ok": False, "state": "busy", "detail": f"Ariadne models became active during preflight: {', '.join(active_models)}."}
         catalog = ollama_catalog()
         if not catalog.get("available"):
             return {"ok": False, "state": "unverified", "detail": str(catalog.get("detail") or "Ollama residency could not be verified.")}
         ingestion_model = str(OLLAMA_CHAT_MODEL or "").strip()
         if not ingestion_model:
             return {"ok": False, "state": "unconfigured", "detail": "Knowledge Vault ingestion model is not configured."}
+        try:
+            host_gpu_lease_id = host_acquire_gpu_lease("vault", OLLAMA_URL, model=ingestion_model)
+        except RuntimeError as exc:
+            return {"ok": False, "state": "busy", "detail": str(exc)}
+        with GPU_ARBITRATION_LOCK:
+            GPU_VAULT_RESERVATION = reservation_id
+            GPU_OWNER = "VAULT"
         # Rust owns model loading, verified runtime profiles and the session lease.
         # A first explicit Vault start may calibrate this exact digest/runtime key.
-        host_model_lease_id = host_acquire_model_lease(
-            ingestion_model, OLLAMA_URL,
-            context_length=VAULT_QUERY_CONTEXT_TOKENS,
-            allow_calibration=True,
-        )
-        ingestion_model_loaded = True
-        loaded = preload_ollama_model(ingestion_model, options={"num_ctx": VAULT_QUERY_CONTEXT_TOKENS}, keep_alive=-1,
-                                      reason="vault_ingestion_page_entry", allow_calibration=True)
-        if not loaded.get("ok"):
-            return {"ok": False, "state": "model_load_failed",
-                    "detail": str(loaded.get("detail") or f"Could not load {ingestion_model} for Knowledge Vault.")}
-        resident = ollama_catalog()
-        if not resident.get("available") or ingestion_model not in [str(name) for name in resident.get("loaded", [])]:
-            return {"ok": False, "state": "model_residency_unverified",
-                    "detail": f"Knowledge Vault model {ingestion_model} did not appear in the resident model list after loading."}
+        try:
+            host_model_lease_id = host_acquire_model_lease(
+                ingestion_model, OLLAMA_URL,
+                context_length=VAULT_QUERY_CONTEXT_TOKENS,
+                allow_calibration=True,
+            )
+        except RuntimeError as exc:
+            return {"ok": False, "state": "model_admission_failed", "detail": str(exc)}
         with MODEL_ACTIVITY_LOCK:
             MODEL_IN_FLIGHT[ingestion_model] = MODEL_IN_FLIGHT.get(ingestion_model, 0) + 1
             MODEL_LAST_USED[ingestion_model] = time.monotonic()
             ingestion_model_protected = True
-        loaded_detail = next((item for item in resident.get("loaded_details", [])
-                              if isinstance(item, dict) and item.get("name") == ingestion_model), {})
-        actual_context = loaded_detail.get("context_length") if isinstance(loaded_detail, dict) else None
-        if not isinstance(actual_context, int) or actual_context < VAULT_QUERY_CONTEXT_TOKENS:
-            actual_context_label = f"{actual_context:,}" if isinstance(actual_context, int) else "unknown"
-            return {"ok": False, "state": "context_unverified",
-                    "detail": f"Vault model {ingestion_model} reports {actual_context_label} context tokens; this page requires a verified {VAULT_QUERY_CONTEXT_TOKENS:,}-token context."}
         preflight_succeeded = True
         return {"ok": True, "state": "ready", "detail": f"Ariadne GPU is clear; Vault model {ingestion_model} is resident and protected with a {VAULT_QUERY_CONTEXT_TOKENS:,}-token query context.",
                 "models_released": [], "ingestion_model": OLLAMA_CHAT_MODEL,
-                "_host_model_lease_id": host_model_lease_id}
+                "_host_model_lease_id": host_model_lease_id,
+                "_host_gpu_lease_id": host_gpu_lease_id,
+                "_gpu_reservation_id": reservation_id}
     finally:
         if not preflight_succeeded:
             if host_model_lease_id:
@@ -5661,6 +5509,11 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
                     host_release_model_lease(host_model_lease_id, OLLAMA_URL)
                 except Exception as exc:
                     print(f"[vault-session] Rust-host model lease rollback failed: {exc}", flush=True)
+            if host_gpu_lease_id:
+                try:
+                    host_release_gpu_lease(host_gpu_lease_id, OLLAMA_URL)
+                except Exception as exc:
+                    print(f"[vault-session] Rust-host GPU workload lease rollback failed: {exc}", flush=True)
             if ingestion_model_protected:
                 with MODEL_ACTIVITY_LOCK:
                     remaining = MODEL_IN_FLIGHT.get(OLLAMA_CHAT_MODEL, 1) - 1
@@ -5668,13 +5521,20 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
                         MODEL_IN_FLIGHT[OLLAMA_CHAT_MODEL] = remaining
                     else:
                         MODEL_IN_FLIGHT.pop(OLLAMA_CHAT_MODEL, None)
-            if ingestion_model_loaded:
-                unload_ollama_model(str(OLLAMA_CHAT_MODEL or "").strip(),
-                                    reason="vault_ingestion_preflight_recovery")
-        with GPU_ARBITRATION_LOCK:
-            if GPU_VAULT_RESERVATION == reservation_id:
-                GPU_VAULT_RESERVATION = None
-                GPU_OWNER = "AI" if GPU_AI_ADMISSIONS else "NONE"
+        if not preflight_succeeded:
+            with GPU_ARBITRATION_LOCK:
+                if GPU_VAULT_RESERVATION == reservation_id:
+                    GPU_VAULT_RESERVATION = None
+                    GPU_OWNER = "AI" if GPU_AI_ADMISSIONS else "NONE"
+            # A Vault admission attempt can cause Rust Host to release idle
+            # Home residency before discovering that the Vault profile and
+            # reserve do not fit. There is no session to close in this branch,
+            # so explicitly hand capacity back to the configured Home model.
+            if host_gpu_lease_id:
+                try:
+                    start_home_chat_model_preload()
+                except Exception as exc:
+                    print(f"[vault-session] Home model restore scheduling failed: {exc}", flush=True)
 
 def parse_wsl(raw: str) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
@@ -7473,7 +7333,7 @@ def home_planner_request(query: str, history: object, attachments: list[dict[str
     ]
     legacy_use_vault = home_query_requires_vault(query)
     planner_started = time.perf_counter()
-    planner_keep_alive = adaptive_model_keep_alive() if str(PLANNER_KEEP_ALIVE).casefold() == "adaptive" else PLANNER_KEEP_ALIVE
+    planner_keep_alive = -1 if str(PLANNER_KEEP_ALIVE).casefold() == "adaptive" else PLANNER_KEEP_ALIVE
     planner_context = home_planner_context(query, history, attachments, vault_mode, selected_tool_ids)
     if session_id:
         try:
@@ -7485,7 +7345,7 @@ def home_planner_request(query: str, history: object, attachments: list[dict[str
             "history_candidates": [{**c, "text": c["text"][:360]} for c in history_candidates(record)[-6:]],
         })
     try:
-        with model_activity(PLANNER_MODEL):
+        with model_activity(PLANNER_MODEL, context_length=PLANNER_CONTEXT_TOKENS):
             result = interpret_and_resolve(
                 query,
                 planner_context,
@@ -8037,9 +7897,9 @@ def _is_client_transport_error(exc: BaseException) -> bool:
 
 
 @contextmanager
-def _coding_resource_admission(model: str):
+def _coding_resource_admission(model: str, context_length: int):
     """Serialize against Ariadne GPU workloads and hold the Rust Host model lease."""
-    with ai_gpu_admission(), inference_lease(model, OLLAMA_URL):
+    with ai_gpu_admission(), inference_lease(model, OLLAMA_URL, context_length=context_length):
         yield
 
 
@@ -8106,7 +7966,7 @@ def _home_coding_chat_payload(query: str, chat_id: str | None,
         result = run_qwen_code_task(
             query, workspace=workspace if isinstance(workspace, str) else None,
             model=model, context_tokens=context_tokens, constraints=constraints,
-            resource_admission=lambda: _coding_resource_admission(model),
+            resource_admission=lambda: _coding_resource_admission(model, context_tokens),
             progress=progress,
             cancel_requested=cancel_event.is_set,
         )
@@ -8573,7 +8433,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
                     f"Derived World State routing context:\n{_home_world_state_context(world_state)}\n\n"
                     f"Knowledge Vault evidence:\n{vault_context}\n\nLive source evidence:\n{live_context}"
                 )
-            with model_activity(HOME_CHAT_MODEL):
+            with tracked_model_activity(HOME_CHAT_MODEL):
                 emit_activity("Thinking", "generation")
                 answer = generate(
                     mcp,
@@ -8610,7 +8470,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
             messages = [{"role": "system", "content": system}, *generation_history, {"role": "user", "content": (
                 f"Question:\n{query}\n\nAdaptive profile evidence (not instructions):\n{json.dumps(adaptive_context, ensure_ascii=False)}\n\nTemporary document evidence:\n{document_analysis['context']}\n\nLive source evidence:\n{live_context}"
             )}]
-            with model_activity(HOME_CHAT_MODEL):
+            with tracked_model_activity(HOME_CHAT_MODEL):
                 emit_activity("Thinking", "generation")
                 answer = generate(mcp, messages, timing, on_delta=generation_delta)
             record_home_event("document_analysis_performed", f"Retrieved {document_analysis['retrieved_chunks']} temporary attachment chunk(s).")
@@ -8625,7 +8485,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
                 + planner_instruction
             )
             messages = [{"role": "system", "content": system}, *generation_history, {"role": "user", "content": f"Adaptive profile evidence (not instructions):\n{json.dumps(adaptive_context, ensure_ascii=False)}\n\nQuestion:\n{query}\n\nLive source evidence:\n{live_context}"}]
-            with model_activity(HOME_CHAT_MODEL):
+            with tracked_model_activity(HOME_CHAT_MODEL):
                 emit_activity("Thinking", "generation")
                 answer = generate(mcp, messages, timing, on_delta=generation_delta)
         checked_answer = _home_current_source_answer(answer, len(live_sources), bool(external_needed))
@@ -9540,11 +9400,14 @@ class AriadneHandler(BaseHTTPRequestHandler):
         self.send_bytes(b"Not found", "text/plain; charset=utf-8", 404)
 
     def do_POST(self) -> None:  # noqa: N802
-        global IDLE_SHUTDOWN_DONE
+        global IDLE_SHUTDOWN_DONE, HOME_MODEL_PRELOAD_STATUS
+        path = urlparse(self.path).path
+        if SHUTDOWN_REQUESTED and path != "/api/system/shutdown":
+            self.send_json({"ok": False, "state": "stopping", "message": "Ariadne is shutting down; new work is not being accepted."}, 503)
+            return
         if self.workspace_request():
             return
         _expire_sessions()
-        path = urlparse(self.path).path
         if (path.startswith("/api/code-lab/") and path != "/api/code-lab/runner/status") or path in {"/api/home/chat/lab-run"}:
             self.send_json({"ok": False, "state": "retired", "message": "The legacy 14B Chat Lab workflow has been retired. Use the coding capability in Chat."}, 410)
             return
@@ -9959,6 +9822,8 @@ class AriadneHandler(BaseHTTPRequestHandler):
                             "ingestion_model": preflight.get("ingestion_model"),
                             "ingestion_model_protected": True,
                             "host_model_lease_id": preflight.get("_host_model_lease_id"),
+                            "host_gpu_lease_id": preflight.get("_host_gpu_lease_id"),
+                            "gpu_reservation_id": preflight.get("_gpu_reservation_id"),
                         }
                     self.send_json({"ok": True, "session_id": session_id, "surface": surface,
                                     "gpu": public_preflight, "heartbeat_seconds": 5})
@@ -9980,12 +9845,29 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 chat, resumed = HOME_CHAT_STORE.get_or_create(
                     requested_chat_id, home_identity_kernel_metadata()
                 )
+                try:
+                    # Home is a foreground workload. Retain its warm model
+                    # through the same Rust Host lease used by Vault sessions.
+                    home_model_lease_id = host_acquire_model_lease(
+                        HOME_CHAT_MODEL, OLLAMA_URL,
+                        context_length=HOME_CONTEXT_TOKENS,
+                        allow_calibration=True,
+                    )
+                except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError,
+                        json.JSONDecodeError) as exc:
+                    self.send_json({"ok": False, "message": f"Rust Host could not retain the Home model: {exc}"}, 503)
+                    return
+                HOME_MODEL_PRELOAD_STATUS = {
+                    "state": "resident", "model": HOME_CHAT_MODEL,
+                    "detail": f"Rust Host admitted {HOME_CHAT_MODEL} and attached its residency lease to this Home session.",
+                }
                 session_id = uuid.uuid4().hex
                 IDLE_SHUTDOWN_DONE = False
                 with SESSION_LOCK:
                     SESSIONS[session_id] = {
                         "last_seen": time.monotonic(), "jobs": set(), "used_ollama": False,
                         "chat_id": chat["chat_id"], "processing": False, "surface": "home",
+                        "host_model_lease_id": home_model_lease_id,
                     }
                 lifecycle = "chat_resumed" if resumed else "chat_started"
                 if recovered_context_chat and resumed:
@@ -9995,7 +9877,6 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     "conversation_attached", conversation_id=chat["chat_id"],
                     data={"resumed": resumed, "surface": "home"},
                 )
-                home_model = start_home_chat_model_preload()
                 self.send_json({
                     "ok": True,
                     "session_id": session_id,
@@ -10004,7 +9885,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     "title": chat.get("title"),
                     "messages": chat.get("messages", []),
                     "documents": list_documents(DOCUMENT_WORK_ROOT, chat["chat_id"]),
-                    "home_model": home_model,
+                    "home_model": {"ok": True, "state": "resident", "detail": HOME_MODEL_PRELOAD_STATUS["detail"]},
                     "heartbeat_seconds": 5,
                 })
                 return
@@ -10015,11 +9896,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     if not session:
                         self.send_json({"ok": False, "message": "Ariadne session is not active."}, 404)
                     else:
-                        if session.get("surface") == "knowledge-vault":
+                        if session.get("host_model_lease_id"):
                             try:
                                 host_renew_model_lease(str(session.get("host_model_lease_id") or ""), OLLAMA_URL)
                             except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
-                                self.send_json({"ok": False, "message": f"Rust host could not renew the Knowledge Vault model lease: {exc}"}, 503)
+                                surface_name = "Knowledge Vault" if session.get("surface") == "knowledge-vault" else "Home"
+                                self.send_json({"ok": False, "message": f"Rust Host could not renew the {surface_name} model lease: {exc}"}, 503)
                                 return
                         self.send_json({"ok": True, "session": vault_session_status()})
                     return
@@ -10318,7 +10200,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
                             task, workspace=body.get("workspace") if isinstance(body.get("workspace"), str) else None,
                             model=coding_model, context_tokens=context_tokens,
                             constraints=constraints,
-                            resource_admission=lambda: inference_lease(coding_model, OLLAMA_URL),
+                            resource_admission=lambda: inference_lease(
+                                coding_model, OLLAMA_URL, context_length=context_tokens,
+                            ),
                         )
                     self.send_json({"ok": True, "result": result})
                 except ValueError as exc:
@@ -10634,11 +10518,6 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 if not isinstance(limit, int) or isinstance(limit, bool):
                     self.send_json({"ok": False, "message": "Query limit must be an integer."}, 400)
                     return
-                try:
-                    ensure_ai_gpu_access()
-                except RuntimeError as exc:
-                    self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
-                    return
                 self.send_json({"ok": True, "job_id": start_vault_query(session_id, query.strip(), str(mode), max(1, min(limit, 20)))})
                 return
             self.send_json({"ok": False, "message": "Not found."}, 404)
@@ -10657,12 +10536,13 @@ class AriadneHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    global HTTP_SERVER
+    global HTTP_SERVER, HTTPS_GATEWAY, HOME_MODEL_PRELOAD_STATUS
     STARTUP_TRACE.mark("imports_end")
     STARTUP_TRACE.mark("transport_config_start", "started")
     # Reject missing/invalid TLS configuration before starting owned workloads.
     tls = server_context()
     gateway = load_gateway(PROJECT_ROOT / "Data" / "tls" / "https-gateway.json")
+    HTTPS_GATEWAY = gateway
     STARTUP_TRACE.mark("transport_config_end")
     STARTUP_TRACE.mark("host_connection_start", "started")
     if os.name == "nt" and os.environ.get("ARIADNE_ALLOW_UNSUPERVISED_CORE") != "1":
@@ -10706,16 +10586,32 @@ def main() -> None:
     preload = start_home_chat_model_preload()
     if not preload.get("ok"):
         raise RuntimeError(str(preload.get("detail") or "Ariadne could not schedule its core model preload."))
-    preload_wait = _wait_for_home_model_preload(timeout_seconds=300.0)
+    # Model admission is owned by Rust Host and can be denied safely while
+    # another foreground workload occupies VRAM. Keep the local control plane
+    # available in that case so the user can see the measured reason and retry
+    # after resources change. Home inference itself still requires a Host lease.
+    preload_wait = _wait_for_home_model_preload(timeout_seconds=10.0)
     if not preload_wait.get("ok") or HOME_MODEL_PRELOAD_STATUS.get("state") != "resident":
-        recovery = monitor_ollama_models()
-        if HOME_MODEL_PRELOAD_STATUS.get("state") != "resident":
-            detail = HOME_MODEL_PRELOAD_STATUS.get("detail") or recovery.get("detail") or preload_wait.get("detail")
-            raise RuntimeError(str(detail or "Ariadne core model did not become resident."))
-    runtime_status = ollama_status()
-    if not runtime_status.get("available") or runtime_status.get("state") != "online":
-        raise RuntimeError(str(runtime_status.get("detail") or "Ariadne Ollama runtime failed its final startup check."))
-    STARTUP_TRACE.mark("runtime_ready", model=HOME_CHAT_MODEL, meaning="Ollama API, catalogue, and resident core model verified")
+        detail = (HOME_MODEL_PRELOAD_STATUS.get("detail") or preload_wait.get("detail")
+                  or "Home model residency is still being verified by Rust Host.")
+        HOME_MODEL_PRELOAD_STATUS = {
+            **HOME_MODEL_PRELOAD_STATUS,
+            "detail": str(detail),
+        }
+        STARTUP_TRACE.mark("home_model_unavailable", "degraded", model=HOME_CHAT_MODEL,
+                           state=HOME_MODEL_PRELOAD_STATUS.get("state"), detail=str(detail))
+        print(f"Ariadne Home inference is temporarily unavailable: {detail}", file=sys.stderr)
+    runtime_catalog = ollama_catalog()
+    if not runtime_catalog.get("available"):
+        raise RuntimeError(str(runtime_catalog.get("detail") or "Ariadne Ollama catalogue failed its final startup check."))
+    chat_ready, chat_detail = ollama_chat_endpoint_status()
+    if not chat_ready:
+        raise RuntimeError(str(chat_detail or "Ariadne Ollama chat endpoint failed its final startup check."))
+    STARTUP_TRACE.mark(
+        "runtime_ready", model=HOME_CHAT_MODEL,
+        model_residency=HOME_MODEL_PRELOAD_STATUS.get("state"),
+        meaning="Ollama API and catalogue verified; Home admission is reported separately",
+    )
     # Do not start optional background AI work until the core model is resident.
     STARTUP_TRACE.mark("background_jobs_start", "started")
     STARTUP_TRACE.mark("background_news_start", "started")
@@ -10748,6 +10644,7 @@ def main() -> None:
             gateway.shutdown()
             gateway.server_close()
             gateway_worker.join(timeout=3)
+        HTTPS_GATEWAY = None
         shutdown_all_workloads(stop_server=False)
         httpd.server_close()
         HTTP_SERVER = None

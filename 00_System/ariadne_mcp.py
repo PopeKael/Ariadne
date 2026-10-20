@@ -1162,7 +1162,7 @@ def ollama_chat(messages: list[dict[str, str]], model: str | None = None,
         data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with host_inference_lease(selected_model, base_url):
+        with host_inference_lease(selected_model, base_url, context_length=selected_context_tokens):
             with urllib.request.urlopen(request, timeout=300) as response:
                 if on_delta is None:
                     payload = json.loads(response.read().decode("utf-8"))

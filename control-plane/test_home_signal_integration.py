@@ -21,9 +21,15 @@ class HomeSignalIntegrationTests(unittest.TestCase):
         self.journal = server.NewsRecommendations(Path(self.journal_temp.name) / "journal.sqlite3")
         self.journal_patch = patch.object(server, "NEWS_RECOMMENDATIONS", self.journal)
         self.journal_patch.start()
+        self.home_lease_patch = patch.object(server, "host_acquire_model_lease", return_value="test-home-model-lease")
+        self.home_lease_patch.start()
+        self.home_lease_release_patch = patch.object(server, "host_release_model_lease")
+        self.home_lease_release_patch.start()
 
     def tearDown(self):
         self.journal_patch.stop()
+        self.home_lease_patch.stop()
+        self.home_lease_release_patch.stop()
         self.journal.db.close()
         self.journal_temp.cleanup()
 

@@ -5,6 +5,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from contextlib import nullcontext
 from unittest.mock import patch
 
 import server
@@ -157,7 +158,7 @@ class TurnAssemblyTests(unittest.TestCase):
         self.assertEqual(explanation["response_objective"], "answer")
 
     def test_interpreter_uses_one_call_with_expanded_schema(self):
-        with patch("librarian_harness._get_json", return_value={}), patch("librarian_harness._post_json",
+        with patch("librarian_harness.host_ollama_residency", return_value=[]), patch("librarian_harness._post_json",
             return_value={"message": {"content": json.dumps(semantic(turn()))}}) as post:
             result = interpret_request("Hello", {}, endpoint="http://localhost:11434")
         self.assertEqual(post.call_count, 1)
@@ -192,6 +193,25 @@ class HomeTurnAssemblyTests(unittest.TestCase):
             with self.subTest(case=label):
                 self.install_semantic(semantic(interpreted, **flags))
                 chat = server.HOME_CHAT_STORE.create()
+                if label == "code":
+                    def fake_qwen_code_task(*args, **kwargs):
+                        with kwargs["resource_admission"]():
+                            pass
+                        return {"run_id": "test-run", "status": "SUCCESS", "workspace": "test-workspace",
+                                "model": server.CODING_DEFAULT_MODEL,
+                                "context_tokens": server.CODING_DEFAULT_CONTEXT_TOKENS,
+                                "changed_files": [], "tests": [], "elapsed_time_seconds": 0.01,
+                                "tool_call_count": 0, "model_calls": 1, "errors": [],
+                                "summary": "Synthetic test result", "exit_code": 0,
+                                "cancelled": False, "host_admission": "Rust Host"}
+                    with patch.object(server, "run_qwen_code_task", side_effect=fake_qwen_code_task), \
+                         patch.object(server, "host_gpu_lease", return_value=nullcontext("test-lease")), \
+                         patch.object(server, "inference_lease", return_value=nullcontext()):
+                        result = server.home_chat_payload(query, [], "all", chat["chat_id"])
+                    self.assertTrue(result["ok"])
+                    self.assertEqual(result["coding_result"]["host_admission"], "Rust Host")
+                    self.assertEqual(result["planner"]["plan"]["intent"], "coding_task")
+                    continue
                 result = server.home_chat_payload(query, [], "all", chat["chat_id"])
                 recipe = result["timing"]["context_recipe"]
                 stored = server.HOME_CHAT_STORE.get(chat["chat_id"])["messages"][-1]

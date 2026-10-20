@@ -12,6 +12,12 @@ import server  # noqa: E402
 
 class RendererLifecycleTests(unittest.TestCase):
     def setUp(self):
+        self.host_acquire_patch = patch.object(server, "host_acquire_gpu_lease", return_value="renderer-test-lease")
+        self.host_acquire_patch.start()
+        self.host_release_patch = patch.object(server, "host_release_gpu_lease")
+        self.host_release_patch.start()
+        self.host_verify_patch = patch.object(server, "host_verify_gpu_lease_capacity", return_value={"ok": True})
+        self.host_verify_patch.start()
         self.original = {
             "owner": server.GPU_OWNER,
             "transition": server.GPU_TRANSITION_STATE,
@@ -34,6 +40,9 @@ class RendererLifecycleTests(unittest.TestCase):
         server.RENDERER_STOP_REQUESTED = False
 
     def tearDown(self):
+        self.host_acquire_patch.stop()
+        self.host_release_patch.stop()
+        self.host_verify_patch.stop()
         server.GPU_OWNER = self.original["owner"]
         server.GPU_TRANSITION_STATE = self.original["transition"]
         server.GPU_TRANSITION_DETAIL = self.original["detail"]
@@ -51,21 +60,46 @@ class RendererLifecycleTests(unittest.TestCase):
             {"state": "starting", "lifecycle_state": "WAITING_FOR_HEALTH", "detail": "warming"},
             {"state": "online", "lifecycle_state": "READY", "detail": "ready"},
         ])
-        with patch.object(server, "ai_gpu_work_in_flight", return_value={"busy": False}), \
-             patch.object(server, "release_ollama_for_renderer", return_value={}), \
-             patch.object(server, "_start_wan2gp_backend", return_value={"ok": True}), \
+        with patch.object(server, "_start_wan2gp_backend", return_value={"ok": True}), \
              patch.object(server, "wan2gp_status", side_effect=lambda **_: next(responses)), \
              patch.object(server, "log_renderer_lifecycle"):
             server._renderer_start_worker("test-operation")
         self.assertEqual(server.GPU_OWNER, "RENDERER")
         self.assertEqual(server.RENDERER_LIFECYCLE_STATE, "READY")
+        server.host_acquire_gpu_lease.assert_called_once_with(
+            "renderer", server.OLLAMA_URL,
+            min_free_bytes=int(server.RENDERER_MIN_FREE_VRAM_GB * 1024**3),
+        )
+
+    def test_backend_reserve_is_verified_after_it_becomes_ready(self):
+        with patch.object(server, "_start_wan2gp_backend", return_value={"ok": True}), \
+             patch.object(server, "wan2gp_status", return_value={"state": "online", "lifecycle_state": "READY", "detail": "ready"}), \
+             patch.object(server, "host_verify_gpu_lease_capacity") as verify, \
+             patch.object(server, "log_renderer_lifecycle"):
+            server._renderer_start_worker("test-operation")
+        verify.assert_called_once_with(
+            "renderer-test-lease",
+            int(server.RENDERER_MIN_FREE_VRAM_GB * 1024**3),
+            server.OLLAMA_URL,
+        )
+        self.assertEqual(server.GPU_OWNER, "RENDERER")
+
+    def test_reserve_failure_stops_backend_and_releases_lease(self):
+        with patch.object(server, "_start_wan2gp_backend", return_value={"ok": True}), \
+             patch.object(server, "wan2gp_status", return_value={"state": "online", "lifecycle_state": "READY", "detail": "ready"}), \
+             patch.object(server, "host_verify_gpu_lease_capacity", side_effect=RuntimeError("1 GiB reserve is not available")), \
+             patch.object(server, "_stop_wan2gp_backend") as stop_backend, \
+             patch.object(server, "log_renderer_lifecycle"):
+            server._renderer_start_worker("test-operation")
+        stop_backend.assert_called_once()
+        server.host_release_gpu_lease.assert_called_once_with("renderer-test-lease", server.OLLAMA_URL)
+        self.assertEqual(server.RENDERER_LIFECYCLE_STATE, "ERROR")
+        self.assertIn("1 GiB reserve", server.RENDERER_LIFECYCLE_ERROR)
 
     def test_genuine_start_deadline_becomes_error(self):
         server.RENDERER_START_DEADLINE_SECONDS = 0.02
         server.RENDERER_POLL_INTERVAL_SECONDS = 0.01
-        with patch.object(server, "ai_gpu_work_in_flight", return_value={"busy": False}), \
-             patch.object(server, "release_ollama_for_renderer", return_value={}), \
-             patch.object(server, "_start_wan2gp_backend", return_value={"ok": True}), \
+        with patch.object(server, "_start_wan2gp_backend", return_value={"ok": True}), \
              patch.object(server, "wan2gp_status", return_value={"state": "starting", "lifecycle_state": "WAITING_FOR_HEALTH", "detail": "warming"}), \
              patch.object(server, "log_renderer_lifecycle"):
             server._renderer_start_worker("test-operation")

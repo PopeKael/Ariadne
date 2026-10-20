@@ -308,8 +308,9 @@ def _request_host_ollama(
 
 def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
                         lease_id: str | None = None, force: bool | None = None,
-                        preserve_models: list[str] | None = None,
                         context_length: int | None = None, allow_calibration: bool | None = None,
+                        inference_kind: str | None = None,
+                        workload: str | None = None, min_free_bytes: int | None = None,
                         timeout: float = 20.0) -> dict[str, object]:
     """Transport a residency request to the Rust host; policy lives there."""
     if os.name != "nt":
@@ -327,12 +328,16 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
         request["context_length"] = int(context_length)
     if allow_calibration is not None:
         request["allow_calibration"] = bool(allow_calibration)
+    if inference_kind is not None:
+        request["inference_kind"] = inference_kind
     if lease_id is not None:
         request["lease_id"] = lease_id
     if force is not None:
         request["force"] = force
-    if preserve_models is not None:
-        request["preserve_models"] = preserve_models
+    if workload is not None:
+        request["workload"] = workload
+    if min_free_bytes is not None:
+        request["min_free_bytes"] = int(min_free_bytes)
     try:
         with open(pipe_name, "r+b", buffering=0) as pipe:
             pipe.write(json.dumps(request, separators=(",", ":")).encode("utf-8") + b"\n")
@@ -356,10 +361,11 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
 
 @contextmanager
 def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int = 4096,
-                    allow_calibration: bool = False):
+                    allow_calibration: bool = False, inference_kind: str = "generate"):
     """Admit local inference only after the Rust host checks Ollama and WDDM residency."""
     result = _request_host_model("admit_model", endpoint=endpoint, model=model,
                                  context_length=context_length, allow_calibration=allow_calibration,
+                                 inference_kind=inference_kind,
                                  timeout=330.0 if allow_calibration else 20.0)
     lease_id = str(result.get("lease_id") or "")
     if not lease_id:
@@ -406,11 +412,9 @@ def host_unload_model(model: str, endpoint: str = DEFAULT_ENDPOINT) -> dict[str,
     return _request_host_model("unload_model", endpoint=endpoint, model=model, timeout=20.0)
 
 
-def host_release_idle_models(*, endpoint: str = DEFAULT_ENDPOINT, force: bool = False,
-                             preserve_models: list[str] | None = None) -> dict[str, object]:
+def host_release_idle_models(*, endpoint: str = DEFAULT_ENDPOINT, force: bool = False) -> dict[str, object]:
     """Ask Rust to release idle models and report the verified result."""
-    return _request_host_model("release_idle_models", endpoint=endpoint, force=force,
-                               preserve_models=preserve_models or [], timeout=30.0)
+    return _request_host_model("release_idle_models", endpoint=endpoint, force=force, timeout=30.0)
 
 
 def host_suspend_for_external_workload(endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
@@ -419,6 +423,57 @@ def host_suspend_for_external_workload(endpoint: str = DEFAULT_ENDPOINT) -> dict
 
 def host_resume_after_external_workload(endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
     return _request_host_model("resume_after_external_workload", endpoint=endpoint, timeout=60.0)
+
+
+def host_gpu_snapshot(endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
+    """Return the authoritative WDDM inventory sampled by the Rust host."""
+    result = _request_host_model("gpu_status", endpoint=endpoint, timeout=10.0)
+    snapshot = result.get("residency")
+    if not isinstance(snapshot, dict):
+        raise RuntimeError("Rust host returned no verified WDDM GPU snapshot.")
+    return snapshot
+
+
+def host_ollama_residency(endpoint: str = DEFAULT_ENDPOINT) -> list[dict[str, object]]:
+    """Read `/api/ps` through the Rust owner for consistent residency state."""
+    result = _request_host_model("ollama_residency", endpoint=endpoint, timeout=10.0)
+    snapshot = result.get("residency")
+    rows = snapshot.get("loaded") if isinstance(snapshot, dict) else None
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise RuntimeError("Rust host returned no valid Ollama residency inventory.")
+    return rows
+
+
+def host_acquire_gpu_lease(workload: str, endpoint: str = DEFAULT_ENDPOINT, *,
+                           model: str | None = None, min_free_bytes: int | None = None) -> str:
+    """Acquire a Rust-host workload lease for non-Ollama GPU work or transitions."""
+    result = _request_host_model("acquire_gpu_lease", endpoint=endpoint, workload=workload,
+                                 model=model, min_free_bytes=min_free_bytes, timeout=30.0)
+    lease_id = str(result.get("lease_id") or "")
+    if not lease_id:
+        raise RuntimeError("Rust host admitted a GPU workload without returning a lease.")
+    return lease_id
+
+
+def host_release_gpu_lease(lease_id: str, endpoint: str = DEFAULT_ENDPOINT) -> None:
+    if lease_id:
+        _request_host_model("release_gpu_lease", endpoint=endpoint, lease_id=lease_id, timeout=20.0)
+
+
+def host_verify_gpu_lease_capacity(lease_id: str, min_free_bytes: int,
+                                  endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
+    return _request_host_model("verify_gpu_lease_capacity", endpoint=endpoint,
+                               lease_id=lease_id, min_free_bytes=min_free_bytes, timeout=10.0)
+
+
+@contextmanager
+def gpu_lease(workload: str, endpoint: str = DEFAULT_ENDPOINT, *,
+              model: str | None = None, min_free_bytes: int | None = None):
+    lease_id = host_acquire_gpu_lease(workload, endpoint, model=model, min_free_bytes=min_free_bytes)
+    try:
+        yield lease_id
+    finally:
+        host_release_gpu_lease(lease_id, endpoint)
 
 
 def model_manifest_path(store: str, model: str) -> Path:

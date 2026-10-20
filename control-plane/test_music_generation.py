@@ -54,8 +54,9 @@ class MusicEngineTests(unittest.TestCase):
                 patch.object(server, "LOCAL_MUSIC_ENGINE", fake_engine),
                 patch.object(server, "configuration_snapshot", return_value={"storage": {"music": str(root)}}),
                 patch.object(server, "wan2gp_status", return_value={"state": "offline"}),
-                patch.object(server, "gpu_status", return_value={"available": True, "free_gb": 12}),
-                patch.object(server, "ai_gpu_admission", return_value=nullcontext()),
+                patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}),
+                patch.object(server, "host_gpu_lease", return_value=nullcontext("music-test-lease")),
+                patch.object(server, "host_verify_gpu_lease_capacity"),
                 patch.object(server, "announce_media_lifecycle"),
             ):
                 with server.MUSIC_JOBS_LOCK:
@@ -167,14 +168,15 @@ class MusicEngineTests(unittest.TestCase):
                 patch.object(server, "SEQUENCE_PROJECTS", store),
                 patch.object(server, "LOCAL_MUSIC_ENGINE", fake_engine),
                 patch.object(server, "wan2gp_status", return_value={"state": "offline"}),
-                patch.object(server, "gpu_status", return_value={"available": True, "free_gb": 12}),
                 patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": ["qwen3.5:9b-q4_K_M"], "protected": [], "remaining": []}) as release_models,
-                patch.object(server, "ai_gpu_admission", return_value=nullcontext()),
+                patch.object(server, "host_gpu_lease", return_value=nullcontext("music-test-lease")),
+                patch.object(server, "host_verify_gpu_lease_capacity") as verify_capacity,
                 patch.object(server, "announce_media_lifecycle"),
             ):
                 result, status = server.generate_music({"project_id": project["project_id"], "title": "The First Test", "style": "Warm acoustic pop, 100 BPM", "enhanced_caption": "Global Metadata\nWarm acoustic pop at 100 BPM.\nVocal Details\nWarm lead.\nArrangement\n[Verse] sparse guitar.", "caption_preflight": {"model": "test", "completed": True}, "lyrics": "[Verse] Exact lyric", "normalized_lyrics": "[Verse]\nExact lyric", "seed": 7, "inference_steps": 16})
             self.assertEqual(status, 200)
-            release_models.assert_called_once_with(force=True)
+            verify_capacity.assert_called_once_with("music-test-lease", 0, server.OLLAMA_URL)
+            release_models.assert_not_called()
             self.assertEqual(result["asset"]["status"], "candidate")
             self.assertEqual(result["asset"]["provenance"]["lyrics"], "[Verse] Exact lyric")
             self.assertEqual(result["asset"]["provenance"]["enhanced_caption"].splitlines()[0], "Global Metadata")
@@ -203,8 +205,9 @@ class MusicEngineTests(unittest.TestCase):
                 patch.object(server, "LOCAL_MUSIC_ENGINE", fake_engine),
                 patch.object(server, "configuration_snapshot", return_value={"storage": {"music": str(root)}}),
                 patch.object(server, "wan2gp_status", return_value={"state": "offline"}),
-                patch.object(server, "gpu_status", return_value={"available": True, "free_gb": 12}),
-                patch.object(server, "ai_gpu_admission", return_value=nullcontext()),
+                patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}),
+                patch.object(server, "host_gpu_lease", return_value=nullcontext("music-test-lease")),
+                patch.object(server, "host_verify_gpu_lease_capacity"),
                 patch.object(server, "announce_media_lifecycle"),
             ):
                 result, status = server.generate_music({"style": "Warm acoustic pop", "enhanced_caption": "Global Metadata\nWarm acoustic pop.\nVocal Details\nWarm lead.\nArrangement\n[Verse] sparse guitar.", "caption_preflight": {"model": "test", "completed": True}, "lyrics": "[Verse]\nDancing through the midnight rain", "normalized_lyrics": "[Verse]\nDancing through the midnight rain"})
@@ -212,7 +215,7 @@ class MusicEngineTests(unittest.TestCase):
             self.assertEqual(result["music"]["title"], "Dancing through the midnight rain")
             self.assertEqual(result["asset"]["provenance"]["title_source"], "lyrics")
 
-    def test_generation_rejects_low_free_vram_before_invoking_engine(self):
+    def test_generation_respects_rust_host_vram_admission_before_invoking_engine(self):
         with tempfile.TemporaryDirectory() as temporary:
             store = ProductionProjectStore(Path(temporary) / "projects")
             project = store.create("VRAM Guard")
@@ -222,12 +225,13 @@ class MusicEngineTests(unittest.TestCase):
                 patch.object(server, "SEQUENCE_PROJECTS", store),
                 patch.object(server, "LOCAL_MUSIC_ENGINE", fake_engine),
                 patch.object(server, "wan2gp_status", return_value={"state": "offline"}),
-                patch.object(server, "gpu_status", return_value={"available": True, "free_gb": 5.9}),
+                patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}),
+                patch.object(server, "host_gpu_lease", side_effect=RuntimeError("Music requires 6144 MiB free; Rust Host WDDM reports 6041 MiB.")),
                 patch.object(server, "announce_media_lifecycle"),
             ):
                 result, status = server.generate_music({"project_id": project["project_id"], "style": "Test", "enhanced_caption": "Global Metadata\nTest.\nVocal Details\nLead.\nArrangement\n[Verse] sparse.", "caption_preflight": {"model": "test", "completed": True}, "lyrics": "[Verse]\nTest", "normalized_lyrics": "[Verse]\nTest"})
             self.assertEqual(status, 409)
-            self.assertIn("at least", result["message"])
+            self.assertIn("Rust Host WDDM", result["message"])
             fake_engine.generate.assert_not_called()
 
     def test_standalone_candidate_accepts_into_the_configured_music_root(self):

@@ -97,7 +97,7 @@ class OllamaModelAdapter:
         self.run.save()
         chunks=[]; response={}; started=time.monotonic(); last_save=started
         try:
-            with self.admission(),self.activity(self.model):
+            with self.admission(),self.activity(self.model, context_length=self.context):
                 stream = self.stream(self.endpoint,self.model,payload,watchdog_seconds)
                 try:
                     for chunk in stream:

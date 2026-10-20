@@ -5,6 +5,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from contextlib import nullcontext
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -47,6 +48,10 @@ class HomeDocumentHttpTests(unittest.TestCase):
             original_planner = server.home_planner_request
             original_docs = server.DOCUMENT_WORK_ROOT
             original_events = server.record_home_event
+            original_gpu_lease = server.host_gpu_lease
+            original_inference_lease = server.inference_lease
+            original_host_model_lease = server.host_acquire_model_lease
+            original_host_model_release = server.host_release_model_lease
             fake = FakeDocumentMcp()
             server.HOME_CHAT_STORE = ChatStore(Path(temporary))
             server._home_mcp = lambda: fake
@@ -56,6 +61,12 @@ class HomeDocumentHttpTests(unittest.TestCase):
             }
             server.DOCUMENT_WORK_ROOT = Path(temporary) / "document_contexts"
             server.record_home_event = lambda *args, **kwargs: None
+            # These HTTP tests exercise document/chat behavior. The production
+            # Rust lease boundary is covered in the dedicated residency tests.
+            server.host_gpu_lease = lambda *_args, **_kwargs: nullcontext("test-gpu-lease")
+            server.inference_lease = lambda *_args, **_kwargs: nullcontext({"lease_id": "test-model-lease"})
+            server.host_acquire_model_lease = lambda *_args, **_kwargs: "test-home-model-lease"
+            server.host_release_model_lease = lambda *_args, **_kwargs: None
             httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
             thread = threading.Thread(target=httpd.serve_forever, daemon=True)
             thread.start()
@@ -110,6 +121,10 @@ class HomeDocumentHttpTests(unittest.TestCase):
                 server.home_planner_request = original_planner
                 server.DOCUMENT_WORK_ROOT = original_docs
                 server.record_home_event = original_events
+                server.host_gpu_lease = original_gpu_lease
+                server.inference_lease = original_inference_lease
+                server.host_acquire_model_lease = original_host_model_lease
+                server.host_release_model_lease = original_host_model_release
 
     def test_article_remains_primary_when_personal_context_is_also_relevant(self):
         with tempfile.TemporaryDirectory() as temporary:

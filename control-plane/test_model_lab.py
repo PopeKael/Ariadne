@@ -81,7 +81,10 @@ class ModelLabTests(unittest.TestCase):
                  patch.object(server, "ollama_model_capability_details", return_value=QWEN_CAPABILITIES), \
                  patch.object(server, "_send_avatar_event_with_retry", return_value=True), \
                  patch.object(server, "ai_gpu_admission"), \
-                 patch.object(server, "model_activity"), \
+                 patch.object(server, "host_acquire_gpu_lease", return_value="transition-test-lease"), \
+                 patch.object(server, "host_release_gpu_lease"), \
+                 patch.object(server, "tracked_model_activity"), \
+                 patch.object(server, "inference_lease") as admission, \
                  patch.object(server, "post_json", return_value=response) as post:
                 result, status = server.run_model_lab({
                     "model": "test-model",
@@ -106,6 +109,7 @@ class ModelLabTests(unittest.TestCase):
             self.assertEqual(run["effective"]["context_tokens"], 16384)
             self.assertEqual(run["effective"]["thinking"], "off")
             self.assertEqual(run["effective"]["reasoning_level"], "off")
+            admission.assert_called_once_with("test-model", server.OLLAMA_URL, context_length=16384)
             self.assertFalse(run["effective"]["native_reasoning_mapping"]["value"])
             self.assertEqual(run["effective"]["document_count"], 2)
             self.assertEqual(run["test_case_id"], "test-01")
@@ -158,7 +162,10 @@ class ModelLabTests(unittest.TestCase):
                  patch.object(server, "ollama_model_capability_details", return_value=QWEN_CAPABILITIES), \
                  patch.object(server, "_send_avatar_event_with_retry", return_value=True), \
                  patch.object(server, "ai_gpu_admission"), \
-                 patch.object(server, "model_activity"), \
+                 patch.object(server, "host_acquire_gpu_lease", return_value="transition-test-lease"), \
+                 patch.object(server, "host_release_gpu_lease"), \
+                 patch.object(server, "tracked_model_activity"), \
+                 patch.object(server, "inference_lease"), \
                  patch.object(server, "post_json", return_value=response) as post:
                 result, status = server.run_model_lab({"model": "test-model", "profile": "long-document", "reasoning_level": "low", "prompt": "Say ok."})
             self.assertEqual(status, 200)

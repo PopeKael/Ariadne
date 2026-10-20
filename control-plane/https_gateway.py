@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from tls_transport import server_context
 
 HOP_HEADERS = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"}
+EMBED_CONTEXT_TOKENS = 2_048
 
 
 def create_gateway(settings):
@@ -36,6 +37,9 @@ def create_gateway(settings):
             self.close_connection = True
 
         def forward(self):
+            if self.server.admissions_closed.is_set():
+                self.error(503, "Ariadne is shutting down; the HTTPS gateway is not accepting new work.")
+                return
             if self.client_address[0] not in peers:
                 self.error(403, "This HTTPS listener accepts only its configured proxy peers.")
                 return
@@ -56,13 +60,22 @@ def create_gateway(settings):
                 self.error(413, "Embedding request exceeds the private route's body limit.")
                 return
             body = self.rfile.read(length) if length else None
+            embedding_context = EMBED_CONTEXT_TOKENS
             if internal and self.command == "POST":
                 try:
                     payload = json.loads(body or b"{}")
                     if not isinstance(payload, dict) or payload.get("model") not in {"nomic-embed-text", "nomic-embed-text:latest"}:
                         raise ValueError("The private embedding route permits only nomic-embed-text.")
-                    if set(payload) - {"model", "input", "truncate"}:
+                    if set(payload) - {"model", "input", "truncate", "options"}:
                         raise ValueError("Unsupported embedding options.")
+                    options = payload.get("options", {})
+                    if not isinstance(options, dict) or set(options) - {"num_ctx"}:
+                        raise ValueError("Only an explicit num_ctx embedding option is permitted.")
+                    embedding_context = int(options.get("num_ctx", embedding_context))
+                    if embedding_context != EMBED_CONTEXT_TOKENS:
+                        raise ValueError(f"nomic-embed-text is configured for {EMBED_CONTEXT_TOKENS} tokens; other contexts require a separately verified Host profile and matching Ollama residency.")
+                    payload["options"] = {"num_ctx": embedding_context}
+                    body = json.dumps(payload).encode("utf-8")
                 except (ValueError, TypeError) as exc:
                     self.error(400, str(exc))
                     return
@@ -70,13 +83,20 @@ def create_gateway(settings):
             if internal and self.command == "POST":
                 try:
                     from ollama_runtime import inference_lease
-                    model_lease = inference_lease("nomic-embed-text", settings["ollama_url"])
+                    model_lease = inference_lease("nomic-embed-text", settings["ollama_url"],
+                                                  context_length=embedding_context, inference_kind="embed")
                     model_lease.__enter__()
                 except (ImportError, OSError, RuntimeError, ValueError) as exc:
                     self.error(503, f"Rust-host model admission denied this embedding request: {exc}")
                     return
             origin = origins["ollama_url" if internal else "core_url"]
-            headers = {key: value for key, value in self.headers.items() if key.casefold() not in HOP_HEADERS | {"host"}}
+            headers = {key: value for key, value in self.headers.items()
+                       if key.casefold() not in HOP_HEADERS | {"host", "content-length"}}
+            if body is not None:
+                # The embedding request may have been normalized above. Never
+                # forward the caller's length for a rewritten body: Ollama
+                # otherwise reads a truncated JSON document and returns EOF.
+                headers["Content-Length"] = str(len(body))
             headers["Host"] = origin.netloc
             headers["X-Forwarded-Proto"] = "https"
             upstream = http.client.HTTPConnection(origin.hostname, origin.port, timeout=300)
@@ -124,6 +144,10 @@ def create_gateway(settings):
             pass
 
     class GatewayServer(ThreadingHTTPServer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.admissions_closed = threading.Event()
+
         def process_request_thread(self, request, client_address):
             # Browser preconnections may accept TCP without starting TLS.
             # Handshake in the worker so one idle peer cannot stop accept().

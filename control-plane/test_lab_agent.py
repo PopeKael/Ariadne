@@ -122,7 +122,7 @@ class AgentTests(unittest.TestCase):
         r=RunRecord({'model_requests':[]},lambda:None,lambda e:None,RunLimits())
         called=[]
         m=OllamaModelAdapter('fixture','another-compatible-model',2048,lambda *args:called.append(args),
-                             nullcontext,lambda _:nullcontext(),r,code_lab.provider_metrics,lambda *args:None,lambda:{})
+                             nullcontext,lambda _model,**_kwargs:nullcontext(),r,code_lab.provider_metrics,lambda *args:None,lambda:{})
         with self.assertRaisesRegex(RuntimeError,'budget'):m.call('create','instructions','x'*2000,{},time.monotonic()+10)
         self.assertEqual(called,[])
 
@@ -134,7 +134,7 @@ class AgentTests(unittest.TestCase):
             payloads.append(payload)
             yield {'message':{'content':'{"action":"read"}'},'done':True,
                    'prompt_eval_count':5000,'eval_count':5}
-        adapter=OllamaModelAdapter('fixture','compatible-worker',32768,stream,nullcontext,lambda _:nullcontext(),
+        adapter=OllamaModelAdapter('fixture','compatible-worker',32768,stream,nullcontext,lambda _model,**_kwargs:nullcontext(),
                                   r,code_lab.provider_metrics,lambda *args:None,lambda:{})
         messages=[{'role':'system','content':'Generic instructions'},{'role':'user','content':'x'*23000}]
         r.step('GENERATING','model','Choose action',lambda:adapter.query(messages,{},time.monotonic()+10))
@@ -220,7 +220,7 @@ class AgentTests(unittest.TestCase):
             payloads.append(payload)
             yield {'message':{'content':'{"action":"read"}'},'done':True,'done_reason':'stop',
                    'prompt_eval_count':20,'eval_count':5}
-        adapter=OllamaModelAdapter('fixture','swappable-worker',32768,stream,nullcontext,lambda _:nullcontext(),
+        adapter=OllamaModelAdapter('fixture','swappable-worker',32768,stream,nullcontext,lambda _model,**_kwargs:nullcontext(),
                                   r,code_lab.provider_metrics,lambda *args:None,lambda:{})
         messages=[{'role':'system','content':'Generic instructions'},{'role':'user','content':'Original task'}]
         r.step('GENERATING','model','Choose action',lambda:adapter.query(messages,{},time.monotonic()+10))

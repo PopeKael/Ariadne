@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable
 from typing import Any
+from ollama_runtime import host_ollama_residency
 
 
 PLANNER_MODEL = "qwen3.5:9b-q4_K_M"
@@ -265,7 +266,7 @@ def plan_request(
     if status_fn is not None:
         loaded_before = _loaded_models(status_fn(endpoint.rstrip("/") + "/api/ps", min(timeout, 3.0)))
     elif request_fn is None:
-        loaded_before = _loaded_models(_get_json(endpoint.rstrip("/") + "/api/ps", min(timeout, 3.0)))
+        loaded_before = _loaded_models({"models": host_ollama_residency(endpoint)})
     started = time.perf_counter()
     response = (request_fn or _post_json)(endpoint.rstrip("/") + "/api/chat", body, timeout)
     elapsed_ms = round((time.perf_counter() - started) * 1000)
@@ -281,7 +282,7 @@ def plan_request(
         status = status_fn(endpoint.rstrip("/") + "/api/ps", min(timeout, 3.0))
         loaded_models = _loaded_models(status)
     elif request_fn is None:
-        loaded_models = _loaded_models(_get_json(endpoint.rstrip("/") + "/api/ps", min(timeout, 3.0)))
+        loaded_models = _loaded_models({"models": host_ollama_residency(endpoint)})
     telemetry = {
         "planner_model": model,
         "keep_alive": keep_alive,

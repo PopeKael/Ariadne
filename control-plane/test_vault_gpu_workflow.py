@@ -39,12 +39,23 @@ class VaultGpuWorkflowTests(unittest.TestCase):
             server, "inference_lease", side_effect=lambda *args, **kwargs: nullcontext()
         )
         self.inference_lease_mock = self.inference_lease_patch.start()
+        self.gpu_lease_patch = patch.object(
+            server, "host_gpu_lease", return_value=nullcontext("test-gpu-lease")
+        )
+        self.gpu_lease_patch.start()
+        self.host_gpu_acquire_patch = patch.object(server, "host_acquire_gpu_lease", return_value="vault-gpu-lease")
+        self.host_gpu_acquire_patch.start()
+        self.host_gpu_release_patch = patch.object(server, "host_release_gpu_lease")
+        self.host_gpu_release_patch.start()
         with server.MODEL_ACTIVITY_LOCK:
             server.MODEL_IN_FLIGHT.clear()
             server.MODEL_LAST_USED.clear()
 
     def tearDown(self):
         self.inference_lease_patch.stop()
+        self.gpu_lease_patch.stop()
+        self.host_gpu_acquire_patch.stop()
+        self.host_gpu_release_patch.stop()
         with server.GPU_ARBITRATION_LOCK:
             server.GPU_OWNER = self.original["owner"]
             server.GPU_AI_ADMISSIONS = self.original["admissions"]
@@ -73,18 +84,33 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertEqual(result["models_released"], [])
         acquire.assert_called_once_with("ingestion-model", server.OLLAMA_URL,
                                         context_length=16_384, allow_calibration=True)
-        preload.assert_called_once_with("ingestion-model", options={"num_ctx": 16_384},
-                                        keep_alive=-1, reason="vault_ingestion_page_entry",
-                                        allow_calibration=True)
+        preload.assert_not_called()
         self.assertIn("resident", result["detail"])
         self.assertEqual(server.MODEL_IN_FLIGHT.get("ingestion-model"), 1)
-        self.assertEqual(server.GPU_OWNER, "NONE")
+        self.assertEqual(server.GPU_OWNER, "VAULT")
+        self.assertEqual(server.GPU_VAULT_RESERVATION, result["_gpu_reservation_id"])
 
-    def test_page_entry_refuses_active_gpu_admission(self):
+    def test_page_entry_refusal_comes_from_rust_host_lease(self):
         server.GPU_AI_ADMISSIONS = 1
-        result = server.vault_gpu_entry_preflight()
+        with patch.object(server, "ollama_catalog", return_value={"available": True, "loaded": [], "loaded_details": []}), \
+             patch.object(server, "host_acquire_gpu_lease", side_effect=RuntimeError("Rust host has active GPU leases; exclusive workload admission was denied.")):
+            result = server.vault_gpu_entry_preflight()
         self.assertFalse(result["ok"])
         self.assertEqual(result["state"], "busy")
+        self.assertIn("Rust host", result["detail"])
+
+    def test_model_admission_failure_releases_vault_lease_and_schedules_home_restore(self):
+        with patch.object(server, "_wait_for_home_model_preload", return_value={"ok": True}), \
+             patch.object(server, "ollama_catalog", return_value={"available": True, "loaded": [], "loaded_details": []}), \
+             patch.object(server, "host_acquire_model_lease", side_effect=RuntimeError("verified profile exceeds free VRAM")), \
+             patch.object(server, "start_home_chat_model_preload") as restore:
+            result = server.vault_gpu_entry_preflight("session-admission-failed")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["state"], "model_admission_failed")
+        server.host_release_gpu_lease.assert_called_once_with("vault-gpu-lease", server.OLLAMA_URL)
+        restore.assert_called_once_with()
+        self.assertIsNone(server.GPU_VAULT_RESERVATION)
+        self.assertEqual(server.GPU_OWNER, "NONE")
 
     def test_page_entry_waits_for_in_flight_home_preload_before_gpu_handoff(self):
         class PreloadThread:
@@ -108,21 +134,12 @@ class VaultGpuWorkflowTests(unittest.TestCase):
     def test_batch_loads_once_and_governor_defers_while_reserved(self):
         catalog_before = {"available": True, "loaded": [], "loaded_details": []}
         catalog_after = {"available": True, "loaded": ["ingestion-model"], "loaded_details": [{"name": "ingestion-model"}]}
-        with patch.object(server, "ollama_catalog", side_effect=[catalog_before, catalog_before, catalog_after]), \
-             patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": ["home-model"]}), \
-             patch.object(server, "preload_ollama_model", return_value={"ok": True, "model": "ingestion-model"}) as preload:
+        with patch.object(server, "preload_ollama_model") as preload:
             state = server._acquire_vault_ingestion_gpu("job-1")
         self.assertEqual(state["state"], "resident")
-        preload.assert_called_once_with("ingestion-model", options={"num_ctx": 16_384}, keep_alive=-1,
-                                        reason="vault_ingestion_preflight", allow_calibration=True)
-        self.assertEqual(
-            self.inference_lease_mock.call_args_list,
-            [
-                unittest.mock.call("ingestion-model", server.OLLAMA_URL, context_length=16_384),
-            ],
-        )
+        preload.assert_not_called()
         self.assertEqual(server.GPU_OWNER, "VAULT")
-        self.assertEqual(server.GPU_VAULT_RESERVATION, "job-1")
+        self.assertIsNone(server.GPU_VAULT_RESERVATION)
         self.assertEqual(server.MODEL_IN_FLIGHT.get("ingestion-model"), 1)
         with patch.object(server, "ollama_catalog") as catalog, patch.object(server, "gpu_status") as gpu:
             monitor = server.monitor_ollama_models()
@@ -131,25 +148,21 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         gpu.assert_not_called()
 
     def test_batch_completion_releases_reservation_but_leaves_model_to_idle_governor(self):
-        with patch.object(server, "ollama_catalog", side_effect=[
-            {"available": True, "loaded": [], "loaded_details": []},
-            {"available": True, "loaded": [], "loaded_details": []},
-            {"available": True, "loaded": ["ingestion-model"], "loaded_details": [{"name": "ingestion-model"}]},
-            {"available": True, "loaded": ["ingestion-model"], "loaded_details": [{"name": "ingestion-model"}]},
-        ]), patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}), \
+        with patch.object(server, "ollama_catalog", return_value={
+            "available": True, "loaded": ["ingestion-model"], "loaded_details": [{"name": "ingestion-model"}],
+        }), patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}), \
              patch.object(server, "preload_ollama_model", return_value={"ok": True}), \
-             patch.object(server, "unload_ollama_model", return_value=True) as unload, \
-             patch.object(server, "model_residency_policy", return_value={"idle_seconds": 900}):
+             patch.object(server, "unload_ollama_model", return_value=True) as unload:
             state = server._acquire_vault_ingestion_gpu("job-2")
             job = {"gpu_reservation_id": "job-2", "gpu_model": state["model"],
-                   "gpu_activity": state["_activity"], "gpu_admission": state["_admission"]}
+                   "gpu_activity": state["_activity"]}
             released = server._release_vault_ingestion_gpu(job)
             self.assertIsNone(server._release_vault_ingestion_gpu(job))
         unload.assert_not_called()
         self.assertEqual(released["state"], "cooldown")
         self.assertTrue(released["resident"])
         self.assertTrue(released["verified"])
-        self.assertIn("15-minute idle cooldown", released["detail"])
+        self.assertIn("Rust-host residency governor", released["detail"])
         self.assertIsNone(server.GPU_VAULT_RESERVATION)
         self.assertEqual(server.GPU_OWNER, "NONE")
         self.assertNotIn("ingestion-model", server.MODEL_IN_FLIGHT)
@@ -173,8 +186,8 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         server.MODEL_IN_FLIGHT["ingestion-model"] = 1
         server.MODEL_LAST_USED["ingestion-model"] = 0.0
         with patch.object(server, "host_release_idle_models", return_value={"models": []}) as release:
-            result = server.release_idle_ollama_models(policy={"idle_seconds": 900}, pressure=True)
-        release.assert_called_once_with(endpoint=server.OLLAMA_URL, force=False, preserve_models=[])
+            result = server.release_idle_ollama_models()
+        release.assert_called_once_with(endpoint=server.OLLAMA_URL, force=False)
         self.assertTrue(result["available"])
         self.assertEqual(result["protected"], [])
         self.assertEqual(server.MODEL_IN_FLIGHT["ingestion-model"], 1)
@@ -196,13 +209,12 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         ]), patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}), \
              patch.object(server, "preload_ollama_model", return_value={"ok": True}), \
              patch.object(server, "unload_ollama_model", return_value=True) as unload, \
-             patch.object(server, "model_residency_policy", return_value={"idle_seconds": 900}), \
              patch.object(server, "_organiser_summary", return_value={}):
             state = server._acquire_vault_ingestion_gpu("job-watch")
             process = Process()
             job = {"process": process, "state": "running", "gpu_reservation_id": "job-watch",
                    "gpu_model": state["model"], "gpu_activity": state["_activity"],
-                   "gpu_admission": state["_admission"], "gpu_state": {"state": "resident"}}
+                   "gpu_state": {"state": "resident"}}
             server.JOBS["job-watch"] = job
             server._watch_action("job-watch", process)
         unload.assert_not_called()
@@ -218,7 +230,6 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         ]), patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}), \
              patch.object(server, "preload_ollama_model", return_value={"ok": True}), \
              patch.object(server, "unload_ollama_model", return_value=True) as unload, \
-             patch.object(server, "model_residency_policy", return_value={"idle_seconds": 900}), \
              patch.object(server, "_terminate_process"), patch.object(server, "shutdown_idle_workloads"), \
              patch.object(server, "start_home_chat_model_preload") as handoff:
             state = server._acquire_vault_ingestion_gpu("job-3")
@@ -229,7 +240,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
             server.JOBS["job-3"] = {
                 "session_id": "session", "state": "running", "process": None,
                 "gpu_reservation_id": "job-3", "gpu_model": state["model"],
-                "gpu_activity": state["_activity"], "gpu_admission": state["_admission"],
+                "gpu_activity": state["_activity"],
             }
             self.assertTrue(server._close_session("session"))
         unload.assert_called_once_with("ingestion-model", reason="knowledge_vault_page_exit")
@@ -251,10 +262,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertNotIn("ingestion-model", server.MODEL_IN_FLIGHT)
 
     def test_preload_failure_rolls_back_gpu_reservation(self):
-        with patch.object(server, "ollama_catalog", return_value={"available": True, "loaded": [], "loaded_details": []}), \
-             patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}), \
-             patch.object(server, "preload_ollama_model", return_value={"ok": False, "detail": "model load failed"}), \
-             patch.object(server, "unload_ollama_model", return_value=True):
+        with patch.object(server, "model_activity", side_effect=RuntimeError("model load failed")):
             with self.assertRaisesRegex(RuntimeError, "model load failed"):
                 server._acquire_vault_ingestion_gpu("job-fail")
         self.assertIsNone(server.GPU_VAULT_RESERVATION)
@@ -263,17 +271,12 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertFalse(server.MODEL_IN_FLIGHT)
 
     def test_ingestion_uses_local_gpu_arbitration_without_signal_service(self):
-        catalog_before = {"available": True, "loaded": [], "loaded_details": []}
-        catalog_after = {"available": True, "loaded": ["ingestion-model"], "loaded_details": [{"name": "ingestion-model"}]}
         with patch.object(server.SIGNAL_SERVICE_CLIENT, "health", side_effect=AssertionError("Knowledge Vault must not call Signal Service")), \
-             patch.object(server, "ollama_catalog", side_effect=[catalog_before, catalog_before, catalog_after, catalog_after]), \
-             patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}), \
-             patch.object(server, "preload_ollama_model", return_value={"ok": True}), \
-             patch.object(server, "model_residency_policy", return_value={"idle_seconds": 900}):
+             patch.object(server, "model_activity", return_value=nullcontext()):
             state = server._acquire_vault_ingestion_gpu("job-independent")
         self.assertEqual(state["model"], "ingestion-model")
         server._release_vault_ingestion_gpu({"gpu_reservation_id": "job-independent", "gpu_model": state["model"],
-                                             "gpu_activity": state["_activity"], "gpu_admission": state["_admission"]})
+                                             "gpu_activity": state["_activity"]})
 
     def test_page_entry_gpu_preflight_failure_rolls_back_reservation(self):
         catalog = {"available": False, "detail": "Ollama offline", "loaded": [], "loaded_details": []}
@@ -285,17 +288,13 @@ class VaultGpuWorkflowTests(unittest.TestCase):
 
     def test_page_entry_model_residency_failure_unloads_partial_model(self):
         catalog = {"available": True, "loaded": [], "loaded_details": []}
-        resident = {"available": True, "loaded": ["other-model"], "loaded_details": [{"name": "other-model"}]}
-        with patch.object(server, "ollama_catalog", side_effect=[catalog, catalog, resident]), \
-             patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": []}), \
+        with patch.object(server, "ollama_catalog", return_value=catalog), \
              patch.object(server, "host_acquire_model_lease", return_value="host-lease"), \
-             patch.object(server, "host_release_model_lease"), \
-             patch.object(server, "preload_ollama_model", return_value={"ok": True}), \
-             patch.object(server, "unload_ollama_model", return_value=True) as unload:
+             patch.object(server, "preload_ollama_model") as preload:
             result = server.vault_gpu_entry_preflight("session-residency-fail")
-        self.assertFalse(result["ok"])
-        self.assertEqual(result["state"], "model_residency_unverified")
-        unload.assert_called_once_with("ingestion-model", reason="vault_ingestion_preflight_recovery")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["_host_model_lease_id"], "host-lease")
+        preload.assert_not_called()
 
 
 if __name__ == "__main__":

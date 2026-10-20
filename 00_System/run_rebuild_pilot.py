@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from vault_rebuild import build_manifest, manifest_bytes, write_manifest
+from ariadne_embeddings import host_inference_lease
 
 PILOT_SIZE = 12
 MAX_TRANSPORT_ATTEMPTS = 2
@@ -123,11 +124,15 @@ def model_request(record: dict[str, Any], text: str, domains: list[str]) -> dict
 
 def invoke_ollama(body: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None, str | None]:
     encoded = json.dumps(body, ensure_ascii=False).encode("utf-8")
-    request = urllib.request.Request("http://localhost:11434/api/chat", data=encoded,
+    endpoint = os.environ.get("VAULT_ENRICHMENT_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+    request = urllib.request.Request(endpoint + "/api/chat", data=encoded,
                                      headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            raw = response.read().decode("utf-8", errors="replace")
+        model = str(body.get("model") or os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b"))
+        context_tokens = int(body.get("options", {}).get("num_ctx", ENRICHMENT_CONTEXT_TOKENS))
+        with host_inference_lease(model, endpoint, context_length=context_tokens, inference_kind="generate"):
+            with urllib.request.urlopen(request, timeout=120) as response:
+                raw = response.read().decode("utf-8", errors="replace")
         return raw, json.loads(raw), None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return None, None, str(exc)

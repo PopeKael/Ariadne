@@ -25,15 +25,21 @@ from typing import Any, Callable
 INDEX_VERSION = 3
 DEFAULT_MODEL = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")
 DEFAULT_OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434")
+# Ollama's verified /api/ps residency for the configured nomic-embed-text
+# model is 2,048 tokens. Keep requests, Host profile keys, and observed runtime
+# state aligned; Ollama may silently clamp larger values.
+EMBED_CONTEXT_TOKENS = 2_048
 
 
-def host_inference_lease(model: str, base_url: str):
+def host_inference_lease(model: str, base_url: str, *, context_length: int = EMBED_CONTEXT_TOKENS,
+                        allow_calibration: bool = False, inference_kind: str = "embed"):
     """Load the Rust-host IPC adapter from either the core or standalone MCP process."""
     control_plane = Path(__file__).resolve().parents[1] / "control-plane"
     if control_plane.is_dir() and str(control_plane) not in sys.path:
         sys.path.insert(0, str(control_plane))
     from ollama_runtime import inference_lease
-    return inference_lease(model, base_url)
+    return inference_lease(model, base_url, context_length=context_length,
+                          allow_calibration=allow_calibration, inference_kind=inference_kind)
 
 
 def index_path(root: Path) -> Path:
@@ -80,16 +86,19 @@ def atomic_write(root: Path, value: dict[str, Any]) -> None:
             os.unlink(temp_name)
 
 
-def ollama_embed(text: str, model: str = DEFAULT_MODEL, base_url: str = DEFAULT_OLLAMA_URL) -> list[float]:
+def ollama_embed(text: str, model: str = DEFAULT_MODEL, base_url: str = DEFAULT_OLLAMA_URL,
+                 *, allow_calibration: bool = False) -> list[float]:
     """Use only an explicitly local Ollama endpoint."""
     if not base_url.startswith(("http://127.0.0.1", "http://localhost", "https://127.0.0.1", "https://localhost")):
         raise RuntimeError("Ariadne only permits a loopback Ollama endpoint.")
     request = urllib.request.Request(
         base_url.rstrip("/") + "/api/embed",
-        data=json.dumps({"model": model, "input": text, "truncate": True}).encode("utf-8"),
+        data=json.dumps({"model": model, "input": text, "truncate": True,
+                         "options": {"num_ctx": EMBED_CONTEXT_TOKENS}}).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with host_inference_lease(model, base_url):
+        with host_inference_lease(model, base_url, context_length=EMBED_CONTEXT_TOKENS,
+                                  allow_calibration=allow_calibration):
             with urllib.request.urlopen(request, timeout=120) as response:
                 payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.URLError as exc:
@@ -102,17 +111,20 @@ def ollama_embed(text: str, model: str = DEFAULT_MODEL, base_url: str = DEFAULT_
     return [float(item) for item in vectors[0]]
 
 
-def ollama_embed_many(texts: list[str], model: str = DEFAULT_MODEL, base_url: str = DEFAULT_OLLAMA_URL) -> list[list[float]]:
+def ollama_embed_many(texts: list[str], model: str = DEFAULT_MODEL, base_url: str = DEFAULT_OLLAMA_URL,
+                      *, allow_calibration: bool = False) -> list[list[float]]:
     """Batch inputs to reduce local Ollama request overhead."""
     if not texts:
         return []
     if not base_url.startswith(("http://127.0.0.1", "http://localhost", "https://127.0.0.1", "https://localhost")):
         raise RuntimeError("Ariadne only permits a loopback Ollama endpoint.")
     request = urllib.request.Request(base_url.rstrip("/") + "/api/embed",
-        data=json.dumps({"model": model, "input": texts, "truncate": True}).encode("utf-8"),
+        data=json.dumps({"model": model, "input": texts, "truncate": True,
+                         "options": {"num_ctx": EMBED_CONTEXT_TOKENS}}).encode("utf-8"),
         headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with host_inference_lease(model, base_url):
+        with host_inference_lease(model, base_url, context_length=EMBED_CONTEXT_TOKENS,
+                                  allow_calibration=allow_calibration):
             with urllib.request.urlopen(request, timeout=120) as response:
                 vectors = json.loads(response.read().decode("utf-8")).get("embeddings")
     except urllib.error.URLError as exc:
@@ -132,7 +144,8 @@ def cosine(left: list[float], right: list[float]) -> float:
 
 
 def build_index(root: Path, chunks: list[dict[str, Any]], rebuild: bool = False,
-                embed: Callable[[str, str], list[float]] | None = None, model: str = DEFAULT_MODEL) -> dict[str, Any]:
+                embed: Callable[[str, str], list[float]] | None = None, model: str = DEFAULT_MODEL,
+                allow_calibration: bool = False) -> dict[str, Any]:
     """Build a new complete state in memory, then commit it once atomically."""
     started = time.monotonic()
     old = None if rebuild else load_index(root)
@@ -160,7 +173,8 @@ def build_index(root: Path, chunks: list[dict[str, Any]], rebuild: bool = False,
         batch = pending[start:start + 32]
         try:
             if custom_embed is None:
-                vectors = ollama_embed_many([chunk["heading"] + "\n\n" + chunk["content"] for _, chunk in batch], model)
+                vectors = ollama_embed_many([chunk["heading"] + "\n\n" + chunk["content"] for _, chunk in batch], model,
+                                            allow_calibration=allow_calibration)
             else:
                 vectors = [custom_embed(chunk["heading"] + "\n\n" + chunk["content"], model) for _, chunk in batch]
             for (key, chunk), vector in zip(batch, vectors):

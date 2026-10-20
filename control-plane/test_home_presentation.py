@@ -87,7 +87,7 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("loadingSourceArticles", js)
         self.assertIn("Wait for the selected source article to finish loading before asking Ariadne.", js)
         self.assertIn('document.body.classList.toggle("chat-expanded", meaningful)', js)
-        self.assertIn("collapse.hidden = !meaningful", js)
+        self.assertIn('document.body.classList.toggle("chat-empty", !meaningful)', js)
         self.assertIn('Number(chat.turn_count || 0)', js)
         self.assertIn("response-feedback", css)
         self.assertNotIn("visibleMatches.pop()", js)
@@ -116,10 +116,9 @@ class HomePresentationTests(unittest.TestCase):
             server.HOME_ACTIVITY_STREAM.snapshot("missing-chat").state,
             "idle",
         )
-        self.assertEqual(
-            server.home_activity_state_payload("missing-chat")["activity"]["state"],
-            "idle",
-        )
+        payload = server.home_activity_state_payload("missing-chat")["activity"]
+        self.assertEqual(payload, server.HOME_ACTIVITY_STREAM.current_snapshot().as_dict())
+        self.assertIn(payload["state"], {"idle", "reading", "searching", "thinking", "answering", "complete", "error"})
 
     def test_home_activity_hides_routine_events_but_keeps_raw_journal(self):
         with tempfile.TemporaryDirectory() as temporary:

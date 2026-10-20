@@ -37,7 +37,12 @@ class CodeLabTests(unittest.TestCase):
                 'prompt_eval_count':100,'prompt_eval_duration':500_000_000,'eval_count':200,'eval_duration':2_000_000_000,
                 'load_duration':100_000_000,'total_duration':2_600_000_000}])
         self.generate.side_effect=generate
-        self.lab = code_lab.CodeLab(self.registry, self.catalog, self.generate, nullcontext, lambda model: nullcontext(), lambda: {'gpu': None}, lambda state: None)
+        self.activity_contexts = []
+        def activity(model, **kwargs):
+            self.activity_contexts.append((model, kwargs.get('context_length')))
+            return nullcontext()
+        self.lab = code_lab.CodeLab(self.registry, self.catalog, self.generate, nullcontext,
+                                    activity, lambda: {'gpu': None}, lambda state: None)
 
     def test_coding_route_independent_of_home_and_existing_saved_config(self):
         self.assertEqual(self.registry.route('coding').model_id, 'test-coder')
@@ -62,6 +67,7 @@ class CodeLabTests(unittest.TestCase):
         self.assertEqual(saved['request']['format']['oneOf'][0]['properties']['project'], code_lab.SCHEMA)
         self.assertEqual([e['state'] for e in events if e['type']=='state'], ['LOADING MODEL','GENERATING','EXECUTE','GENERATING','EXECUTE','GENERATING','EXECUTE','READY'])
         self.assertEqual(saved['request']['messages'][1]['content'],'Build a game')
+        self.assertEqual(self.activity_contexts, [('test-coder', 32768)] * 3)
 
     def test_saved_result_recovers_original_source_without_generating_again(self):
         result, _ = self.lab.run({'prompt': 'Build a game'},lambda e:None)
@@ -82,10 +88,16 @@ class CodeLabTests(unittest.TestCase):
         self.generate.side_effect = slow_generate
         stream = code_lab.stream_events(self.lab, {'prompt': 'Build a game'}, heartbeat_seconds=0.01)
         try:
-            first = next(stream)
+            received = []
+            first = None
+            while first is None:
+                event = next(stream)
+                received.append(event)
+                if event.get('type') == 'state':
+                    first = event
             self.assertEqual(first['state'], 'LOADING MODEL')
-            while next(stream)['type'] != 'heartbeat':
-                pass
+            while not any(event['type'] == 'heartbeat' for event in received):
+                received.append(next(stream))
             release.set()
             events = list(stream)
             complete = events[-1]
@@ -155,7 +167,7 @@ class CodeLabTests(unittest.TestCase):
         self.assertEqual(request['keep_alive'], -1)
         self.assertEqual(result['run']['context_tokens'], 32768)
 
-    def test_prepare_unloads_then_loads_and_verifies_context(self):
+    def test_prepare_delegates_admission_and_model_residency_to_host(self):
         from contextlib import contextmanager
         events = []
         @contextmanager
@@ -164,25 +176,22 @@ class CodeLabTests(unittest.TestCase):
             outcome = {'success': False}
             yield outcome
             self.assertTrue(outcome['success'])
-        before = {'available': True, 'loaded': ['normal'], 'loaded_details': [{'name': 'normal'}]}
-        after = {'available': True, 'loaded': ['coder'], 'loaded_details': [{'name': 'coder', 'context_length': 32768, 'size_vram': 123}]}
-        preload = Mock(side_effect=lambda model, **kw: events.append(('load', model, kw)) or {'ok': True, 'response': {'load_duration': 123}})
-        unload = Mock(side_effect=lambda model, **kw: events.append(('unload', model)) or True)
+        preload = Mock(side_effect=lambda model, **kw: events.append(('host_admission', model, kw)) or {
+            'ok': True, 'residency': {'model': {'name': model, 'context_length': 32768, 'size_vram': 123}},
+        })
         remember = Mock()
         result, status = code_lab.prepare_working_model(
             {'model': 'coder', 'context_tokens': 32768, 'installed': True},
-            catalog=Mock(side_effect=[before, after]), capabilities=lambda model: {'available': True, 'context_max': 32768},
-            transition=transition, preload=preload, unload=unload, remember=remember,
-            avatar=lambda state: None, unload_candidates={'normal'})
+            capabilities=lambda model: {'available': True, 'context_max': 32768},
+            transition=transition, preload=preload, remember=remember,
+            avatar=lambda state: None)
         self.assertEqual(status, 200)
-        self.assertEqual(events[1], ('unload', 'normal'))
-        self.assertEqual(events[2][0:2], ('load', 'coder'))
-        self.assertEqual(events[2][2]['options']['num_ctx'], 32768)
-        self.assertEqual(events[2][2]['keep_alive'], -1)
-        self.assertEqual(result['load_duration'], 123)
+        self.assertEqual(events[1][0:2], ('host_admission', 'coder'))
+        self.assertEqual(events[1][2]['options']['num_ctx'], 32768)
+        self.assertEqual(result['resident']['name'], 'coder')
         remember.assert_called_once_with('coder')
 
-    def test_failed_preload_restores_previous_model(self):
+    def test_failed_host_admission_does_not_run_python_model_rollback(self):
         from contextlib import contextmanager
         @contextmanager
         def transition(model): yield {'success': False}
@@ -190,13 +199,12 @@ class CodeLabTests(unittest.TestCase):
         remember = Mock()
         result, status = code_lab.prepare_working_model(
             {'model': 'coder', 'context_tokens': 32768, 'installed': True},
-            catalog=lambda: {'available': True, 'loaded': ['normal']},
             capabilities=lambda model: {'available': True, 'context_max': 32768},
-            transition=transition, preload=preload, unload=Mock(return_value=True), remember=remember,
-            avatar=lambda state: None, unload_candidates={'normal'})
+            transition=transition, preload=preload, remember=remember,
+            avatar=lambda state: None)
         self.assertEqual(status, 409)
         self.assertIn('VRAM load failed', result['message'])
-        self.assertEqual(preload.call_args.args[0], 'normal')
+        self.assertEqual(preload.call_args.args[0], 'coder')
         remember.assert_not_called()
 
     def test_missing_or_incompatible_model_does_not_start_a_transition(self):
@@ -204,9 +212,9 @@ class CodeLabTests(unittest.TestCase):
         for installed, maximum in [(False, 32768), (True, 16384)]:
             result, status = code_lab.prepare_working_model(
                 {'model': 'coder', 'context_tokens': 32768, 'installed': installed},
-                catalog=Mock(), capabilities=lambda model: {'available': True, 'context_max': maximum},
-                transition=transition, preload=Mock(), unload=Mock(), remember=Mock(),
-                avatar=lambda state: None, unload_candidates={'normal'})
+                capabilities=lambda model: {'available': True, 'context_max': maximum},
+                transition=transition, preload=Mock(), remember=Mock(),
+                avatar=lambda state: None)
             self.assertFalse(result['ok'])
         transition.assert_not_called()
 
@@ -245,7 +253,7 @@ class CodeLabTests(unittest.TestCase):
         self.assertNotIn('id="lab-toggle"', html)
         self.assertNotIn('src="/code-lab.js"', html)
         self.assertIn('src="/coding-job-ui.js"', html)
-        self.assertIn('The former Lab toggle', (base / 'about.html').read_text())
+        self.assertIn('The former Lab toggle', (base / 'about.html').read_text(encoding='utf-8'))
         self.assertIn('coding-agent/workspace', js)
         self.assertIn('coding-preview/', js)
         self.assertIn('setAttribute("sandbox", "allow-scripts")', js)

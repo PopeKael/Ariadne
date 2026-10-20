@@ -10,7 +10,6 @@ import json
 import statistics
 import sys
 import time
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +19,7 @@ PROJECT_ROOT = CONTROL_PLANE.parent
 sys.path.insert(0, str(CONTROL_PLANE))
 
 import server  # noqa: E402
+from ollama_runtime import host_unload_model, inference_lease  # noqa: E402
 from librarian_harness import fallback_interpretation, fallback_plan, interpret_and_resolve  # noqa: E402
 
 
@@ -37,14 +37,7 @@ def read_cases() -> tuple[dict[str, Any], list[dict[str, Any]]]:
 
 
 def unload(model: str) -> None:
-    request = urllib.request.Request(
-        ENDPOINT + "/api/generate",
-        data=json.dumps({"model": model, "prompt": "", "stream": False, "keep_alive": 0}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=120) as response:
-        response.read()
+    host_unload_model(model, ENDPOINT)
 
 
 def fixture_attachments(case: dict[str, Any], shared: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -141,7 +134,8 @@ def run_one(model: str, case: dict[str, Any], attachments: list[dict[str, Any]])
     context = apply_runtime_fixture_constraints(context, runtime)
     started = time.perf_counter()
     try:
-        result = interpret_and_resolve(query, context, endpoint=ENDPOINT, model=model, keep_alive=-1)
+        with inference_lease(model, ENDPOINT, context_length=server.PLANNER_CONTEXT_TOKENS):
+            result = interpret_and_resolve(query, context, endpoint=ENDPOINT, model=model, keep_alive=-1)
         plan = result.get("plan") if isinstance(result.get("plan"), dict) else {}
         semantic = result.get("semantic") if isinstance(result.get("semantic"), dict) else {}
         policy = result.get("policy") if isinstance(result.get("policy"), dict) else {}

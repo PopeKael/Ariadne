@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from contextlib import nullcontext
 from unittest.mock import patch
 
 import server
@@ -24,10 +25,19 @@ class ModelControlTests(unittest.TestCase):
         server.GPU_TRANSITION_OPERATION = None
         server.GPU_TRANSITION_STARTED_AT = None
         server.GPU_AI_ADMISSIONS = 0
+        self.gpu_lease_patch = patch.object(server, "host_gpu_lease", return_value=nullcontext("test-gpu-lease"))
+        self.gpu_lease_patch.start()
+        self.host_transition_patch = patch.object(server, "host_acquire_gpu_lease", return_value="test-transition-lease")
+        self.host_transition_patch.start()
+        self.host_release_patch = patch.object(server, "host_release_gpu_lease")
+        self.host_release_patch.start()
         with server.MODEL_ACTIVITY_LOCK:
             server.MODEL_IN_FLIGHT.clear()
 
     def tearDown(self):
+        self.gpu_lease_patch.stop()
+        self.host_transition_patch.stop()
+        self.host_release_patch.stop()
         (
             server.HOME_CHAT_MODEL,
             server.PLANNER_MODEL,
@@ -67,6 +77,21 @@ class ModelControlTests(unittest.TestCase):
         self.assertEqual([item["canonical_name"] for item in payload["models"]], ["alpha", "beta"])
         self.assertEqual(payload["loaded"], ["alpha"])
         self.assertEqual(payload["active_model"], server.HOME_CHAT_MODEL)
+
+    def test_stale_home_residency_cache_cannot_report_ready_when_host_ps_says_absent(self):
+        index = self.index("home-model")
+        with patch.object(server, "HOME_CHAT_MODEL", "home-model"), \
+             patch.object(server, "HOME_MODEL_PRELOAD_STATUS", {
+                 "state": "resident", "model": "home-model", "detail": "Previously resident."
+             }), \
+             patch.object(server, "ollama_catalog", return_value=self.catalog("home-model")), \
+             patch.object(server, "ollama_status", return_value={"available": False,
+                                                                  "detail": "Home model is not resident."}), \
+             patch.object(server, "_ollama_model_index", return_value=index):
+            payload = server.model_control_payload()
+
+        self.assertEqual(payload["home_model_residency"]["state"], "unavailable")
+        self.assertIn("not resident in Ollama /api/ps", payload["home_model_residency"]["detail"])
 
     def test_normal_chat_model_selection_excludes_embedding_only_models(self):
         original_model = server.HOME_CHAT_MODEL
@@ -116,11 +141,12 @@ class ModelControlTests(unittest.TestCase):
 
     def test_switch_is_blocked_while_renderer_owns_gpu(self):
         server.GPU_OWNER = "RENDERER"
-        with patch.object(server, "ollama_catalog", return_value=self.catalog("alpha")), \
+        with patch.object(server, "host_acquire_gpu_lease", side_effect=RuntimeError("Rust host has an exclusive GPU workload lease; transition admission was denied.")), \
+             patch.object(server, "ollama_catalog", return_value=self.catalog("alpha")), \
              patch.object(server, "_ollama_model_index", return_value=self.index("alpha")):
             payload, status = server.switch_active_model("alpha")
         self.assertEqual(status, 409)
-        self.assertIn("video renderer", payload["message"])
+        self.assertIn("exclusive GPU workload lease", payload["message"])
 
     def test_successful_switch_preloads_then_persists_and_activates(self):
         server.HOME_CHAT_MODEL = "old-model"
@@ -143,9 +169,8 @@ class ModelControlTests(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertTrue(payload["ok"])
-        unload.assert_called_once_with("old-model", reason="selected_model_switch")
-        preload.assert_called_once_with("new-model", keep_alive=server.HOME_MODEL_KEEP_ALIVE,
-                                        reason="selected_model_switch")
+        unload.assert_not_called()
+        preload.assert_called_once_with("new-model", reason="selected_model_switch", allow_calibration=True)
         inference = save.call_args.kwargs["inference"]
         self.assertEqual(inference["routes"]["home_chat"], "ollama-desktop")
         self.assertEqual(inference["routes"]["planner"], "ollama-planner")
@@ -153,14 +178,12 @@ class ModelControlTests(unittest.TestCase):
         self.assertEqual(server.GPU_OWNER, "AI")
 
     def test_ai_admission_and_transition_are_atomic(self):
-        with server.ai_gpu_admission():
-            self.assertEqual(server.GPU_AI_ADMISSIONS, 1)
-            server.GPU_TRANSITION_STATE = "SWITCHING_MODEL"
-            with patch.object(server, "GPU_ADMISSION_WAIT_SECONDS", 0.05):
-                with self.assertRaises(RuntimeError):
+        with patch.object(server, "host_gpu_lease", side_effect=[nullcontext(), RuntimeError("Host lease conflicts with transition")]):
+            with server.ai_gpu_admission():
+                self.assertEqual(server.GPU_AI_ADMISSIONS, 1)
+                with self.assertRaisesRegex(RuntimeError, "Host lease conflicts"):
                     with server.ai_gpu_admission():
                         pass
-            server.GPU_TRANSITION_STATE = "IDLE"
         self.assertEqual(server.GPU_AI_ADMISSIONS, 0)
 
     def test_failed_activation_restores_previous_inference_routes(self):

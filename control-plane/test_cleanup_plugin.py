@@ -224,7 +224,9 @@ class CleanupPluginTests(unittest.TestCase):
                     data = None if payload is None else json.dumps(payload).encode("utf-8")
                     request_obj = urllib.request.Request(base + path, data=data, headers={"Content-Type": "application/json"} if data else {})
                     with urllib.request.urlopen(request_obj, timeout=10) as response: return response.status, json.loads(response.read().decode("utf-8"))
-                with patch.object(server, "configuration_snapshot", return_value=snapshot):
+                with patch.object(server, "configuration_snapshot", return_value=snapshot), \
+                     patch.object(server, "host_acquire_model_lease", return_value="test-home-model-lease"), \
+                     patch.object(server, "host_release_model_lease"):
                     _, session = request("/api/session/start", {}); session_id = session["session_id"]
                     _, started = request("/api/plugins/cleanup/run", {"session_id": session_id, "action": "preview"})
                     self.assertEqual(started["trigger"], "manual")

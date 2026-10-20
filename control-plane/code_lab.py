@@ -300,54 +300,29 @@ def validate_context(context, capabilities):
         raise ValueError("The selected model does not support text generation.")
 
 
-def prepare_working_model(config, *, catalog, capabilities, transition, preload, unload, remember, avatar, unload_candidates):
-    """Temporary residency switch using the existing core's model/GPU guard.
+def prepare_working_model(config, *, capabilities, transition, preload, remember, avatar):
+    """Temporary model switch admitted and loaded by the Rust host.
 
     It never persists or changes conversational inference routing.
     """
     model, context = config["model"], config["context_tokens"]
-    removed = []
     succeeded = False
     try:
         if not config.get("installed"):
             raise ValueError(config.get("message") or "The requested model is not installed.")
         validate_context(context, capabilities(model))
         with transition(model) as outcome:
-            try:
-                before = catalog()
-                if not before.get("available"):
-                    raise RuntimeError("Ollama is unavailable.")
-                avatar("loading_model")
-                for name in sorted(set(before.get("loaded", [])) & set(unload_candidates) - {model}):
-                    if not unload(name, reason="lab_mode_switch"):
-                        raise RuntimeError(f"Could not release {name}; model loading was stopped.")
-                    removed.append(name)
-                loaded = preload(model, options={"num_ctx": context}, keep_alive=-1, reason="lab_mode_switch")
-                if not loaded.get("ok"):
-                    raise RuntimeError(loaded.get("detail") or "Model loading failed.")
-                verified = catalog()
-                resident = next((item for item in verified.get("loaded_details", []) if item.get("name") == model), None)
-                if not resident or int(resident.get("context_length") or 0) < context:
-                    raise RuntimeError(f"Ollama did not confirm {model} resident with {context} context tokens.")
-                remember(model)
-                outcome["success"] = succeeded = True
-                avatar("success")
-                return {**config, "ok": True, "state": "READY", "resident": resident,
-                        "load_duration": loaded.get("response", {}).get("load_duration"),
-                        "message": f"{model} is loaded and ready."}, 200
-            except (OSError, RuntimeError, ValueError, TypeError) as exc:
-                rollback_errors = []
-                if removed:
-                    unload(model, reason="lab_mode_switch_rollback")
-                for previous in removed:
-                    previous_context = next((item.get("context_length") for item in before.get("loaded_details", []) if item.get("name") == previous), None)
-                    kwargs = {"options": {"num_ctx": previous_context}} if isinstance(previous_context, int) and previous_context > 0 else {}
-                    restored = preload(previous, keep_alive=-1, reason="lab_mode_switch_rollback", **kwargs)
-                    if not restored.get("ok"):
-                        rollback_errors.append(previous)
-                if rollback_errors:
-                    raise RuntimeError(f"{exc} Previous model restore also failed: {', '.join(rollback_errors)}") from exc
-                raise
+            avatar("loading_model")
+            loaded = preload(model, options={"num_ctx": context}, reason="lab_mode_switch")
+            if not loaded.get("ok"):
+                raise RuntimeError(loaded.get("detail") or "Rust Host model admission failed.")
+            residency = loaded.get("residency")
+            resident = residency.get("model") if isinstance(residency, dict) else None
+            remember(model)
+            outcome["success"] = succeeded = True
+            avatar("success")
+            return {**config, "ok": True, "state": "READY", "resident": resident,
+                    "message": f"{model} is admitted and ready."}, 200
     except (OSError, RuntimeError, ValueError, TypeError) as exc:
         avatar("error")
         return {"ok": False, "state": "FAILED", "message": str(exc)}, 409

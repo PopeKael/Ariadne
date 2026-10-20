@@ -41,6 +41,7 @@ static TEST_KILL_MCP_CHILD: std::sync::atomic::AtomicBool =
 #[derive(Clone, Debug)]
 struct ServiceConfig {
     vault_root: PathBuf,
+    control_plane: PathBuf,
     python: PathBuf,
     mcp_script: PathBuf,
     tunnel_client: PathBuf,
@@ -283,10 +284,14 @@ fn service_config(project_root: &Path) -> Result<ServiceConfig, String> {
             python.display()
         ));
     }
-    // The MCP service is useful locally even before the optional tunnel is configured.
-    let _ = project_root;
+    // Python MCP inference is admitted through this Ariadne install's Rust Host.
+    let control_plane = project_root.join("control-plane");
+    if !control_plane.join("ollama_runtime.py").is_file() {
+        return Err(format!("Ariadne Rust-host inference adapter was not found under {}", control_plane.display()));
+    }
     Ok(ServiceConfig {
         vault_root,
+        control_plane,
         python,
         mcp_script,
         tunnel_client,
@@ -498,6 +503,7 @@ fn spawn_mcp(config: &ServiceConfig, bearer: &str) -> Result<ProcessSlot, String
         .env("ARIADNE_MCP_HOST", "127.0.0.1")
         .env("ARIADNE_MCP_PORT", mcp_port().to_string())
         .env("ARIADNE_MCP_PATH", "/mcp")
+        .env("ARIADNE_CONTROL_PLANE", &config.control_plane)
         .env("ARIADNE_MCP_BEARER_TOKEN", bearer)
         .stdin(Stdio::null())
         .stdout(Stdio::null())

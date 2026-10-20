@@ -16,17 +16,23 @@ class LabModelPreparationTests(unittest.TestCase):
 
     def test_guard_blocks_existing_work_without_leaking_lock_or_state(self):
         for field, value in [('GPU_OWNER', 'RENDERER'), ('GPU_VAULT_RESERVATION', 'vault'), ('GPU_AI_ADMISSIONS', 1)]:
-            with patch.object(server, field, value):
-                with self.assertRaises(RuntimeError):
-                    with server.lab_model_transition('coder'): self.fail('GPU guard admitted a conflicting workload')
+            with patch.object(server, field, value), \
+                 patch.object(server, 'host_acquire_gpu_lease', side_effect=RuntimeError('Host reports a conflicting GPU lease')):
+                with self.assertRaisesRegex(RuntimeError, 'Host reports a conflicting GPU lease'):
+                    with server.lab_model_transition('coder'):
+                        self.fail('Transition continued after Rust Host denied its lease')
             self.assertEqual(server.GPU_TRANSITION_STATE, 'IDLE')
             self.assertTrue(server.MODEL_SWITCH_LOCK.acquire(blocking=False)); server.MODEL_SWITCH_LOCK.release()
 
     def test_guard_reuses_current_gpu_transition_states(self):
-        with server.lab_model_transition('coder') as outcome:
+        with patch.object(server, 'host_acquire_gpu_lease', return_value='transition-lease') as acquire, \
+             patch.object(server, 'host_release_gpu_lease') as release, \
+             server.lab_model_transition('coder') as outcome:
             self.assertEqual(server.GPU_OWNER, 'TRANSITION')
             self.assertEqual(server.GPU_TRANSITION_STATE, 'SWITCHING_MODEL')
+            acquire.assert_called_once_with('transition', server.OLLAMA_URL, model='coder')
             outcome['success'] = True
+        release.assert_called_once_with('transition-lease', server.OLLAMA_URL)
         self.assertEqual(server.GPU_OWNER, 'AI')
         self.assertEqual(server.GPU_TRANSITION_STATE, 'IDLE')
 
@@ -50,11 +56,16 @@ class LabModelPreparationTests(unittest.TestCase):
 
     def test_mode_model_is_preserved_under_memory_pressure(self):
         server.LAB_RESIDENT_MODEL = 'coder'
-        with patch.object(server, 'ollama_catalog', return_value={'available': True, 'loaded_details': []}), \
-             patch.object(server, 'gpu_status', return_value={'available': True, 'total_gb': 16, 'free_gb': 0.5}), \
+        with patch.object(server, 'ollama_update_in_progress', return_value=False), \
+             patch.object(server, 'ollama_catalog', return_value={
+                 'available': True, 'loaded': [server.HOME_CHAT_MODEL],
+                 'loaded_details': [{'name': server.HOME_CHAT_MODEL}],
+             }), \
+             patch.object(server, 'ollama_chat_endpoint_status', return_value=(True, 'ready')), \
+             patch.object(server, 'observe_ollama_runtime_identity', return_value=(False, {})), \
              patch.object(server, 'release_idle_ollama_models', return_value={'unloaded': []}) as release:
             server.monitor_ollama_models()
-        self.assertEqual(release.call_args.kwargs['preserve_models'], {server.HOME_CHAT_MODEL, 'coder'})
+        release.assert_called_once_with()
 
 
 if __name__ == '__main__': unittest.main()
