@@ -266,6 +266,31 @@ function render(data) {
   const serviceDetail = document.querySelector("#service-detail");
   if (serviceDetail) serviceDetail.textContent = rustHost.detail || "Ariadne Rust host · localhost";
   const deployment = data.deployment || {};
+  const dungeonButton = document.querySelector("#launch-dungeon");
+  const dungeonStatus = document.querySelector("#dungeon-status");
+  const gpuOwner = data.gpu_owner || {};
+  if (dungeonButton && dungeonStatus && gpuOwner.current_gpu_owner === "DUNGEON") {
+    dungeonButton.disabled = true;
+    dungeonStatus.className = "launch-status local";
+    dungeonStatus.textContent = "Running";
+    dungeonStatus.title = gpuOwner.detail || "Ariadne is currently running Dungeon.";
+    if (dungeonButton.dataset.launchUrl && dungeonButton.dataset.redirected !== "true") {
+      dungeonButton.dataset.redirected = "true";
+      window.location.assign(dungeonButton.dataset.launchUrl);
+    }
+  } else if (dungeonButton && dungeonStatus && !dungeonButton.disabled) {
+    dungeonStatus.className = "launch-status local";
+    dungeonStatus.textContent = "Ready";
+    dungeonStatus.title = "";
+  } else if (dungeonButton && dungeonStatus && gpuOwner.current_gpu_owner !== "DUNGEON" &&
+             gpuOwner.transition_state === "IDLE" && gpuOwner.delegation_state === "ARIADNE_ACTIVE") {
+    dungeonButton.disabled = false;
+    dungeonButton.dataset.launchUrl = "";
+    dungeonButton.dataset.redirected = "false";
+    dungeonStatus.className = "launch-status local";
+    dungeonStatus.textContent = "Ready";
+    dungeonStatus.title = gpuOwner.detail || "Ariadne is active.";
+  }
   document.querySelector("#profile").textContent = deployment.display || data.profile || "RUN · HERA";
   const profileDetail = document.querySelector(".top-profile .small");
   if (profileDetail) profileDetail.textContent = data.profile_detail || "RUN · HERA · production news";
@@ -997,8 +1022,7 @@ function setupVaultControls() {
 }
 function setupLaunchActions() {
   const launch = document.querySelector('a[href="/launch/lmstudio"]');
-  if (!launch) return;
-  launch.addEventListener("click", async (event) => {
+  launch?.addEventListener("click", async (event) => {
     event.preventDefault();
     const status = document.querySelector("#lmstudio-status");
     if (status) {
@@ -1021,6 +1045,23 @@ function setupLaunchActions() {
         status.classList.add("offline");
         status.textContent = "Offline";
       }
+    }
+  });
+  const dungeon = document.querySelector("#launch-dungeon");
+  dungeon?.addEventListener("click", async () => {
+    const status = document.querySelector("#dungeon-status");
+    dungeon.disabled = true;
+    if (status) { status.className = "launch-status starting"; status.textContent = "Releasing GPU"; }
+    try {
+      const response = await fetch("/api/dungeon/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"});
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || `HTTP ${response.status}`);
+      if (result.url) dungeon.dataset.launchUrl = result.url;
+      if (status) { status.className = "launch-status starting"; status.textContent = "Starting"; }
+      setTimeout(refresh, 1000);
+    } catch (error) {
+      if (status) { status.className = "launch-status offline"; status.textContent = error.message || "Failed"; }
+      dungeon.disabled = false;
     }
   });
 }

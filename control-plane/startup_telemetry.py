@@ -50,6 +50,24 @@ class StartupTrace:
                 self._write_error = type(exc).__name__
             self._check_ready()
 
+    def event(self, name, status="info", **detail):
+        """Append a repeatable runtime event beside the startup milestones."""
+        if not self.enabled:
+            return
+        with self._lock:
+            elapsed = round((self._clock() - self._origin) * 1000, 3)
+            row = dict(run_id=self.run_id, instance_id=self.instance_id,
+                       source="python", pid=os.getpid(), timestamp=self._wall(),
+                       elapsed_ms=elapsed, clock_scope="python_process",
+                       phase=name, status=status, detail=detail)
+            try:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                with self.path.open("a", encoding="utf-8") as stream:
+                    stream.write(json.dumps(row, ensure_ascii=True) + "\n")
+                    stream.flush()
+            except OSError as exc:
+                self._write_error = type(exc).__name__
+
     def connection(self, service, event, **detail):
         self.mark(f"hera_{service}_{event}", "error" if event == "failed" else ("started" if event == "start" else "ready"), **detail)
 

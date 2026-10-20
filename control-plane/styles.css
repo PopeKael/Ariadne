@@ -29,6 +29,8 @@
 .launch-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid rgba(52,73,112,.5);color:var(--text);text-decoration:none}
 .launch-row:first-child{border-top:0}
 .launch-row:hover .launch-copy strong{color:var(--cyan)}
+.launch-action{width:100%;background:transparent;border:0;text-align:left;font:inherit;cursor:pointer}
+.launch-action:disabled{opacity:.65;cursor:wait}
 .launch-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;flex:none}
 .ollama-icon{background:rgba(116,136,255,.18);color:#aab8ff}
 .launch-copy{min-width:0;flex:1}

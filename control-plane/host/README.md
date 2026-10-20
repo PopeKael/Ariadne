@@ -37,6 +37,41 @@ after each request; stale leases expire after 15 minutes. Python holds no model
 residency policy and cannot terminate Ollama on Windows unless the explicit
 development override `ARIADNE_ALLOW_UNSUPERVISED_CORE=1` is set.
 
+## Dungeon delegated workload
+
+The Ariadne dashboard can delegate the GPU to the existing standalone
+`DungeonCrawler.exe`. Python remains online on port 8765 and owns the visible
+`DUNGEON` reservation; normal Ariadne inference and model-preload admission are
+blocked while it is held. The handoff drains Ariadne workloads, asks Rust to
+unload and verify resident models, then pauses Ollama reconciliation and stops
+the Ariadne Ollama server so Dungeon's existing launcher can start its own
+server and services unchanged.
+
+The host starts Dungeon in a kill-on-close Job Object and watches the launcher's
+HTTP health, Job Object process count, and WDDM allocations while it runs. On
+exit, a sustained health failure, or process-tree loss, it terminates any
+remaining descendants, samples WDDM memory, restores Ariadne's Ollama runtime, reports the
+terminal lifecycle state to Python, restores the prior profile and preloads
+the Home model if it had been resident, and restarts any Ariadne managed image
+engine or God's Eye View service that was running before handoff. Launch errors
+and an Ariadne-managed Ubuntu session use the same recovery path. Unmanaged WSL
+instances are not terminated by the delegation. The launcher path defaults to
+`F:\AI\DungeonCrawler\DungeonCrawler.exe`; set
+`ARIADNE_DUNGEON_EXECUTABLE` on the host process to select another installation.
+Dungeon's own shortcut and standalone lifecycle do not use Ariadne.
+
+The lifecycle is `ARIADNE_ACTIVE → DRAINING → DUNGEON_STARTING →
+DUNGEON_ACTIVE → RECOVERING → ARIADNE_ACTIVE`, with failed transitions also
+entering recovery. Python keeps only the operation ID and prior model/profile
+state needed to make callbacks idempotent.
+
+Each Python handoff attempt appends stage, outcome, operation ID and failure
+details to that core's `%LOCALAPPDATA%\Ariadne\startup\<run-id>\core-<pid>-<instance>.jsonl`
+trace. The resident host records runtime IPC request/response types and Dungeon
+launch IPC receipt in `%LOCALAPPDATA%\Ariadne\host.log`. If an older resident
+binary rejects a newer runtime request, the Python trace records the exact
+rejected stage and the host log records the unsupported request type.
+
 `ARIADNE_ALLOW_UNSUPERVISED_CORE=1` keeps the explicit development path that
 starts Ollama from Python. It is not used by the normal resident-host startup.
 

@@ -379,6 +379,14 @@ def host_release_idle_models(*, endpoint: str = DEFAULT_ENDPOINT, force: bool = 
                                preserve_models=preserve_models or [], timeout=30.0)
 
 
+def host_suspend_for_external_workload(endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
+    return _request_host_model("suspend_for_external_workload", endpoint=endpoint, timeout=30.0)
+
+
+def host_resume_after_external_workload(endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:
+    return _request_host_model("resume_after_external_workload", endpoint=endpoint, timeout=60.0)
+
+
 def model_manifest_path(store: str, model: str) -> Path:
     """Return Ollama's registry manifest path for a model name."""
     repository, separator, tag = model.partition(":")

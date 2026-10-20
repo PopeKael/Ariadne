@@ -25,7 +25,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use windows::core::{w, GUID, PCWSTR, BOOL};
 use windows::Win32::Foundation::{
-    CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, ERROR_PIPE_CONNECTED, GENERIC_WRITE, HINSTANCE,
+    CloseHandle, GetLastError, SetLastError, ERROR_ALREADY_EXISTS, ERROR_PIPE_CONNECTED, GENERIC_WRITE, HINSTANCE,
     HWND, LPARAM, LRESULT, POINT, RECT, WPARAM,
 };
 use windows::Win32::Graphics::Gdi::{
@@ -103,6 +103,7 @@ const NIN_SELECT_EVENT: u32 = 0x0400;
 const NIN_KEYSELECT_EVENT: u32 = 0x0401;
 
 static LAB_RUNNER_ACTIVE: AtomicBool = AtomicBool::new(false);
+static DUNGEON_ACTIVE: AtomicBool = AtomicBool::new(false);
 static LOG_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 static TRAY_CALLBACK_MESSAGE: AtomicU32 = AtomicU32::new(0);
 
@@ -142,6 +143,7 @@ struct HostMessage {
     y: Option<i32>,
     run_id: Option<String>,
     launch_id: Option<String>,
+    operation_id: Option<String>,
 }
 
 enum UiEvent {
@@ -151,6 +153,7 @@ enum UiEvent {
     CoreUnavailable(String),
     CoreExited,
     LabRunnerClosed(bool),
+    DungeonClosed,
 }
 
 #[derive(Clone)]
@@ -857,7 +860,12 @@ fn pipe_receiver(ui: UiQueue, stop: Arc<AtomicBool>) -> thread::JoinHandle<()> {
                         let line = bytes.drain(..=index).collect::<Vec<_>>();
                         let text = String::from_utf8_lossy(&line[..line.len().saturating_sub(1)]);
                         match serde_json::from_str::<HostMessage>(&text) {
-                            Ok(message) if message.v == 1 => ui.push(UiEvent::Pipe(message)),
+                            Ok(message) if message.v == 1 => {
+                                if message.kind == "launch_dungeon" {
+                                    log_line(format!("Dungeon launch IPC received: operation_id={}", message.operation_id.as_deref().unwrap_or("missing")));
+                                }
+                                ui.push(UiEvent::Pipe(message));
+                            }
                             Ok(_) => log_line("ignored IPC message with unsupported version"),
                             Err(_) => log_line("ignored malformed IPC message"),
                         }
@@ -2501,6 +2509,167 @@ fn report_runner_focus(launch_id: &str, focused: bool) {
     }
 }
 
+fn report_dungeon(operation_id: &str, state: &str) -> bool {
+    let payload = serde_json::json!({"operation_id":operation_id,"state":state}).to_string();
+    let Ok(address) = "127.0.0.1:8765".parse() else { return false };
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_secs(2)) else { return false };
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(60)));
+    let request = format!("POST /api/dungeon/status HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", payload.len(), payload);
+    if stream.write_all(request.as_bytes()).is_err() { return false; }
+    let mut response = String::new();
+    stream.read_to_string(&mut response).is_ok() && (response.starts_with("HTTP/1.0 200") || response.starts_with("HTTP/1.1 200"))
+}
+
+fn dungeon_http_ready() -> bool {
+    let Ok(address) = "127.0.0.1:3000".parse() else { return false };
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(500)) else { return false };
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
+    if stream.write_all(b"GET /api/health HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n").is_err() { return false; }
+    let mut response = String::new();
+    stream.read_to_string(&mut response).is_ok() && response.starts_with("HTTP/1.") && response.contains(" 200 ")
+}
+
+fn dungeon_startup_failure(progress_file: &Path, launched_at: SystemTime) -> Option<String> {
+    let metadata = fs::metadata(progress_file).ok()?;
+    if metadata.modified().ok()? <= launched_at {
+        return None;
+    }
+    let payload: serde_json::Value = serde_json::from_slice(&fs::read(progress_file).ok()?).ok()?;
+    if payload.get("percent").and_then(serde_json::Value::as_u64).unwrap_or(0) < 100 {
+        return None;
+    }
+    let message = payload.get("message").and_then(serde_json::Value::as_str)?.trim();
+    if message.starts_with("Startup stopped:") || message.starts_with("Startup failed:") {
+        Some(message.to_string())
+    } else {
+        None
+    }
+}
+
+fn launch_dungeon(message: HostMessage, avatar: &mut AvatarOverlay, queue: &UiQueue,
+                  runtime: &ollama_supervisor::OllamaSupervisor) {
+    let operation_id = message.operation_id.unwrap_or_default();
+    if !runner_id_valid(&operation_id) {
+        log_line("rejected invalid Dungeon lifecycle operation ID");
+        return;
+    }
+    if LAB_RUNNER_ACTIVE.load(Ordering::Acquire) || DUNGEON_ACTIVE.swap(true, Ordering::AcqRel) {
+        log_line(format!("Dungeon launch rejected because another supervised workload is active: operation_id={}", operation_id));
+        report_dungeon(&operation_id, "FAILED");
+        return;
+    }
+    let executable = env::var_os("ARIADNE_DUNGEON_EXECUTABLE").map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"F:\AI\DungeonCrawler\DungeonCrawler.exe"));
+    let launched = (|| -> Result<(Child, usize, PathBuf, SystemTime), String> {
+        if !health_check() { return Err("Ariadne core is unavailable.".into()); }
+        if !executable.is_file() { return Err(format!("Dungeon launcher was not found: {}", executable.display())); }
+        let root = executable.parent().ok_or("Dungeon launcher has no installation directory.")?;
+        let progress_file = root.join("logs").join("launcher-progress.json");
+        let launched_at = SystemTime::now();
+        let child = Command::new(&executable).current_dir(root).spawn().map_err(|error| format!("Dungeon launch failed: {error}"))?;
+        let job = match create_core_job(&child) {
+            Ok(job) => job,
+            Err(error) => { let mut child = child; let _ = child.kill(); let _ = child.wait(); return Err(format!("Dungeon process ownership setup failed: {error}")); }
+        };
+        Ok((child, job.0 as usize, progress_file, launched_at))
+    })();
+    match launched {
+        Ok((mut child, job, progress_file, launched_at)) => {
+            avatar.hide();
+            log_line(format!("Dungeon integrated launch accepted: operation_id={}, pid={}, executable={}", operation_id, child.id(), executable.display()));
+            let ui = queue.clone();
+            let op = operation_id.clone();
+            let runtime = runtime.clone();
+            thread::spawn(move || {
+                let startup_deadline = Instant::now() + Duration::from_secs(300);
+                let mut ready = false;
+                loop {
+                    match child.try_wait() {
+                        Ok(Some(exit)) => { log_line(format!("Dungeon launcher exited before readiness: operation_id={}, result={:?}", op, exit)); break; }
+                        Err(error) => { log_line(format!("Dungeon launcher status failed during startup: {}", error)); break; }
+                        Ok(None) => {}
+                    }
+                    if let Some(reason) = dungeon_startup_failure(&progress_file, launched_at) {
+                        log_line(format!("Dungeon launcher reported startup failure: operation_id={}, detail={}", op, reason));
+                        break;
+                    }
+                    if dungeon_http_ready() { ready = true; break; }
+                    if Instant::now() >= startup_deadline { log_line("Dungeon web service did not become ready within five minutes."); break; }
+                    thread::sleep(Duration::from_millis(500));
+                }
+                if ready { let _ = report_dungeon(&op, "ACTIVE"); }
+                else { unsafe { let _ = TerminateJobObject(windows::Win32::Foundation::HANDLE(job as *mut c_void), 1); } }
+                let mut service_healthy = ready;
+                let mut unhealthy_since: Option<Instant> = None;
+                let mut last_gpu_sample = Instant::now();
+                if ready {
+                    loop {
+                        match child.try_wait() {
+                            Ok(Some(_)) => break,
+                            Err(error) => { log_line(format!("Dungeon launcher wait failed: {error}")); service_healthy = false; break; }
+                            Ok(None) => {}
+                        }
+                        match runner_job_processes(job) {
+                            Ok(0) => { log_line("Dungeon process Job Object became empty while its launcher was still active."); service_healthy = false; break; }
+                            Ok(_) => {}
+                            Err(error) => { log_line(format!("Dungeon process-tree monitoring failed: {error}")); service_healthy = false; break; }
+                        }
+                        if dungeon_http_ready() { unhealthy_since = None; }
+                        else if unhealthy_since.is_none() { unhealthy_since = Some(Instant::now()); }
+                        if unhealthy_since.is_some_and(|since| since.elapsed() >= Duration::from_secs(30)) {
+                            log_line("Dungeon web health remained unavailable for 30 seconds; recovering the supervised process tree.");
+                            service_healthy = false;
+                            break;
+                        }
+                        if last_gpu_sample.elapsed() >= Duration::from_secs(15) {
+                            match gpu_residency::sample() {
+                                Ok(snapshot) => log_line(format!("Dungeon active GPU sample: used={} MiB, free={} MiB, allocations={:?}", snapshot.used_bytes / 1_048_576, snapshot.free_bytes / 1_048_576, snapshot.process_allocations)),
+                                Err(error) => log_line(format!("Dungeon active GPU telemetry unavailable: {error}")),
+                            }
+                            last_gpu_sample = Instant::now();
+                        }
+                        thread::sleep(Duration::from_secs(1));
+                    }
+                }
+                if !service_healthy { unsafe { let _ = TerminateJobObject(windows::Win32::Foundation::HANDLE(job as *mut c_void), 1); } }
+                let exit = child.wait();
+                log_line(format!("Dungeon launcher exited: operation_id={}, result={:?}, descendants={:?}", op, exit, runner_job_processes(job)));
+                if service_healthy { unsafe { let _ = TerminateJobObject(windows::Win32::Foundation::HANDLE(job as *mut c_void), 1); } }
+                let launcher_exit_ok = exit.as_ref().is_ok_and(|status| status.success());
+                let deadline = Instant::now() + Duration::from_secs(10);
+                let mut tree_clear = false;
+                while Instant::now() < deadline {
+                    match runner_job_processes(job) {
+                        Ok(0) => { tree_clear = true; break; }
+                        Ok(_) => thread::sleep(Duration::from_millis(100)),
+                        Err(error) => { log_line(format!("Dungeon process-tree inspection failed: {error}")); break; }
+                    }
+                }
+                let gpu = gpu_residency::sample();
+                match &gpu {
+                    Ok(snapshot) => log_line(format!("Dungeon GPU reconciliation: tree_clear={}, used={} MiB, free={} MiB, allocations={:?}", tree_clear, snapshot.used_bytes / 1_048_576, snapshot.free_bytes / 1_048_576, snapshot.process_allocations)),
+                    Err(error) => log_line(format!("Dungeon GPU reconciliation telemetry failed: {error}")),
+                }
+                let restored = runtime.resume_external_workload();
+                log_line(format!("Ariadne runtime restoration after Dungeon: ok={}, detail={}", restored.ok, restored.detail));
+                let state = if ready && service_healthy && launcher_exit_ok && tree_clear && gpu.is_ok() && restored.ok { "CLOSED" } else { "FAILED" };
+                let _ = report_dungeon(&op, state);
+                DUNGEON_ACTIVE.store(false, Ordering::Release);
+                unsafe { let _ = CloseHandle(windows::Win32::Foundation::HANDLE(job as *mut c_void)); }
+                ui.push(UiEvent::DungeonClosed);
+            });
+        }
+        Err(error) => {
+            log_line(format!("Dungeon integrated launch failed: {}", error));
+            let restored = runtime.resume_external_workload();
+            log_line(format!("Ariadne runtime recovery after failed Dungeon launch: ok={}, detail={}", restored.ok, restored.detail));
+            let _ = report_dungeon(&operation_id, "FAILED");
+            DUNGEON_ACTIVE.store(false, Ordering::Release);
+            if restored.ok { open_dashboard("Dungeon launch recovery"); }
+        }
+    }
+}
+
 fn launch_lab_runner(message: HostMessage, avatar: &mut AvatarOverlay, queue: &UiQueue) {
     let run_id = message.run_id.unwrap_or_default();
     let launch_id = message.launch_id.unwrap_or_default();
@@ -2618,6 +2787,7 @@ fn process_events(
     queue: &UiQueue,
     avatar: &mut AvatarOverlay,
     supervisor: &CoreSupervisor,
+    runtime: &ollama_supervisor::OllamaSupervisor,
     message_hwnd: HWND,
 ) {
     for event in queue.drain() {
@@ -2626,6 +2796,7 @@ fn process_events(
                 && matches!(message.kind.as_str(), "state" | "say" | "show" | "reload_avatar") => {},
             UiEvent::Pipe(message) => match message.kind.as_str() {
                 "launch_lab_runner" => launch_lab_runner(message, avatar, queue),
+                "launch_dungeon" => launch_dungeon(message, avatar, queue, runtime),
                 "state" => {
                     if let Some(state) = message.state.as_deref() {
                         log_line(format!("avatar state event received: {} · {}", state, message.status.as_deref().unwrap_or("")));
@@ -2669,6 +2840,10 @@ fn process_events(
             UiEvent::LabRunnerClosed(restore) => {
                 if restore { avatar.show(); }
             }
+            UiEvent::DungeonClosed => {
+                avatar.show();
+                open_dashboard("Dungeon session closed");
+            }
             UiEvent::CoreLaunched(command) => {
                 avatar.set_state("loading_model");
                 log_line(format!("core launch recorded: {}", command));
@@ -2695,6 +2870,10 @@ fn process_events(
 
 fn run(origin: Instant) -> Result<(), String> {
     unsafe {
+        // CreateMutexW only sets last error when the named mutex already
+        // exists. Clear any error left by process initialization first, or a
+        // fresh host can mistake stale ERROR_ALREADY_EXISTS for a live copy.
+        SetLastError(windows::Win32::Foundation::WIN32_ERROR(0));
         let mutex = windows::Win32::System::Threading::CreateMutexW(None, false, HOST_MUTEX)
             .map_err(|_| "could not create host mutex".to_string())?;
         if GetLastError() == ERROR_ALREADY_EXISTS {
@@ -2808,7 +2987,7 @@ fn run(origin: Instant) -> Result<(), String> {
                     show_tray_menu(message_hwnd);
                 }
             } else if message.hwnd == message_hwnd && message.message == PIPE_MESSAGE {
-                process_events(&queue, &mut avatar, &supervisor, message_hwnd);
+                process_events(&queue, &mut avatar, &supervisor, &runtime_supervisor, message_hwnd);
             } else if message.hwnd == message_hwnd && message.message == FINAL_IDLE_MESSAGE {
                 avatar.final_hold_expired(message.wParam.0 as u64);
             } else if message.hwnd == message_hwnd
@@ -2850,7 +3029,7 @@ fn run(origin: Instant) -> Result<(), String> {
             let _ = TranslateMessage(&message);
             DispatchMessageW(&message);
         }
-        process_events(&queue, &mut avatar, &supervisor, message_hwnd);
+        process_events(&queue, &mut avatar, &supervisor, &runtime_supervisor, message_hwnd);
         // Stop the Python core before joining the IPC receiver. Python owns
         // the other end of the named pipe and may otherwise keep a blocking
         // read alive long enough to prevent the host from reaching orderly
@@ -2884,13 +3063,16 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        classify_tray_event, clamp_premultiplied_rgba, drag_threshold_crossed, layout_height,
+        classify_tray_event, clamp_premultiplied_rgba, dungeon_startup_failure,
+        drag_threshold_crossed, layout_height,
         premultiply_channel, premultiply_rgba, TrayAction, NIN_KEYSELECT_EVENT,
         NIN_SELECT_EVENT,
         presentation_dwell_millis, presentation_timing, rounded_bubble_pixel_inside,
         scaled_avatar_dimensions, state_status, PresentationTiming, AVATAR_MAX_HEIGHT,
         BUBBLE_CORNER_RADIUS, BUBBLE_MAX_HEIGHT,
     };
+    use std::fs;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     #[test]
     fn runner_identifiers_reject_paths_urls_and_arguments() {
@@ -2898,6 +3080,41 @@ mod tests {
         for value in ["", "../index.html", "https://example.com/", "--disable-security", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "0123456789abcdef"] {
             assert!(!super::runner_id_valid(value));
         }
+    }
+
+    #[test]
+    fn dungeon_startup_failure_requires_fresh_terminal_progress() {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock is after the Unix epoch")
+            .as_nanos();
+        let root = std::env::current_dir()
+            .expect("test working directory")
+            .join(format!(".tmp-dungeon-progress-{stamp}"));
+        fs::create_dir_all(&root).expect("create local test directory");
+        let progress = root.join("launcher-progress.json");
+        let launched_at = SystemTime::now() - Duration::from_secs(2);
+        fs::write(
+            &progress,
+            r#"{"percent":100,"step":6,"steps":6,"message":"Startup stopped: Insufficient free VRAM."}"#,
+        )
+        .expect("write terminal startup failure");
+        assert_eq!(
+            dungeon_startup_failure(&progress, launched_at).as_deref(),
+            Some("Startup stopped: Insufficient free VRAM.")
+        );
+        assert_eq!(
+            dungeon_startup_failure(&progress, SystemTime::now() + Duration::from_secs(2)),
+            None,
+            "stale progress must not fail a new Dungeon launch"
+        );
+        fs::write(
+            &progress,
+            r#"{"percent":60,"step":4,"steps":6,"message":"Starting web service"}"#,
+        )
+        .expect("write in-progress state");
+        assert_eq!(dungeon_startup_failure(&progress, launched_at), None);
+        fs::remove_dir_all(root).expect("remove local test directory");
     }
 
     #[test]

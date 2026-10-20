@@ -38,14 +38,14 @@ struct RuntimeRequest {
 }
 
 #[derive(Debug, Serialize)]
-struct RuntimeResponse {
-    v: u32,
-    ok: bool,
-    state: String,
-    detail: String,
-    pid: Option<u32>,
-    version: Option<String>,
-    models: Vec<String>,
+pub(crate) struct RuntimeResponse {
+    pub(crate) v: u32,
+    pub(crate) ok: bool,
+    pub(crate) state: String,
+    pub(crate) detail: String,
+    pub(crate) pid: Option<u32>,
+    pub(crate) version: Option<String>,
+    pub(crate) models: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     lease_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,6 +87,7 @@ struct State {
     reconcile_failures: u32,
     inference_leases: std::collections::HashMap<String, InferenceLease>,
     model_last_used: std::collections::HashMap<String, Instant>,
+    externally_delegated: bool,
 }
 
 #[derive(Clone, Default)]
@@ -104,6 +105,7 @@ impl OllamaSupervisor {
             thread::sleep(Duration::from_secs(5));
             if stop.load(Ordering::Acquire) { break; }
             let Ok(mut state) = state.lock() else { continue };
+            if state.externally_delegated { continue; }
             let Some((endpoint, store, models)) = state.desired.clone() else { continue };
             let healthy = state.runtime.as_mut().is_some_and(|runtime| {
                 runtime.child.try_wait().ok().flatten().is_none()
@@ -136,6 +138,7 @@ impl OllamaSupervisor {
 
     fn ensure(&self, endpoint: String, model_store: String, required_models: Vec<String>) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        if state.externally_delegated { return RuntimeResponse::error("Ariadne runtime is delegated to Dungeon; Ollama reconciliation is paused."); }
         state.last_reconcile = Some(Instant::now());
         match ensure_locked(&mut state, endpoint, model_store, required_models) {
             Ok(response) => {
@@ -154,6 +157,7 @@ impl OllamaSupervisor {
 
     fn admit_model(&self, endpoint: String, model: String) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        if state.externally_delegated { return RuntimeResponse::error("Ariadne runtime is delegated to Dungeon; model admission is paused."); }
         prune_expired_leases(&mut state);
         let (pid, version, models) = {
             let Some(runtime) = state.runtime.as_mut() else { return RuntimeResponse::error("Rust host has not established Ollama ownership; inference is blocked.") };
@@ -192,6 +196,66 @@ impl OllamaSupervisor {
             RuntimeResponse::error("Unknown or already released inference lease.")
         }
     }
+
+    fn suspend_for_external_workload(&self, endpoint: String) -> RuntimeResponse {
+        let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        prune_expired_leases(&mut state);
+        if !state.inference_leases.is_empty() {
+            return RuntimeResponse::error("Ariadne inference leases are still active; Dungeon handoff was refused.");
+        }
+        if let Some(runtime) = state.runtime.as_mut() {
+            if endpoint_address(&runtime.endpoint).ok() != endpoint_address(&endpoint).ok() {
+                return RuntimeResponse::error("Configured Ollama endpoint does not match the Rust-owned runtime.");
+            }
+            let models = match ollama_models(&endpoint) {
+                Ok(rows) => rows,
+                Err(error) => return RuntimeResponse::error(error),
+            };
+            let names: Vec<String> = models.iter().filter_map(|row| row.get("name").and_then(|value| value.as_str()).map(str::to_owned)).collect();
+            for model in &names {
+                if let Err(error) = unload_model(&endpoint, model) { return RuntimeResponse::error(error); }
+            }
+            match ollama_models(&endpoint) {
+                Ok(rows) if rows.is_empty() => {},
+                Ok(rows) => return RuntimeResponse::error(format!("Ollama still reports resident models after release: {}", rows.iter().filter_map(|row| row.get("name").and_then(|value| value.as_str())).collect::<Vec<_>>().join(", "))),
+                Err(error) => return RuntimeResponse::error(error),
+            }
+            state.externally_delegated = true;
+            if let Some(mut runtime) = state.runtime.take() {
+                let _ = runtime.child.kill();
+                let _ = runtime.child.wait();
+                drop(runtime);
+            }
+            let gpu = match super::gpu_residency::sample() {
+                Ok(snapshot) => snapshot,
+                Err(error) => return RuntimeResponse::error(format!("GPU memory could not be verified after stopping Ariadne Ollama: {error}")),
+            };
+            let remaining_runners: Vec<String> = gpu.process_allocations.iter().filter_map(|allocation| {
+                let image = process_image_name(allocation.pid)?;
+                let name = image.file_name()?.to_string_lossy().to_ascii_lowercase();
+                (is_known_model_runner(&name) && allocation.bytes > 0).then(|| format!("PID {} {} MiB", allocation.pid, allocation.bytes / 1_048_576))
+            }).collect();
+            if !remaining_runners.is_empty() {
+                return RuntimeResponse::error(format!("Ariadne model-runner GPU allocations remain after runtime shutdown: {}", remaining_runners.join(", ")));
+            }
+            log_line("Ariadne Ollama runtime stopped after verified model release; reconciliation paused for Dungeon handoff.");
+            RuntimeResponse { v: 1, ok: true, state: "suspended".into(), detail: format!("Ariadne models and service were released; verified {} MiB GPU use remains across the machine.", gpu.used_bytes / 1_048_576), pid: None, version: None, models: names, lease_id: None, residency: serde_json::to_value(gpu).ok() }
+        } else {
+            RuntimeResponse::error("Rust host has no managed Ollama runtime to suspend.")
+        }
+    }
+
+    fn resume_after_external_workload(&self) -> RuntimeResponse {
+        let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        state.externally_delegated = false;
+        let Some((endpoint, store, models)) = state.desired.clone() else { return RuntimeResponse::error("Ariadne Ollama configuration is unavailable for restoration.") };
+        match ensure_locked(&mut state, endpoint, store, models) {
+            Ok(response) => response,
+            Err(error) => RuntimeResponse::error(format!("Ariadne runtime restoration failed: {error}")),
+        }
+    }
+
+    pub fn resume_external_workload(&self) -> RuntimeResponse { self.resume_after_external_workload() }
 
     fn unload_model(&self, endpoint: String, model: String) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
@@ -337,7 +401,11 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
             request_bytes.extend_from_slice(&buffer[..read as usize]);
             if request_bytes.len() > 16 * 1024 { break; }
         }
-        let response = match serde_json::from_slice::<RuntimeRequest>(&request_bytes) {
+        let parsed = serde_json::from_slice::<RuntimeRequest>(&request_bytes);
+        if let Ok(request) = &parsed {
+            log_line(&format!("Runtime IPC request received: v={}, type={}", request.v, request.kind));
+        }
+        let response = match parsed {
             Ok(request) if request.v == 1 && request.kind == "ensure_ollama" => supervisor.ensure(
                 request.endpoint.unwrap_or_else(|| DEFAULT_ENDPOINT.into()),
                 request.model_store.unwrap_or_else(|| env::var("OLLAMA_MODELS").unwrap_or_else(|_| DEFAULT_STORE.into())),
@@ -359,9 +427,20 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
                 request.force.unwrap_or(false),
                 request.preserve_models.unwrap_or_default(),
             ),
-            Ok(_) => RuntimeResponse::error("Unsupported runtime IPC request."),
-            Err(_) => RuntimeResponse::error("Malformed runtime IPC request."),
+            Ok(request) if request.v == 1 && request.kind == "suspend_for_external_workload" => supervisor.suspend_for_external_workload(
+                request.endpoint.unwrap_or_else(|| DEFAULT_ENDPOINT.into()),
+            ),
+            Ok(request) if request.v == 1 && request.kind == "resume_after_external_workload" => supervisor.resume_after_external_workload(),
+            Ok(request) => {
+                log_line(&format!("Runtime IPC request rejected: v={}, type={}", request.v, request.kind));
+                RuntimeResponse::error("Unsupported runtime IPC request.")
+            }
+            Err(error) => {
+                log_line(&format!("Malformed runtime IPC request: {error}"));
+                RuntimeResponse::error("Malformed runtime IPC request.")
+            }
         };
+        log_line(&format!("Runtime IPC response: state={}, ok={}, detail={}", response.state, response.ok, response.detail));
         let mut bytes = serde_json::to_vec(&response).map_err(|error| error.to_string())?;
         bytes.push(b'\n');
         let mut written = 0u32;
@@ -487,7 +566,17 @@ fn reconciliation_plan(runtime_healthy: bool, has_active_leases: bool) -> Reconc
 
 #[cfg(test)]
 mod reconciliation_plan_tests {
-    use super::{reconciliation_plan, ReconciliationPlan};
+    use super::{has_model_capacity, reconciliation_plan, ReconciliationPlan};
+
+    #[test]
+    fn model_admission_uses_available_capacity_instead_of_external_process_identity() {
+        let model_bytes = 6_288 * 1024 * 1024;
+        let required_bytes = model_bytes + 1024 * 1024 * 1024;
+        let free_after_other_processes = 12_800 * 1024 * 1024;
+
+        assert!(has_model_capacity(free_after_other_processes, required_bytes));
+        assert!(!has_model_capacity(required_bytes - 1, required_bytes));
+    }
 
     #[test]
     fn healthy_runtime_is_reused_without_unloading_models_held_by_live_leases() {
@@ -544,7 +633,7 @@ fn clear_idle_resident_models(endpoint: &str, leases: &std::collections::HashMap
     }
     let after = super::gpu_residency::sample()
         .map_err(|error| format!("GPU state could not be verified after Ariadne startup cleanup: {error}"))?;
-    refuse_unknown_gpu_owners(&after)?;
+    report_unknown_gpu_owners(&after, "Ariadne startup");
     log_line(&format!("Ariadne startup model-pool cleanup verified: Ollama has no resident models; GPU {} MiB free / {} MiB total; allocations [{}].", after.free_bytes / 1_048_576, after.total_bytes / 1_048_576, allocation_summary(&after)));
     Ok(())
 }
@@ -580,7 +669,7 @@ fn prepare_existing_ollama_for_restart(endpoint: &str, leases: &std::collections
     }
     let after = super::gpu_residency::sample().map_err(|error| format!("GPU allocation state could not be rechecked after unloading models; restart blocked: {error}"))?;
     log_line(&format!("Pre-restart unload verified: GPU {} MiB used / {} MiB total; Ollama reports no resident models.", after.used_bytes / 1_048_576, after.total_bytes / 1_048_576));
-    refuse_unknown_gpu_owners(&after)?;
+    report_unknown_gpu_owners(&after, "Ollama restart");
     Ok(())
 }
 
@@ -617,7 +706,8 @@ fn clear_orphaned_model_runners() -> Result<(), String> {
         }).collect();
         if remaining_runners.is_empty() {
             log_line(&format!("Startup model-runner cleanup verified: GPU {} MiB used / {} MiB total; remaining allocations [{}].", snapshot.used_bytes / 1_048_576, snapshot.total_bytes / 1_048_576, allocation_summary(&snapshot)));
-            return refuse_unknown_gpu_owners(&snapshot);
+            report_unknown_gpu_owners(&snapshot, "Ariadne startup");
+            return Ok(());
         }
         if Instant::now() >= deadline {
             return Err(format!("GPU memory remained allocated by model runner(s) after cleanup: {}", allocation_summary(&snapshot)));
@@ -658,7 +748,7 @@ fn is_known_system_gpu_owner(image_name: &str) -> bool {
     image_name == "dwm.exe"
 }
 
-fn refuse_unknown_gpu_owners(snapshot: &super::gpu_residency::GpuMemorySnapshot) -> Result<(), String> {
+fn report_unknown_gpu_owners(snapshot: &super::gpu_residency::GpuMemorySnapshot, phase: &str) {
     let unknown: Vec<String> = snapshot.process_allocations.iter().filter(|allocation| {
         allocation.bytes >= UNKNOWN_GPU_OWNER_BLOCK_BYTES
             && gpu_owner_basename(allocation.pid)
@@ -667,8 +757,9 @@ fn refuse_unknown_gpu_owners(snapshot: &super::gpu_residency::GpuMemorySnapshot)
         let owner = gpu_owner_basename(allocation.pid).unwrap_or_else(|| "process name unavailable".into());
         format!("PID {} ({owner})={} MiB", allocation.pid, allocation.bytes / 1_048_576)
     }).collect();
-    if unknown.is_empty() { return Ok(()); }
-    Err(format!("Startup found GPU memory held by other process(es): {}. Rust host left them running and blocked model admission.", unknown.join(", ")))
+    if !unknown.is_empty() {
+        log_line(&format!("GPU inventory during {phase} found external GPU allocation(s): {}. Processes were left untouched; model admission will use measured free VRAM and model-size headroom.", unknown.join(", ")));
+    }
 }
 
 fn prune_expired_leases(state: &mut State) {
@@ -744,7 +835,7 @@ fn preflight_model(
     // set has been inspected and competing idle Ollama models have been drained.
     let gpu = super::gpu_residency::sample().map_err(|error| format!("GPU residency preflight unavailable; inference blocked: {error}"))?;
     let required_bytes = model_bytes.saturating_add(1024 * 1024 * 1024);
-    if !target_was_resident && gpu.free_bytes < required_bytes {
+    if !target_was_resident && !has_model_capacity(gpu.free_bytes, required_bytes) {
         return Err(format!("GPU residency preflight denied '{model}': {} MiB free, about {} MiB required including 1 GiB headroom; no inference was sent. WDDM allocations: {}.", gpu.free_bytes / 1_048_576, required_bytes / 1_048_576, gpu.process_allocations.iter().map(|p| format!("PID {}={} MiB", p.pid, p.bytes / 1_048_576)).collect::<Vec<_>>().join(", ")));
     }
     let inventory = serde_json::to_value(&gpu).map_err(|error| error.to_string())?;
@@ -752,6 +843,10 @@ fn preflight_model(
     let lease_id = format!("{}-{}", std::process::id(), uuid_like());
     let detail = format!("Rust-host GPU preflight admitted '{model}' ({} MiB free, {} MiB model, 1024 MiB headroom); {}.", gpu.free_bytes / 1_048_576, model_bytes / 1_048_576, if target_was_resident { "reusing resident model" } else { "prior Ollama models unloaded and model may load" });
     Ok((lease_id, inventory, detail))
+}
+
+fn has_model_capacity(free_bytes: u64, required_bytes: u64) -> bool {
+    free_bytes >= required_bytes
 }
 
 fn ollama_model_name_matches(requested: &str, available: &str) -> bool {

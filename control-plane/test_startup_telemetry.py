@@ -10,7 +10,7 @@ from startup_telemetry import StartupTrace
 
 class StartupTelemetryTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
+        self.temp = tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent)
         self.addCleanup(self.temp.cleanup)
         self.now = 10.0
         self.trace = StartupTrace(self.temp.name, run_id="test", monotonic=lambda: self.now,
@@ -28,6 +28,15 @@ class StartupTelemetryTests(unittest.TestCase):
         self.assertEqual(row["elapsed_ms"], 2500)
         self.assertEqual(row["timestamp"], "2026-10-03T00:00:00+00:00")
         self.assertEqual(self.trace.snapshot()["events"], self.rows())
+
+    def test_runtime_events_append_repeated_handoff_steps(self):
+        self.trace.event("dungeon_runtime_suspend", "started", operation_id="one")
+        self.now += 0.25
+        self.trace.event("dungeon_runtime_suspend", "error", operation_id="two", error="unsupported")
+        rows = self.rows()
+        self.assertEqual([row["phase"] for row in rows], ["dungeon_runtime_suspend", "dungeon_runtime_suspend"])
+        self.assertEqual([row["status"] for row in rows], ["started", "error"])
+        self.assertEqual(rows[1]["elapsed_ms"], 250)
 
     def test_concurrent_repeated_polling_writes_one_milestone(self):
         with concurrent.futures.ThreadPoolExecutor(8) as pool:

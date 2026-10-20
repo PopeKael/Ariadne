@@ -88,7 +88,9 @@ from librarian_harness import (
     request_needs_personal_context,
 )
 from ollama_runtime import (
+    host_resume_after_external_workload,
     host_release_idle_models,
+    host_suspend_for_external_workload,
     host_unload_model,
     inference_lease,
     ollama_update_in_progress,
@@ -551,6 +553,8 @@ GPU_TRANSITION_STATE = "IDLE"
 GPU_TRANSITION_DETAIL = "GPU is available to the next approved workload."
 GPU_TRANSITION_OPERATION: str | None = None
 GPU_TRANSITION_STARTED_AT: float | None = None
+ARIADNE_DELEGATION_LOCK = threading.Lock()
+ARIADNE_DELEGATION: dict[str, object] = {"state": "ARIADNE_ACTIVE", "operation_id": None, "models": [], "detail": "Ariadne is active."}
 GPU_VAULT_RESERVATION: str | None = None
 GPU_ADMISSION_WAIT_SECONDS = max(5.0, float(os.environ.get("ARIADNE_GPU_ADMISSION_WAIT", "45")))
 RENDERER_START_THREAD: threading.Thread | None = None
@@ -1496,6 +1500,7 @@ def gpu_owner_status() -> dict[str, object]:
             "current_gpu_owner": GPU_OWNER,
             "transition_state": GPU_TRANSITION_STATE,
             "detail": GPU_TRANSITION_DETAIL,
+            "delegation_state": ARIADNE_DELEGATION.get("state", "ARIADNE_ACTIVE"),
             "operation_id": GPU_TRANSITION_OPERATION,
             "elapsed_seconds": elapsed,
         }
@@ -1603,7 +1608,7 @@ def ensure_ai_gpu_access() -> None:
     with GPU_ARBITRATION_LOCK:
         if GPU_VAULT_RESERVATION:
             raise RuntimeError("GPU is reserved for Knowledge Vault ingestion.")
-        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+        if GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE":
             raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold() or 'a workload'}: {GPU_TRANSITION_DETAIL}")
         GPU_OWNER = "AI"
 
@@ -1623,6 +1628,8 @@ def ai_gpu_admission():
         with GPU_ARBITRATION_LOCK:
             if GPU_VAULT_RESERVATION:
                 raise RuntimeError("GPU is reserved for Knowledge Vault ingestion.")
+            if GPU_OWNER == "DUNGEON" and GPU_TRANSITION_STATE == "IDLE":
+                raise RuntimeError(GPU_TRANSITION_DETAIL)
             if GPU_OWNER == "RENDERER" and GPU_TRANSITION_STATE == "IDLE":
                 raise RuntimeError(f"GPU is reserved for renderer: {GPU_TRANSITION_DETAIL}")
             if GPU_TRANSITION_STATE == "IDLE":
@@ -1886,7 +1893,7 @@ def monitor_ollama_models() -> dict[str, object]:
     except RuntimeError as exc:
         return {"state": "deferred", "unloaded": [], "detail": str(exc)}
     with GPU_ARBITRATION_LOCK:
-        if GPU_VAULT_RESERVATION or GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS:
+        if GPU_VAULT_RESERVATION or GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS:
             return {"state": "deferred", "unloaded": [], "detail": "GPU arbitration is handling a workload transition."}
     with MODEL_ACTIVITY_LOCK:
         if MODEL_IN_FLIGHT:
@@ -2555,7 +2562,7 @@ def lab_model_transition(model):
     previous_owner = GPU_OWNER
     try:
         with GPU_ARBITRATION_LOCK:
-            if GPU_VAULT_RESERVATION or GPU_OWNER == "RENDERER":
+            if GPU_VAULT_RESERVATION or GPU_OWNER in {"RENDERER", "DUNGEON"}:
                 raise RuntimeError("The GPU is reserved for another workload. Finish it before switching modes.")
             if GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS:
                 raise RuntimeError("Finish the active Ariadne workload before switching modes.")
@@ -2780,7 +2787,7 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
             return {**model_control_payload(), "ok": True, "message": f"{requested} is already Ariadne's active model."}, 200
 
         with GPU_ARBITRATION_LOCK:
-            if GPU_OWNER == "RENDERER":
+            if GPU_OWNER in {"RENDERER", "DUNGEON"}:
                 return {"ok": False, "message": "Stop the video renderer before switching Ariadne's model."}, 409
             if GPU_TRANSITION_STATE != "IDLE":
                 return {"ok": False, "message": f"GPU transition {GPU_TRANSITION_STATE} is still active."}, 409
@@ -2893,7 +2900,7 @@ def interactive_ai_status() -> dict[str, object]:
 def wan2gp_status(*, ignore_transition: bool = False) -> dict[str, object]:
     global WAN2GP_PROCESS, GPU_OWNER, RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR
     transition = gpu_owner_status()
-    if not ignore_transition and (transition["transition_state"] != "IDLE" or GPU_OWNER == "TRANSITION"):
+    if not ignore_transition and (transition["transition_state"] != "IDLE" or GPU_OWNER in {"TRANSITION", "DUNGEON"}):
         return {
             "state": "starting" if GPU_OWNER == "TRANSITION" else "error",
             "lifecycle_state": RENDERER_LIFECYCLE_STATE,
@@ -3759,7 +3766,7 @@ def start_image_engine() -> dict[str, object]:
     if str(video.get("state") or "") in {"online", "starting"}:
         return {"ok": False, "message": "Stop the video renderer before starting the image process.", "image": current}
     with GPU_ARBITRATION_LOCK:
-        if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER == "RENDERER":
+        if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER in {"RENDERER", "DUNGEON"}:
             return {"ok": False, "message": GPU_TRANSITION_DETAIL, "image": current}
     if not IMAGE_ENGINE_ROOT.is_dir() or not IMAGE_ENGINE_PYTHON.is_file():
         announce_media_lifecycle("Image", "ERROR", f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}")
@@ -4272,7 +4279,7 @@ def stop_wan2gp(*, wait: bool = False) -> dict[str, object]:
         stop_thread_active = RENDERER_STOP_THREAD is not None and RENDERER_STOP_THREAD.is_alive()
         start_thread_active = RENDERER_START_THREAD is not None and RENDERER_START_THREAD.is_alive()
         renderer_active = current_state in {"online", "starting"} or stop_thread_active or start_thread_active
-        transition_active = GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER in {"RENDERER", "TRANSITION"}
+        transition_active = GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER in {"RENDERER", "TRANSITION", "DUNGEON"}
         if not renderer_active and not transition_active:
             # Session cleanup calls this function defensively.  Do not turn a
             # normal Chat -> Home navigation into a false video lifecycle
@@ -4326,13 +4333,231 @@ def renderer_is_busy() -> bool:
     return isinstance(clip, dict) and clip.get("state") in {"queued", "running"}
 
 
-def release_workloads(force: bool = False) -> None:
+def release_workloads(force: bool = False, *, terminate_wsl: bool = True) -> None:
     if not force and renderer_is_busy():
         return
     stop_wan2gp(wait=True)
     stop_interactive_session()
-    run_readonly(["wsl.exe", "--terminate", VIDEO_RENDERER_DISTRO])
+    if terminate_wsl:
+        run_readonly(["wsl.exe", "--terminate", VIDEO_RENDERER_DISTRO])
     reset_deployment_mode_for_shutdown()
+
+
+def restore_dungeon_suspended_workloads() -> None:
+    if ARIADNE_DELEGATION.get("image_engine_was_running"):
+        start_image_engine()
+    if ARIADNE_DELEGATION.get("gods_eye_was_running"):
+        _start_gods_eye_view()
+    if ARIADNE_DELEGATION.get("interactive_wsl_was_running"):
+        result = wsl_environment_action(VIDEO_RENDERER_DISTRO, "start")
+        if not result.get("ok"):
+            print(f"[dungeon] Ubuntu session restoration needs attention: {result.get('message', 'start failed')}", flush=True)
+
+
+def log_dungeon_handoff(event: str, *, status: str = "info", operation_id: str | None = None,
+                        **details: object) -> None:
+    """Append repeatable handoff diagnostics to this core's local startup trace."""
+    try:
+        STARTUP_TRACE.event(
+            f"dungeon_{event}", status=status,
+            operation_id=operation_id or ARIADNE_DELEGATION.get("operation_id"),
+            delegation_state=ARIADNE_DELEGATION.get("state"),
+            gpu_owner=GPU_OWNER, transition_state=GPU_TRANSITION_STATE,
+            **details,
+        )
+    except Exception:
+        # Diagnostics must never change resource ownership or recovery behavior.
+        pass
+
+
+def begin_dungeon_handoff() -> dict[str, object]:
+    """Quiesce Ariadne, suspend its host-owned runtime, then ask Rust to launch Dungeon."""
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
+    global IMAGE_ENGINE_PROCESS
+    if not ARIADNE_DELEGATION_LOCK.acquire(blocking=False):
+        log_dungeon_handoff("rejected", status="busy", reason="handoff_lock")
+        return {"ok": False, "state": "busy", "message": "Ariadne is already changing GPU ownership."}
+    operation_id = uuid.uuid4().hex
+    prior_models: list[str] = []
+    prior_profile = ACTIVE_PROFILE
+    image_engine_was_running = False
+    gods_eye_was_running = False
+    interactive_wsl_was_running = INTERACTIVE_PROCESS is not None and INTERACTIVE_PROCESS.poll() is None
+    stage = "preflight"
+    log_dungeon_handoff("started", status="started", operation_id=operation_id,
+                        profile=prior_profile)
+    try:
+        with GPU_ARBITRATION_LOCK:
+            if GPU_OWNER in {"RENDERER", "DUNGEON", "TRANSITION"} or GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
+                log_dungeon_handoff("rejected", status="busy", operation_id=operation_id,
+                                    reason="gpu_or_vault_busy",
+                                    gpu_ai_admissions=GPU_AI_ADMISSIONS,
+                                    vault_reservation_active=bool(GPU_VAULT_RESERVATION))
+                return {"ok": False, "state": "busy", "message": "Finish the current Ariadne GPU workload before starting Dungeon."}
+            with MODEL_ACTIVITY_LOCK:
+                active_models = {name: count for name, count in MODEL_IN_FLIGHT.items() if count > 0}
+                if active_models:
+                    log_dungeon_handoff("rejected", status="busy", operation_id=operation_id,
+                                        reason="model_in_flight", model_in_flight=active_models)
+                    return {"ok": False, "state": "busy", "message": "An Ariadne model is still processing."}
+            catalog = ollama_catalog()
+            if not catalog.get("available"):
+                log_dungeon_handoff("rejected", status="error", operation_id=operation_id,
+                                    reason="ollama_catalog_unavailable")
+                return {"ok": False, "state": "error", "message": "Ariadne cannot verify its Ollama runtime."}
+            prior_models = [str(name) for name in catalog.get("loaded", [])]
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "DUNGEON_DRAINING"
+            GPU_TRANSITION_DETAIL = "Releasing Ariadne workloads and resident models for Dungeon."
+            GPU_TRANSITION_OPERATION = operation_id
+            GPU_TRANSITION_STARTED_AT = time.monotonic()
+        ARIADNE_DELEGATION.update(state="DRAINING", operation_id=operation_id, models=prior_models,
+                                  profile=prior_profile, detail=GPU_TRANSITION_DETAIL)
+        log_dungeon_handoff("draining", status="started", operation_id=operation_id,
+                            resident_models=prior_models)
+        stage = "stop_managed_workloads"
+        eye = gods_eye_view_status()
+        gods_eye_was_running = eye.get("state") in {"Running", "Starting"} and bool(eye.get("managed"))
+        stopped_eye = _stop_gods_eye_view()
+        if not stopped_eye.get("ok"):
+            raise RuntimeError(str(stopped_eye.get("message") or "God's Eye View could not be safely released."))
+        image_engine_was_running = IMAGE_ENGINE_PROCESS is not None and IMAGE_ENGINE_PROCESS.poll() is None
+        ARIADNE_DELEGATION.update(image_engine_was_running=image_engine_was_running,
+                                  gods_eye_was_running=gods_eye_was_running,
+                                  interactive_wsl_was_running=interactive_wsl_was_running)
+        if IMAGE_ENGINE_PROCESS is not None:
+            _terminate_process(IMAGE_ENGINE_PROCESS)
+            IMAGE_ENGINE_PROCESS = None
+        release_workloads(force=True, terminate_wsl=interactive_wsl_was_running)
+        stage = "release_ollama_models"
+        released = release_idle_ollama_models(force=True)
+        log_dungeon_handoff("models_released", status="ready" if released.get("available") and not released.get("remaining") else "error",
+                            operation_id=operation_id, available=released.get("available"),
+                            remaining=released.get("remaining", []), detail=str(released.get("detail", ""))[:500])
+        if not released.get("available") or released.get("remaining"):
+            raise RuntimeError(str(released.get("detail") or "Ariadne models could not be verified as unloaded."))
+        stage = "suspend_ollama_runtime"
+        log_dungeon_handoff("runtime_suspend_requested", status="started", operation_id=operation_id)
+        suspension = host_suspend_for_external_workload(OLLAMA_URL)
+        log_dungeon_handoff("runtime_suspended", status="ready", operation_id=operation_id,
+                            runtime_state=suspension.get("state"), detail=str(suspension.get("detail", ""))[:500])
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "DUNGEON_STARTING"
+            GPU_TRANSITION_DETAIL = "Ariadne is preparing Dungeon."
+            GPU_TRANSITION_OPERATION = operation_id
+        ARIADNE_DELEGATION.update(state="DUNGEON_STARTING", detail=GPU_TRANSITION_DETAIL)
+        stage = "send_launch_ipc"
+        launch_sent = emit("launch_dungeon", operation_id=operation_id)
+        log_dungeon_handoff("launch_ipc", status="sent" if launch_sent else "error",
+                            operation_id=operation_id)
+        if not launch_sent:
+            raise RuntimeError("The Rust resident host is unavailable; Dungeon was not launched.")
+        log_dungeon_handoff("starting", status="started", operation_id=operation_id)
+        return {"ok": True, "state": "DUNGEON_STARTING", "operation_id": operation_id,
+                "url": os.environ.get("ARIADNE_DUNGEON_URL", "https://dungeon.dia.net.au/"),
+                "message": "Ariadne is preparing Dungeon."}
+    except Exception as exc:
+        log_dungeon_handoff("failed", status="error", operation_id=operation_id,
+                            stage=stage, error_type=type(exc).__name__, error=str(exc)[:1000])
+        ARIADNE_DELEGATION.update(state="FAILED", detail=str(exc))
+        ARIADNE_DELEGATION.update(state="RECOVERING", detail="Recovering Ariadne after a failed Dungeon handoff.")
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "DUNGEON_RECOVERING"
+            GPU_TRANSITION_DETAIL = "Restoring Ariadne after a failed Dungeon handoff."
+        try:
+            recovery = host_resume_after_external_workload(OLLAMA_URL)
+            log_dungeon_handoff("runtime_recovery", status="ready", operation_id=operation_id,
+                                runtime_state=recovery.get("state"), detail=str(recovery.get("detail", ""))[:500])
+        except Exception as restore_error:
+            log_dungeon_handoff("runtime_recovery", status="error", operation_id=operation_id,
+                                error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
+            print(f"[dungeon] runtime recovery after failed launch: {restore_error}", flush=True)
+        try:
+            set_profile(prior_profile)
+            log_dungeon_handoff("profile_recovery", status="ready", operation_id=operation_id,
+                                profile=prior_profile)
+        except Exception as restore_error:
+            log_dungeon_handoff("profile_recovery", status="error", operation_id=operation_id,
+                                error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
+            print(f"[dungeon] profile recovery after failed launch: {restore_error}", flush=True)
+        try:
+            restore_dungeon_suspended_workloads()
+            log_dungeon_handoff("workload_recovery", status="ready", operation_id=operation_id)
+        except Exception as restore_error:
+            log_dungeon_handoff("workload_recovery", status="error", operation_id=operation_id,
+                                error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
+            print(f"[dungeon] workload recovery after failed launch: {restore_error}", flush=True)
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "NONE"
+            GPU_TRANSITION_STATE = "IDLE"
+            GPU_TRANSITION_DETAIL = "Ariadne is available after a failed Dungeon handoff."
+            GPU_TRANSITION_OPERATION = None
+            GPU_TRANSITION_STARTED_AT = None
+        ARIADNE_DELEGATION.update(state="ARIADNE_ACTIVE", operation_id=None, detail=str(exc))
+        log_dungeon_handoff("recovered", status="ready", operation_id=operation_id,
+                            original_error=str(exc)[:1000])
+        return {"ok": False, "state": "failed", "message": str(exc)}
+    finally:
+        ARIADNE_DELEGATION_LOCK.release()
+
+
+def report_dungeon_handoff(body: dict[str, object]) -> dict[str, object]:
+    """Reconcile Rust launcher callbacks idempotently after start, exit, or failure."""
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
+    operation_id = str(body.get("operation_id") or "")
+    state = str(body.get("state") or "").upper()
+    if operation_id != ARIADNE_DELEGATION.get("operation_id"):
+        log_dungeon_handoff("callback_rejected", status="stale", operation_id=operation_id,
+                            callback_state=state)
+        return {"ok": False, "message": "Stale Dungeon lifecycle callback."}
+    log_dungeon_handoff("callback_received", status="info", operation_id=operation_id,
+                        callback_state=state)
+    if state in {"ACTIVE", "STARTING"}:
+        if state == "ACTIVE":
+            with GPU_ARBITRATION_LOCK:
+                GPU_OWNER = "DUNGEON"
+                GPU_TRANSITION_STATE = "IDLE"
+                GPU_TRANSITION_DETAIL = "Ariadne is currently running Dungeon."
+        ARIADNE_DELEGATION.update(state="DUNGEON_ACTIVE" if state == "ACTIVE" else "DUNGEON_STARTING")
+        return {"ok": True, "state": ARIADNE_DELEGATION["state"]}
+    if state not in {"CLOSED", "FAILED"}:
+        return {"ok": False, "message": "Unsupported Dungeon lifecycle state."}
+    if not ARIADNE_DELEGATION_LOCK.acquire(blocking=False):
+        return {"ok": True, "state": "RECOVERING", "message": "Dungeon recovery is already in progress."}
+    try:
+        ARIADNE_DELEGATION.update(state="RECOVERING", detail="Restoring Ariadne after Dungeon.")
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "TRANSITION"
+            GPU_TRANSITION_STATE = "DUNGEON_RESTORING"
+            GPU_TRANSITION_DETAIL = "Restoring Ariadne after Dungeon."
+        host_resume_after_external_workload(OLLAMA_URL)
+        set_profile(str(ARIADNE_DELEGATION.get("profile") or "RUN"))
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "NONE"
+            GPU_TRANSITION_STATE = "IDLE"
+            GPU_TRANSITION_DETAIL = "GPU is available to the next approved workload."
+            GPU_TRANSITION_OPERATION = None
+            GPU_TRANSITION_STARTED_AT = None
+        restore_dungeon_suspended_workloads()
+        ARIADNE_DELEGATION.update(state="ARIADNE_ACTIVE", operation_id=None, detail="Ariadne is active.")
+        log_dungeon_handoff("recovered", status="ready", operation_id=operation_id,
+                            terminal_state=state)
+        if HOME_CHAT_MODEL in ARIADNE_DELEGATION.get("models", []):
+            start_home_chat_model_preload()
+        return {"ok": True, "state": "ARIADNE_ACTIVE"}
+    except Exception as exc:
+        with GPU_ARBITRATION_LOCK:
+            GPU_OWNER = "NONE"
+            GPU_TRANSITION_STATE = "IDLE"
+            GPU_TRANSITION_DETAIL = f"Ariadne runtime recovery needs attention: {exc}"
+            GPU_TRANSITION_OPERATION = None
+            GPU_TRANSITION_STARTED_AT = None
+        ARIADNE_DELEGATION.update(state="ARIADNE_ACTIVE", operation_id=None, detail=str(exc))
+        return {"ok": False, "state": "ARIADNE_ACTIVE", "message": str(exc)}
+    finally:
+        ARIADNE_DELEGATION_LOCK.release()
 
 def start_lifecycle_watchdog() -> None:
     global LIFECYCLE_THREAD
@@ -4722,7 +4947,7 @@ def _acquire_vault_ingestion_gpu(job_id: str) -> dict[str, object]:
         activity.__enter__()
         activity_entered = True
         with GPU_ARBITRATION_LOCK:
-            if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER == "RENDERER":
+            if GPU_TRANSITION_STATE != "IDLE" or GPU_OWNER in {"RENDERER", "DUNGEON"}:
                 raise RuntimeError(f"GPU is reserved for {GPU_OWNER.casefold()}: {GPU_TRANSITION_DETAIL}")
             if GPU_AI_ADMISSIONS != 1 or GPU_VAULT_RESERVATION:
                 raise RuntimeError("Another Ariadne workload is using the GPU. Wait for it to finish before ingestion.")
@@ -5343,7 +5568,7 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
     if not home_preload.get("ok"):
         return home_preload
     with GPU_ARBITRATION_LOCK:
-        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE":
+        if GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE":
             return {"ok": False, "state": "busy", "detail": f"GPU is reserved for {GPU_OWNER.casefold()}: {GPU_TRANSITION_DETAIL}"}
         if GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
             return {"ok": False, "state": "busy", "detail": "An Ariadne GPU workload is still active. Wait for it to finish before opening Knowledge Vault."}
@@ -5352,7 +5577,7 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
     if active_models:
         return {"ok": False, "state": "busy", "detail": f"Ariadne models are still active: {', '.join(active_models)}."}
     with GPU_ARBITRATION_LOCK:
-        if GPU_OWNER == "RENDERER" or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
+        if GPU_OWNER in {"RENDERER", "DUNGEON"} or GPU_TRANSITION_STATE != "IDLE" or GPU_AI_ADMISSIONS or GPU_VAULT_RESERVATION:
             return {"ok": False, "state": "busy", "detail": "A GPU workload started during Knowledge Vault preflight. Wait for it to finish and retry."}
         reservation_id = f"vault-preflight-{uuid.uuid4().hex}"
         GPU_VAULT_RESERVATION = reservation_id
@@ -9295,6 +9520,14 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         try:
             body = self.read_json()
+            if path == "/api/dungeon/start":
+                result = begin_dungeon_handoff()
+                self.send_json(result, 202 if result.get("ok") else 409)
+                return
+            if path == "/api/dungeon/status":
+                result = report_dungeon_handoff(body)
+                self.send_json(result, 200 if result.get("ok") else 409)
+                return
             if path == '/api/rabbit-hole/library':
                 try:
                     if body.get('action') in {'dismiss', 'undo'}:
