@@ -38,7 +38,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.inference_lease_patch = patch.object(
             server, "inference_lease", side_effect=lambda *args, **kwargs: nullcontext()
         )
-        self.inference_lease_patch.start()
+        self.inference_lease_mock = self.inference_lease_patch.start()
         with server.MODEL_ACTIVITY_LOCK:
             server.MODEL_IN_FLIGHT.clear()
             server.MODEL_LAST_USED.clear()
@@ -113,8 +113,14 @@ class VaultGpuWorkflowTests(unittest.TestCase):
              patch.object(server, "preload_ollama_model", return_value={"ok": True, "model": "ingestion-model"}) as preload:
             state = server._acquire_vault_ingestion_gpu("job-1")
         self.assertEqual(state["state"], "resident")
-        preload.assert_called_once_with("ingestion-model", keep_alive=-1,
+        preload.assert_called_once_with("ingestion-model", options={"num_ctx": 16_384}, keep_alive=-1,
                                         reason="vault_ingestion_preflight", allow_calibration=True)
+        self.assertEqual(
+            self.inference_lease_mock.call_args_list,
+            [
+                unittest.mock.call("ingestion-model", server.OLLAMA_URL, context_length=16_384),
+            ],
+        )
         self.assertEqual(server.GPU_OWNER, "VAULT")
         self.assertEqual(server.GPU_VAULT_RESERVATION, "job-1")
         self.assertEqual(server.MODEL_IN_FLIGHT.get("ingestion-model"), 1)

@@ -1674,12 +1674,12 @@ def tracked_model_activity(model: str):
 
 
 @contextmanager
-def model_activity(model: str):
+def model_activity(model: str, *, context_length: int = 4096):
     """Track activity locally while Rust owns admission and residency decisions."""
     name = str(model or "").strip()
     with tracked_model_activity(name):
         if name:
-            with inference_lease(name, OLLAMA_URL):
+            with inference_lease(name, OLLAMA_URL, context_length=context_length):
                 yield
         else:
             yield
@@ -4964,7 +4964,7 @@ def _acquire_vault_ingestion_gpu(job_id: str) -> dict[str, object]:
         raise RuntimeError("No Knowledge Vault ingestion model is configured.")
     admission = ai_gpu_admission()
     admission.__enter__()
-    activity = model_activity(model)
+    activity = model_activity(model, context_length=VAULT_QUERY_CONTEXT_TOKENS)
     activity_entered = False
     try:
         activity.__enter__()
@@ -4992,7 +4992,8 @@ def _acquire_vault_ingestion_gpu(job_id: str) -> dict[str, object]:
         unexpected = {str(name) for name in remaining_models.get("loaded", [])} - {model}
         if unexpected:
             raise RuntimeError(f"Could not release competing resident models: {', '.join(sorted(unexpected))}.")
-        preload = preload_ollama_model(model, keep_alive=-1, reason="vault_ingestion_preflight",
+        preload = preload_ollama_model(model, options={"num_ctx": VAULT_QUERY_CONTEXT_TOKENS},
+                                       keep_alive=-1, reason="vault_ingestion_preflight",
                                        allow_calibration=True)
         if not preload.get("ok"):
             raise RuntimeError(str(preload.get("detail") or "The ingestion model could not be loaded."))
