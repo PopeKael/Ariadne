@@ -1,9 +1,11 @@
-"""Small Windows Credential Manager wrapper for Ariadne API credentials."""
+"""Windows Credential Manager wrapper for Ariadne provider and tunnel secrets."""
 from __future__ import annotations
 
 import ctypes
+import argparse
 import os
 import re
+import sys
 from ctypes import wintypes
 
 
@@ -12,6 +14,8 @@ _CRED_PERSIST_LOCAL_MACHINE = 2
 _TARGETS = {
     "GROQ_API_KEY": "Ariadne/Groq/API_KEY",
     "GOOGLE_API_KEY": "Ariadne/GoogleGemini/API_KEY",
+    "ARIADNE_MCP_BEARER_TOKEN": "Ariadne/KnowledgeVault/MCP_BEARER_TOKEN",
+    "OPENAI_TUNNEL_API_KEY": "Ariadne/KnowledgeVault/OpenAI_TUNNEL_API_KEY",
 }
 
 
@@ -70,7 +74,7 @@ def save_credential(reference: str, secret: str) -> None:
     blob = (ctypes.c_ubyte * len(encoded)).from_buffer_copy(encoded)
     credential = _CREDENTIAL(
         Flags=0, Type=_CRED_TYPE_GENERIC, TargetName=_target(reference),
-        Comment=f"Ariadne optional provider credential: {reference}", LastWritten=wintypes.FILETIME(0, 0),
+        Comment=f"Ariadne secured runtime credential: {reference}", LastWritten=wintypes.FILETIME(0, 0),
         CredentialBlobSize=len(encoded), CredentialBlob=ctypes.cast(blob, ctypes.POINTER(ctypes.c_ubyte)),
         Persist=_CRED_PERSIST_LOCAL_MACHINE, AttributeCount=0, Attributes=None,
         TargetAlias=None, UserName="Ariadne",
@@ -94,3 +98,23 @@ def delete_credential(reference: str) -> None:
         error = ctypes.get_last_error()
         if error != 1168:
             raise OSError(error, "Windows Credential Manager could not remove the API key.")
+
+
+def main() -> int:
+    """Store an interactive setup secret supplied on stdin, never as an argument."""
+    parser = argparse.ArgumentParser(description="Store an Ariadne credential from standard input.")
+    parser.add_argument("store-stdin", choices=["store-stdin"])
+    parser.add_argument("reference", choices=["OPENAI_TUNNEL_API_KEY", "ARIADNE_MCP_BEARER_TOKEN"])
+    args = parser.parse_args()
+    secret = sys.stdin.read().strip()
+    try:
+        save_credential(args.reference, secret)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(f"Stored {args.reference} in Windows Credential Manager.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

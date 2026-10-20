@@ -2,6 +2,7 @@
 
 mod idle_webm;
 mod gpu_residency;
+mod managed_mcp;
 mod ollama_supervisor;
 mod startup_trace;
 
@@ -2752,6 +2753,9 @@ fn run(origin: Instant) -> Result<(), String> {
             GetCurrentProcessId()
         ));
         let runtime_supervisor = ollama_supervisor::OllamaSupervisor::start();
+        // Vault MCP and its optional outbound tunnel belong to the resident
+        // Host lifecycle, not to a browser page or the Python core lifecycle.
+        let mut managed_mcp = managed_mcp::ManagedMcpServices::start(project_root.clone());
         let stop_runtime_pipe = Arc::new(AtomicBool::new(false));
         let runtime_pipe_thread = ollama_supervisor::pipe_receiver(
             runtime_supervisor.clone(),
@@ -2851,6 +2855,7 @@ fn run(origin: Instant) -> Result<(), String> {
         // the other end of the named pipe and may otherwise keep a blocking
         // read alive long enough to prevent the host from reaching orderly
         // shutdown completion.
+        managed_mcp.stop();
         supervisor.stop();
         runtime_supervisor.stop();
         stop_runtime_pipe.store(true, Ordering::Release);
