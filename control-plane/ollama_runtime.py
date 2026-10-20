@@ -309,6 +309,7 @@ def _request_host_ollama(
 def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
                         lease_id: str | None = None, force: bool | None = None,
                         preserve_models: list[str] | None = None,
+                        context_length: int | None = None, allow_calibration: bool | None = None,
                         timeout: float = 20.0) -> dict[str, object]:
     """Transport a residency request to the Rust host; policy lives there."""
     if os.name != "nt":
@@ -322,6 +323,10 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
     request: dict[str, object] = {"v": 1, "type": kind, "endpoint": endpoint}
     if model is not None:
         request["model"] = model
+    if context_length is not None:
+        request["context_length"] = int(context_length)
+    if allow_calibration is not None:
+        request["allow_calibration"] = bool(allow_calibration)
     if lease_id is not None:
         request["lease_id"] = lease_id
     if force is not None:
@@ -350,9 +355,12 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
 
 
 @contextmanager
-def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT):
+def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int = 4096,
+                    allow_calibration: bool = False):
     """Admit local inference only after the Rust host checks Ollama and WDDM residency."""
-    result = _request_host_model("admit_model", endpoint=endpoint, model=model)
+    result = _request_host_model("admit_model", endpoint=endpoint, model=model,
+                                 context_length=context_length, allow_calibration=allow_calibration,
+                                 timeout=330.0 if allow_calibration else 20.0)
     lease_id = str(result.get("lease_id") or "")
     if not lease_id:
         raise RuntimeError("Rust host admitted inference without returning a lease; request blocked.")
@@ -365,6 +373,32 @@ def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT):
             # Do not hide an inference result, but leave a durable warning for
             # the host's next reconciliation and operational diagnostics.
             logging.getLogger(__name__).error("Could not release inference lease %s: %s", lease_id, exc)
+
+
+def host_acquire_model_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int = 4096,
+                             allow_calibration: bool = False) -> str:
+    """Acquire a Rust-host model lease that survives beyond one inference call."""
+    result = _request_host_model("admit_model", endpoint=endpoint, model=model,
+                                 context_length=context_length, allow_calibration=allow_calibration,
+                                 timeout=330.0 if allow_calibration else 20.0)
+    lease_id = str(result.get("lease_id") or "")
+    if not lease_id:
+        raise RuntimeError("Rust host admitted the model without returning a lease; session blocked.")
+    return lease_id
+
+
+def host_renew_model_lease(lease_id: str, endpoint: str = DEFAULT_ENDPOINT) -> None:
+    """Renew a session-scoped Rust-host model lease from its live heartbeat."""
+    if not lease_id:
+        raise RuntimeError("Cannot renew an empty Rust-host model lease.")
+    _request_host_model("renew_model_lease", endpoint=endpoint, lease_id=lease_id)
+
+
+def host_release_model_lease(lease_id: str, endpoint: str = DEFAULT_ENDPOINT) -> None:
+    """Release a session-scoped Rust-host model lease."""
+    if not lease_id:
+        return
+    _request_host_model("release_model", endpoint=endpoint, lease_id=lease_id, timeout=20.0)
 
 
 def host_unload_model(model: str, endpoint: str = DEFAULT_ENDPOINT) -> dict[str, object]:

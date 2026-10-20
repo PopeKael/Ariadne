@@ -88,8 +88,11 @@ from librarian_harness import (
     request_needs_personal_context,
 )
 from ollama_runtime import (
+    host_acquire_model_lease,
+    host_release_model_lease,
     host_resume_after_external_workload,
     host_release_idle_models,
+    host_renew_model_lease,
     host_suspend_for_external_workload,
     host_unload_model,
     inference_lease,
@@ -1649,8 +1652,8 @@ def ai_gpu_admission():
 
 
 @contextmanager
-def model_activity(model: str):
-    """Track activity locally while Rust owns admission and residency decisions."""
+def tracked_model_activity(model: str):
+    """Track local activity without acquiring a second Rust-host lease."""
     ensure_ai_gpu_access()
     name = str(model or "").strip()
     if name:
@@ -1658,11 +1661,7 @@ def model_activity(model: str):
             MODEL_IN_FLIGHT[name] = MODEL_IN_FLIGHT.get(name, 0) + 1
             MODEL_LAST_USED[name] = time.monotonic()
     try:
-        if name:
-            with inference_lease(name, OLLAMA_URL):
-                yield
-        else:
-            yield
+        yield
     finally:
         if name:
             with MODEL_ACTIVITY_LOCK:
@@ -1672,6 +1671,18 @@ def model_activity(model: str):
                 else:
                     MODEL_IN_FLIGHT.pop(name, None)
                 MODEL_LAST_USED[name] = time.monotonic()
+
+
+@contextmanager
+def model_activity(model: str):
+    """Track activity locally while Rust owns admission and residency decisions."""
+    name = str(model or "").strip()
+    with tracked_model_activity(name):
+        if name:
+            with inference_lease(name, OLLAMA_URL):
+                yield
+        else:
+            yield
 
 
 def ollama_catalog() -> dict[str, object]:
@@ -1945,10 +1956,10 @@ def monitor_ollama_models() -> dict[str, object]:
                 str(name) for name in ollama_catalog().get("loaded", [])
             }:
                 with ai_gpu_admission():
-                    with model_activity(HOME_CHAT_MODEL):
+                    with tracked_model_activity(HOME_CHAT_MODEL):
                         loaded = preload_ollama_model(
                             HOME_CHAT_MODEL, keep_alive=HOME_MODEL_KEEP_ALIVE,
-                            reason=recovery_reason,
+                            reason=recovery_reason, allow_calibration=True,
                         )
                 if not loaded.get("ok"):
                     raise RuntimeError(str(loaded.get("detail") or "Core model preload failed."))
@@ -2023,7 +2034,7 @@ def model_memory_snapshot(gpu: dict[str, object] | None = None) -> dict[str, obj
 
 def preload_ollama_model(model: str | None = None, *, options: dict[str, object] | None = None,
                          thinking: str | None = None, keep_alive: int | str | None = None,
-                         reason: str = "explicit") -> dict[str, object]:
+                         reason: str = "explicit", allow_calibration: bool = False) -> dict[str, object]:
     selected_model = (model or OLLAMA_CHAT_MODEL).strip() or OLLAMA_CHAT_MODEL
     selected_keep_alive: int | str = OLLAMA_PRELOAD_KEEP_ALIVE if keep_alive is None else keep_alive
     if keep_alive is None and OLLAMA_PRELOAD_KEEP_ALIVE.casefold() == "adaptive":
@@ -2042,7 +2053,10 @@ def preload_ollama_model(model: str | None = None, *, options: dict[str, object]
     record_model_residency_event("model_load_requested", model=selected_model, reason=reason,
                                  detail={"keep_alive": selected_keep_alive})
     try:
-        with inference_lease(selected_model, OLLAMA_URL):
+        requested_context = (options or {}).get("num_ctx", 4096)
+        with inference_lease(selected_model, OLLAMA_URL,
+                             context_length=int(requested_context) if isinstance(requested_context, int) else 4096,
+                             allow_calibration=allow_calibration):
             response = post_json(f"{OLLAMA_URL}/api/generate", payload, timeout=300.0)
         load_duration = response.get("load_duration")
         detail = f"{selected_model} is loaded in memory"
@@ -2076,9 +2090,9 @@ def _preload_home_chat_model_worker(model: str) -> None:
                 record_model_residency_event("home_model_preload_already_resident", model=model,
                                              reason="home_session_start")
                 return
-            with model_activity(model):
+            with tracked_model_activity(model):
                 result = preload_ollama_model(model, keep_alive=HOME_MODEL_KEEP_ALIVE,
-                                              reason="home_session_preload")
+                                              reason="home_session_preload", allow_calibration=True)
             if not result.get("ok"):
                 raise RuntimeError(str(result.get("detail") or "Home model preload failed."))
             verified = ollama_catalog()
@@ -2808,11 +2822,11 @@ def switch_active_model(model: object) -> tuple[dict[str, object], int]:
                 unload_ollama_model(old_model, reason="selected_model_switch")
 
         preload = preload_ollama_model(requested, keep_alive=HOME_MODEL_KEEP_ALIVE,
-                                       reason="selected_model_switch")
+                                       reason="selected_model_switch", allow_calibration=True)
         if not preload.get("ok"):
             if previous_model and previous_model != requested:
                 preload_ollama_model(previous_model, keep_alive=HOME_MODEL_KEEP_ALIVE,
-                                     reason="selected_model_switch_rollback")
+                                     reason="selected_model_switch_rollback", allow_calibration=True)
             return {"ok": False, "message": str(preload.get("detail") or "The selected model could not be loaded.")}, 503
 
         saved = save_configuration(inference=_inference_configuration_for_model(requested))
@@ -4788,7 +4802,16 @@ def _close_session(session_id: str) -> bool:
                 else:
                     MODEL_IN_FLIGHT.pop(model, None)
                 MODEL_LAST_USED[model] = time.monotonic()
-            unload_ollama_model(model, reason="knowledge_vault_page_exit")
+            lease_released = True
+            host_lease_id = str(session.pop("host_model_lease_id", "") or "")
+            if host_lease_id:
+                try:
+                    host_release_model_lease(host_lease_id, OLLAMA_URL)
+                except Exception as exc:
+                    lease_released = False
+                    print(f"[vault-session] Rust-host model lease release failed: {exc}", flush=True)
+            if lease_released:
+                unload_ollama_model(model, reason="knowledge_vault_page_exit")
     if last_session:
         shutdown_idle_workloads()
     if session.get("surface") == "knowledge-vault":
@@ -4969,7 +4992,8 @@ def _acquire_vault_ingestion_gpu(job_id: str) -> dict[str, object]:
         unexpected = {str(name) for name in remaining_models.get("loaded", [])} - {model}
         if unexpected:
             raise RuntimeError(f"Could not release competing resident models: {', '.join(sorted(unexpected))}.")
-        preload = preload_ollama_model(model, keep_alive=-1, reason="vault_ingestion_preflight")
+        preload = preload_ollama_model(model, keep_alive=-1, reason="vault_ingestion_preflight",
+                                       allow_calibration=True)
         if not preload.get("ok"):
             raise RuntimeError(str(preload.get("detail") or "The ingestion model could not be loaded."))
         catalog = ollama_catalog()
@@ -5585,6 +5609,7 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
     preflight_succeeded = False
     ingestion_model_loaded = False
     ingestion_model_protected = False
+    host_model_lease_id = ""
     try:
         with MODEL_ACTIVITY_LOCK:
             active_models = sorted(name for name, count in MODEL_IN_FLIGHT.items() if count > 0)
@@ -5593,21 +5618,19 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
         catalog = ollama_catalog()
         if not catalog.get("available"):
             return {"ok": False, "state": "unverified", "detail": str(catalog.get("detail") or "Ollama residency could not be verified.")}
-        release = release_idle_ollama_models(force=True)
-        if release.get("protected"):
-            return {"ok": False, "state": "busy", "detail": f"Ariadne models remain protected: {', '.join(release['protected'])}."}
-        after_release = ollama_catalog()
-        if not after_release.get("available"):
-            return {"ok": False, "state": "unverified", "detail": "Ollama became unavailable while verifying model release."}
-        remaining = [str(name) for name in after_release.get("loaded", [])]
-        if remaining:
-            return {"ok": False, "state": "busy", "detail": f"Could not clear resident Ariadne models: {', '.join(remaining)}."}
         ingestion_model = str(OLLAMA_CHAT_MODEL or "").strip()
         if not ingestion_model:
             return {"ok": False, "state": "unconfigured", "detail": "Knowledge Vault ingestion model is not configured."}
+        # Rust owns model loading, verified runtime profiles and the session lease.
+        # A first explicit Vault start may calibrate this exact digest/runtime key.
+        host_model_lease_id = host_acquire_model_lease(
+            ingestion_model, OLLAMA_URL,
+            context_length=VAULT_QUERY_CONTEXT_TOKENS,
+            allow_calibration=True,
+        )
         ingestion_model_loaded = True
         loaded = preload_ollama_model(ingestion_model, options={"num_ctx": VAULT_QUERY_CONTEXT_TOKENS}, keep_alive=-1,
-                                      reason="vault_ingestion_page_entry")
+                                      reason="vault_ingestion_page_entry", allow_calibration=True)
         if not loaded.get("ok"):
             return {"ok": False, "state": "model_load_failed",
                     "detail": str(loaded.get("detail") or f"Could not load {ingestion_model} for Knowledge Vault.")}
@@ -5628,9 +5651,15 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
                     "detail": f"Vault model {ingestion_model} reports {actual_context_label} context tokens; this page requires a verified {VAULT_QUERY_CONTEXT_TOKENS:,}-token context."}
         preflight_succeeded = True
         return {"ok": True, "state": "ready", "detail": f"Ariadne GPU is clear; Vault model {ingestion_model} is resident and protected with a {VAULT_QUERY_CONTEXT_TOKENS:,}-token query context.",
-                "models_released": release.get("unloaded", []), "ingestion_model": OLLAMA_CHAT_MODEL}
+                "models_released": [], "ingestion_model": OLLAMA_CHAT_MODEL,
+                "_host_model_lease_id": host_model_lease_id}
     finally:
         if not preflight_succeeded:
+            if host_model_lease_id:
+                try:
+                    host_release_model_lease(host_model_lease_id, OLLAMA_URL)
+                except Exception as exc:
+                    print(f"[vault-session] Rust-host model lease rollback failed: {exc}", flush=True)
             if ingestion_model_protected:
                 with MODEL_ACTIVITY_LOCK:
                     remaining = MODEL_IN_FLIGHT.get(OLLAMA_CHAT_MODEL, 1) - 1
@@ -9920,16 +9949,18 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     if not preflight.get("ok"):
                         self.send_json({"ok": False, "message": preflight.get("detail"), "gpu": preflight}, 409)
                         return
+                    public_preflight = {key: value for key, value in preflight.items() if not key.startswith("_")}
                     IDLE_SHUTDOWN_DONE = False
                     with SESSION_LOCK:
                         SESSIONS[session_id] = {
                             "last_seen": time.monotonic(), "jobs": set(), "used_ollama": False,
-                            "processing": False, "surface": "knowledge-vault", "gpu_entry": preflight,
+                            "processing": False, "surface": "knowledge-vault", "gpu_entry": public_preflight,
                             "ingestion_model": preflight.get("ingestion_model"),
                             "ingestion_model_protected": True,
+                            "host_model_lease_id": preflight.get("_host_model_lease_id"),
                         }
                     self.send_json({"ok": True, "session_id": session_id, "surface": surface,
-                                    "gpu": preflight, "heartbeat_seconds": 5})
+                                    "gpu": public_preflight, "heartbeat_seconds": 5})
                     return
                 expire_home_chats()
                 requested_chat_id = body.get("chat_id")
@@ -9983,6 +10014,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     if not session:
                         self.send_json({"ok": False, "message": "Ariadne session is not active."}, 404)
                     else:
+                        if session.get("surface") == "knowledge-vault":
+                            try:
+                                host_renew_model_lease(str(session.get("host_model_lease_id") or ""), OLLAMA_URL)
+                            except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
+                                self.send_json({"ok": False, "message": f"Rust host could not renew the Knowledge Vault model lease: {exc}"}, 503)
+                                return
                         self.send_json({"ok": True, "session": vault_session_status()})
                     return
                 if not _close_session(str(session_id or "")):

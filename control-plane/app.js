@@ -426,6 +426,23 @@ function markVaultSessionLost(message = "Start an Ariadne session first.") {
   updateSessionButtons();
 }
 
+function markVaultSessionUnavailable(message) {
+  if (vaultHeartbeat) clearInterval(vaultHeartbeat);
+  vaultHeartbeat = null;
+  vaultSessionId = null;
+  vaultIngestionModel = null;
+  vaultSessionLabel("Session unavailable", "offline");
+  const modelBadge = document.querySelector("#vault-query-model");
+  if (modelBadge) modelBadge.textContent = "MODEL · NOT READY";
+  const status = document.querySelector("#vault-query-status");
+  if (status) {
+    status.className = "vault-status error";
+    status.textContent = message;
+  }
+  setVaultControlsDisabled(true);
+  updateSessionButtons();
+}
+
 function renderVaultJob(job) {
   const monitor = document.querySelector("#vault-job-monitor");
   const title = document.querySelector("#vault-job-title");
@@ -559,9 +576,7 @@ async function startVaultSession(surface = document.body.classList.contains("con
     activateVaultSession(session, surface);
   } catch (error) {
     if (transition === vaultSessionTransition) {
-      markVaultSessionLost(error.message);
-      const label = document.querySelector("#vault-session-state");
-      if (label) label.textContent = `Knowledge Vault not ready · ${error.message}`;
+      markVaultSessionUnavailable(`Knowledge Vault not ready · ${error.message}`);
     }
   }
 }

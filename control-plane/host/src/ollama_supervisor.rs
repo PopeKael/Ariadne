@@ -21,7 +21,8 @@ use std::os::windows::process::CommandExt;
 const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:11434";
 const DEFAULT_STORE: &str = r"F:\AI\Models\Ollama";
 const PIPE_NAME: &str = r"\\.\pipe\ariadne-runtime";
-const UNKNOWN_GPU_OWNER_BLOCK_BYTES: u64 = 1024 * 1024 * 1024;
+const GPU_SAFETY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
+const UNKNOWN_GPU_OWNER_BLOCK_BYTES: u64 = GPU_SAFETY_RESERVE_BYTES;
 
 #[derive(Debug, Deserialize)]
 struct RuntimeRequest {
@@ -32,6 +33,8 @@ struct RuntimeRequest {
     model_store: Option<String>,
     required_models: Option<Vec<String>>,
     model: Option<String>,
+    context_length: Option<u32>,
+    allow_calibration: Option<bool>,
     lease_id: Option<String>,
     force: Option<bool>,
     preserve_models: Option<Vec<String>>,
@@ -66,11 +69,23 @@ struct ManagedRuntime {
     required_models: Vec<String>,
     executable: PathBuf,
     version: Option<String>,
+    num_parallel: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+struct ResidencyProfile {
+    digest: String,
+    ollama_version: String,
+    context_length: u32,
+    num_parallel: u32,
+    model_bytes: u64,
+    gpu_bytes: u64,
+    wddm_impact_bytes: u64,
 }
 
 struct InferenceLease {
     model: String,
-    acquired_at: Instant,
+    last_renewed_at: Instant,
 }
 
 impl Drop for ManagedRuntime {
@@ -155,24 +170,24 @@ impl OllamaSupervisor {
         }
     }
 
-    fn admit_model(&self, endpoint: String, model: String) -> RuntimeResponse {
+    fn admit_model(&self, endpoint: String, model: String, context_length: u32, allow_calibration: bool) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         if state.externally_delegated { return RuntimeResponse::error("Ariadne runtime is delegated to Dungeon; model admission is paused."); }
         prune_expired_leases(&mut state);
-        let (pid, version, models) = {
+        let (pid, version, models, num_parallel) = {
             let Some(runtime) = state.runtime.as_mut() else { return RuntimeResponse::error("Rust host has not established Ollama ownership; inference is blocked.") };
             if endpoint_address(&runtime.endpoint).ok() != endpoint_address(&endpoint).ok()
                 || runtime.child.try_wait().ok().flatten().is_some() {
                 return RuntimeResponse::error("Ollama runtime identity is not healthy; inference is blocked pending host reconciliation.");
             }
-            (runtime.child.id(), runtime.version.clone(), runtime.required_models.clone())
+            (runtime.child.id(), runtime.version.clone(), runtime.required_models.clone(), runtime.num_parallel)
         };
         let active_models: std::collections::HashMap<String, String> = state.inference_leases.iter()
             .map(|(id, lease)| (id.clone(), lease.model.clone())).collect();
-        match preflight_model(&endpoint, &model, &active_models) {
+        match preflight_model(&endpoint, &model, context_length, num_parallel, version.as_deref().unwrap_or(""), allow_calibration, &active_models) {
             Ok((lease_id, inventory, detail)) => {
                 log_line(&detail);
-                state.inference_leases.insert(lease_id.clone(), InferenceLease { model, acquired_at: Instant::now() });
+                state.inference_leases.insert(lease_id.clone(), InferenceLease { model, last_renewed_at: Instant::now() });
                 RuntimeResponse {
                     v: 1, ok: true, state: "admitted".into(), detail, pid: Some(pid),
                     version, models,
@@ -194,6 +209,19 @@ impl OllamaSupervisor {
             RuntimeResponse { v: 1, ok: true, state: "released".into(), detail: "Inference lease released.".into(), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
         } else {
             RuntimeResponse::error("Unknown or already released inference lease.")
+        }
+    }
+
+    fn renew_model_lease(&self, lease_id: &str) -> RuntimeResponse {
+        let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        prune_expired_leases(&mut state);
+        if let Some(lease) = state.inference_leases.get_mut(lease_id) {
+            lease.last_renewed_at = Instant::now();
+            let model = lease.model.clone();
+            log_line(&format!("Renewed Rust-host model lease '{}' for '{}'.", lease_id, model));
+            RuntimeResponse { v: 1, ok: true, state: "renewed".into(), detail: "Model lease renewed.".into(), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
+        } else {
+            RuntimeResponse::error("Unknown or expired Rust-host model lease.")
         }
     }
 
@@ -414,8 +442,13 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
             Ok(request) if request.v == 1 && request.kind == "admit_model" => supervisor.admit_model(
                 request.endpoint.unwrap_or_else(|| DEFAULT_ENDPOINT.into()),
                 request.model.unwrap_or_default(),
+                request.context_length.unwrap_or(4096),
+                request.allow_calibration.unwrap_or(false),
             ),
             Ok(request) if request.v == 1 && request.kind == "release_model" => supervisor.release_model(
+                request.lease_id.as_deref().unwrap_or_default(),
+            ),
+            Ok(request) if request.v == 1 && request.kind == "renew_model_lease" => supervisor.renew_model_lease(
                 request.lease_id.as_deref().unwrap_or_default(),
             ),
             Ok(request) if request.v == 1 && request.kind == "unload_model" => supervisor.unload_model(
@@ -516,8 +549,9 @@ fn ensure_locked(state: &mut State, endpoint: String, store: String, models: Vec
         if !manifest.is_file() { return Err(format!("Required Ollama model manifest is missing: {model}")); }
     }
     let executable = find_ollama_executable()?;
+    let num_parallel = effective_num_parallel()?;
     let mut command = Command::new(&executable);
-    command.arg("serve").env("OLLAMA_MODELS", &store).current_dir(executable.parent().unwrap_or(Path::new(".")))
+    command.arg("serve").env("OLLAMA_MODELS", &store).env("OLLAMA_NUM_PARALLEL", num_parallel.to_string()).current_dir(executable.parent().unwrap_or(Path::new(".")))
         .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     #[cfg(windows)] { use std::os::windows::process::CommandExt; command.creation_flags(0x0800_0000); }
     let child = command.spawn().map_err(|error| format!("Rust host could not start {}: {error}", executable.display()))?;
@@ -531,8 +565,8 @@ fn ensure_locked(state: &mut State, endpoint: String, store: String, models: Vec
             return Err(format!("Ollama process ownership could not be established: {error}"));
         }
     };
-    log_line(&format!("Rust host launched Ollama: pid={pid}, executable={}, store={store}", executable.display()));
-    state.runtime = Some(ManagedRuntime { child, job: job.0 as isize, endpoint: endpoint.clone(), model_store: store.clone(), required_models: models.clone(), executable, version: None });
+    log_line(&format!("Rust host launched Ollama: pid={pid}, executable={}, store={store}, effective OLLAMA_NUM_PARALLEL={num_parallel}", executable.display()));
+    state.runtime = Some(ManagedRuntime { child, job: job.0 as isize, endpoint: endpoint.clone(), model_store: store.clone(), required_models: models.clone(), executable, version: None, num_parallel });
     state.desired = Some((endpoint, store, models));
     let runtime = state.runtime.as_mut().expect("runtime was just created");
     let deadline = Instant::now() + Duration::from_secs(45);
@@ -764,11 +798,11 @@ fn report_unknown_gpu_owners(snapshot: &super::gpu_residency::GpuMemorySnapshot,
 
 fn prune_expired_leases(state: &mut State) {
     let expired: Vec<String> = state.inference_leases.iter()
-        .filter(|(_, lease)| lease.acquired_at.elapsed() > Duration::from_secs(15 * 60))
+        .filter(|(_, lease)| lease.last_renewed_at.elapsed() > Duration::from_secs(15 * 60))
         .map(|(id, _)| id.clone()).collect();
     for id in expired {
         if let Some(lease) = state.inference_leases.remove(&id) {
-            log_line(&format!("Expired stale inference lease '{}' for '{}' after 15 minutes.", id, lease.model));
+            log_line(&format!("Expired stale model lease '{}' for '{}' after 15 minutes without a heartbeat.", id, lease.model));
         }
     }
 }
@@ -801,15 +835,32 @@ fn runtime_health(runtime: &mut ManagedRuntime) -> Result<RuntimeResponse, Strin
 fn preflight_model(
     endpoint: &str,
     model: &str,
+    context_length: u32,
+    num_parallel: u32,
+    ollama_version: &str,
+    allow_calibration: bool,
     leases: &std::collections::HashMap<String, String>,
 ) -> Result<(String, serde_json::Value, String), String> {
     if model.trim().is_empty() { return Err("Inference request did not specify a model; blocked by Rust-host preflight.".into()); }
     let model_row = ollama_tags(endpoint)?.into_iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)))
         .ok_or_else(|| format!("Requested model '{model}' is not in Ollama's local catalogue; inference blocked."))?;
-    let model_bytes = model_row.get("size").and_then(|v| v.as_u64()).unwrap_or(0);
-    if model_bytes == 0 { return Err(format!("Ollama did not report a model size for '{model}'; GPU admission cannot be established.")); }
-    let mut resident = ollama_models(endpoint)?;
+    let digest = model_row.get("digest").and_then(|v| v.as_str()).unwrap_or_default().to_owned();
+    if digest.is_empty() { return Err(format!("Ollama did not report a digest for '{model}'; runtime profile cannot be keyed safely.")); }
+    if context_length == 0 || num_parallel == 0 || ollama_version.is_empty() {
+        return Err("Runtime profile key is incomplete (context, effective parallelism or Ollama version); inference blocked.".into());
+    }
+    let key = (digest.as_str(), ollama_version, context_length, num_parallel);
+    let mut profiles = load_residency_profiles()?;
+    let known_profile = profiles.iter().find(|profile| profile_matches(profile, key)).cloned();
+    if known_profile.is_none() && !allow_calibration {
+        return Err(format!("No verified full-GPU residency profile exists for '{model}' (digest {}, Ollama {}, context {}, parallelism {}). Explicit calibration is required; inference was not sent.", &digest[..digest.len().min(12)], ollama_version, context_length, num_parallel));
+    }
+    let resident = ollama_models(endpoint)?;
     let target_was_resident = resident.iter().any(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)));
+    let reload_target_for_calibration = target_was_resident && known_profile.is_none();
+    if reload_target_for_calibration && leases.values().any(|leased| ollama_model_name_matches(leased, model)) {
+        return Err(format!("'{model}' is already in active use and has no matching runtime profile; calibration cannot unload a leased model."));
+    }
     for row in &resident {
         let Some(name) = row.get("name").and_then(|v| v.as_str()) else { continue };
         if ollama_model_name_matches(model, name) { continue; }
@@ -817,34 +868,167 @@ fn preflight_model(
             return Err(format!("GPU preflight found Ollama model '{name}' resident and in active use; '{model}' must wait."));
         }
     }
-    for row in &resident {
-        let Some(name) = row.get("name").and_then(|v| v.as_str()) else { continue };
-        if !ollama_model_name_matches(model, name) { unload_model(endpoint, name)?; }
+    let previous_models: Vec<serde_json::Value> = resident.iter().filter(|row| {
+        row.get("name").and_then(|v| v.as_str()).is_some_and(|name| !ollama_model_name_matches(model, name))
+    }).cloned().collect();
+    let mut models_to_release = previous_models.clone();
+    let mut models_to_restore = previous_models.clone();
+    if reload_target_for_calibration {
+        if let Some(row) = resident.iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name))) {
+            models_to_release.push(row.clone());
+            models_to_restore.push(row.clone());
+        }
     }
+    let result = (|| -> Result<(serde_json::Value, String), String> {
+        for row in &models_to_release {
+            let name = row.get("name").and_then(|v| v.as_str()).unwrap_or_default();
+            if !name.is_empty() { unload_model(endpoint, name)?; }
+        }
+        wait_for_only_target(endpoint, model)?;
+        // Baseline is measured after idle models have been released and immediately before load.
+        let before = super::gpu_residency::sample().map_err(|error| format!("WDDM baseline unavailable after idle-model release: {error}"))?;
+        let reserve = GPU_SAFETY_RESERVE_BYTES;
+        if before.free_bytes <= reserve {
+            return Err(format!("Calibration blocked before preload: WDDM free memory is {} MiB, which does not exceed the configured 1024 MiB reserve.", before.free_bytes / 1_048_576));
+        }
+        if let Some(profile) = known_profile.as_ref().filter(|_| !target_was_resident) {
+            if before.free_bytes < profile.wddm_impact_bytes.saturating_add(reserve) {
+                return Err(format!("Verified profile requires about {} MiB WDDM impact plus the configured 1024 MiB reserve; baseline free is {} MiB. Model was not loaded.", profile.wddm_impact_bytes / 1_048_576, before.free_bytes / 1_048_576));
+            }
+        } else if known_profile.is_none() {
+            log_line(&format!("Explicit residency calibration started for '{model}': digest={}, Ollama={ollama_version}, context={context_length}, parallelism={num_parallel}; baseline WDDM free={} MiB.", &digest[..digest.len().min(12)], before.free_bytes / 1_048_576));
+        }
+        let loaded_by_this_admission = !target_was_resident || reload_target_for_calibration;
+        if loaded_by_this_admission {
+            let preload = serde_json::json!({"model": model, "prompt": "", "stream": false, "keep_alive": -1, "options": {"num_ctx": context_length}});
+            ollama_http_timeout(endpoint, "POST", "/api/generate", Some(&preload), 300)?;
+        }
+        let after = super::gpu_residency::sample().map_err(|error| format!("WDDM post-load sample unavailable: {error}"))?;
+        let loaded = ollama_models(endpoint)?.into_iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)))
+            .ok_or_else(|| format!("Ollama /api/ps did not report '{model}' after preload."))?;
+        let model_bytes = loaded.get("size").and_then(|v| v.as_u64()).unwrap_or(0);
+        let gpu_bytes = loaded.get("size_vram").and_then(|v| v.as_u64()).unwrap_or(0);
+        let actual_context = loaded.get("context_length").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+        if actual_context != context_length {
+            return Err(format!("Ollama /api/ps reports context {actual_context}, requested {context_length}; WDDM free after preload={} MiB, total GPU impact={} MiB; profile was not accepted.", after.free_bytes / 1_048_576, after.used_bytes.saturating_sub(before.used_bytes) / 1_048_576));
+        }
+        if !is_full_gpu_residency(model_bytes, gpu_bytes) {
+            return Err(format!("Full GPU residency verification failed: /api/ps size={} MiB, size_vram={} MiB; WDDM free after preload={} MiB, total GPU impact={} MiB, reserve=1024 MiB. CPU offload is not admitted.", model_bytes / 1_048_576, gpu_bytes / 1_048_576, after.free_bytes / 1_048_576, after.used_bytes.saturating_sub(before.used_bytes) / 1_048_576));
+        }
+        if !meets_gpu_reserve(after.free_bytes, reserve) {
+            return Err(format!("Insufficient VRAM after preload: WDDM free={} MiB, below configured 1024 MiB reserve; total GPU memory impact={} MiB. Model will be unloaded.", after.free_bytes / 1_048_576, after.used_bytes.saturating_sub(before.used_bytes) / 1_048_576));
+        }
+        let impact = if !loaded_by_this_admission {
+            known_profile.as_ref().map(|profile| profile.wddm_impact_bytes).unwrap_or_default()
+        } else {
+            after.used_bytes.saturating_sub(before.used_bytes)
+        };
+        if impact == 0 {
+            return Err("WDDM showed no positive total GPU memory impact after preload; refusing to create an unverified profile.".into());
+        }
+        let profile = ResidencyProfile { digest: digest.clone(), ollama_version: ollama_version.to_owned(), context_length, num_parallel, model_bytes, gpu_bytes, wddm_impact_bytes: impact };
+        let updated = if let Some(old) = profiles.iter_mut().find(|candidate| profile_matches(candidate, key)) {
+            old.wddm_impact_bytes = old.wddm_impact_bytes.max(impact);
+            old.model_bytes = model_bytes; old.gpu_bytes = gpu_bytes; old.clone()
+        } else { profiles.push(profile.clone()); profile };
+        if loaded_by_this_admission { save_residency_profiles(&profiles)?; }
+        let inventory = serde_json::json!({
+            "before": before, "after": after, "model": loaded,
+            "profile": updated, "reserve_bytes": reserve,
+            "full_gpu_residency": true,
+        });
+        let detail = format!("{} profile for '{model}' verified: /api/ps size=size_vram={} MiB; WDDM total impact={} MiB; free after load={} MiB; configured reserve=1024 MiB.", if known_profile.is_some() { "Known" } else { "Calibrated" }, gpu_bytes / 1_048_576, impact / 1_048_576, after.free_bytes / 1_048_576);
+        Ok((inventory, detail))
+    })();
+    let (inventory, detail) = match result {
+        Ok(value) => value,
+        Err(error) => {
+            let mut recovery = Vec::new();
+            if !target_was_resident || reload_target_for_calibration { let _ = unload_model(endpoint, model); }
+            for row in &models_to_restore {
+                let name = row.get("name").and_then(|v| v.as_str()).unwrap_or_default();
+                let context = row.get("context_length").and_then(|v| v.as_u64()).unwrap_or(4096);
+                if !name.is_empty() {
+                    let body = serde_json::json!({"model": name, "prompt": "", "stream": false, "keep_alive": -1, "options": {"num_ctx": context}});
+                    if let Err(restore_error) = ollama_http_timeout(endpoint, "POST", "/api/generate", Some(&body), 300) { recovery.push(format!("restore {name} failed: {restore_error}")); }
+                }
+            }
+            if let Ok(resident_after_recovery) = ollama_models(endpoint) {
+                for row in &models_to_restore {
+                    let name = row.get("name").and_then(|v| v.as_str()).unwrap_or_default();
+                    if !name.is_empty() && !resident_after_recovery.iter().any(|candidate| candidate.get("name").and_then(|v| v.as_str()).is_some_and(|candidate_name| ollama_model_name_matches(name, candidate_name))) {
+                        recovery.push(format!("{name} was not resident after restoration"));
+                    }
+                }
+            } else if !models_to_restore.is_empty() {
+                recovery.push("could not verify restored Ollama residency".into());
+            }
+            if recovery.is_empty() { return Err(format!("{error} Prior idle model residency was restored where available.")); }
+            return Err(format!("{error} Recovery warning: {}.", recovery.join("; ")));
+        }
+    };
+    log_line(&format!("GPU/Ollama profile admission for '{model}': {detail}"));
+    let lease_id = format!("{}-{}", std::process::id(), uuid_like());
+    Ok((lease_id, inventory, detail))
+}
+
+fn wait_for_only_target(endpoint: &str, model: &str) -> Result<(), String> {
     let deadline = Instant::now() + Duration::from_secs(20);
     loop {
-        resident = ollama_models(endpoint)?;
-        if resident.iter().all(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name))) { break; }
+        let resident = ollama_models(endpoint)?;
+        if resident.iter().all(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name))) { return Ok(()); }
         if Instant::now() >= deadline {
             return Err(format!("Ollama did not release competing resident model(s) within 20 seconds: {}", resident.iter().filter_map(|r| r.get("name").and_then(|v| v.as_str()).filter(|name| !ollama_model_name_matches(model, name))).collect::<Vec<_>>().join(", ")));
         }
         thread::sleep(Duration::from_millis(400));
     }
-
-    // Capture the actual system-wide WDDM state only after the Ollama resident
-    // set has been inspected and competing idle Ollama models have been drained.
-    let gpu = super::gpu_residency::sample().map_err(|error| format!("GPU residency preflight unavailable; inference blocked: {error}"))?;
-    let required_bytes = model_bytes.saturating_add(1024 * 1024 * 1024);
-    if !target_was_resident && !has_model_capacity(gpu.free_bytes, required_bytes) {
-        return Err(format!("GPU residency preflight denied '{model}': {} MiB free, about {} MiB required including 1 GiB headroom; no inference was sent. WDDM allocations: {}.", gpu.free_bytes / 1_048_576, required_bytes / 1_048_576, gpu.process_allocations.iter().map(|p| format!("PID {}={} MiB", p.pid, p.bytes / 1_048_576)).collect::<Vec<_>>().join(", ")));
-    }
-    let inventory = serde_json::to_value(&gpu).map_err(|error| error.to_string())?;
-    log_line(&format!("GPU/Ollama preflight inventory for '{model}': {} MiB free / {} MiB total; WDDM allocations [{}]; resident Ollama models [{}]", gpu.free_bytes / 1_048_576, gpu.total_bytes / 1_048_576, allocation_summary(&gpu), resident.iter().filter_map(|row| row.get("name").and_then(|v| v.as_str())).collect::<Vec<_>>().join(", ")));
-    let lease_id = format!("{}-{}", std::process::id(), uuid_like());
-    let detail = format!("Rust-host GPU preflight admitted '{model}' ({} MiB free, {} MiB model, 1024 MiB headroom); {}.", gpu.free_bytes / 1_048_576, model_bytes / 1_048_576, if target_was_resident { "reusing resident model" } else { "prior Ollama models unloaded and model may load" });
-    Ok((lease_id, inventory, detail))
 }
 
+fn profile_matches(profile: &ResidencyProfile, key: (&str, &str, u32, u32)) -> bool {
+    profile.digest == key.0 && profile.ollama_version == key.1 && profile.context_length == key.2 && profile.num_parallel == key.3
+}
+
+fn is_full_gpu_residency(model_bytes: u64, gpu_bytes: u64) -> bool {
+    model_bytes > 0 && gpu_bytes == model_bytes
+}
+
+fn meets_gpu_reserve(free_bytes: u64, reserve_bytes: u64) -> bool {
+    free_bytes >= reserve_bytes
+}
+
+fn residency_profile_path() -> Result<PathBuf, String> {
+    let root = env::var_os("LOCALAPPDATA").map(PathBuf::from).ok_or("LOCALAPPDATA is unavailable; runtime profiles cannot be persisted")?;
+    Ok(root.join("Ariadne").join("host").join("residency-profiles.json"))
+}
+
+fn load_residency_profiles() -> Result<Vec<ResidencyProfile>, String> {
+    let path = residency_profile_path()?;
+    if !path.exists() { return Ok(Vec::new()); }
+    let bytes = std::fs::read(path).map_err(|error| format!("could not read residency profiles: {error}"))?;
+    serde_json::from_slice(&bytes).map_err(|error| format!("residency profile file is invalid: {error}"))
+}
+
+fn save_residency_profiles(profiles: &[ResidencyProfile]) -> Result<(), String> {
+    let path = residency_profile_path()?;
+    let parent = path.parent().ok_or("invalid residency profile path")?;
+    std::fs::create_dir_all(parent).map_err(|error| format!("could not create residency profile directory: {error}"))?;
+    let bytes = serde_json::to_vec_pretty(profiles).map_err(|error| error.to_string())?;
+    let temporary = path.with_extension(format!("{}.tmp", uuid_like()));
+    std::fs::write(&temporary, bytes).map_err(|error| format!("could not write residency profile: {error}"))?;
+    if path.exists() { std::fs::remove_file(&path).map_err(|error| format!("could not replace residency profile: {error}"))?; }
+    std::fs::rename(&temporary, &path).map_err(|error| format!("could not publish residency profile: {error}"))
+}
+
+fn effective_num_parallel() -> Result<u32, String> {
+    match env::var("OLLAMA_NUM_PARALLEL") {
+        Ok(value) => value.parse::<u32>().ok().filter(|value| *value > 0)
+            .ok_or_else(|| format!("OLLAMA_NUM_PARALLEL='{value}' is not a positive integer; Rust host will not start an unkeyable Ollama runtime.")),
+        Err(env::VarError::NotPresent) => Ok(1),
+        Err(error) => Err(format!("could not read OLLAMA_NUM_PARALLEL: {error}")),
+    }
+}
+
+#[cfg(test)]
 fn has_model_capacity(free_bytes: u64, required_bytes: u64) -> bool {
     free_bytes >= required_bytes
 }
@@ -879,7 +1063,7 @@ fn ollama_tags(endpoint: &str) -> Result<Vec<serde_json::Value>, String> {
 
 #[cfg(test)]
 mod model_name_tests {
-    use super::ollama_model_name_matches;
+    use super::{is_full_gpu_residency, meets_gpu_reserve, ollama_model_name_matches, profile_matches, ResidencyProfile};
 
     #[test]
     fn untagged_requested_model_matches_ollama_latest_alias() {
@@ -887,6 +1071,26 @@ mod model_name_tests {
         assert!(ollama_model_name_matches("nomic-embed-text", "nomic-embed-text"));
         assert!(!ollama_model_name_matches("nomic-embed-text:latest", "nomic-embed-text"));
         assert!(!ollama_model_name_matches("nomic-embed-text", "nomic-embed-text:other"));
+    }
+
+    #[test]
+    fn runtime_profile_requires_exact_digest_version_context_and_parallelism() {
+        let profile = ResidencyProfile { digest: "sha256:abc".into(), ollama_version: "0.40.6".into(), context_length: 16_384, num_parallel: 1,
+            model_bytes: 12_000, gpu_bytes: 12_000, wddm_impact_bytes: 12_400 };
+        assert!(profile_matches(&profile, ("sha256:abc", "0.40.6", 16_384, 1)));
+        assert!(!profile_matches(&profile, ("sha256:def", "0.40.6", 16_384, 1)));
+        assert!(!profile_matches(&profile, ("sha256:abc", "0.40.7", 16_384, 1)));
+        assert!(!profile_matches(&profile, ("sha256:abc", "0.40.6", 8_192, 1)));
+        assert!(!profile_matches(&profile, ("sha256:abc", "0.40.6", 16_384, 2)));
+    }
+
+    #[test]
+    fn full_gpu_and_one_gib_reserve_are_both_required() {
+        assert!(is_full_gpu_residency(12_000, 12_000));
+        assert!(!is_full_gpu_residency(12_000, 11_999));
+        assert!(!is_full_gpu_residency(0, 0));
+        assert!(meets_gpu_reserve(1024 * 1024 * 1024, 1024 * 1024 * 1024));
+        assert!(!meets_gpu_reserve(1024 * 1024 * 1024 - 1, 1024 * 1024 * 1024));
     }
 }
 
@@ -898,9 +1102,13 @@ fn unload_model(endpoint: &str, model: &str) -> Result<(), String> {
 }
 
 fn ollama_http(endpoint: &str, method: &str, path: &str, body: Option<&serde_json::Value>) -> Result<serde_json::Value, String> {
+    ollama_http_timeout(endpoint, method, path, body, 5)
+}
+
+fn ollama_http_timeout(endpoint: &str, method: &str, path: &str, body: Option<&serde_json::Value>, timeout_seconds: u64) -> Result<serde_json::Value, String> {
     let address = endpoint_address(endpoint)?;
     let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2)).map_err(|error| format!("Ollama preflight connection failed: {error}"))?;
-    stream.set_read_timeout(Some(Duration::from_secs(5))).map_err(|error| error.to_string())?;
+    stream.set_read_timeout(Some(Duration::from_secs(timeout_seconds))).map_err(|error| error.to_string())?;
     let payload = body.map(serde_json::to_vec).transpose().map_err(|error| error.to_string())?.unwrap_or_default();
     let headers = if payload.is_empty() { String::new() } else { format!("Content-Type: application/json\r\nContent-Length: {}\r\n", payload.len()) };
     write!(stream, "{method} {path} HTTP/1.0\r\nHost: localhost\r\nAccept: application/json\r\nConnection: close\r\n{headers}\r\n").map_err(|error| error.to_string())?;

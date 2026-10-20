@@ -78,6 +78,25 @@ startup cleanup, and idle/pressure release decisions pass through the Rust
 custodian. Host lifecycle details are written to
 `%LOCALAPPDATA%\Ariadne\host.log`.
 
+Model admission returns a lease ID. Short inference calls release that lease
+when they finish; a long-lived Knowledge Vault session renews its lease on its
+session heartbeat and releases it when the session closes. The host expires a
+lease after fifteen minutes without renewal. Admission uses verified runtime
+residency profiles stored at
+`%LOCALAPPDATA%\Ariadne\host\residency-profiles.json`. A profile is keyed by
+the exact Ollama model digest, Ollama API version, requested context length and
+effective `OLLAMA_NUM_PARALLEL`. A missing profile blocks ordinary inference.
+An explicit model preload may calibrate it: Rust releases idle resident models,
+samples WDDM, preloads without a Vault prompt, then verifies the requested
+context and full GPU residency through `/api/ps` (`size_vram == size`). It
+records the WDDM total-memory increase and the before/after snapshots. A
+calibration is accepted only when at least the existing 1 GiB safety reserve
+remains free; otherwise Rust unloads the attempted model, restores the prior
+idle residency where possible, and returns the measured reason. Catalogue
+file size is not used as a VRAM estimate, and partial CPU offload is not
+admitted. The Knowledge Vault's explicit session start enables calibration for
+its 16K context; its session lease still covers the full page session.
+
 ## Avatar assets
 
 The renderer reads `assets/avatar/avatar_states.json`, then resolves the
