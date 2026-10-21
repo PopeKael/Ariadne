@@ -10,6 +10,8 @@ The engine remains disabled by default in normal production. `ARIADNE_HERMES_ENG
 
 The isolated Hermes checkout's model-context-budget changes are preserved as a patch against its pinned upstream revision in `docs/patches/hermes-context-budget.patch`; the patch is tracked here because that checkout's only remote is upstream Hermes.
 
+The guard used by the isolated Qwen Code acceptance is tracked as `control-plane/plugins/qwen-code/ariadne-qwen-pretool-guard.cjs`. The local worker install uses a byte-identical copy; it allows only workspace-contained file operations and a configured Python interpreter running one print-only script.
+
 ## Intended runtime contract
 
 - The existing `home_chat` inference registry route supplies model, provider, endpoint, credentials, context and output budgets. The agent engine has no pinned model, provider, context, or cloud requirement.
