@@ -8,6 +8,8 @@ The current local Home route is `ollama-desktop` / `qwen3.5:9b-q4_K_M` at Ariadn
 
 The engine remains disabled by default in normal production. `ARIADNE_HERMES_ENGINE` defaults to `legacy`; `legacy` remains the rollback value. An isolated process using a temporary registry and suppressed avatar/Home activity completed the 9B acceptance below. The current production process has not loaded this source change.
 
+The isolated Hermes checkout's model-context-budget changes are preserved as a patch against its pinned upstream revision in `docs/patches/hermes-context-budget.patch`; the patch is tracked here because that checkout's only remote is upstream Hermes.
+
 ## Intended runtime contract
 
 - The existing `home_chat` inference registry route supplies model, provider, endpoint, credentials, context and output budgets. The agent engine has no pinned model, provider, context, or cloud requirement.

@@ -1,0 +1,176 @@
+diff --git a/agent/agent_init.py b/agent/agent_init.py
+index 59006475de..a9d7248eba 100644
+--- a/agent/agent_init.py
++++ b/agent/agent_init.py
+@@ -2052,29 +2052,40 @@ def _build_context_engine(agent, _agent_cfg, cs, _custom_providers, _effective_c
+ 
+ 
+ def _enforce_minimum_context(agent):
+-    # Reject windows below the 64K floor needed for reliable tool-calling; an explicit
+-    # positive model.context_length on LM Studio is allowed below the floor.
++    # Keep the normal Hermes floor, but honor an embedding application's explicit
++    # context budget after confirming it fits the resolved runtime window.
+     _ctx = getattr(agent.context_compressor, "context_length", 0)
+     # A local Ollama server serves num_ctx, not the GGUF's advertised window: a Modelfile or
+     # model.ollama_num_ctx at 64K+ is a usable window even when the metadata says 40K (#100437).
+     # Only a local endpoint can honour num_ctx, so a stale override never admits a hosted model.
+     if agent._ollama_num_ctx and agent.base_url and is_local_endpoint(agent.base_url):
+         _ctx = max(_ctx or 0, agent._ollama_num_ctx)
++    context_budget = getattr(agent, "context_budget_tokens", None)
++    if context_budget is not None:
++        if (not isinstance(context_budget, int) or isinstance(context_budget, bool)
++                or context_budget <= 0):
++            raise ValueError("context_budget_tokens must be a positive integer.")
++        if _ctx and context_budget > _ctx:
++            raise ValueError(
++                f"Configured context budget {context_budget:,} exceeds the resolved runtime window {_ctx:,}."
++            )
++    minimum_context = min(MINIMUM_CONTEXT_LENGTH, context_budget) if context_budget else MINIMUM_CONTEXT_LENGTH
++    agent._minimum_context_length = minimum_context
+     _allow_lmstudio_explicit_below_floor = (
+         str(agent.provider or "").strip().lower() == "lmstudio"
+         and isinstance(agent._config_context_length, int)
+         and not isinstance(agent._config_context_length, bool)
+         and agent._config_context_length > 0
+     )
+-    if _ctx and _ctx < MINIMUM_CONTEXT_LENGTH and not _allow_lmstudio_explicit_below_floor:
+-        floor_k = MINIMUM_CONTEXT_LENGTH // 1000
++    if _ctx and _ctx < minimum_context and not _allow_lmstudio_explicit_below_floor:
++        floor_k = minimum_context // 1000
+         if agent.base_url and is_local_endpoint(agent.base_url):
+             # Any OpenAI-compatible local server (llama.cpp, vLLM, Ollama, ...) — the window is the
+             # server's runtime setting, not the model's; never assume Ollama here (#87075).
+             remedy = (
+                 f"Your local server is serving a {_ctx:,}-token window.  Start it with at least "
+-                f"{floor_k}K context (llama.cpp: -c {MINIMUM_CONTEXT_LENGTH}; vLLM: --max-model-len; "
+-                f"Ollama: OLLAMA_CONTEXT_LENGTH={MINIMUM_CONTEXT_LENGTH} or a Modelfile num_ctx), "
++                f"{floor_k}K context (llama.cpp: -c {minimum_context}; vLLM: --max-model-len; "
++                f"Ollama: OLLAMA_CONTEXT_LENGTH={minimum_context} or a Modelfile num_ctx), "
+                 f"or set model.ollama_num_ctx in config.yaml to the window it really serves "
+                 f"(at least {floor_k}K)."
+             )
+@@ -2087,7 +2098,7 @@ def _enforce_minimum_context(agent):
+             )
+         raise ValueError(
+             f"Model {agent.model} has a context window of {_ctx:,} tokens, "
+-            f"which is below the minimum {MINIMUM_CONTEXT_LENGTH:,} required "
++            f"which is below the minimum {minimum_context:,} required "
+             f"by Hermes Agent.  {remedy}"
+         )
+ 
+@@ -2257,6 +2268,7 @@ def init_agent(
+     providers_ignored: list[str] | None = None, providers_order: list[str] | None = None,
+     provider_sort: str | None = None, provider_require_parameters: bool = False,
+     provider_data_collection: str | None = None, openrouter_min_coding_score: Optional[float] = None,
++    context_budget_tokens: int | None = None,
+     session_id: str | None = None, tool_progress_callback: Callable[..., Any] | None = None,
+     tool_start_callback: Callable[..., Any] | None = None, tool_complete_callback: Callable[..., Any] | None = None,
+     thinking_callback: Callable[..., Any] | None = None, reasoning_callback: Callable[..., Any] | None = None,
+diff --git a/agent/agent_init_params.py b/agent/agent_init_params.py
+index 16f3d548e8..71e57fd18a 100644
+--- a/agent/agent_init_params.py
++++ b/agent/agent_init_params.py
+@@ -11,7 +11,7 @@ _PASSTHROUGH_PARAMS = (
+     # Toolset filtering
+     "enabled_toolsets", "disabled_toolsets",
+     # Model response configuration (None = provider/model default)
+-    "max_tokens", "reasoning_config", "service_tier",
++    "max_tokens", "reasoning_config", "service_tier", "context_budget_tokens",
+     "side_agent",
+ )
+ # Gateway identity params stored as ``agent._<name>``. gateway_session_key is the stable
+diff --git a/agent/conversation_loop.py b/agent/conversation_loop.py
+index 60666cd156..236db2ffae 100644
+--- a/agent/conversation_loop.py
++++ b/agent/conversation_loop.py
+@@ -422,10 +422,11 @@ def _pressure_with_real_floor(compressor: Any, rough_tokens: int) -> int:
+ def _ollama_context_limit_error(agent: Any, request_tokens: int) -> Optional[str]:
+     """Return a user-facing error when Ollama is loaded with too little context."""
+     runtime_ctx = getattr(agent, "_ollama_num_ctx", None)
++    minimum_context = getattr(agent, "_minimum_context_length", MINIMUM_CONTEXT_LENGTH)
+     if (
+         not getattr(agent, "tools", None)
+         or not isinstance(runtime_ctx, int)
+-        or not 0 < runtime_ctx < MINIMUM_CONTEXT_LENGTH
++        or not 0 < runtime_ctx < minimum_context
+     ):
+         return None
+ 
+@@ -434,13 +435,13 @@ def _ollama_context_limit_error(agent: Any, request_tokens: int) -> Optional[str
+         "Ollama runtime context too small for Hermes tool use: model=%s provider=%s base_url=%s "
+         "runtime_context=%d minimum_context=%d estimated_request_tokens=%d tool_count=%d session=%s",
+         model, getattr(agent, "provider", "") or "unknown",
+-        getattr(agent, "base_url", "") or "unknown base URL", runtime_ctx, MINIMUM_CONTEXT_LENGTH,
++        getattr(agent, "base_url", "") or "unknown base URL", runtime_ctx, minimum_context,
+         request_tokens, len(getattr(agent, "tools", None) or []),
+         getattr(agent, "session_id", None) or "none",
+     )
+     return (
+         f"Ollama loaded `{model}` with only {runtime_ctx:,} tokens of runtime context, but Hermes "
+-        f"needs at least {MINIMUM_CONTEXT_LENGTH:,} tokens for reliable tool use.\n\n"
++        f"needs at least {minimum_context:,} tokens for reliable tool use.\n\n"
+         "Increase the Ollama context for this model and restart/reload the model before trying "
+         "again. A known-good starting point is 65,536 tokens. In Hermes config, set "
+         "`model.ollama_num_ctx: 65536` (and `model.context_length: 65536` if you also override the "
+diff --git a/run_agent.py b/run_agent.py
+index eda287031f..a942bfee72 100644
+--- a/run_agent.py
++++ b/run_agent.py
+@@ -263,6 +263,7 @@ class AIAgent(
+         event_callback: Optional[Callable[[str, dict], None]] = None,
+         reaction_callback: Optional[Callable[[str], None]] = None,
+         max_tokens: int | None = None, reasoning_config: dict[str, Any] | None = None, service_tier: str | None = None,
++        context_budget_tokens: int | None = None,
+         request_overrides: dict[str, Any] | None = None, prefill_messages: list[dict[str, Any]] | None = None,
+         platform: str | None = None, user_id: str | None = None, user_id_alt: str | None = None, user_name: str | None = None,
+         chat_id: str | None = None, chat_name: str | None = None, chat_type: str | None = None, thread_id: str | None = None,
+diff --git a/tests/agent/test_ollama_num_ctx.py b/tests/agent/test_ollama_num_ctx.py
+index b3eb9d15a0..bd5f4b0988 100644
+--- a/tests/agent/test_ollama_num_ctx.py
++++ b/tests/agent/test_ollama_num_ctx.py
+@@ -126,7 +126,7 @@ class TestQueryOllamaSupportsVision:
+ # ═══════════════════════════════════════════════════════════════════════
+ 
+ 
+-def _build_agent(cfg, probed_ctx, base_url="http://localhost:11434/v1"):
++def _build_agent(cfg, probed_ctx, base_url="http://localhost:11434/v1", context_budget_tokens=None):
+     import agent.context_compressor as cc_mod
+     with (
+         patch("model_tools.get_tool_definitions", return_value=[]),
+@@ -150,6 +150,7 @@ def _build_agent(cfg, probed_ctx, base_url="http://localhost:11434/v1"):
+             quiet_mode=True,
+             skip_context_files=True,
+             skip_memory=True,
++            context_budget_tokens=context_budget_tokens,
+         )
+ 
+ 
+@@ -188,6 +189,28 @@ class TestServedNumCtxSatisfiesTheFloor:
+         assert agent._ollama_num_ctx == 65536
+         assert agent.context_compressor.context_length == 40960  # one-directional clamp unchanged
+ 
++    def test_explicit_embedding_budget_admits_32k_and_keeps_compression_inside_window(self):
++        agent = _build_agent(
++            {"agent": {}, "model": {"ollama_num_ctx": 32768}},
++            probed_ctx=32768,
++            context_budget_tokens=32768,
++        )
++        assert agent._minimum_context_length == 32768
++        assert agent.context_compressor.context_length == 32768
++        assert 0 < agent.context_compressor.threshold_tokens < 32768
++        from agent.conversation_loop import _ollama_context_limit_error
++        assert _ollama_context_limit_error(agent, request_tokens=4_000) is None
++
++    def test_embedding_budget_cannot_exceed_resolved_window(self):
++        with pytest.raises(ValueError, match="exceeds the resolved runtime window"):
++            _build_agent(
++                {"agent": {}, "model": {"ollama_num_ctx": 32768}},
++                probed_ctx=32768,
++                context_budget_tokens=65536,
++            )
++
++
++
+     def test_served_window_counts_only_for_a_local_endpoint(self):
+         """Only a local server honours num_ctx; a stale override must not admit a hosted 40K model."""
+         with pytest.raises(ValueError, match="below the minimum"):
