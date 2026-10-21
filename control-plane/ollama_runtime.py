@@ -311,6 +311,7 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
                         context_length: int | None = None, allow_calibration: bool | None = None,
                         inference_kind: str | None = None,
                         workload: str | None = None, min_free_bytes: int | None = None,
+                        owner_pid: int | None = None,
                         timeout: float = 20.0) -> dict[str, object]:
     """Transport a residency request to the Rust host; policy lives there."""
     if os.name != "nt":
@@ -338,6 +339,8 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
         request["workload"] = workload
     if min_free_bytes is not None:
         request["min_free_bytes"] = int(min_free_bytes)
+    if owner_pid is not None:
+        request["owner_pid"] = int(owner_pid)
     try:
         with open(pipe_name, "r+b", buffering=0) as pipe:
             pipe.write(json.dumps(request, separators=(",", ":")).encode("utf-8") + b"\n")
@@ -360,7 +363,7 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
 
 
 @contextmanager
-def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int = 4096,
+def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int,
                     allow_calibration: bool = False, inference_kind: str = "generate"):
     """Admit local inference only after the Rust host checks Ollama and WDDM residency."""
     result = _request_host_model("admit_model", endpoint=endpoint, model=model,
@@ -381,7 +384,7 @@ def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_len
             logging.getLogger(__name__).error("Could not release inference lease %s: %s", lease_id, exc)
 
 
-def host_acquire_model_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int = 4096,
+def host_acquire_model_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int,
                              allow_calibration: bool = False) -> str:
     """Acquire a Rust-host model lease that survives beyond one inference call."""
     result = _request_host_model("admit_model", endpoint=endpoint, model=model,
@@ -448,7 +451,8 @@ def host_acquire_gpu_lease(workload: str, endpoint: str = DEFAULT_ENDPOINT, *,
                            model: str | None = None, min_free_bytes: int | None = None) -> str:
     """Acquire a Rust-host workload lease for non-Ollama GPU work or transitions."""
     result = _request_host_model("acquire_gpu_lease", endpoint=endpoint, workload=workload,
-                                 model=model, min_free_bytes=min_free_bytes, timeout=30.0)
+                                 model=model, min_free_bytes=min_free_bytes,
+                                 owner_pid=os.getpid(), timeout=30.0)
     lease_id = str(result.get("lease_id") or "")
     if not lease_id:
         raise RuntimeError("Rust host admitted a GPU workload without returning a lease.")

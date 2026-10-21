@@ -20,11 +20,19 @@ class ModelResidencyTests(unittest.TestCase):
 
     def test_host_admission_performs_preload_without_python_ollama_load(self):
         with patch.object(server, "inference_lease", return_value=nullcontext({"detail": "host loaded", "residency": {}})) as lease, \
-             patch.object(server, "post_json") as post:
+             patch.object(server, "post_json", return_value={"details": {}}) as post:
             result = server.preload_ollama_model("test-model")
         self.assertTrue(result["ok"])
-        lease.assert_called_once_with("test-model", server.OLLAMA_URL, context_length=4096, allow_calibration=False)
-        post.assert_not_called()
+        lease.assert_called_once_with(
+            "test-model", server.OLLAMA_URL,
+            context_length=server.HOME_CONTEXT_TOKENS,
+            allow_calibration=False,
+        )
+        self.assertEqual(
+            [call.args[0] for call in post.call_args_list],
+            [f"{server.OLLAMA_URL}/api/show"],
+            "metadata lookup is allowed; Python must not issue a model load/generate request",
+        )
 
     def test_inflight_model_is_not_evicted(self):
         original_sessions = dict(server.SESSIONS)

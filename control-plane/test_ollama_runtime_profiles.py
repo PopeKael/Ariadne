@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import json
+import os
 import unittest
 from contextlib import nullcontext
 from pathlib import Path
@@ -19,6 +20,12 @@ import ariadne_mcp  # noqa: E402
 
 
 class OllamaRuntimeProfileRequestTests(unittest.TestCase):
+    def test_model_lease_api_requires_an_explicit_context_budget(self):
+        with self.assertRaisesRegex(TypeError, "context_length"):
+            ollama_runtime.inference_lease("qwen3.5:9b-q4_K_M")
+        with self.assertRaisesRegex(TypeError, "context_length"):
+            ollama_runtime.host_acquire_model_lease("qwen3.5:9b-q4_K_M")
+
     def test_gpu_snapshot_is_requested_from_rust_host(self):
         snapshot = {"total_bytes": 10, "used_bytes": 4, "free_bytes": 6, "process_allocations": []}
         with patch.object(ollama_runtime, "_request_host_model", return_value={"residency": snapshot}) as request:
@@ -42,6 +49,7 @@ class OllamaRuntimeProfileRequestTests(unittest.TestCase):
         self.assertEqual(request.call_args_list[0].args, ("acquire_gpu_lease",))
         self.assertEqual(request.call_args_list[0].kwargs["workload"], "renderer")
         self.assertEqual(request.call_args_list[0].kwargs["min_free_bytes"], 12 * 1024**3)
+        self.assertEqual(request.call_args_list[0].kwargs["owner_pid"], os.getpid())
         self.assertEqual(request.call_args_list[1].args, ("release_gpu_lease",))
         self.assertEqual(request.call_args_list[1].kwargs["lease_id"], "gpu-1")
 
@@ -100,6 +108,23 @@ class OllamaRuntimeProfileRequestTests(unittest.TestCase):
             server._preload_home_chat_model_worker(model)
         self.assertEqual(preload.call_args.kwargs["options"], {"num_ctx": 32_768})
         self.assertTrue(preload.call_args.kwargs["allow_calibration"])
+
+    def test_model_switch_without_num_ctx_uses_registry_budget_not_ollama_default(self):
+        model = server.HOME_CHAT_MODEL
+        with patch.object(server, "HOME_CONTEXT_POLICY_TOKENS", 32_768), \
+             patch.object(server, "_context_for_model", return_value=32_768) as effective, \
+             patch.object(server, "inference_lease", return_value=nullcontext({"detail": "admitted"})) as lease, \
+             patch.object(server, "record_model_residency_event"):
+            result = server.preload_ollama_model(model)
+        self.assertTrue(result["ok"])
+        effective.assert_called_once_with(model, 32_768)
+        self.assertEqual(lease.call_args.kwargs["context_length"], 32_768)
+
+    def test_generate_stream_rejects_missing_registry_context_before_admission(self):
+        with patch.object(server, "inference_lease") as lease:
+            with self.assertRaisesRegex(ValueError, "registry-resolved num_ctx"):
+                next(server._ollama_generate_stream("qwen", {"prompt": "test"}))
+        lease.assert_not_called()
 
     def test_warm_home_preload_still_verifies_the_exact_host_profile(self):
         model = server.HOME_CHAT_MODEL

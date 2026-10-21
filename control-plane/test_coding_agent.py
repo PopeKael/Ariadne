@@ -1,10 +1,55 @@
 import json
 import unittest
+from unittest.mock import patch
 
-from coding_agent import WORKSPACE_ROOT, _parse_transcript, _within_root, is_coding_intent
+from coding_agent import (WORKSPACE_ROOT, _parse_transcript, _shell_execution_receipts,
+                          _qwen_process_environment, _resolve_qwen_node, _task_evidence_errors,
+                          _within_root, create_context_model_profile, is_coding_intent)
 
 
 class CodingAgentTests(unittest.TestCase):
+    def test_ollama_openai_context_alias_is_derived_and_confirmed(self):
+        import io
+        responses = [
+            {"parameters": "temperature 1"},
+            {"models": []},
+            {"status": "success"},
+            {"parameters": "num_ctx 32768"},
+        ]
+        requests = []
+
+        def fake_urlopen(request, timeout):
+            requests.append(request)
+            return io.BytesIO(json.dumps(responses.pop(0)).encode("utf-8"))
+
+        with patch("coding_agent.urlopen", side_effect=fake_urlopen):
+            alias, created = create_context_model_profile(
+                "configured-coder-model", 32_768, "http://127.0.0.1:11434"
+            )
+        self.assertTrue(created)
+        self.assertIn("-ctx32768", alias)
+        create_body = json.loads(requests[2].data)
+        self.assertEqual(create_body["from"], "configured-coder-model")
+        self.assertEqual(create_body["parameters"]["num_ctx"], 32_768)
+        self.assertEqual(requests[1].method, "GET")
+
+    def test_qwen_runtime_resolves_pinned_node_and_adds_it_to_child_path(self):
+        with patch("coding_agent.shutil.which", return_value=None):
+            node = _resolve_qwen_node()
+            environment = _qwen_process_environment()
+        self.assertTrue(node.is_file())
+        self.assertIn(str(node.parent), environment["PATH"].split(";"))
+
+    def test_qwen_child_does_not_inherit_codex_session_or_cloud_credentials(self):
+        with patch("coding_agent.shutil.which", return_value=None), patch.dict(
+            "coding_agent.os.environ",
+            {"CODEX_THREAD_ID": "parent-thread", "CODEX_APP_TOOLS_PIPE_PATH": "parent-pipe",
+             "OPENAI_API_KEY": "parent-secret", "PATH": "C:\\Windows\\System32"},
+            clear=True,
+        ):
+            environment = _qwen_process_environment()
+        self.assertFalse(any(name.upper().startswith(("CODEX_", "OPENAI_")) for name in environment))
+
     def test_chat_intent_detects_code_work_without_tool_name(self):
         self.assertTrue(is_coding_intent("Please fix the broken Python program and run its tests."))
         self.assertTrue(is_coding_intent("Can you write a Python script to rename these files?"))
@@ -45,6 +90,26 @@ class CodingAgentTests(unittest.TestCase):
         self.assertFalse(final_error)
         self.assertEqual(usage["input_tokens"], 120)
         self.assertIn("ariadne-qwen-code:9b-32k", model_usage)
+
+    def test_shell_receipt_captures_program_output_and_exit_status(self):
+        receipt = _shell_execution_receipts([{
+            "name": "run_shell_command",
+            "input": {"command": "python hello.py"},
+            "result": "Hello from Ariadne\nExit code: 0",
+            "is_error": False,
+        }])[0]
+        self.assertEqual(receipt["result"], "passed")
+        self.assertEqual(receipt["exit_code"], 0)
+        self.assertIn("Hello from Ariadne", receipt["output"])
+
+    def test_change_and_verification_requests_fail_without_receipts(self):
+        errors = _task_evidence_errors("Create hello.py and run it to verify output", [], [], [])
+        self.assertEqual(len(errors), 2)
+        errors = _task_evidence_errors(
+            "Create hello.py and run it to verify output", ["hello.py"], [],
+            [{"command": "python hello.py", "result": "passed", "exit_code": 0}],
+        )
+        self.assertEqual(errors, [])
 
     def test_cli_result_error_is_not_reported_as_success(self):
         transcript = [{"type": "result", "is_error": True, "error": "model stopped early"}]

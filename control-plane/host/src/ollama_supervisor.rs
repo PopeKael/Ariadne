@@ -41,6 +41,7 @@ struct RuntimeRequest {
     force: Option<bool>,
     workload: Option<String>,
     min_free_bytes: Option<u64>,
+    owner_pid: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -88,12 +89,29 @@ struct ResidencyProfile {
 
 struct InferenceLease {
     model: String,
+    context_length: u32,
     last_renewed_at: Instant,
 }
 
 struct GpuLease {
     workload: String,
     model: Option<String>,
+    owner_pid: Option<u32>,
+    // Keep a kernel handle to the exact client process. Polling by PID alone
+    // can misidentify a later process after Windows reuses the PID.
+    owner_process: Option<ClientProcessHandle>,
+}
+
+struct ClientProcessHandle(isize);
+
+impl Drop for ClientProcessHandle {
+    fn drop(&mut self) {
+        if self.0 != 0 {
+            use windows::Win32::Foundation::{CloseHandle, HANDLE};
+            unsafe { let _ = CloseHandle(HANDLE(self.0 as *mut c_void)); }
+            self.0 = 0;
+        }
+    }
 }
 
 impl Drop for ManagedRuntime {
@@ -129,6 +147,8 @@ impl OllamaSupervisor {
             thread::sleep(Duration::from_secs(5));
             if stop.load(Ordering::Acquire) { break; }
             let Ok(mut state) = state.lock() else { continue };
+            prune_expired_leases(&mut state);
+            prune_dead_gpu_leases(&mut state);
             if state.externally_delegated { continue; }
             let Some((endpoint, store, models)) = state.desired.clone() else { continue };
             let healthy = state.runtime.as_mut().is_some_and(|runtime| {
@@ -183,6 +203,7 @@ impl OllamaSupervisor {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         if state.externally_delegated { return RuntimeResponse::error("Ariadne runtime is delegated to Dungeon; model admission is paused."); }
         prune_expired_leases(&mut state);
+        prune_dead_gpu_leases(&mut state);
         if model_blocked_by_gpu_leases(&model, state.gpu_leases.values()) {
             return RuntimeResponse::error("Rust host has an exclusive GPU workload lease; model inference is blocked.");
         }
@@ -199,7 +220,7 @@ impl OllamaSupervisor {
         match preflight_model(&endpoint, &model, context_length, num_parallel, version.as_deref().unwrap_or(""), allow_calibration, inference_kind, &active_models) {
             Ok((lease_id, inventory, detail)) => {
                 log_line(&detail);
-                state.inference_leases.insert(lease_id.clone(), InferenceLease { model, last_renewed_at: Instant::now() });
+                state.inference_leases.insert(lease_id.clone(), InferenceLease { model, context_length, last_renewed_at: Instant::now() });
                 RuntimeResponse {
                     v: 1, ok: true, state: "admitted".into(), detail, pid: Some(pid),
                     version, models,
@@ -253,12 +274,21 @@ impl OllamaSupervisor {
         }
     }
 
-    fn acquire_gpu_lease(&self, workload: String, model: Option<String>, min_free_bytes: u64) -> RuntimeResponse {
+    fn acquire_gpu_lease(&self, workload: String, model: Option<String>, min_free_bytes: u64,
+                         owner_pid: Option<u32>) -> RuntimeResponse {
         if !matches!(workload.as_str(), "ai" | "vault" | "renderer" | "dungeon" | "transition" | "music" | "image") {
             return RuntimeResponse::error(format!("Unknown Rust-host GPU workload '{workload}'."));
         }
+        let Some(owner_pid) = owner_pid else {
+            return RuntimeResponse::error("Rust Host refused a GPU lease without an explicit client PID.");
+        };
+        let owner_process = match open_client_process(owner_pid) {
+            Ok(process) => process,
+            Err(error) => return RuntimeResponse::error(error),
+        };
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         prune_expired_leases(&mut state);
+        prune_dead_gpu_leases(&mut state);
         if state.externally_delegated && workload == "ai" {
             return RuntimeResponse::error("GPU admission is suspended while Ariadne's GPU is delegated to Dungeon.");
         }
@@ -333,7 +363,11 @@ impl OllamaSupervisor {
             return RuntimeResponse::error(format!("GPU workload '{workload}' requires {} MiB free including the 1 GiB safety reserve; WDDM measured {} MiB free after idle-model release, and {} MiB after recovery. {recovery}.", required_free / 1_048_576, snapshot.free_bytes / 1_048_576, restored_free.map(|value| value.to_string()).unwrap_or_else(|_| "unavailable".into())));
         }
         let lease_id = format!("gpu-{}-{}", std::process::id(), uuid_like());
-        state.gpu_leases.insert(lease_id.clone(), GpuLease { workload: workload.clone(), model });
+        state.gpu_leases.insert(lease_id.clone(), GpuLease {
+            workload: workload.clone(), model, owner_pid: Some(owner_pid),
+            owner_process: Some(owner_process),
+        });
+        log_line(&format!("Acquired Rust-host GPU workload lease '{}' for '{}' from client PID {:?}.", lease_id, workload, owner_pid));
         RuntimeResponse {
             v: 1, ok: true, state: "admitted".into(),
             detail: format!("Rust host admitted GPU workload '{workload}' with {} MiB free and a 1 GiB reserve; released {} idle Ollama model(s).", snapshot.free_bytes / 1_048_576, released_models.len()),
@@ -344,7 +378,9 @@ impl OllamaSupervisor {
 
     fn release_gpu_lease(&self, lease_id: &str) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
-        if state.gpu_leases.remove(lease_id).is_some() {
+        prune_dead_gpu_leases(&mut state);
+        if let Some(lease) = state.gpu_leases.remove(lease_id) {
+            log_line(&format!("Released Rust-host GPU workload lease '{}' for '{}' from client PID {:?}.", lease_id, lease.workload, lease.owner_pid));
             RuntimeResponse { v: 1, ok: true, state: "released".into(), detail: "Rust-host GPU workload lease released.".into(), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
         } else {
             RuntimeResponse::error("Unknown or already released Rust-host GPU workload lease.")
@@ -352,7 +388,8 @@ impl OllamaSupervisor {
     }
 
     fn verify_gpu_lease_capacity(&self, lease_id: &str, min_free_bytes: u64) -> RuntimeResponse {
-        let Ok(state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        prune_dead_gpu_leases(&mut state);
         if !state.gpu_leases.contains_key(lease_id) {
             return RuntimeResponse::error("GPU capacity check requires a live Rust-host workload lease.");
         }
@@ -369,18 +406,45 @@ impl OllamaSupervisor {
     }
 
     fn renew_model_lease(&self, lease_id: &str) -> RuntimeResponse {
+        let (endpoint, model, expected_context) = {
+            let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+            prune_expired_leases(&mut state);
+            let Some(lease) = state.inference_leases.get(lease_id) else {
+                return RuntimeResponse::error("Unknown or expired inference lease.");
+            };
+            let Some(runtime) = state.runtime.as_ref() else {
+                return RuntimeResponse::error("Rust host lost Ollama ownership while the model lease was active.");
+            };
+            (runtime.endpoint.clone(), lease.model.clone(), lease.context_length)
+        };
+        // Direct clients can reach Ollama outside Ariadne's Python lease
+        // wrappers. Check the actual resident context on every heartbeat.
+        let rows = match ollama_models(&endpoint) {
+            Ok(rows) => rows,
+            Err(error) => return RuntimeResponse::error(format!("Could not validate active Ollama residency before lease renewal: {error}")),
+        };
+        let actual_context = rows.iter()
+            .find(|row| row.get("name").and_then(|value| value.as_str()) == Some(model.as_str()))
+            .and_then(|row| row.get("context_length").and_then(|value| value.as_u64()))
+            .unwrap_or(0) as u32;
+        if actual_context != expected_context {
+            let detail = format!("Rust Host refused to renew '{model}' lease: Ollama reports context {actual_context}, but the admitted profile requires {expected_context}. An out-of-band model request or residency change is suspected.");
+            log_line(&detail);
+            return RuntimeResponse::error(detail);
+        }
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         prune_expired_leases(&mut state);
         if let Some(lease) = state.inference_leases.get_mut(lease_id) {
+            if lease.model != model || lease.context_length != expected_context {
+                return RuntimeResponse::error("Inference lease profile changed during residency validation.");
+            }
             lease.last_renewed_at = Instant::now();
-            let model = lease.model.clone();
-            log_line(&format!("Renewed Rust-host model lease '{}' for '{}'.", lease_id, model));
-            RuntimeResponse { v: 1, ok: true, state: "renewed".into(), detail: "Model lease renewed.".into(), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
+            log_line(&format!("Renewed Rust-host model lease '{}' for '{}' at context {} after /api/ps validation.", lease_id, model, actual_context));
+            RuntimeResponse { v: 1, ok: true, state: "renewed".into(), detail: format!("Rust Host verified '{model}' residency at context {actual_context} before renewing its lease."), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
         } else {
-            RuntimeResponse::error("Unknown or expired Rust-host model lease.")
+            RuntimeResponse::error("Inference lease expired during residency validation.")
         }
     }
-
     fn suspend_for_external_workload(&self, endpoint: String) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         prune_expired_leases(&mut state);
@@ -450,6 +514,7 @@ impl OllamaSupervisor {
     fn unload_model(&self, endpoint: String, model: String) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         prune_expired_leases(&mut state);
+        prune_dead_gpu_leases(&mut state);
         if state.inference_leases.values().any(|lease| lease.model == model) {
             return RuntimeResponse::error(format!("Cannot unload '{model}': Rust host has an active inference lease for it."));
         }
@@ -485,6 +550,7 @@ impl OllamaSupervisor {
     fn release_idle_models(&self, endpoint: String, force: bool) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         prune_expired_leases(&mut state);
+        prune_dead_gpu_leases(&mut state);
         let Some(runtime) = state.runtime.as_mut() else { return RuntimeResponse::error("Rust host does not own an Ollama runtime; model release blocked.") };
         if endpoint_address(&runtime.endpoint).ok() != endpoint_address(&endpoint).ok()
             || runtime.child.try_wait().ok().flatten().is_some() {
@@ -619,7 +685,9 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
             Ok(request) if request.v == 1 && request.kind == "admit_model" => supervisor.admit_model(
                 request.endpoint.unwrap_or_else(|| DEFAULT_ENDPOINT.into()),
                 request.model.unwrap_or_default(),
-                request.context_length.unwrap_or(4096),
+                // Missing context is not a safe reason to silently load the
+                // Ollama default (commonly 4K). Zero is rejected by preflight.
+                request.context_length.unwrap_or(0),
                 request.allow_calibration.unwrap_or(false),
                 request.inference_kind.as_deref().unwrap_or("generate"),
             ),
@@ -632,7 +700,7 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
             ),
             Ok(request) if request.v == 1 && request.kind == "acquire_gpu_lease" => supervisor.acquire_gpu_lease(
                 request.workload.unwrap_or_default(), request.model,
-                request.min_free_bytes.unwrap_or(0),
+                request.min_free_bytes.unwrap_or(0), request.owner_pid,
             ),
             Ok(request) if request.v == 1 && request.kind == "release_gpu_lease" => supervisor.release_gpu_lease(
                 request.lease_id.as_deref().unwrap_or_default(),
@@ -1010,7 +1078,11 @@ fn restore_residency_models(endpoint: &str, rows: &[serde_json::Value], num_para
     let mut issues = Vec::new();
     for row in rows {
         let Some(name) = row.get("name").and_then(|value| value.as_str()) else { continue };
-        let context = row.get("context_length").and_then(|value| value.as_u64()).unwrap_or(4096) as u32;
+        let Some(context) = row.get("context_length").and_then(|value| value.as_u64()) else {
+            issues.push(format!("{name} was not restored: Ollama did not report its loaded context length."));
+            continue;
+        };
+        let context = context as u32;
         let inference_kind = match model_inference_kind(endpoint, name) {
             Ok(kind) => kind,
             Err(error) => {
@@ -1057,7 +1129,7 @@ fn model_blocked_by_gpu_leases<'a>(model: &str, leases: impl Iterator<Item = &'a
 
 #[cfg(test)]
 mod gpu_workload_lease_tests {
-    use super::{gpu_workload_conflicts, model_blocked_by_gpu_leases, releases_idle_ollama_for_workload, GpuLease};
+    use super::{gpu_lease_owner_terminated, gpu_workload_conflicts, model_blocked_by_gpu_leases, releases_idle_ollama_for_workload, GpuLease};
     use std::collections::HashMap;
 
     #[test]
@@ -1072,11 +1144,11 @@ mod gpu_workload_lease_tests {
     #[test]
     fn exclusive_workflow_lease_allows_only_its_configured_model() {
         let mut leases: HashMap<String, GpuLease> = HashMap::new();
-        leases.insert("vault".into(), GpuLease { workload: "vault".into(), model: Some("configured-vault-model".into()) });
+        leases.insert("vault".into(), GpuLease { workload: "vault".into(), model: Some("configured-vault-model".into()), owner_pid: None, owner_process: None });
         assert!(!model_blocked_by_gpu_leases("configured-vault-model", leases.values()));
         assert!(model_blocked_by_gpu_leases("home-model", leases.values()));
         leases.clear();
-        leases.insert("switch".into(), GpuLease { workload: "transition".into(), model: Some("selected-model".into()) });
+        leases.insert("switch".into(), GpuLease { workload: "transition".into(), model: Some("selected-model".into()), owner_pid: None, owner_process: None });
         assert!(!model_blocked_by_gpu_leases("selected-model", leases.values()));
         assert!(model_blocked_by_gpu_leases("previous-model", leases.values()));
     }
@@ -1090,6 +1162,20 @@ mod gpu_workload_lease_tests {
             assert!(!releases_idle_ollama_for_workload(workload), "{workload} must follow model admission or inference ownership");
         }
     }
+
+    #[test]
+    fn only_confirmed_dead_client_owners_are_reclaimed() {
+        assert!(gpu_lease_owner_terminated(Some(1234), Some(false)));
+        assert!(!gpu_lease_owner_terminated(Some(1234), Some(true)));
+        assert!(!gpu_lease_owner_terminated(Some(1234), None));
+        assert!(!gpu_lease_owner_terminated(None, Some(false)));
+    }
+
+    #[test]
+    fn ownerless_legacy_leases_are_not_reclaimed_by_guessing() {
+        assert!(!gpu_lease_owner_terminated(None, None));
+        assert!(!gpu_lease_owner_terminated(Some(1234), None));
+    }
 }
 
 fn prune_expired_leases(state: &mut State) {
@@ -1099,6 +1185,59 @@ fn prune_expired_leases(state: &mut State) {
     for id in expired {
         if let Some(lease) = state.inference_leases.remove(&id) {
             log_line(&format!("Expired stale model lease '{}' for '{}' after 15 minutes without a heartbeat.", id, lease.model));
+        }
+    }
+}
+
+fn gpu_lease_owner_terminated(owner_pid: Option<u32>, process_state: Option<bool>) -> bool {
+    matches!((owner_pid, process_state), (Some(_), Some(false)))
+}
+
+fn open_client_process(pid: u32) -> Result<ClientProcessHandle, String> {
+    use windows::Win32::System::Threading::{
+        GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+    };
+    unsafe {
+        let process = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE, false, pid) {
+            Ok(process) => process,
+            Err(error) => return Err(format!("Rust Host could not open verified GPU lease owner PID {pid}: {error}")),
+        };
+        let mut exit_code = 0u32;
+        if let Err(error) = GetExitCodeProcess(process, &mut exit_code) {
+            let _ = windows::Win32::Foundation::CloseHandle(process);
+            return Err(format!("Rust Host could not validate GPU lease owner PID {pid}: {error}"));
+        }
+        if exit_code != 259 { // STILL_ACTIVE
+            let _ = windows::Win32::Foundation::CloseHandle(process);
+            return Err(format!("Rust Host refused a GPU lease because client PID {pid} has already exited."));
+        }
+        Ok(ClientProcessHandle(process.0 as isize))
+    }
+}
+
+fn client_process_handle_is_active(handle: &ClientProcessHandle) -> Option<bool> {
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Threading::GetExitCodeProcess;
+    unsafe {
+        let mut exit_code = 0u32;
+        GetExitCodeProcess(HANDLE(handle.0 as *mut c_void), &mut exit_code)
+            .ok().map(|_| exit_code == 259) // STILL_ACTIVE
+    }
+}
+
+fn prune_dead_gpu_leases(state: &mut State) {
+    let dead: Vec<String> = state.gpu_leases.iter()
+        .filter_map(|(id, lease)| {
+            let process_state = lease.owner_process.as_ref().and_then(client_process_handle_is_active);
+            gpu_lease_owner_terminated(lease.owner_pid, process_state).then(|| id.clone())
+        })
+        .collect();
+    for id in dead {
+        if let Some(lease) = state.gpu_leases.remove(&id) {
+            log_line(&format!(
+                "Reclaimed orphaned Rust-host GPU workload lease '{}' for '{}' after owner PID {:?} exited.",
+                id, lease.workload, lease.owner_pid,
+            ));
         }
     }
 }
@@ -1142,13 +1281,13 @@ fn preflight_model(
         return Err(format!("Unsupported Rust-host inference kind '{inference_kind}'."));
     }
     if model.trim().is_empty() { return Err("Inference request did not specify a model; blocked by Rust-host preflight.".into()); }
+    if context_length == 0 || num_parallel == 0 || ollama_version.is_empty() {
+        return Err("Runtime profile key is incomplete (context, effective parallelism or Ollama version); inference blocked.".into());
+    }
     let model_row = ollama_tags(endpoint)?.into_iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)))
         .ok_or_else(|| format!("Requested model '{model}' is not in Ollama's local catalogue; inference blocked."))?;
     let digest = model_row.get("digest").and_then(|v| v.as_str()).unwrap_or_default().to_owned();
     if digest.is_empty() { return Err(format!("Ollama did not report a digest for '{model}'; runtime profile cannot be keyed safely.")); }
-    if context_length == 0 || num_parallel == 0 || ollama_version.is_empty() {
-        return Err("Runtime profile key is incomplete (context, effective parallelism or Ollama version); inference blocked.".into());
-    }
     let key = (digest.as_str(), ollama_version, context_length, num_parallel);
     let mut profiles = load_residency_profiles()?;
     let known_profile = profiles.iter().find(|profile| profile_matches(profile, key)).cloned();
@@ -1262,8 +1401,12 @@ fn preflight_model(
             if !target_was_resident || reload_target_for_admission { let _ = unload_model(endpoint, model); }
             for row in &models_to_restore {
                 let name = row.get("name").and_then(|v| v.as_str()).unwrap_or_default();
-                let context = row.get("context_length").and_then(|v| v.as_u64()).unwrap_or(4096);
+                let context = row.get("context_length").and_then(|v| v.as_u64()).unwrap_or(0);
                 if !name.is_empty() {
+                    if context == 0 {
+                        recovery.push(format!("restore {name} failed: Ollama did not report its loaded context length."));
+                        continue;
+                    }
                     let inference_kind = match model_inference_kind(endpoint, name) {
                         Ok(kind) => kind,
                         Err(restore_error) => {
@@ -1418,7 +1561,7 @@ mod model_name_tests {
         meets_gpu_reserve, ollama_model_name_matches, profile_matches,
         release_competing_models_for_admission, residency_probe,
         resident_context_requires_reload, verified_profile_impact,
-        verified_profile_required_free_bytes, ResidencyProfile,
+        verified_profile_required_free_bytes, preflight_model, ResidencyProfile,
     };
 
     #[test]
@@ -1491,6 +1634,16 @@ mod model_name_tests {
         assert!(!resident_context_requires_reload(true, 32_768, 32_768));
         assert!(resident_context_requires_reload(true, 4_096, 32_768));
         assert!(resident_context_requires_reload(false, 32_768, 32_768));
+    }
+
+    #[test]
+    fn missing_context_budget_is_rejected_before_ollama_access() {
+        let error = preflight_model(
+            "http://127.0.0.1:9", "qwen", 0, 1, "0.0.0", false,
+            "generate", &std::collections::HashMap::new(),
+        ).unwrap_err();
+        assert!(error.contains("context"));
+        assert!(error.contains("blocked"));
     }
 
     #[test]

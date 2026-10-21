@@ -8,10 +8,13 @@ from pathlib import Path
 import re
 import queue
 import shutil
+import sys
 import subprocess
 import threading
 import time
 import uuid
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 from typing import Any, Callable
 
 from ollama_runtime import DEFAULT_ENDPOINT, inference_lease
@@ -19,14 +22,28 @@ from ollama_runtime import DEFAULT_ENDPOINT, inference_lease
 
 WORKER_ROOT = Path(r"F:\AI\Ariadne-Agent-Worker")
 LAUNCHER = WORKER_ROOT / "Start-AriadneQwenCode.ps1"
+PINNED_NODE_TOOLS = WORKER_ROOT / "extensions" / "hermes-agent-pilot-profile" / "tools"
 WORKSPACE_ROOT = Path(os.environ.get(
     "ARIADNE_CODING_WORKSPACE_ROOT", r"F:\AriadneLab\agent-workspaces"
 )).resolve()
 EVIDENCE_ROOT = WORKER_ROOT / "logs" / "qwen-code" / "ariadne-runs"
+QWEN_SESSION_ROOT = WORKER_ROOT / "logs" / "qwen-code" / "sessions"
 RESULT_ROOT = WORKSPACE_ROOT / ".ariadne-results"
 DEFAULT_MODEL = "ariadne-qwen-code:9b-32k"
 DEFAULT_CONTEXT_TOKENS = 32_768
 MAX_CONTEXT_TOKENS = 1_048_576
+QWEN_SYSTEM_PROMPT = (
+    "You are Ariadne's local coding executor. Complete the user's coding task using only the "
+    "native function tools included in this request. Invoke registered tools as function calls; "
+    "never write pseudo-tool-call text, plans that pretend to be tool calls, or claims of work "
+    "not performed. Use read_file(file_path), write_file(file_path, content), and "
+    "run_shell_command(command) when those native tools are present. "
+    "Use only tools present in this request. Keep all "
+    "file paths and shell work inside the current workspace. Use the exact assigned absolute "
+    "Windows workspace path for read_file and write_file; use relative paths from the workspace "
+    "for run_shell_command. Do not use virtual paths such as /workspace. Do not invent tools or paths. "
+    "Verify actual tool results before reporting completion."
+)
 PROCESS_POLL_INTERVAL_SECONDS = 1
 CLIENT_HEARTBEAT_INTERVAL_SECONDS = 15
 _RUN_LOCK = threading.Lock()
@@ -85,6 +102,72 @@ def _within_root(path: Path, root: Path) -> bool:
         return False
 
 
+def _resolve_qwen_node() -> Path:
+    """Resolve a supported Node runtime for the installed Qwen Code CLI."""
+    candidates: list[Path] = []
+    configured = os.environ.get("ARIADNE_QWEN_NODE", "").strip()
+    if configured:
+        candidates.append(Path(configured).expanduser())
+    located = shutil.which("node.exe") or shutil.which("node")
+    if located:
+        candidates.append(Path(located))
+    if PINNED_NODE_TOOLS.is_dir():
+        candidates.extend(sorted(PINNED_NODE_TOOLS.glob("node-*/node.exe"), reverse=True))
+    for candidate in candidates:
+        try:
+            candidate = candidate.absolute()
+            if not candidate.is_file():
+                continue
+            result = subprocess.run(
+                [str(candidate), "--version"], capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=5, check=False,
+                # Ariadne's Windows host may be a console-less process. A raw
+                # console executable probe then gets its own visible window.
+                # Keep the preflight consistent with the hidden Qwen launch.
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            match = re.search(r"(?:^|v)(\d+)\.", result.stdout.strip())
+            if result.returncode == 0 and match and int(match.group(1)) >= 22:
+                return candidate
+        except (OSError, subprocess.SubprocessError, ValueError):
+            continue
+    raise RuntimeError("Qwen Code requires Node.js 22 or newer, but no usable runtime was found.")
+
+
+def _qwen_process_environment() -> dict[str, str]:
+    node = _resolve_qwen_node()
+    environment = os.environ.copy()
+    # Qwen Code is a separate local coding runtime. Do not inherit the parent
+    # Codex session hooks, prompt context, or provider credentials: this leaks
+    # unrelated skill/memory instructions into its UserPromptSubmit context and
+    # can route a local coding task through the wrong assistant context.
+    for name in tuple(environment):
+        if name.upper().startswith(("CODEX_", "OPENAI_")):
+            environment.pop(name, None)
+    current_path = environment.get("PATH", "")
+    system_root = Path(environment.get("SystemRoot", r"C:\Windows"))
+    required_paths = [
+        node.parent,
+        Path(sys.executable).resolve().parent,
+        system_root / "System32",
+        system_root / "System32" / "Wbem",
+        system_root / "System32" / "WindowsPowerShell" / "v1.0",
+    ]
+    path_entries: list[str] = []
+    seen: set[str] = set()
+    for path in [*required_paths, *([Path(item) for item in current_path.split(os.pathsep) if item] if current_path else [])]:
+        value = str(path)
+        if value.casefold() not in seen:
+            path_entries.append(value)
+            seen.add(value.casefold())
+    environment["PATH"] = os.pathsep.join(path_entries)
+    # Qwen's Windows shell may not inherit the resolved PATH consistently
+    # across its nested process boundary. Give the workspace guard and model
+    # the exact Python executable already running Ariadne's coding bridge.
+    environment["ARIADNE_QWEN_PYTHON"] = str(Path(sys.executable).resolve())
+    return environment
+
+
 def _file_hashes(root: Path) -> dict[str, str]:
     result: dict[str, str] = {}
     for path in root.rglob("*"):
@@ -102,6 +185,99 @@ def _write_json_record(path: Path, result: dict[str, Any]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     os.replace(temporary, path)
+
+
+def _worker_lifecycle(session_runtime_dir: Path) -> list[dict[str, Any]]:
+    path = session_runtime_dir / "ariadne-worker-lifecycle.jsonl"
+    records: list[dict[str, Any]] = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            value = json.loads(line)
+            if isinstance(value, dict):
+                records.append(value)
+    except (OSError, ValueError):
+        pass
+    return records
+
+
+def _jsonl_records(path: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            value = json.loads(line)
+            if isinstance(value, dict):
+                records.append(value)
+    except (OSError, ValueError):
+        pass
+    return records
+
+
+def create_context_model_profile(model: str, context_tokens: int, endpoint: str = DEFAULT_ENDPOINT) -> tuple[str, bool]:
+    """Create a temporary Ollama model alias when OpenAI wire lacks num_ctx.
+
+    Ollama's OpenAI-compatible endpoint cannot set a per-request context size.
+    A deterministic, context-qualified alias lets Qwen Code use the configured
+    registry model while Rust Host admits the actual alias at the same budget.
+    """
+    parsed = urlsplit(endpoint)
+    if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise RuntimeError("Context-qualified Qwen profiles require Ariadne's local Ollama endpoint.")
+    if not model or not 1_024 <= int(context_tokens) <= MAX_CONTEXT_TOKENS:
+        raise ValueError("A configured model and valid registry context are required.")
+
+    def api(path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        method = "GET" if path == "/api/tags" else "POST"
+        request = Request(
+            endpoint.rstrip("/") + path,
+            data=None if method == "GET" else json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+            headers={} if method == "GET" else {"Content-Type": "application/json"}, method=method,
+        )
+        with urlopen(request, timeout=30) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        if not isinstance(result, dict):
+            raise RuntimeError(f"Ollama {path} returned an invalid response.")
+        return result
+
+    details = api("/api/show", {"model": model})
+    parameters = str(details.get("parameters") or "")
+    match = re.search(r"(?im)^\s*num_ctx\s+(\d+)\s*$", parameters)
+    if match and int(match.group(1)) == int(context_tokens):
+        return model, False
+
+    fingerprint = hashlib.sha256(f"{model}\0{context_tokens}".encode("utf-8")).hexdigest()[:12]
+    alias = f"ariadne-agent-{fingerprint}-ctx{int(context_tokens)}"
+    tags = api("/api/tags", {})
+    installed = {str(row.get("name") or row.get("model") or "") for row in tags.get("models", []) if isinstance(row, dict)}
+    if alias in installed:
+        alias_details = api("/api/show", {"model": alias})
+        alias_match = re.search(r"(?im)^\s*num_ctx\s+(\d+)\s*$", str(alias_details.get("parameters") or ""))
+        if alias_match and int(alias_match.group(1)) == int(context_tokens):
+            return alias, False
+        raise RuntimeError("A colliding Ariadne temporary model profile has a different context budget.")
+
+    api("/api/create", {
+        "model": alias, "from": model,
+        "parameters": {"num_ctx": int(context_tokens)}, "stream": False,
+    })
+    alias_details = api("/api/show", {"model": alias})
+    alias_match = re.search(r"(?im)^\s*num_ctx\s+(\d+)\s*$", str(alias_details.get("parameters") or ""))
+    if not alias_match or int(alias_match.group(1)) != int(context_tokens):
+        raise RuntimeError("Ollama did not confirm the temporary model's configured context budget.")
+    return alias, True
+
+
+def delete_context_model_profile(model: str, endpoint: str = DEFAULT_ENDPOINT) -> None:
+    parsed = urlsplit(endpoint)
+    if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise RuntimeError("Temporary model profile cleanup requires Ariadne's local Ollama endpoint.")
+    request = Request(
+        endpoint.rstrip("/") + "/api/delete",
+        data=json.dumps({"model": model}, separators=(",", ":")).encode("utf-8"),
+        headers={"Content-Type": "application/json"}, method="DELETE",
+    )
+    with urlopen(request, timeout=30) as response:
+        if response.status not in (200, 204):
+            raise RuntimeError(f"Ollama refused temporary profile cleanup (HTTP {response.status}).")
 
 
 def coding_run_result(run_id: str) -> dict[str, Any] | None:
@@ -319,6 +495,22 @@ def _parse_transcript(stdout: str, stderr: str, exit_code: int | None) -> tuple[
                                 call["result"] = block.get("content")
                                 call["is_error"] = bool(block.get("is_error"))
                                 break
+        elif kind == "tool_result":
+            # Qwen's OpenAI-compatible result content is a plain string, while
+            # its canonical tool-result record carries structured execution
+            # evidence (exitCode, outcome, cwd) in resultDisplay. Preserve it
+            # so Ariadne can verify command runs without scraping display text.
+            tool_result = message.get("toolCallResult", {})
+            tool_use_id = tool_result.get("callId") if isinstance(tool_result, dict) else None
+            for call in reversed(tool_calls):
+                if call.get("id") == tool_use_id:
+                    display = tool_result.get("resultDisplay")
+                    if isinstance(display, dict):
+                        call["result_display"] = display
+                    status = tool_result.get("executionStatus")
+                    if isinstance(status, str):
+                        call["execution_status"] = status
+                    break
         elif kind == "result":
             final_result_seen = True
             result = message.get("result")
@@ -356,6 +548,104 @@ def _parse_transcript(stdout: str, stderr: str, exit_code: int | None) -> tuple[
             outcome = "command issued; result not captured"
         tests.append({"command": command, "result": outcome, "output": captured[-2_000:]})
     return summary, tool_calls, tests, errors, assistant_messages, usage, model_usage, final_result_error
+
+
+def _shell_execution_receipts(tool_calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep command and exit evidence from Qwen Code shell tool results."""
+    receipts: list[dict[str, Any]] = []
+    for call in tool_calls:
+        if str(call.get("name") or "").casefold() not in {"run_shell_command", "shell", "execute"}:
+            continue
+        data = call.get("input") if isinstance(call.get("input"), dict) else {}
+        command = str(data.get("command") or "").strip()
+        if not command:
+            continue
+        raw = call.get("result")
+        if isinstance(raw, str):
+            output = raw
+        elif isinstance(raw, list):
+            output = "\n".join(
+                str(item.get("text") or item.get("content") or "")
+                if isinstance(item, dict) else str(item)
+                for item in raw
+            )
+        elif isinstance(raw, dict):
+            output = str(raw.get("output") or raw.get("stdout") or raw.get("content") or json.dumps(raw, ensure_ascii=False))
+        else:
+            output = "" if raw is None else str(raw)
+        exit_code = None
+        display = call.get("result_display")
+        if isinstance(display, dict):
+            candidate = display.get("exitCode")
+            if isinstance(candidate, int) and not isinstance(candidate, bool):
+                exit_code = candidate
+        if isinstance(raw, dict):
+            candidate = next((raw[key] for key in ("exit_code", "exitCode", "returncode") if key in raw), None)
+            if isinstance(candidate, int) and not isinstance(candidate, bool):
+                exit_code = candidate
+        if exit_code is None:
+            match = re.search(r"(?:exit(?:ed)?(?: with)? (?:code|status)\s*[:=]?\s*)(\d+)", output, re.IGNORECASE)
+            if match:
+                exit_code = int(match.group(1))
+        failed = bool(call.get("is_error")) or (exit_code is not None and exit_code != 0)
+        if not output and isinstance(display, dict):
+            output = str(display.get("output") or display.get("text") or "")
+        receipts.append({
+            "command": command,
+            "exit_code": exit_code,
+            "result": "failed" if failed else "passed" if exit_code == 0 else "unverified",
+            "output": output[-4_000:],
+        })
+    return receipts
+
+
+def _enrich_tool_calls_from_qwen_runtime(tool_calls: list[dict[str, Any]], runtime_dir: Path) -> None:
+    """Attach Qwen's structured tool-result metadata to the streamed calls."""
+    calls = {str(call.get("id")): call for call in tool_calls if call.get("id")}
+    if not calls or not _within_root(runtime_dir, QWEN_SESSION_ROOT) or not runtime_dir.is_dir():
+        return
+    for transcript in runtime_dir.rglob("*.jsonl"):
+        try:
+            if transcript.stat().st_size > 25_000_000:
+                continue
+            for line in transcript.read_text(encoding="utf-8").splitlines():
+                try:
+                    event = json.loads(line)
+                except (ValueError, json.JSONDecodeError):
+                    continue
+                if not isinstance(event, dict) or event.get("type") != "tool_result":
+                    continue
+                record = event.get("toolCallResult")
+                if not isinstance(record, dict):
+                    continue
+                call = calls.get(str(record.get("callId") or ""))
+                if call is None:
+                    continue
+                display = record.get("resultDisplay")
+                if isinstance(display, dict):
+                    call["result_display"] = display
+                status = record.get("executionStatus")
+                if isinstance(status, str):
+                    call["execution_status"] = status
+        except OSError:
+            continue
+
+
+def _task_evidence_errors(task: str, changed_files: list[str], tests: list[dict[str, Any]],
+                          executions: list[dict[str, Any]]) -> list[str]:
+    """Fail closed when a requested change or verification has no execution proof."""
+    errors: list[str] = []
+    if re.search(r"\b(?:create|build|implement|modify|change|edit|fix|repair|add|write)\b", task, re.IGNORECASE) and not changed_files:
+        errors.append("The task requested code changes, but no changed files were recorded.")
+    if re.search(r"\b(?:run|test|verify|execute|check|launch)\b", task, re.IGNORECASE) and not any(
+        item.get("result") == "passed" for item in executions
+    ):
+        errors.append("The task requested execution or verification, but no shell result with exit code 0 was recorded.")
+    if re.search(r"\b(?:test|pytest|unittest|vitest|jest)\b", task, re.IGNORECASE) and not any(
+        item.get("result") == "passed" for item in tests
+    ):
+        errors.append("The task requested tests, but no passing test command was recorded.")
+    return errors
 
 
 def _stop_child_tree(process: subprocess.Popen) -> None:
@@ -412,6 +702,9 @@ def run_qwen_code_task(
         raise ValueError("Coding tasks require a dedicated child workspace, not the workspace root itself.")
     if _within_root(workspace_path, RESULT_ROOT):
         raise ValueError("The reserved Ariadne result directory cannot be used as a coding project workspace.")
+    session_runtime_dir = (QWEN_SESSION_ROOT / run_id).resolve()
+    if not _within_root(session_runtime_dir, QWEN_SESSION_ROOT):
+        raise ValueError("Qwen session runtime escaped its isolated runtime directory.")
     if not LAUNCHER.is_file():
         raise RuntimeError(f"Installed Qwen Code launcher is missing: {LAUNCHER}")
     workspace_path.mkdir(parents=True, exist_ok=True)
@@ -424,28 +717,63 @@ def run_qwen_code_task(
     baseline = _file_hashes(workspace_path)
     default_constraints = [
         "Keep all project reads, writes, generated files, and commands inside the assigned workspace.",
-        "Inspect the project instructions and existing code before editing.",
         "Make the smallest coherent change, then run the relevant tests or direct verification.",
         "Repair any failure caused by the change and rerun verification before reporting.",
         "Do not delete unrelated files or access other repositories.",
     ]
+    if baseline:
+        default_constraints.insert(1, "Inspect project instructions and relevant existing files before editing.")
     all_constraints = [str(item).strip()[:1_000] for item in (constraints or []) if str(item).strip()]
-    prompt = (
+    task_intro = (
+        "Ariadne coding task. The assigned workspace is empty; create the requested files, execute and verify the task.\n\n"
+        if not baseline else
         "Ariadne coding task. Inspect the assigned workspace, make the requested code change, execute and verify it.\n\n"
+    )
+    prompt = (
+        task_intro
+        +
         f"Task:\n{task}\n\n"
+        f"Assigned Windows workspace root: {workspace_path}\n"
+        f"Verified Python interpreter: {Path(sys.executable).resolve()}\n"
+        "Qwen Code is running directly on Windows in this directory. For read_file and "
+        "write_file, use an absolute Windows path beginning with this exact root. For "
+        "run_shell_command, use a relative script path from this workspace and the absolute "
+        "workspace as its directory. Invoke only the quoted Verified Python interpreter "
+        "shown above, followed by the relative script filename. Never use a virtual POSIX "
+        "path such as `/workspace/...`.\n"
+        "After writing or editing code, invoke run_shell_command with the relevant test or "
+        "direct verification command, then use read_file to inspect the resulting source. "
+        "Do not stop after a write or report completion without both tool results.\n\n"
         f"Selected model: {model}\nQwen Code context window: {context_tokens} tokens.\n\n"
-        "Constraints:\n- " + "\n- ".join([*default_constraints, *all_constraints])
+        "Constraints:\n- " + "\n- ".join([
+            *default_constraints,
+            "Perform actions with the registered Qwen Code tools, not prose or textual pseudo-calls such as [tool_call: ...].",
+            "Use read_file to inspect files and write_file(file_path, content) to create or update files.",
+            "Use run_shell_command(command) to run the requested program or tests, then inspect the actual result.",
+            "Do not invent tool names such as list_files; call only tools registered in this session.",
+            "Do not report success unless file and command results are present in your tool transcript.",
+            *all_constraints,
+        ])
     )
     command = [
         shutil.which("powershell.exe") or "powershell.exe", "-NoLogo", "-NoProfile",
         "-ExecutionPolicy", "Bypass", "-File", str(LAUNCHER),
-        "-Workspace", str(workspace_path), "-Prompt", prompt, "-Model", model,
+        "-Workspace", str(workspace_path), "-WorkspaceRoot", str(WORKSPACE_ROOT),
+        "-RuntimeDir", str(session_runtime_dir),
+        "-RunId", run_id,
+        "-NodeExecutable", str(_resolve_qwen_node()),
+        "-Prompt", prompt, "-Model", model,
+        "-SystemPrompt", QWEN_SYSTEM_PROMPT,
+        "-ExcludeTools", "agent,get_goal,grep_search,notebook_edit,report_findings,skill,tool_call,tool_search,update_goal",
         "-ContextTokens", str(context_tokens), "-OutputFormat", "stream-json",
         "-IncludePartialMessages", "-Autonomous",
     ]
+    if os.environ.get("ARIADNE_QWEN_DEBUG") == "1":
+        command.append("-DebugMode")
     if progress:
         progress("admission", f"Requesting Rust Host model/GPU admission for {model}.")
-    context = resource_admission() if resource_admission else inference_lease(model, DEFAULT_ENDPOINT)
+    context = (resource_admission() if resource_admission else
+               inference_lease(model, DEFAULT_ENDPOINT, context_length=context_tokens))
     process: subprocess.Popen | None = None
     stdout = ""
     stderr = ""
@@ -455,6 +783,9 @@ def run_qwen_code_task(
     stdout_parts: list[str] = []
     stderr_parts: list[str] = []
     output_events: queue.Queue[tuple[str, str | None]] = queue.Queue()
+    node_runtime: str | None = None
+    child_started_at: str | None = None
+    child_pid: int | None = None
     try:
         with context:
             admission_acquired = True
@@ -463,12 +794,21 @@ def run_qwen_code_task(
             elif progress:
                 progress("running", f"Qwen Code is working in {workspace_path}.")
             if not cancelled:
+                child_environment = _qwen_process_environment()
+                child_environment["ARIADNE_CODING_RUN_ID"] = run_id
+                child_environment["ARIADNE_CHAT_ID"] = os.environ.get("ARIADNE_CHAT_ID", "")
+                child_environment["ARIADNE_TURN_ID"] = os.environ.get("ARIADNE_TURN_ID", "")
+                child_environment["ARIADNE_CODING_PARENT_PID"] = str(os.getpid())
+                node_runtime = str(_resolve_qwen_node())
                 process = subprocess.Popen(
                     command, cwd=str(workspace_path), stdin=subprocess.DEVNULL,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                     encoding="utf-8", errors="replace", bufsize=1,
+                    env=child_environment,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
+                child_pid = process.pid
+                child_started_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
                 def drain(stream: Any, name: str, parts: list[str]) -> None:
                     try:
@@ -521,6 +861,19 @@ def run_qwen_code_task(
         exit_code = None
 
     summary, tool_calls, tests, errors, model_calls, usage, model_usage, final_result_error = _parse_transcript(stdout or "", stderr or "", exit_code)
+    _enrich_tool_calls_from_qwen_runtime(tool_calls, session_runtime_dir)
+    executions = _shell_execution_receipts(tool_calls)
+    lifecycle = _worker_lifecycle(session_runtime_dir)
+    node_started = next((item for item in reversed(lifecycle)
+                         if item.get("phase") == "qwen-cli-child-started"), None)
+    if node_started is None:
+        node_started = next((item for item in reversed(lifecycle)
+                             if item.get("phase") == "qwen-node-started"), {})
+    node_exited = next((item for item in reversed(lifecycle)
+                        if item.get("phase") == "qwen-cli-child-exited"), None)
+    if node_exited is None:
+        node_exited = next((item for item in reversed(lifecycle)
+                            if item.get("phase") == "qwen-cli-exited"), {})
     if cancelled:
         errors.append("Qwen Code was cancelled by the user or the Chat connection closed.")
     after = _file_hashes(workspace_path)
@@ -528,14 +881,23 @@ def run_qwen_code_task(
     if not summary:
         summary = "Qwen Code completed without a final summary." if exit_code == 0 else "Qwen Code did not return a successful final response."
     status = "CANCELLED" if cancelled else "FAILED" if exit_code != 0 or final_result_error else "SUCCESS"
+    evidence_errors = _task_evidence_errors(task, changed_files, tests, executions)
+    if evidence_errors:
+        errors.extend(evidence_errors)
+        status = "FAILED"
     result = {
         "run_id": run_id,
+        "chat_id": os.environ.get("ARIADNE_CHAT_ID", ""),
+        "turn_id": os.environ.get("ARIADNE_TURN_ID", ""),
         "status": status,
         "workspace": str(workspace_path),
         "model": model,
         "context_tokens": context_tokens,
+        "node_runtime": node_runtime,
+        "qwen_session_dir": str(session_runtime_dir),
         "changed_files": changed_files,
         "tests": tests,
+        "executions": executions,
         "elapsed_time_seconds": round(time.perf_counter() - started, 3),
         "tool_calls": tool_calls,
         "tool_call_count": len(tool_calls),
@@ -548,6 +910,34 @@ def run_qwen_code_task(
         "cancelled": cancelled,
         "cli_result_error": final_result_error,
         "host_admission": "Rust Host lease held for the complete Qwen Code process lifetime" if admission_acquired else "Rust Host admission failed",
+        "child_diagnostics": {
+            "run_id": run_id,
+            "chat_id": os.environ.get("ARIADNE_CHAT_ID", ""),
+            "turn_id": os.environ.get("ARIADNE_TURN_ID", ""),
+            "python_parent_pid": os.getpid(),
+            "powershell_pid": child_pid,
+            "relay_pid": next((item.get("relay_pid") for item in reversed(lifecycle)
+                                if item.get("phase") == "qwen-relay-started"), None),
+            "powershell_started_at": child_started_at,
+            "node_pid": node_started.get("node_pid"),
+            "node_started_at": node_started.get("node_started_at"),
+            "node_exited_at": node_exited.get("node_exited_at"),
+            "node_exit_code": node_exited.get("exit_code"),
+            "qwen_run_id": run_id,
+            "ollama_request_ids": sorted({
+                item.get("request_id") for item in _jsonl_records(session_runtime_dir / "ollama-api-boundary.jsonl")
+                if isinstance(item, dict) and isinstance(item.get("request_id"), str)
+            }),
+            "process_exit_code": exit_code,
+            "stdout_bytes": len((stdout or "").encode("utf-8", errors="replace")),
+            "stderr_bytes": len((stderr or "").encode("utf-8", errors="replace")),
+            "stdout_tail": (stdout or "")[-8_000:],
+            "stderr_tail": (stderr or "")[-8_000:],
+            "session_transcript": str(session_runtime_dir),
+            "ollama_api_boundary_log": str(session_runtime_dir / "ollama-api-boundary.jsonl"),
+            "worker_lifecycle_log": str(session_runtime_dir / "ariadne-worker-lifecycle.jsonl"),
+            "provider_request_recorded": bool(model_calls),
+        },
     }
     _write_json_record(RESULT_ROOT / f"{run_id}.json", result)
     _write_json_record(EVIDENCE_ROOT / f"{run_id}.json", result)
@@ -559,6 +949,6 @@ def run_qwen_code_task(
 
 
 __all__ = ["DEFAULT_CONTEXT_TOKENS", "DEFAULT_MODEL", "WORKSPACE_ROOT", "coding_preview_entry",
-           "coding_preview_file", "coding_run_result", "inspect_coding_workspace", "is_coding_intent",
+           "coding_preview_file", "coding_run_result", "create_context_model_profile", "delete_context_model_profile", "inspect_coding_workspace", "is_coding_intent",
            "record_coding_verification",
            "run_qwen_code_task"]
