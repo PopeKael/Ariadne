@@ -36,6 +36,7 @@ struct RuntimeRequest {
     model: Option<String>,
     context_length: Option<u32>,
     allow_calibration: Option<bool>,
+    restore_previous_models_on_failure: Option<bool>,
     inference_kind: Option<String>,
     lease_id: Option<String>,
     force: Option<bool>,
@@ -199,7 +200,8 @@ impl OllamaSupervisor {
         }
     }
 
-    fn admit_model(&self, endpoint: String, model: String, context_length: u32, allow_calibration: bool, inference_kind: &str) -> RuntimeResponse {
+    fn admit_model(&self, endpoint: String, model: String, context_length: u32, allow_calibration: bool,
+                   restore_previous_models_on_failure: bool, inference_kind: &str) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         if state.externally_delegated { return RuntimeResponse::error("Ariadne runtime is delegated to Dungeon; model admission is paused."); }
         prune_expired_leases(&mut state);
@@ -217,7 +219,8 @@ impl OllamaSupervisor {
         };
         let active_models: std::collections::HashMap<String, String> = state.inference_leases.iter()
             .map(|(id, lease)| (id.clone(), lease.model.clone())).collect();
-        match preflight_model(&endpoint, &model, context_length, num_parallel, version.as_deref().unwrap_or(""), allow_calibration, inference_kind, &active_models) {
+        match preflight_model(&endpoint, &model, context_length, num_parallel, version.as_deref().unwrap_or(""), allow_calibration,
+                              restore_previous_models_on_failure, inference_kind, &active_models) {
             Ok((lease_id, inventory, detail)) => {
                 log_line(&detail);
                 state.inference_leases.insert(lease_id.clone(), InferenceLease { model, context_length, last_renewed_at: Instant::now() });
@@ -689,6 +692,7 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
                 // Ollama default (commonly 4K). Zero is rejected by preflight.
                 request.context_length.unwrap_or(0),
                 request.allow_calibration.unwrap_or(false),
+                request.restore_previous_models_on_failure.unwrap_or(true),
                 request.inference_kind.as_deref().unwrap_or("generate"),
             ),
             Ok(request) if request.v == 1 && request.kind == "release_model" => supervisor.release_model(
@@ -1090,7 +1094,7 @@ fn restore_residency_models(endpoint: &str, rows: &[serde_json::Value], num_para
                 continue;
             }
         };
-        match preflight_model(endpoint, name, context, num_parallel, version, false, inference_kind, &std::collections::HashMap::new()) {
+        match preflight_model(endpoint, name, context, num_parallel, version, false, true, inference_kind, &std::collections::HashMap::new()) {
             Ok(_) => { last_used.insert(name.to_owned(), Instant::now()); }
             Err(error) => issues.push(format!("{name} was not restored: {error}")),
         }
@@ -1274,6 +1278,7 @@ fn preflight_model(
     num_parallel: u32,
     ollama_version: &str,
     allow_calibration: bool,
+    restore_previous_models_on_failure: bool,
     inference_kind: &str,
     leases: &std::collections::HashMap<String, String>,
 ) -> Result<(String, serde_json::Value, String), String> {
@@ -1323,11 +1328,11 @@ fn preflight_model(
     } else {
         previous_models.clone()
     };
-    let mut models_to_restore = previous_models.clone();
+    let mut models_to_restore = if restore_previous_models_on_failure { previous_models.clone() } else { Vec::new() };
     if reload_target_for_admission {
         if let Some(row) = resident_target {
             models_to_release.push(row.clone());
-            models_to_restore.push(row.clone());
+            if restore_previous_models_on_failure { models_to_restore.push(row.clone()); }
         }
     }
     let result = (|| -> Result<(serde_json::Value, String), String> {
@@ -1337,7 +1342,11 @@ fn preflight_model(
         }
         // Baseline includes retained verified residents and follows any
         // release required for calibration or target-context reconciliation.
-        let before = super::gpu_residency::sample().map_err(|error| format!("WDDM baseline unavailable after idle-model release: {error}"))?;
+        let before = wait_for_stable_gpu_snapshot(
+            known_profile.as_ref().map(verified_profile_required_free_bytes),
+            Duration::from_secs(12),
+        )
+            .map_err(|error| format!("WDDM baseline unavailable after idle-model release: {error}"))?;
         let reserve = GPU_SAFETY_RESERVE_BYTES;
         if before.free_bytes <= reserve {
             return Err(format!("Calibration blocked before preload: WDDM free memory is {} MiB, which does not exceed the configured 1024 MiB reserve.", before.free_bytes / 1_048_576));
@@ -1346,7 +1355,7 @@ fn preflight_model(
         if let Some(profile) = known_profile.as_ref().filter(|_| loaded_by_this_admission) {
             let required_free_bytes = verified_profile_required_free_bytes(profile);
             if before.free_bytes < required_free_bytes {
-                return Err(format!("Verified profile requires about {} MiB WDDM impact plus the configured 1024 MiB reserve; baseline free is {} MiB. Model was not loaded.", profile.wddm_impact_bytes / 1_048_576, before.free_bytes / 1_048_576));
+                return Err(format!("Verified model allocation requires about {} MiB plus the configured 1024 MiB reserve; stable baseline free is {} MiB. Model was not loaded.", profile.gpu_bytes / 1_048_576, before.free_bytes / 1_048_576));
             }
         } else if known_profile.is_none() {
             log_line(&format!("Explicit residency calibration started for '{model}': digest={}, Ollama={ollama_version}, context={context_length}, parallelism={num_parallel}; baseline WDDM free={} MiB.", &digest[..digest.len().min(12)], before.free_bytes / 1_048_576));
@@ -1356,7 +1365,8 @@ fn preflight_model(
             ollama_http_timeout(endpoint, "POST", path, Some(&preload), 300)?;
             wait_for_target_resident(endpoint, model)?;
         }
-        let after = super::gpu_residency::sample().map_err(|error| format!("WDDM post-load sample unavailable: {error}"))?;
+        let after = wait_for_stable_gpu_snapshot(Some(reserve), Duration::from_secs(12))
+            .map_err(|error| format!("WDDM post-load residency did not settle with the configured reserve: {error}"))?;
         let loaded = ollama_models(endpoint)?.into_iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)))
             .ok_or_else(|| format!("Ollama /api/ps did not report '{model}' after preload."))?;
         let model_bytes = loaded.get("size").and_then(|v| v.as_u64()).unwrap_or(0);
@@ -1382,7 +1392,10 @@ fn preflight_model(
         };
         let profile = ResidencyProfile { digest: digest.clone(), ollama_version: ollama_version.to_owned(), context_length, num_parallel, model_bytes, gpu_bytes, wddm_impact_bytes: impact };
         let updated = if let Some(old) = profiles.iter_mut().find(|candidate| profile_matches(candidate, key)) {
-            old.wddm_impact_bytes = old.wddm_impact_bytes.max(impact);
+            // Only a model loaded and sampled after GPU memory settled can
+            // replace the previous measurement. A stale peak from an earlier
+            // transient load must not permanently overstate steady-state use.
+            old.wddm_impact_bytes = if loaded_by_this_admission { impact } else { old.wddm_impact_bytes.max(impact) };
             old.model_bytes = model_bytes; old.gpu_bytes = gpu_bytes; old.clone()
         } else { profiles.push(profile.clone()); profile };
         if loaded_by_this_admission { save_residency_profiles(&profiles)?; }
@@ -1414,21 +1427,25 @@ fn preflight_model(
                             continue;
                         }
                     };
-                    match preflight_model(endpoint, name, context as u32, num_parallel, ollama_version, false, inference_kind, &std::collections::HashMap::new()) {
+                    match preflight_model(endpoint, name, context as u32, num_parallel, ollama_version, false, true, inference_kind, &std::collections::HashMap::new()) {
                         Ok((_lease_id, _inventory, detail)) => log_line(&format!("Prior model residency restored through verified Rust-host admission: {detail}")),
                         Err(restore_error) => recovery.push(format!("restore {name} failed: {restore_error}")),
                     }
                 }
             }
-            if let Ok(resident_after_recovery) = ollama_models(endpoint) {
-                for row in &models_to_restore {
-                    let name = row.get("name").and_then(|v| v.as_str()).unwrap_or_default();
-                    if !name.is_empty() && !resident_after_recovery.iter().any(|candidate| candidate.get("name").and_then(|v| v.as_str()).is_some_and(|candidate_name| ollama_model_name_matches(name, candidate_name))) {
-                        recovery.push(format!("{name} was not resident after restoration"));
+            if restore_previous_models_on_failure {
+                if let Ok(resident_after_recovery) = ollama_models(endpoint) {
+                    for row in &models_to_restore {
+                        let name = row.get("name").and_then(|v| v.as_str()).unwrap_or_default();
+                        if !name.is_empty() && !resident_after_recovery.iter().any(|candidate| candidate.get("name").and_then(|v| v.as_str()).is_some_and(|candidate_name| ollama_model_name_matches(name, candidate_name))) {
+                            recovery.push(format!("{name} was not resident after restoration"));
+                        }
                     }
+                } else if !models_to_restore.is_empty() {
+                    recovery.push("could not verify restored Ollama residency".into());
                 }
-            } else if !models_to_restore.is_empty() {
-                recovery.push("could not verify restored Ollama residency".into());
+            } else if !previous_models.is_empty() {
+                recovery.push("previous model residency was intentionally left unloaded for the exclusive workspace handoff".into());
             }
             if recovery.is_empty() { return Err(format!("{error} Prior idle model residency was restored where available.")); }
             return Err(format!("{error} Recovery warning: {}.", recovery.join("; ")));
@@ -1460,7 +1477,43 @@ fn release_competing_models_for_admission(has_verified_profile: bool) -> bool {
 }
 
 fn verified_profile_required_free_bytes(profile: &ResidencyProfile) -> u64 {
-    profile.wddm_impact_bytes.saturating_add(GPU_SAFETY_RESERVE_BYTES)
+    // `gpu_bytes` is Ollama's verified full-GPU model allocation. WDDM impact
+    // also includes transient driver/runtime allocations observed during the
+    // original load; using that peak as a permanent pre-load charge can reject
+    // a model that fits. The live post-load WDDM check below still enforces the
+    // full reserve against actual settled memory.
+    profile.gpu_bytes.saturating_add(GPU_SAFETY_RESERVE_BYTES)
+}
+
+fn wait_for_stable_gpu_snapshot(
+    min_free_bytes: Option<u64>,
+    timeout: Duration,
+) -> Result<super::gpu_residency::GpuMemorySnapshot, String> {
+    const STABLE_DELTA_BYTES: u64 = 64 * 1024 * 1024;
+    let deadline = Instant::now() + timeout;
+    let mut previous_free = None;
+    let mut stable_samples = 0u8;
+    let mut low_memory_stable = None;
+    loop {
+        let snapshot = super::gpu_residency::sample()?;
+        let free = snapshot.free_bytes;
+        let stable = previous_free.is_some_and(|previous: u64| previous.abs_diff(free) <= STABLE_DELTA_BYTES);
+        stable_samples = if stable { stable_samples.saturating_add(1) } else { 0 };
+        previous_free = Some(free);
+        if stable_samples >= 2 {
+            if min_free_bytes.map_or(true, |minimum| free >= minimum) {
+                return Ok(snapshot);
+            }
+            low_memory_stable = Some(snapshot);
+        }
+        if Instant::now() >= deadline {
+            if let Some(snapshot) = low_memory_stable {
+                return Ok(snapshot);
+            }
+            return Err("WDDM did not return a stable GPU memory sample before timeout.".into());
+        }
+        thread::sleep(Duration::from_millis(350));
+    }
 }
 
 fn is_full_gpu_residency(model_bytes: u64, gpu_bytes: u64) -> bool {
@@ -1590,7 +1643,7 @@ mod model_name_tests {
     }
 
     #[test]
-    fn verified_admission_uses_profiled_wddm_impact_plus_reserve_not_catalogue_estimate() {
+    fn verified_admission_uses_full_gpu_model_allocation_plus_reserve() {
         let mib = 1024 * 1024;
         let profile = ResidencyProfile {
             digest: "gpt-oss-20b".into(), ollama_version: "0.40.6".into(),
@@ -1598,13 +1651,13 @@ mod model_name_tests {
             model_bytes: 13_154 * mib, gpu_bytes: 12_161 * mib,
             wddm_impact_bytes: 12_325 * mib,
         };
-        let free_bytes = 13_479 * mib;
+        let free_bytes = 13_653 * mib;
         let verified_requirement = verified_profile_required_free_bytes(&profile);
-        let obsolete_catalogue_requirement = 14_178 * mib;
+        let historical_wddm_peak_requirement = 14_178 * mib;
 
-        assert_eq!(verified_requirement, 13_349 * mib);
+        assert_eq!(verified_requirement, 13_185 * mib);
         assert!(has_model_capacity(free_bytes, verified_requirement));
-        assert!(!has_model_capacity(free_bytes, obsolete_catalogue_requirement));
+        assert!(!has_model_capacity(free_bytes, historical_wddm_peak_requirement));
     }
 
     #[test]
@@ -1640,7 +1693,7 @@ mod model_name_tests {
     fn missing_context_budget_is_rejected_before_ollama_access() {
         let error = preflight_model(
             "http://127.0.0.1:9", "qwen", 0, 1, "0.0.0", false,
-            "generate", &std::collections::HashMap::new(),
+            true, "generate", &std::collections::HashMap::new(),
         ).unwrap_err();
         assert!(error.contains("context"));
         assert!(error.contains("blocked"));

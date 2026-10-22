@@ -5544,6 +5544,7 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
                 ingestion_model, OLLAMA_URL,
                 context_length=context_tokens,
                 allow_calibration=True,
+                restore_previous_models_on_failure=False,
             )
         except RuntimeError as exc:
             return {"ok": False, "state": "model_admission_failed", "detail": str(exc)}
@@ -5582,15 +5583,9 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
                 if GPU_VAULT_RESERVATION == reservation_id:
                     GPU_VAULT_RESERVATION = None
                     GPU_OWNER = "AI" if GPU_AI_ADMISSIONS else "NONE"
-            # A Vault admission attempt can cause Rust Host to release idle
-            # Home residency before discovering that the Vault profile and
-            # reserve do not fit. There is no session to close in this branch,
-            # so explicitly hand capacity back to the configured Home model.
-            if host_gpu_lease_id:
-                try:
-                    start_home_chat_model_preload()
-                except Exception as exc:
-                    print(f"[vault-session] Home model restore scheduling failed: {exc}", flush=True)
+            # A failed exclusive Vault handoff leaves Home residency released.
+            # Re-loading Home here would immediately reclaim the GPU capacity
+            # the user needs to correct the Vault admission and retry.
 
 def parse_wsl(raw: str) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []

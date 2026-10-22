@@ -86,7 +86,8 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["models_released"], [])
         acquire.assert_called_once_with("ingestion-model", server.OLLAMA_URL,
-                                        context_length=16_384, allow_calibration=True)
+                                        context_length=16_384, allow_calibration=True,
+                                        restore_previous_models_on_failure=False)
         preload.assert_not_called()
         self.assertIn("resident", result["detail"])
         self.assertEqual(server.MODEL_IN_FLIGHT.get("ingestion-model"), 1)
@@ -102,7 +103,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertEqual(result["state"], "busy")
         self.assertIn("Rust host", result["detail"])
 
-    def test_model_admission_failure_releases_vault_lease_and_schedules_home_restore(self):
+    def test_model_admission_failure_releases_vault_lease_without_reloading_home_model(self):
         with patch.object(server, "_wait_for_home_model_preload", return_value={"ok": True}), \
              patch.object(server, "ollama_catalog", return_value={"available": True, "loaded": [], "loaded_details": []}), \
              patch.object(server, "host_acquire_model_lease", side_effect=RuntimeError("verified profile exceeds free VRAM")), \
@@ -111,7 +112,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["state"], "model_admission_failed")
         server.host_release_gpu_lease.assert_called_once_with("vault-gpu-lease", server.OLLAMA_URL)
-        restore.assert_called_once_with()
+        restore.assert_not_called()
         self.assertIsNone(server.GPU_VAULT_RESERVATION)
         self.assertEqual(server.GPU_OWNER, "NONE")
 

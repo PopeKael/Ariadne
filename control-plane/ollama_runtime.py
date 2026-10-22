@@ -309,6 +309,7 @@ def _request_host_ollama(
 def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
                         lease_id: str | None = None, force: bool | None = None,
                         context_length: int | None = None, allow_calibration: bool | None = None,
+                        restore_previous_models_on_failure: bool | None = None,
                         inference_kind: str | None = None,
                         workload: str | None = None, min_free_bytes: int | None = None,
                         owner_pid: int | None = None,
@@ -329,6 +330,8 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
         request["context_length"] = int(context_length)
     if allow_calibration is not None:
         request["allow_calibration"] = bool(allow_calibration)
+    if restore_previous_models_on_failure is not None:
+        request["restore_previous_models_on_failure"] = bool(restore_previous_models_on_failure)
     if inference_kind is not None:
         request["inference_kind"] = inference_kind
     if lease_id is not None:
@@ -385,10 +388,12 @@ def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_len
 
 
 def host_acquire_model_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int,
-                             allow_calibration: bool = False) -> str:
+                             allow_calibration: bool = False,
+                             restore_previous_models_on_failure: bool = True) -> str:
     """Acquire a Rust-host model lease that survives beyond one inference call."""
     result = _request_host_model("admit_model", endpoint=endpoint, model=model,
                                  context_length=context_length, allow_calibration=allow_calibration,
+                                 restore_previous_models_on_failure=restore_previous_models_on_failure,
                                  timeout=330.0 if allow_calibration else 20.0)
     lease_id = str(result.get("lease_id") or "")
     if not lease_id:
