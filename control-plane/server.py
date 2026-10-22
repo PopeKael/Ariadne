@@ -98,6 +98,7 @@ from ollama_runtime import (
     host_gpu_snapshot,
     host_ollama_residency,
     host_release_gpu_lease,
+    host_update_vault_gpu_lease_model,
     host_release_model_lease,
     host_resume_after_external_workload,
     host_release_idle_models,
@@ -1567,12 +1568,13 @@ def tracked_model_activity(model: str):
 
 
 @contextmanager
-def model_activity(model: str, *, context_length: int):
+def model_activity(model: str, *, context_length: int, inference_kind: str = "generate"):
     """Track activity locally while Rust owns admission and residency decisions."""
     name = str(model or "").strip()
     with tracked_model_activity(name):
         if name:
-            with inference_lease(name, OLLAMA_URL, context_length=context_length):
+            with inference_lease(name, OLLAMA_URL, context_length=context_length,
+                                 inference_kind=inference_kind):
                 yield
         else:
             yield
@@ -4750,7 +4752,7 @@ def _close_session_locked(session_id: str) -> bool:
             print(f"[session] Rust-host model lease release failed: {exc}", flush=True)
     if session.get("surface") == "knowledge-vault":
         gpu_lease_released = False
-        model = str(session.get("ingestion_model") or "")
+        model = str(session.get("gpu_active_model") or session.get("ingestion_model") or "")
         if model and session.pop("ingestion_model_protected", False):
             with MODEL_ACTIVITY_LOCK:
                 remaining = MODEL_IN_FLIGHT.get(model, 1) - 1
@@ -4787,7 +4789,10 @@ def _expire_sessions() -> None:
     now = time.monotonic()
     with SESSION_LOCK:
         expired = [session_id for session_id, session in SESSIONS.items()
-                   if now - float(session.get("last_seen", 0)) > SESSION_TTL_SECONDS]
+                   if now - float(session.get("last_seen", 0)) > SESSION_TTL_SECONDS
+                   and not any(job.get("session_id") == session_id
+                               and job.get("state") in {"running", "releasing"}
+                               for job in JOBS.values())]
     for session_id in expired:
         _close_session(session_id)
 
@@ -4838,7 +4843,8 @@ def _start_vault_session_model_cooldown(session_id: object, model: str) -> bool:
 
 def _start_process(command: list[str], cwd: Path, *, chat_model: str | None = None,
                    context_tokens: int | None = None, output_tokens: int | None = None,
-                   ollama_url: str | None = None) -> subprocess.Popen:
+                   ollama_url: str | None = None, vault_session_id: str | None = None,
+                   vault_job_id: str | None = None) -> subprocess.Popen:
     child_environment = os.environ.copy()
     child_environment["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
     child_environment["ARIADNE_CONTROL_PLANE"] = str(ROOT)
@@ -4850,6 +4856,10 @@ def _start_process(command: list[str], cwd: Path, *, chat_model: str | None = No
     child_environment["ARIADNE_VAULT_TEMPERATURE"] = str(VAULT_RUNTIME["temperature"])
     child_environment["ARIADNE_VAULT_SEED"] = str(VAULT_RUNTIME["seed"])
     child_environment["ARIADNE_VAULT_THINK_LEVEL"] = str(VAULT_RUNTIME["think_level"])
+    if vault_session_id:
+        child_environment["ARIADNE_VAULT_SESSION_ID"] = vault_session_id
+    if vault_job_id:
+        child_environment["ARIADNE_VAULT_JOB_ID"] = vault_job_id
     if context_tokens is not None:
         child_environment["ARIADNE_NUM_CTX"] = str(context_tokens)
     if output_tokens is not None:
@@ -4989,6 +4999,115 @@ def _release_vault_ingestion_gpu(job: dict[str, object]) -> dict[str, object] | 
             "unloaded": False, "detail": detail}
 
 
+def _change_vault_model_stage(session_id: str, job_id: str, stage: str) -> dict[str, object]:
+    """Transfer the live Vault lease at the extraction/embedding boundary."""
+    if stage not in {"ingestion", "embedding"}:
+        raise ValueError("Unknown Knowledge Vault model stage.")
+    with HOME_MODEL_LIFECYCLE_LOCK:
+        with SESSION_LOCK:
+            session = SESSIONS.get(session_id)
+            job = JOBS.get(job_id)
+            if (not session or session.get("surface") != "knowledge-vault" or not job
+                    or job.get("session_id") != session_id or job.get("action") != "ingest"
+                    or job.get("state") != "running"):
+                raise RuntimeError("Model stage changes require this session's active Inbox ingest.")
+            process = job.get("process")
+            if not isinstance(process, subprocess.Popen) or process.poll() is not None:
+                raise RuntimeError("The Inbox ingest ended before the model stage could change.")
+            if session.get("gpu_model_stage") == stage:
+                return {"ok": True, "stage": stage, "model": session.get("gpu_active_model"), "detail": "Model stage is already active."}
+            target_model = (str(VAULT_RUNTIME["embedding_model"]) if stage == "embedding"
+                            else str(session.get("ingestion_model") or VAULT_INGESTION_MODEL))
+            target_context = (int(VAULT_RUNTIME["embedding_context_tokens"]) if stage == "embedding"
+                              else int(session.get("ingestion_context_tokens") or VAULT_INGESTION_CONTEXT_TOKENS))
+            old_model = str(session.get("gpu_active_model") or session.get("ingestion_model") or VAULT_INGESTION_MODEL)
+            old_context = int(session.get("gpu_active_context_tokens") or VAULT_INGESTION_CONTEXT_TOKENS)
+            gpu_lease_id = str(session.get("host_gpu_lease_id") or "")
+            old_model_lease_id = str(session.get("host_model_lease_id") or "")
+            activity = job.get("gpu_activity")
+            if not gpu_lease_id or not old_model_lease_id or activity is None:
+                raise RuntimeError("Vault model-stage ownership is incomplete; refusing an unsafe GPU handoff.")
+        # Stop old-model admissions before changing the exclusive Host lease.
+        with SESSION_LOCK:
+            session["host_model_lease_id"] = None
+        new_model_lease_id = ""
+        try:
+            host_release_model_lease(old_model_lease_id, OLLAMA_URL)
+            activity.__exit__(None, None, None)
+            job["gpu_activity"] = None
+            with MODEL_ACTIVITY_LOCK:
+                remaining = MODEL_IN_FLIGHT.get(old_model, 1) - 1
+                if remaining > 0:
+                    MODEL_IN_FLIGHT[old_model] = remaining
+                else:
+                    MODEL_IN_FLIGHT.pop(old_model, None)
+                MODEL_LAST_USED[old_model] = time.monotonic()
+            host_update_vault_gpu_lease_model(gpu_lease_id, target_model, OLLAMA_URL)
+            released = release_idle_ollama_models(force=True)
+            if not released.get("available"):
+                raise RuntimeError(f"Rust Host could not unload the prior Vault model: {released.get('detail')}")
+            new_model_lease_id = host_acquire_model_lease(
+                target_model, OLLAMA_URL, context_length=target_context,
+                allow_calibration=True, restore_previous_models_on_failure=False,
+                inference_kind="embed" if stage == "embedding" else "generate",
+            )
+            new_activity = model_activity(target_model, context_length=target_context,
+                                          inference_kind="embed" if stage == "embedding" else "generate")
+            new_activity.__enter__()
+            with SESSION_LOCK:
+                session["host_model_lease_id"] = new_model_lease_id
+                session["gpu_active_model"] = target_model
+                session["gpu_active_context_tokens"] = target_context
+                session["gpu_model_stage"] = stage
+                session["ingestion_model_protected"] = True
+                job["gpu_activity"] = new_activity
+                job["gpu_model"] = target_model
+                job["gpu_state"] = {"state": "resident", "model": target_model,
+                                    "detail": f"{target_model} loaded and protected for the {stage} stage."}
+            with MODEL_ACTIVITY_LOCK:
+                MODEL_IN_FLIGHT[target_model] = MODEL_IN_FLIGHT.get(target_model, 0) + 1
+                MODEL_LAST_USED[target_model] = time.monotonic()
+            return {"ok": True, "stage": stage, "model": target_model,
+                    "detail": f"Rust Host loaded and verified {target_model} for the {stage} stage."}
+        except Exception as exc:
+            # Restore the prior model and exclusive lease so a failed embedding
+            # preflight cannot strand the page in a half-switched state.
+            try:
+                if job.get("gpu_activity") is not None:
+                    job["gpu_activity"].__exit__(None, None, None)
+                    job["gpu_activity"] = None
+                current_lease = str(session.get("host_model_lease_id") or new_model_lease_id or "")
+                if current_lease:
+                    host_release_model_lease(current_lease, OLLAMA_URL)
+                host_update_vault_gpu_lease_model(gpu_lease_id, old_model, OLLAMA_URL)
+                release_idle_ollama_models(force=True)
+                restored_lease_id = host_acquire_model_lease(
+                    old_model, OLLAMA_URL, context_length=old_context,
+                    allow_calibration=True, restore_previous_models_on_failure=False,
+                    inference_kind="embed" if old_model == str(VAULT_RUNTIME["embedding_model"]) else "generate",
+                )
+                restored_activity = model_activity(
+                    old_model, context_length=old_context,
+                    inference_kind="embed" if old_model == str(VAULT_RUNTIME["embedding_model"]) else "generate",
+                )
+                restored_activity.__enter__()
+                with SESSION_LOCK:
+                    session["host_model_lease_id"] = restored_lease_id
+                    session["gpu_active_model"] = old_model
+                    session["gpu_active_context_tokens"] = old_context
+                    session["gpu_model_stage"] = "ingestion" if old_model == session.get("ingestion_model") else "embedding"
+                    job["gpu_activity"] = restored_activity
+                    job["gpu_model"] = old_model
+                    job["gpu_state"] = {"state": "resident", "model": old_model,
+                                        "detail": f"{old_model} restored after a failed model-stage handoff."}
+                with MODEL_ACTIVITY_LOCK:
+                    MODEL_IN_FLIGHT[old_model] = MODEL_IN_FLIGHT.get(old_model, 0) + 1
+                    MODEL_LAST_USED[old_model] = time.monotonic()
+            except Exception as rollback_error:
+                raise RuntimeError(f"Vault model handoff failed: {exc}; restoring {old_model} also failed: {rollback_error}") from exc
+            raise RuntimeError(f"Vault model handoff failed and {old_model} was restored: {exc}") from exc
+
+
 def _watch_action(job_id: str, process: subprocess.Popen) -> None:
     output: list[str] = []
     if process.stdout:
@@ -5096,19 +5215,89 @@ def _timeout_job(job_id: str) -> None:
     if isinstance(presenter, CoreActivityPresenter):
         presenter.failed("Cleanup worker timed out and was terminated.")
 
+def _vault_current_ingest_plan() -> dict | None:
+    """Read the same Inbox snapshot the ingestion worker will select."""
+    script = VAULT_SYSTEM / "daily_rebuild_ingest.py"
+    if not script.is_file():
+        return None
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script), "--vault", str(VAULT_ROOT), "--dry-run"],
+            cwd=VAULT_ROOT, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=120, check=True,
+        )
+        plan = json.loads(result.stdout)
+        if plan.get("mode") != "read_only_v2_inbox_plan" or not plan.get("manifest_sha256"):
+            return None
+        return plan
+    except (OSError, subprocess.SubprocessError, ValueError, json.JSONDecodeError):
+        return None
+
+
 def _vault_ingest_recovery() -> Path | None:
+    current_plan = _vault_current_ingest_plan()
+    if current_plan is None:
+        return None
     base = VAULT_ROOT / "00_System/Data/vault-v2"
     candidates = [base / "daily-current", *sorted((base / "daily").glob("*"), reverse=True)]
     for directory in candidates:
-        if not (directory / "state.json").is_file() or (directory / "completion-report.json").exists():
+        state_path = directory / "state.json"
+        if not state_path.is_file():
+            continue
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+        retryable = any(
+            item.get("outcome", {}).get("status") == "retryable_processing_failure"
+            for item in state.get("completed", {}).values()
+        )
+        if (directory / "completion-report.json").exists() and not retryable:
             continue
         manifest_path = directory / "source-manifest.json"
         if not manifest_path.is_file():
             continue
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
-        state = json.loads((directory / "state.json").read_text(encoding="utf-8-sig"))
-        if manifest.get("records") and all((VAULT_ROOT / state.get("integrated_paths", {}).get(row["stable_source_id"], row["relative_path"])).is_file() for row in manifest["records"]):
-            return directory
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+            records = manifest.get("records") or []
+            if not records:
+                continue
+            # A historical unresolved run must not hijack a new Inbox batch.
+            # Compare the selected source identities and content hashes with
+            # the exact read-only plan the ingestion worker will consume.
+            if current_plan.get("selected_count", 0) > 0:
+                saved_sources = sorted(
+                    ({"stable_source_id": row.get("stable_source_id"),
+                      "canonical_content_sha256": row.get("canonical_content_sha256")}
+                     for row in records),
+                    key=lambda row: str(row.get("stable_source_id")),
+                )
+                if saved_sources != current_plan.get("sources"):
+                    continue
+            intact = True
+            for row in records:
+                source = VAULT_ROOT / state.get("integrated_paths", {}).get(
+                    row["stable_source_id"], row["relative_path"])
+                if not source.is_file():
+                    intact = False
+                    break
+                if row.get("canonical_content_sha256"):
+                    try:
+                        source_text = source.read_text(encoding="utf-8-sig")
+                    except (OSError, UnicodeDecodeError):
+                        intact = False
+                        break
+                    canonical = "\n".join(
+                        line.rstrip() for line in source_text.replace("\r\n", "\n").split("\n")
+                    ).rstrip()
+                    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+                    if digest != row["canonical_content_sha256"]:
+                        intact = False
+                        break
+            if intact:
+                return directory
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
     return None
 
 
@@ -5188,6 +5377,8 @@ def start_vault_action(session_id: str, action: str, *, resume_run: Path | None 
             context_tokens=VAULT_INGESTION_CONTEXT_TOKENS,
             output_tokens=int(VAULT_RUNTIME["ingestion_output_tokens"]),
             ollama_url=OLLAMA_URL,
+            vault_session_id=session_id if action == "ingest" else None,
+            vault_job_id=job_id if action == "ingest" else None,
         )
     except Exception:
         if gpu_state:
@@ -5502,11 +5693,8 @@ def vault_session_status() -> dict[str, object]:
 
 
 def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object]:
-    """Verify the local Ariadne GPU is idle before opening the Vault workspace."""
+    """Transfer the Rust-host model pool to the Knowledge Vault workspace."""
     global GPU_OWNER, GPU_VAULT_RESERVATION
-    home_preload = _wait_for_home_model_preload()
-    if not home_preload.get("ok"):
-        return home_preload
     reservation_id = f"vault-preflight-{uuid.uuid4().hex}"
     preflight_succeeded = False
     ingestion_model_protected = False
@@ -5528,11 +5716,9 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
         with GPU_ARBITRATION_LOCK:
             GPU_VAULT_RESERVATION = reservation_id
             GPU_OWNER = "VAULT"
-        # A verified profile is admitted alongside resident models when
-        # capacity allows. Starting the explicit Vault session is a model
-        # handoff, so let Rust Host unload idle residents before checking the
-        # 20B model's measured footprint. Active leases and the reserve remain
-        # enforced by the Host.
+        # Rust Host drains active inference, revokes page-residency leases,
+        # unloads the whole resident model pool, then grants exclusive Vault
+        # ownership. The target model is admitted under that lease below.
         idle_release = release_idle_ollama_models(force=True)
         if not idle_release.get("available"):
             return {"ok": False, "state": "model_admission_failed",
@@ -9375,7 +9561,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         # Browser entry points must retain the canonical secure origin. The
         # owned TLS gateway marks its loopback requests to avoid a redirect loop.
-        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/watchlist", "/create", "/image", "/system", "/system-details", "/details", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html", "/about"}
+        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/watchlist", "/create", "/image", "/system", "/system-details", "/details", "/knowledge-vault", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html", "/about"}
                 and self.headers.get("X-Forwarded-Proto") != "https"):
             self.send_redirect(PUBLIC_ORIGIN + self.path)
             return
@@ -9772,7 +9958,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/configuration/avatar":
             self.send_asset("configuration-avatar.html", "text/html; charset=utf-8")
             return
-        if path in {"/system-details", "/details", "/index.html"}:
+        if path in {"/system-details", "/details", "/knowledge-vault", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
             return
         if path == "/home.css":
@@ -10296,6 +10482,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
                             "last_seen": time.monotonic(), "jobs": set(), "used_ollama": False,
                             "processing": False, "surface": "knowledge-vault", "gpu_entry": public_preflight,
                             "ingestion_model": preflight.get("ingestion_model"),
+                            "ingestion_context_tokens": preflight.get("context_tokens"),
+                            "gpu_active_model": preflight.get("ingestion_model"),
+                            "gpu_active_context_tokens": preflight.get("context_tokens"),
+                            "gpu_model_stage": "ingestion",
                             "ingestion_model_protected": True,
                             "host_model_lease_id": preflight.get("_host_model_lease_id"),
                             "host_gpu_lease_id": preflight.get("_host_gpu_lease_id"),
@@ -11048,6 +11238,17 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": True, "job_id": start_vault_action(session_id, action)})
                 except RuntimeError as exc:
                     self.send_json({"ok": False, "message": str(exc), "gpu": gpu_owner_status()}, 409)
+                return
+            if path == "/api/vault/model-stage":
+                try:
+                    result = _change_vault_model_stage(
+                        session_id,
+                        str(body.get("job_id") or ""),
+                        str(body.get("stage") or ""),
+                    )
+                    self.send_json(result)
+                except (RuntimeError, ValueError) as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 409)
                 return
             if path == "/api/vault/control":
                 try:

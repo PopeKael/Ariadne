@@ -349,6 +349,41 @@ let vaultActiveJobAction = null;
 let vaultIngestionModel = null;
 let vaultSessionTransition = 0;
 
+function isVaultWorkspaceLocation() {
+  return window.location.pathname === "/knowledge-vault"
+    || new URLSearchParams(window.location.search).get("workspace") === "knowledge-vault"
+    || window.location.hash === "#knowledge-vault";
+}
+
+function setVaultGateLoading() {
+  const root = document.querySelector("#vault-loading-gate");
+  const card = root?.querySelector(".vault-gate-card");
+  const title = document.querySelector("#vault-gate-title");
+  const detail = document.querySelector("#vault-gate-detail");
+  const retry = document.querySelector("#vault-gate-retry");
+  card?.classList.remove("error");
+  if (title) title.textContent = "Please wait. We are loading the model.";
+  if (detail) detail.textContent = "The Knowledge Vault will open when Rust Host confirms the model is ready.";
+  if (retry) retry.hidden = true;
+  document.documentElement.classList.add("vault-gate-pending");
+}
+
+function setVaultGateError(message) {
+  const card = document.querySelector("#vault-loading-gate .vault-gate-card");
+  const title = document.querySelector("#vault-gate-title");
+  const detail = document.querySelector("#vault-gate-detail");
+  const retry = document.querySelector("#vault-gate-retry");
+  card?.classList.add("error");
+  if (title) title.textContent = "The Knowledge Vault model did not become ready.";
+  if (detail) detail.textContent = message;
+  if (retry) retry.hidden = false;
+  document.documentElement.classList.add("vault-gate-pending");
+}
+
+function setVaultGateReady() {
+  document.documentElement.classList.remove("vault-gate-pending");
+}
+
 async function postJson(url, payload, keepalive = false) {
   const response = await fetch(url, {
     method: "POST",
@@ -425,9 +460,10 @@ function markVaultSessionLost(message = "Start an Ariadne session first.") {
   }
   setVaultControlsDisabled(true);
   updateSessionButtons();
+  if (isVaultWorkspaceLocation()) setVaultGateError(message);
 }
 
-function markVaultSessionUnavailable(message) {
+function markVaultSessionUnavailable(message, gate = false) {
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
   vaultSessionId = null;
@@ -445,6 +481,7 @@ function markVaultSessionUnavailable(message) {
   }
   setVaultControlsDisabled(true);
   updateSessionButtons();
+  if (gate) setVaultGateError(message);
 }
 
 function renderVaultJob(job) {
@@ -536,6 +573,7 @@ function activateVaultSession(session, surface) {
   if (badge && session.home_model?.detail) badge.title = session.home_model.detail;
   setVaultControlsDisabled(false);
   updateSessionButtons();
+  if (surface === "knowledge-vault") setVaultGateReady();
   const seconds = Math.max(3, Number(session.heartbeat_seconds || 5));
   let heartbeatFailures = 0;
   vaultHeartbeat = setInterval(async () => {
@@ -561,6 +599,7 @@ function activateVaultSession(session, surface) {
 
 async function startVaultSession(surface = document.body.classList.contains("control-mode") ? "knowledge-vault" : "home") {
   const transition = ++vaultSessionTransition;
+  if (surface === "knowledge-vault") setVaultGateLoading();
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
   vaultHeartbeatInFlight = false;
@@ -581,7 +620,7 @@ async function startVaultSession(surface = document.body.classList.contains("con
     activateVaultSession(session, surface);
   } catch (error) {
     if (transition === vaultSessionTransition) {
-      markVaultSessionUnavailable(`Knowledge Vault not ready · ${error.message}`);
+      markVaultSessionUnavailable(`Knowledge Vault not ready · ${error.message}`, surface === "knowledge-vault");
     }
   }
 }
@@ -612,6 +651,8 @@ function closeVaultSession() {
 
 async function switchSessionSurface(surface) {
   const transition = ++vaultSessionTransition;
+  if (surface === "knowledge-vault") setVaultGateLoading();
+  else setVaultGateReady();
   const sessionId = vaultSessionId;
   if (surface === "knowledge-vault" && sessionId) {
     vaultSessionLabel("Preparing Knowledge Vault: releasing the Home model before loading the configured ingestion model…", "starting");
@@ -913,17 +954,20 @@ function setupProfileControls() {
 function setViewMode(mode) {
   const control = mode === "control";
   const wasControl = document.body.classList.contains("control-mode");
+  if (control) setVaultGateLoading();
+  else setVaultGateReady();
   document.body.classList.toggle("control-mode", control);
-  history.replaceState(null, "", control ? "#knowledge-vault" : window.location.pathname);
+  history.replaceState(null, "", control ? "/knowledge-vault" : "/system-details");
   window.scrollTo(0, 0);
   if (control !== wasControl) switchSessionSurface(control ? "knowledge-vault" : "home");
   if (!control) refresh();
 }
 
 function setupViewModes() {
-  const launch = document.querySelector('a[href*="#knowledge-vault"]');
+  const launch = document.querySelector('a[href="/knowledge-vault"]');
   const panel = document.querySelector("#knowledge-vault");
   if (!launch || !panel) return;
+  if (isVaultWorkspaceLocation()) document.body.classList.add("control-mode");
 
   const header = panel.querySelector(".section-head");
   const badge = panel.querySelector("#vault-session-state");
@@ -935,7 +979,7 @@ function setupViewModes() {
   start.id = "vault-start-session";
   start.className = "view-back";
   start.textContent = "Open Knowledge Vault Tools";
-  start.addEventListener("click", () => switchSessionSurface("knowledge-vault"));
+  start.addEventListener("click", () => window.location.assign("/knowledge-vault"));
 
   const stop = document.createElement("button");
   stop.type = "button";
@@ -954,13 +998,9 @@ function setupViewModes() {
   actions.append(start, stop, back);
   header?.append(actions);
   updateSessionButtons();
+  document.querySelector("#vault-gate-retry")?.addEventListener("click", () => startVaultSession("knowledge-vault"));
 
-  launch.addEventListener("click", (event) => {
-    event.preventDefault();
-    setViewMode("control");
-  });
-
-  if (window.location.hash === "#knowledge-vault") setViewMode("control");
+  if (isVaultWorkspaceLocation()) document.body.classList.add("control-mode");
 }
 
 function setupVaultControls() {
@@ -1040,7 +1080,7 @@ setupViewModes();
 setupProfileControls();
 setupVaultControls();
 setupResourceControls();
-const openingVaultWorkspace = new URLSearchParams(window.location.search).get("workspace") === "knowledge-vault";
+const openingVaultWorkspace = isVaultWorkspaceLocation();
 if (openingVaultWorkspace) startVaultSession("knowledge-vault");
 else if (!document.body.classList.contains("control-mode")) startVaultSession("home");
 if (window.ariadneRuntime) {

@@ -4,11 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ariadne — Local AI Control Plane</title>
+  <script>
+    if (location.pathname === "/knowledge-vault" || new URLSearchParams(location.search).get("workspace") === "knowledge-vault" || location.hash === "#knowledge-vault") {
+      document.documentElement.classList.add("vault-gate-pending");
+    }
+  </script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/page-shell.css">
 </head>
 <body class="ariadne-page">
+  <div id="vault-loading-gate" role="status" aria-live="polite" aria-atomic="true">
+    <div class="vault-gate-card">
+      <span class="vault-gate-spinner" aria-hidden="true"></span>
+      <h1 id="vault-gate-title">Please wait. We are loading the model.</h1>
+      <p id="vault-gate-detail">The Knowledge Vault will open when Rust Host confirms the model is ready.</p>
+      <button id="vault-gate-retry" type="button" hidden>Retry model loading</button>
+    </div>
+  </div>
   <div class="shell">
     <header class="topbar">
       <div class="top-greeting">
@@ -93,7 +106,7 @@
             <span class="launch-copy"><strong>LM Studio</strong><small>Local model runtime</small></span>
             <span class="launch-status" id="lmstudio-status">Checking</span><span class="launch-arrow">↗</span>
           </a>
-          <a class="launch-row" href="/?workspace=knowledge-vault#knowledge-vault">
+          <a class="launch-row" href="/knowledge-vault">
             <span class="launch-icon ariadne-control-icon">◈</span>
             <span class="launch-copy"><strong>Knowledge Vault controls</strong><small>Ariadne Core · local only</small></span>
             <span class="launch-status local" id="ariadne-control-status">Ready</span><span class="launch-arrow">↓</span>

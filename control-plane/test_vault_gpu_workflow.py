@@ -4,7 +4,7 @@ import sys
 import unittest
 from contextlib import nullcontext
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, call, patch
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -53,6 +53,22 @@ class VaultGpuWorkflowTests(unittest.TestCase):
             server.MODEL_IN_FLIGHT.clear()
             server.MODEL_LAST_USED.clear()
 
+    def test_session_ttl_does_not_expire_active_vault_job(self):
+        server.SESSIONS = {"session": {"last_seen": 1.0, "surface": "knowledge-vault"}}
+        server.JOBS = {"job": {"session_id": "session", "state": "running"}}
+        with patch.object(server.time, "monotonic", return_value=1000.0), \
+             patch.object(server, "_close_session") as close_session:
+            server._expire_sessions()
+        close_session.assert_not_called()
+
+    def test_session_ttl_still_expires_idle_session(self):
+        server.SESSIONS = {"session": {"last_seen": 1.0, "surface": "knowledge-vault"}}
+        server.JOBS = {}
+        with patch.object(server.time, "monotonic", return_value=1000.0), \
+             patch.object(server, "_close_session") as close_session:
+            server._expire_sessions()
+        close_session.assert_called_once_with("session")
+
     def tearDown(self):
         self.inference_lease_patch.stop()
         self.gpu_lease_patch.stop()
@@ -94,6 +110,41 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertEqual(server.GPU_OWNER, "VAULT")
         self.assertEqual(server.GPU_VAULT_RESERVATION, result["_gpu_reservation_id"])
 
+    def test_active_ingest_transfers_and_restores_the_exclusive_model_lease(self):
+        process = MagicMock(spec=server.subprocess.Popen)
+        process.poll.return_value = None
+
+        session = {"surface": "knowledge-vault", "jobs": {"job"},
+                   "ingestion_model": "gpt-oss:20b", "ingestion_context_tokens": 16384,
+                   "gpu_active_model": "gpt-oss:20b", "gpu_active_context_tokens": 16384,
+                   "gpu_model_stage": "ingestion", "host_model_lease_id": "gpt-lease",
+                   "host_gpu_lease_id": "vault-gpu", "ingestion_model_protected": True}
+        job = {"session_id": "session", "action": "ingest", "state": "running",
+               "process": process, "gpu_activity": nullcontext(), "gpu_model": "gpt-oss:20b"}
+        server.SESSIONS = {"session": session}
+        server.JOBS = {"job": job}
+        runtime = {**server.VAULT_RUNTIME, "embedding_model": "nomic-embed-text:latest",
+                   "embedding_context_tokens": 2048}
+        with patch.object(server, "VAULT_RUNTIME", runtime), \
+             patch.object(server, "host_release_model_lease") as release_model, \
+             patch.object(server, "host_update_vault_gpu_lease_model") as update_gpu, \
+             patch.object(server, "release_idle_ollama_models", return_value={"available": True}), \
+             patch.object(server, "host_acquire_model_lease", side_effect=["embed-lease", "gpt-lease-2"]) as acquire, \
+             patch.object(server, "model_activity", side_effect=lambda *args, **kwargs: nullcontext()), \
+             patch.dict(server.MODEL_IN_FLIGHT, {"gpt-oss:20b": 1}, clear=True):
+            embedding = server._change_vault_model_stage("session", "job", "embedding")
+            self.assertEqual(embedding["model"], "nomic-embed-text:latest")
+            self.assertEqual(session["gpu_model_stage"], "embedding")
+            self.assertEqual(job["gpu_model"], "nomic-embed-text:latest")
+            ingestion = server._change_vault_model_stage("session", "job", "ingestion")
+        self.assertEqual(ingestion["model"], "gpt-oss:20b")
+        self.assertEqual(session["gpu_model_stage"], "ingestion")
+        self.assertEqual(session["host_model_lease_id"], "gpt-lease-2")
+        self.assertEqual(update_gpu.call_count, 2)
+        self.assertEqual(release_model.call_count, 2)
+        self.assertEqual(acquire.call_args_list[0].kwargs["inference_kind"], "embed")
+        self.assertEqual(acquire.call_args_list[1].kwargs["inference_kind"], "generate")
+
     def test_page_entry_refusal_comes_from_rust_host_lease(self):
         server.GPU_AI_ADMISSIONS = 1
         with patch.object(server, "ollama_catalog", return_value={"available": True, "loaded": [], "loaded_details": []}), \
@@ -102,6 +153,62 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["state"], "busy")
         self.assertIn("Rust host", result["detail"])
+
+    def test_completed_run_with_retryable_failure_remains_recoverable(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = root / "00_System/Data/vault-v2/daily/20261022T133011Z"
+            run.mkdir(parents=True)
+            stable_id = "sha256:retryable"
+            relative = "Failed/retryable.md"
+            (root / relative).parent.mkdir(parents=True)
+            (root / relative).write_text("retry me", encoding="utf-8")
+            record = {"stable_source_id": stable_id, "relative_path": "Inbox/retryable.md"}
+            state = {"integrated_paths": {stable_id: relative}, "completed": {
+                stable_id: {"outcome": {"status": "retryable_processing_failure"}}
+            }}
+            (run / "state.json").write_text(json.dumps(state), encoding="utf-8")
+            (run / "source-manifest.json").write_text(json.dumps({"records": [record]}), encoding="utf-8")
+            (run / "completion-report.json").write_text(json.dumps({"unresolved_count": 1}), encoding="utf-8")
+            plan = {"mode": "read_only_v2_inbox_plan", "manifest_sha256": "matching",
+                    "selected_count": 0, "sources": []}
+            with patch.object(server, "VAULT_ROOT", root), \
+                 patch.object(server, "_vault_current_ingest_plan", return_value=plan):
+                self.assertEqual(server._vault_ingest_recovery(), run)
+
+    def test_new_inbox_plan_does_not_resume_unrelated_historical_run(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = root / "00_System/Data/vault-v2/daily/20261012T023448Z"
+            run.mkdir(parents=True)
+            stable_id = "sha256:old-source"
+            relative = "Processed/old-source.md"
+            (root / relative).parent.mkdir(parents=True)
+            source = root / relative
+            source.write_text("old accepted content", encoding="utf-8")
+            import hashlib
+            canonical_hash = hashlib.sha256(b"old accepted content").hexdigest()
+            record = {"stable_source_id": stable_id, "relative_path": "Inbox/old-source.md",
+                      "canonical_content_sha256": canonical_hash}
+            state = {"integrated_paths": {stable_id: relative}, "completed": {
+                stable_id: {"outcome": {"status": "retryable_processing_failure"}}
+            }}
+            (run / "state.json").write_text(json.dumps(state), encoding="utf-8")
+            (run / "source-manifest.json").write_text(json.dumps({"records": [record]}), encoding="utf-8")
+            (run / "completion-report.json").write_text(json.dumps({"unresolved_count": 1}), encoding="utf-8")
+            current = {"mode": "read_only_v2_inbox_plan", "manifest_sha256": "new-batch",
+                       "selected_count": 1,
+                       "sources": [{"stable_source_id": "sha256:new-source",
+                                    "canonical_content_sha256": "new-content-hash"}]}
+            with patch.object(server, "VAULT_ROOT", root), \
+                 patch.object(server, "_vault_current_ingest_plan", return_value=current):
+                self.assertIsNone(server._vault_ingest_recovery())
 
     def test_model_admission_failure_releases_vault_lease_without_reloading_home_model(self):
         with patch.object(server, "_wait_for_home_model_preload", return_value={"ok": True}), \

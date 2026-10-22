@@ -23,6 +23,9 @@ const DEFAULT_STORE: &str = r"F:\AI\Models\Ollama";
 const PIPE_NAME: &str = r"\\.\pipe\ariadne-runtime";
 const RUNTIME_PIPE_WORKERS: usize = 8;
 const GPU_SAFETY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
+// A verified, exclusive Vault model keeps a 512 MiB live floor after load.
+// The full 1 GiB reserve is still required before loading it.
+const VAULT_MODEL_POSTLOAD_RESERVE_BYTES: u64 = 512 * 1024 * 1024;
 const UNKNOWN_GPU_OWNER_BLOCK_BYTES: u64 = GPU_SAFETY_RESERVE_BYTES;
 
 #[derive(Debug, Deserialize)]
@@ -37,6 +40,7 @@ struct RuntimeRequest {
     context_length: Option<u32>,
     allow_calibration: Option<bool>,
     restore_previous_models_on_failure: Option<bool>,
+    session_lease: Option<bool>,
     inference_kind: Option<String>,
     lease_id: Option<String>,
     force: Option<bool>,
@@ -91,6 +95,8 @@ struct ResidencyProfile {
 struct InferenceLease {
     model: String,
     context_length: u32,
+    inference_kind: String,
+    session_lease: bool,
     last_renewed_at: Instant,
 }
 
@@ -131,6 +137,7 @@ struct State {
     gpu_leases: std::collections::HashMap<String, GpuLease>,
     model_last_used: std::collections::HashMap<String, Instant>,
     externally_delegated: bool,
+    vault_transition_pending: bool,
 }
 
 #[derive(Clone, Default)]
@@ -201,11 +208,14 @@ impl OllamaSupervisor {
     }
 
     fn admit_model(&self, endpoint: String, model: String, context_length: u32, allow_calibration: bool,
-                   restore_previous_models_on_failure: bool, inference_kind: &str) -> RuntimeResponse {
+                   restore_previous_models_on_failure: bool, session_lease: bool, inference_kind: &str) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         if state.externally_delegated { return RuntimeResponse::error("Ariadne runtime is delegated to Dungeon; model admission is paused."); }
         prune_expired_leases(&mut state);
         prune_dead_gpu_leases(&mut state);
+        if state.vault_transition_pending {
+            return RuntimeResponse::error("Rust Host is transferring model ownership to the Knowledge Vault; new inference is paused.");
+        }
         if model_blocked_by_gpu_leases(&model, state.gpu_leases.values()) {
             return RuntimeResponse::error("Rust host has an exclusive GPU workload lease; model inference is blocked.");
         }
@@ -219,11 +229,17 @@ impl OllamaSupervisor {
         };
         let active_models: std::collections::HashMap<String, String> = state.inference_leases.iter()
             .map(|(id, lease)| (id.clone(), lease.model.clone())).collect();
+        let postload_reserve = if state.gpu_leases.values().any(|lease| {
+            lease.workload == "vault" && lease.model.as_deref().is_some_and(|active| ollama_model_name_matches(active, &model))
+        }) { VAULT_MODEL_POSTLOAD_RESERVE_BYTES } else { GPU_SAFETY_RESERVE_BYTES };
         match preflight_model(&endpoint, &model, context_length, num_parallel, version.as_deref().unwrap_or(""), allow_calibration,
-                              restore_previous_models_on_failure, inference_kind, &active_models) {
+                              restore_previous_models_on_failure, inference_kind, postload_reserve, &active_models) {
             Ok((lease_id, inventory, detail)) => {
                 log_line(&detail);
-                state.inference_leases.insert(lease_id.clone(), InferenceLease { model, context_length, last_renewed_at: Instant::now() });
+                state.inference_leases.insert(lease_id.clone(), InferenceLease {
+                    model, context_length, inference_kind: inference_kind.to_owned(),
+                    session_lease, last_renewed_at: Instant::now(),
+                });
                 RuntimeResponse {
                     v: 1, ok: true, state: "admitted".into(), detail, pid: Some(pid),
                     version, models,
@@ -289,9 +305,49 @@ impl OllamaSupervisor {
             Ok(process) => process,
             Err(error) => return RuntimeResponse::error(error),
         };
-        let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
-        prune_expired_leases(&mut state);
-        prune_dead_gpu_leases(&mut state);
+        let mut vault_transition_started = false;
+        let vault_wait_deadline = Instant::now() + Duration::from_secs(120);
+        let mut state = loop {
+            let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+            prune_expired_leases(&mut state);
+            prune_dead_gpu_leases(&mut state);
+            if state.vault_transition_pending && workload != "vault" {
+                return RuntimeResponse::error("Rust Host is transferring model ownership to the Knowledge Vault; GPU admission is paused.");
+            }
+            if workload == "vault" {
+                if state.externally_delegated {
+                    return RuntimeResponse::error("GPU admission is suspended while Ariadne's GPU is delegated to Dungeon.");
+                }
+                if !vault_transition_started {
+                    if state.vault_transition_pending {
+                        return RuntimeResponse::error("Another Knowledge Vault GPU handoff is already in progress.");
+                    }
+                    if state.gpu_leases.values().any(|lease| lease.workload != "ai") {
+                        return RuntimeResponse::error("Rust Host cannot hand the GPU to Knowledge Vault while another exclusive workload is active.");
+                    }
+                    state.vault_transition_pending = true;
+                    // Session residency leases pin models but do not represent
+                    // an in-flight generation. Revoke them for Vault ownership.
+                    state.inference_leases.retain(|_, lease| !lease.session_lease);
+                    vault_transition_started = true;
+                }
+                let active_ai_gpu = state.gpu_leases.values().any(|lease| lease.workload == "ai");
+                let active_inference = state.inference_leases.values().any(|lease| !lease.session_lease);
+                if !active_ai_gpu && !active_inference {
+                    // Keep the lock through model eviction and lease insertion below.
+                    state.vault_transition_pending = false;
+                    break state;
+                }
+                if Instant::now() >= vault_wait_deadline {
+                    state.vault_transition_pending = false;
+                    return RuntimeResponse::error("Rust Host waited 120 seconds for active AI requests to finish; the Knowledge Vault handoff timed out without unloading the model pool.");
+                }
+                drop(state);
+                thread::sleep(Duration::from_millis(100));
+                continue;
+            }
+            break state;
+        };
         if state.externally_delegated && workload == "ai" {
             return RuntimeResponse::error("GPU admission is suspended while Ariadne's GPU is delegated to Dungeon.");
         }
@@ -322,18 +378,21 @@ impl OllamaSupervisor {
             for row in &resident {
                 let Some(name) = row.get("name").and_then(|value| value.as_str()).map(str::to_owned) else { continue };
                 if let Err(error) = unload_model(DEFAULT_ENDPOINT, &name) {
-                    let recovery = restore_residency_models(DEFAULT_ENDPOINT, &previous_resident_models, num_parallel, &ollama_version, &mut state.model_last_used);
+                    let recovery = if workload == "vault" { "The Knowledge Vault handoff leaves prior model residency unloaded for a clean retry.".into() }
+                        else { restore_residency_models(DEFAULT_ENDPOINT, &previous_resident_models, num_parallel, &ollama_version, &mut state.model_last_used) };
                     return RuntimeResponse::error(format!("Rust host could not release idle model '{name}' before '{workload}' admission: {error}. {recovery}"));
                 }
                 let remaining = match ollama_models(DEFAULT_ENDPOINT) {
                     Ok(rows) => rows,
                     Err(error) => {
-                        let recovery = restore_residency_models(DEFAULT_ENDPOINT, &previous_resident_models, num_parallel, &ollama_version, &mut state.model_last_used);
+                        let recovery = if workload == "vault" { "The Knowledge Vault handoff leaves prior model residency unloaded for a clean retry.".into() }
+                            else { restore_residency_models(DEFAULT_ENDPOINT, &previous_resident_models, num_parallel, &ollama_version, &mut state.model_last_used) };
                         return RuntimeResponse::error(format!("Rust host could not verify model '{name}' release: {error}. {recovery}"));
                     }
                 };
                 if remaining.iter().any(|item| item.get("name").and_then(|value| value.as_str()) == Some(name.as_str())) {
-                    let recovery = restore_residency_models(DEFAULT_ENDPOINT, &previous_resident_models, num_parallel, &ollama_version, &mut state.model_last_used);
+                    let recovery = if workload == "vault" { "The Knowledge Vault handoff leaves prior model residency unloaded for a clean retry.".into() }
+                        else { restore_residency_models(DEFAULT_ENDPOINT, &previous_resident_models, num_parallel, &ollama_version, &mut state.model_last_used) };
                     return RuntimeResponse::error(format!("Ollama did not confirm model '{name}' released before '{workload}' admission. {recovery}"));
                 }
                 state.model_last_used.remove(&name);
@@ -344,11 +403,11 @@ impl OllamaSupervisor {
             Ok(snapshot) => snapshot,
             Err(error) => {
                 let recovery = if releases_idle_ollama_for_workload(&workload) {
-                    state.runtime.as_ref().map(|runtime| (
+                    (workload != "vault").then(|| state.runtime.as_ref().map(|runtime| (
                         runtime.endpoint.clone(), runtime.num_parallel, runtime.version.clone().unwrap_or_default(),
-                    )).map(|(endpoint, parallel, version)| restore_residency_models(
+                    ))).flatten().map(|(endpoint, parallel, version)| restore_residency_models(
                         &endpoint, &previous_resident_models, parallel, &version, &mut state.model_last_used,
-                    )).unwrap_or_else(|| "Rust Host has no Ollama runtime available for restoration.".into())
+                    )).unwrap_or_else(|| if workload == "vault" { "The Knowledge Vault handoff leaves prior model residency unloaded for a clean retry.".into() } else { "Rust Host has no Ollama runtime available for restoration.".into() })
                 } else { "No Ollama models were released.".into() };
                 return RuntimeResponse::error(format!("Rust host cannot verify GPU memory for workload admission: {error}. {recovery}"));
             }
@@ -356,11 +415,11 @@ impl OllamaSupervisor {
         let required_free = GPU_SAFETY_RESERVE_BYTES.max(min_free_bytes);
         if snapshot.free_bytes < required_free {
             let recovery = if releases_idle_ollama_for_workload(&workload) {
-                state.runtime.as_ref().map(|runtime| (
+                (workload != "vault").then(|| state.runtime.as_ref().map(|runtime| (
                     runtime.endpoint.clone(), runtime.num_parallel, runtime.version.clone().unwrap_or_default(),
-                )).map(|(endpoint, parallel, version)| restore_residency_models(
+                ))).flatten().map(|(endpoint, parallel, version)| restore_residency_models(
                     &endpoint, &previous_resident_models, parallel, &version, &mut state.model_last_used,
-                )).unwrap_or_else(|| "Rust Host has no Ollama runtime available for restoration.".into())
+                )).unwrap_or_else(|| if workload == "vault" { "The Knowledge Vault handoff leaves prior model residency unloaded for a clean retry.".into() } else { "Rust Host has no Ollama runtime available for restoration.".into() })
             } else { "No Ollama models were released.".into() };
             let restored_free = super::gpu_residency::sample().map(|gpu| gpu.free_bytes / 1_048_576);
             return RuntimeResponse::error(format!("GPU workload '{workload}' requires {} MiB free including the 1 GiB safety reserve; WDDM measured {} MiB free after idle-model release, and {} MiB after recovery. {recovery}.", required_free / 1_048_576, snapshot.free_bytes / 1_048_576, restored_free.map(|value| value.to_string()).unwrap_or_else(|_| "unavailable".into())));
@@ -390,6 +449,29 @@ impl OllamaSupervisor {
         }
     }
 
+    fn update_vault_gpu_lease_model(&self, lease_id: &str, model: String, owner_pid: Option<u32>) -> RuntimeResponse {
+        let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
+        prune_expired_leases(&mut state);
+        prune_dead_gpu_leases(&mut state);
+        let Some(lease) = state.gpu_leases.get(lease_id) else {
+            return RuntimeResponse::error("GPU model stage change requires a live Rust-host workload lease.");
+        };
+        if lease.workload != "vault" || lease.owner_pid != owner_pid || owner_pid.is_none() {
+            return RuntimeResponse::error("Only the owning Ariadne process can change a Knowledge Vault GPU lease.");
+        }
+        if model.trim().is_empty() {
+            return RuntimeResponse::error("Knowledge Vault GPU lease model cannot be empty.");
+        }
+        if state.inference_leases.values().any(|active| !active.session_lease
+            && lease.model.as_deref().is_some_and(|current| ollama_model_name_matches(current, &active.model))) {
+            return RuntimeResponse::error("Cannot change the Vault GPU model while inference for its current model is active.");
+        }
+        let lease = state.gpu_leases.get_mut(lease_id).expect("lease validated above");
+        let previous = lease.model.replace(model.clone());
+        log_line(&format!("Updated Rust-host Vault GPU lease '{}' model from {:?} to '{}'.", lease_id, previous, model));
+        RuntimeResponse { v: 1, ok: true, state: "updated".into(), detail: format!("Vault GPU lease now admits '{model}'."), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
+    }
+
     fn verify_gpu_lease_capacity(&self, lease_id: &str, min_free_bytes: u64) -> RuntimeResponse {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         prune_dead_gpu_leases(&mut state);
@@ -409,7 +491,7 @@ impl OllamaSupervisor {
     }
 
     fn renew_model_lease(&self, lease_id: &str) -> RuntimeResponse {
-        let (endpoint, model, expected_context) = {
+        let (endpoint, model, expected_context, inference_kind) = {
             let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
             prune_expired_leases(&mut state);
             let Some(lease) = state.inference_leases.get(lease_id) else {
@@ -418,7 +500,7 @@ impl OllamaSupervisor {
             let Some(runtime) = state.runtime.as_ref() else {
                 return RuntimeResponse::error("Rust host lost Ollama ownership while the model lease was active.");
             };
-            (runtime.endpoint.clone(), lease.model.clone(), lease.context_length)
+            (runtime.endpoint.clone(), lease.model.clone(), lease.context_length, lease.inference_kind.clone())
         };
         // Direct clients can reach Ollama outside Ariadne's Python lease
         // wrappers. Check the actual resident context on every heartbeat.
@@ -426,11 +508,16 @@ impl OllamaSupervisor {
             Ok(rows) => rows,
             Err(error) => return RuntimeResponse::error(format!("Could not validate active Ollama residency before lease renewal: {error}")),
         };
-        let actual_context = rows.iter()
-            .find(|row| row.get("name").and_then(|value| value.as_str()) == Some(model.as_str()))
-            .and_then(|row| row.get("context_length").and_then(|value| value.as_u64()))
+        let resident = rows.iter()
+            .find(|row| row.get("name").and_then(|value| value.as_str()).is_some_and(|name| ollama_model_name_matches(&model, name)));
+        let Some(resident) = resident else {
+            let detail = format!("Rust Host refused to renew '{model}' lease: Ollama no longer reports the model as resident.");
+            log_line(&detail);
+            return RuntimeResponse::error(detail);
+        };
+        let actual_context = resident.get("context_length").and_then(|value| value.as_u64())
             .unwrap_or(0) as u32;
-        if actual_context != expected_context {
+        if !lease_context_matches(&inference_kind, actual_context, expected_context) {
             let detail = format!("Rust Host refused to renew '{model}' lease: Ollama reports context {actual_context}, but the admitted profile requires {expected_context}. An out-of-band model request or residency change is suspected.");
             log_line(&detail);
             return RuntimeResponse::error(detail);
@@ -438,12 +525,17 @@ impl OllamaSupervisor {
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         prune_expired_leases(&mut state);
         if let Some(lease) = state.inference_leases.get_mut(lease_id) {
-            if lease.model != model || lease.context_length != expected_context {
+            if lease.model != model || lease.context_length != expected_context || lease.inference_kind != inference_kind {
                 return RuntimeResponse::error("Inference lease profile changed during residency validation.");
             }
             lease.last_renewed_at = Instant::now();
-            log_line(&format!("Renewed Rust-host model lease '{}' for '{}' at context {} after /api/ps validation.", lease_id, model, actual_context));
-            RuntimeResponse { v: 1, ok: true, state: "renewed".into(), detail: format!("Rust Host verified '{model}' residency at context {actual_context} before renewing its lease."), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
+            let context_detail = if inference_kind == "embed" && actual_context == 0 {
+                format!("embedding context is not reported; admitted profile remains {expected_context}")
+            } else {
+                format!("context {actual_context}")
+            };
+            log_line(&format!("Renewed Rust-host model lease '{}' for '{}' after /api/ps residency validation ({context_detail}).", lease_id, model));
+            RuntimeResponse { v: 1, ok: true, state: "renewed".into(), detail: format!("Rust Host verified '{model}' residency ({context_detail}) before renewing its lease."), pid: None, version: None, models: Vec::new(), lease_id: Some(lease_id.into()), residency: None }
         } else {
             RuntimeResponse::error("Inference lease expired during residency validation.")
         }
@@ -693,6 +785,7 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
                 request.context_length.unwrap_or(0),
                 request.allow_calibration.unwrap_or(false),
                 request.restore_previous_models_on_failure.unwrap_or(true),
+                request.session_lease.unwrap_or(false),
                 request.inference_kind.as_deref().unwrap_or("generate"),
             ),
             Ok(request) if request.v == 1 && request.kind == "release_model" => supervisor.release_model(
@@ -708,6 +801,9 @@ fn serve_one(supervisor: &OllamaSupervisor) -> Result<(), String> {
             ),
             Ok(request) if request.v == 1 && request.kind == "release_gpu_lease" => supervisor.release_gpu_lease(
                 request.lease_id.as_deref().unwrap_or_default(),
+            ),
+            Ok(request) if request.v == 1 && request.kind == "update_vault_gpu_lease_model" => supervisor.update_vault_gpu_lease_model(
+                request.lease_id.as_deref().unwrap_or_default(), request.model.unwrap_or_default(), request.owner_pid,
             ),
             Ok(request) if request.v == 1 && request.kind == "verify_gpu_lease_capacity" => supervisor.verify_gpu_lease_capacity(
                 request.lease_id.as_deref().unwrap_or_default(), request.min_free_bytes.unwrap_or(0),
@@ -1070,7 +1166,7 @@ fn is_exclusive_gpu_workload(workload: &str) -> bool {
 }
 
 fn releases_idle_ollama_for_workload(workload: &str) -> bool {
-    matches!(workload, "renderer" | "dungeon" | "music" | "image")
+    matches!(workload, "vault" | "renderer" | "dungeon" | "music" | "image")
 }
 
 fn restore_residency_models(endpoint: &str, rows: &[serde_json::Value], num_parallel: u32, version: &str,
@@ -1094,7 +1190,7 @@ fn restore_residency_models(endpoint: &str, rows: &[serde_json::Value], num_para
                 continue;
             }
         };
-        match preflight_model(endpoint, name, context, num_parallel, version, false, true, inference_kind, &std::collections::HashMap::new()) {
+        match preflight_model(endpoint, name, context, num_parallel, version, false, true, inference_kind, GPU_SAFETY_RESERVE_BYTES, &std::collections::HashMap::new()) {
             Ok(_) => { last_used.insert(name.to_owned(), Instant::now()); }
             Err(error) => issues.push(format!("{name} was not restored: {error}")),
         }
@@ -1159,10 +1255,10 @@ mod gpu_workload_lease_tests {
 
     #[test]
     fn external_gpu_workloads_require_host_model_release_before_capacity_check() {
-        for workload in ["renderer", "dungeon", "music", "image"] {
+        for workload in ["vault", "renderer", "dungeon", "music", "image"] {
             assert!(releases_idle_ollama_for_workload(workload), "{workload} must free Ollama residency before checking its reserve");
         }
-        for workload in ["vault", "transition", "ai"] {
+        for workload in ["transition", "ai"] {
             assert!(!releases_idle_ollama_for_workload(workload), "{workload} must follow model admission or inference ownership");
         }
     }
@@ -1280,6 +1376,7 @@ fn preflight_model(
     allow_calibration: bool,
     restore_previous_models_on_failure: bool,
     inference_kind: &str,
+    postload_reserve: u64,
     leases: &std::collections::HashMap<String, String>,
 ) -> Result<(String, serde_json::Value, String), String> {
     if !matches!(inference_kind, "generate" | "embed") {
@@ -1296,17 +1393,31 @@ fn preflight_model(
     let key = (digest.as_str(), ollama_version, context_length, num_parallel);
     let mut profiles = load_residency_profiles()?;
     let known_profile = profiles.iter().find(|profile| profile_matches(profile, key)).cloned();
-    if known_profile.is_none() && !allow_calibration {
-        return Err(format!("No verified full-GPU residency profile exists for '{model}' (digest {}, Ollama {}, context {}, parallelism {}). Explicit calibration is required; inference was not sent.", &digest[..digest.len().min(12)], ollama_version, context_length, num_parallel));
-    }
     let resident = ollama_models(endpoint)?;
     let resident_target = resident.iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)));
     let target_was_resident = resident_target.is_some();
     let resident_context = resident_target.and_then(|row| row.get("context_length").and_then(|value| value.as_u64())).unwrap_or(0) as u32;
-    // Ollama may keep a model warm at an older context. Reconcile that resident
-    // state before validating it against the exact digest/version/context key.
-    let reload_target_for_admission = target_was_resident
-        && resident_context_requires_reload(known_profile.is_some(), resident_context, context_length);
+    let resident_model_bytes = resident_target.and_then(|row| row.get("size").and_then(|value| value.as_u64())).unwrap_or(0);
+    let resident_gpu_bytes = resident_target.and_then(|row| row.get("size_vram").and_then(|value| value.as_u64())).unwrap_or(0);
+    // A profile is keyed by Ollama version, but a version change does not
+    // invalidate a model that Ollama already reports at the requested context
+    // with its complete allocation in VRAM. Reuse that live evidence; require
+    // explicit calibration only when a model actually needs to be loaded or
+    // its context/residency must be corrected.
+    let warm_residency_verified = warm_residency_satisfies_profile_gap(
+        target_was_resident,
+        resident_context,
+        context_length,
+        resident_model_bytes,
+        resident_gpu_bytes,
+    );
+    if known_profile.is_none() && !allow_calibration && !warm_residency_verified {
+        return Err(format!("No verified full-GPU residency profile exists for '{model}' (digest {}, Ollama {}, context {}, parallelism {}). The resident model does not match the requested context and full-GPU allocation; explicit calibration is required before loading.", &digest[..digest.len().min(12)], ollama_version, context_length, num_parallel));
+    }
+    // Ollama may keep a model warm at an older context or with a partial GPU
+    // allocation. Reconcile those states before inference. An exact full-GPU
+    // resident remains warm even when its saved profile has an older Ollama key.
+    let reload_target_for_admission = target_was_resident && !warm_residency_verified;
     if reload_target_for_admission && leases.values().any(|leased| ollama_model_name_matches(leased, model)) {
         return Err(format!("'{model}' is already in active use at context {resident_context}; it cannot be reloaded for requested context {context_length} or profile calibration while leased."));
     }
@@ -1342,22 +1453,31 @@ fn preflight_model(
         }
         // Baseline includes retained verified residents and follows any
         // release required for calibration or target-context reconciliation.
+        let loaded_by_this_admission = !target_was_resident || reload_target_for_admission;
+        let preload_capacity = if loaded_by_this_admission {
+            known_profile.as_ref().map(|profile| verified_profile_required_free_bytes(profile, postload_reserve))
+        } else {
+            None
+        };
         let before = wait_for_stable_gpu_snapshot(
-            known_profile.as_ref().map(verified_profile_required_free_bytes),
+            preload_capacity,
             Duration::from_secs(12),
         )
             .map_err(|error| format!("WDDM baseline unavailable after idle-model release: {error}"))?;
         let reserve = GPU_SAFETY_RESERVE_BYTES;
-        if before.free_bytes <= reserve {
-            return Err(format!("Calibration blocked before preload: WDDM free memory is {} MiB, which does not exceed the configured 1024 MiB reserve.", before.free_bytes / 1_048_576));
-        }
-        let loaded_by_this_admission = !target_was_resident || reload_target_for_admission;
         if let Some(profile) = known_profile.as_ref().filter(|_| loaded_by_this_admission) {
-            let required_free_bytes = verified_profile_required_free_bytes(profile);
+            // A measured profile is admitted against the exact full-GPU
+            // allocation plus the configured post-load floor. Applying the
+            // generic 1 GiB cold-calibration floor as well double-counts
+            // reserve and rejects known Vault models that have already run.
+            let required_free_bytes = verified_profile_required_free_bytes(profile, postload_reserve);
             if before.free_bytes < required_free_bytes {
-                return Err(format!("Verified model allocation requires about {} MiB plus the configured 1024 MiB reserve; stable baseline free is {} MiB. Model was not loaded.", profile.gpu_bytes / 1_048_576, before.free_bytes / 1_048_576));
+                return Err(format!("Verified model allocation requires about {} MiB plus the configured {} MiB post-load reserve; stable baseline free is {} MiB. Model was not loaded.", profile.gpu_bytes / 1_048_576, postload_reserve / 1_048_576, before.free_bytes / 1_048_576));
             }
-        } else if known_profile.is_none() {
+        } else if !preload_capacity_satisfied(loaded_by_this_admission, before.free_bytes, reserve) {
+            return Err(format!("Model load or calibration blocked before preload: WDDM free memory is {} MiB, which does not exceed the configured 1024 MiB reserve.", before.free_bytes / 1_048_576));
+        }
+        if known_profile.is_none() && loaded_by_this_admission {
             log_line(&format!("Explicit residency calibration started for '{model}': digest={}, Ollama={ollama_version}, context={context_length}, parallelism={num_parallel}; baseline WDDM free={} MiB.", &digest[..digest.len().min(12)], before.free_bytes / 1_048_576));
         }
         if loaded_by_this_admission {
@@ -1365,8 +1485,11 @@ fn preflight_model(
             ollama_http_timeout(endpoint, "POST", path, Some(&preload), 300)?;
             wait_for_target_resident(endpoint, model)?;
         }
-        let after = wait_for_stable_gpu_snapshot(Some(reserve), Duration::from_secs(12))
-            .map_err(|error| format!("WDDM post-load residency did not settle with the configured reserve: {error}"))?;
+        let after = wait_for_stable_gpu_snapshot(
+            if loaded_by_this_admission { Some(postload_reserve) } else { None },
+            Duration::from_secs(12),
+        )
+            .map_err(|error| format!("WDDM post-load residency did not settle with the configured {} MiB reserve: {error}", postload_reserve / 1_048_576))?;
         let loaded = ollama_models(endpoint)?.into_iter().find(|row| row.get("name").and_then(|v| v.as_str()).is_some_and(|name| ollama_model_name_matches(model, name)))
             .ok_or_else(|| format!("Ollama /api/ps did not report '{model}' after preload."))?;
         let model_bytes = loaded.get("size").and_then(|v| v.as_u64()).unwrap_or(0);
@@ -1378,8 +1501,8 @@ fn preflight_model(
         if !is_full_gpu_residency(model_bytes, gpu_bytes) {
             return Err(format!("Full GPU residency verification failed: /api/ps size={} MiB, size_vram={} MiB; WDDM free after preload={} MiB, total GPU impact={} MiB, reserve=1024 MiB. CPU offload is not admitted.", model_bytes / 1_048_576, gpu_bytes / 1_048_576, after.free_bytes / 1_048_576, after.used_bytes.saturating_sub(before.used_bytes) / 1_048_576));
         }
-        if !meets_gpu_reserve(after.free_bytes, reserve) {
-            return Err(format!("Insufficient VRAM after preload: WDDM free={} MiB, below configured 1024 MiB reserve; total GPU memory impact={} MiB. Model will be unloaded.", after.free_bytes / 1_048_576, after.used_bytes.saturating_sub(before.used_bytes) / 1_048_576));
+        if !postload_reserve_satisfied(loaded_by_this_admission, after.free_bytes, postload_reserve) {
+            return Err(format!("Insufficient VRAM after model load: WDDM free={} MiB, below configured {} MiB reserve; total GPU memory impact={} MiB. The newly loaded model will be unloaded.", after.free_bytes / 1_048_576, postload_reserve / 1_048_576, after.used_bytes.saturating_sub(before.used_bytes) / 1_048_576));
         }
         let impact = verified_profile_impact(
             loaded_by_this_admission,
@@ -1387,9 +1510,10 @@ fn preflight_model(
             after.used_bytes,
             known_profile.as_ref().map(|profile| profile.wddm_impact_bytes),
         );
-        let Some(impact) = impact else {
+        if loaded_by_this_admission && impact.is_none() {
             return Err("WDDM showed no positive total GPU memory impact after preload; refusing to create an unverified profile.".into());
-        };
+        }
+        let impact = impact.unwrap_or_default();
         let profile = ResidencyProfile { digest: digest.clone(), ollama_version: ollama_version.to_owned(), context_length, num_parallel, model_bytes, gpu_bytes, wddm_impact_bytes: impact };
         let updated = if let Some(old) = profiles.iter_mut().find(|candidate| profile_matches(candidate, key)) {
             // Only a model loaded and sampled after GPU memory settled can
@@ -1404,7 +1528,11 @@ fn preflight_model(
             "profile": updated, "reserve_bytes": reserve,
             "full_gpu_residency": true,
         });
-        let detail = format!("{} profile for '{model}' verified: /api/ps size=size_vram={} MiB; WDDM total impact={} MiB; free after load={} MiB; configured reserve=1024 MiB.", if known_profile.is_some() { "Known" } else { "Calibrated" }, gpu_bytes / 1_048_576, impact / 1_048_576, after.free_bytes / 1_048_576);
+        let detail = if known_profile.is_none() && warm_residency_verified && !loaded_by_this_admission {
+            format!("Warm full-GPU residency for '{model}' verified at context {actual_context}: /api/ps size=size_vram={} MiB. Reused without a cold-load reserve check; the saved profile key is Ollama-version-specific.", gpu_bytes / 1_048_576)
+        } else {
+            format!("{} profile for '{model}' verified: /api/ps size=size_vram={} MiB; WDDM total impact={} MiB; free after load={} MiB; configured post-load reserve={} MiB.", if known_profile.is_some() { "Known" } else { "Calibrated" }, gpu_bytes / 1_048_576, impact / 1_048_576, after.free_bytes / 1_048_576, postload_reserve / 1_048_576)
+        };
         Ok((inventory, detail))
     })();
     let (inventory, detail) = match result {
@@ -1427,7 +1555,7 @@ fn preflight_model(
                             continue;
                         }
                     };
-                    match preflight_model(endpoint, name, context as u32, num_parallel, ollama_version, false, true, inference_kind, &std::collections::HashMap::new()) {
+                    match preflight_model(endpoint, name, context as u32, num_parallel, ollama_version, false, true, inference_kind, GPU_SAFETY_RESERVE_BYTES, &std::collections::HashMap::new()) {
                         Ok((_lease_id, _inventory, detail)) => log_line(&format!("Prior model residency restored through verified Rust-host admission: {detail}")),
                         Err(restore_error) => recovery.push(format!("restore {name} failed: {restore_error}")),
                     }
@@ -1472,17 +1600,24 @@ fn profile_matches(profile: &ResidencyProfile, key: (&str, &str, u32, u32)) -> b
     profile.digest == key.0 && profile.ollama_version == key.1 && profile.context_length == key.2 && profile.num_parallel == key.3
 }
 
+fn lease_context_matches(inference_kind: &str, actual_context: u32, expected_context: u32) -> bool {
+    // Ollama's /api/ps may report context_length=0 for an embedding-only
+    // runner even though Rust Host admitted it against a calibrated context.
+    // Residency is verified separately by the exact model row above.
+    (inference_kind == "embed" && actual_context == 0) || actual_context == expected_context
+}
+
 fn release_competing_models_for_admission(has_verified_profile: bool) -> bool {
     !has_verified_profile
 }
 
-fn verified_profile_required_free_bytes(profile: &ResidencyProfile) -> u64 {
+fn verified_profile_required_free_bytes(profile: &ResidencyProfile, postload_reserve: u64) -> u64 {
     // `gpu_bytes` is Ollama's verified full-GPU model allocation. WDDM impact
     // also includes transient driver/runtime allocations observed during the
     // original load; using that peak as a permanent pre-load charge can reject
-    // a model that fits. The live post-load WDDM check below still enforces the
-    // full reserve against actual settled memory.
-    profile.gpu_bytes.saturating_add(GPU_SAFETY_RESERVE_BYTES)
+    // a model that fits. The pre-load reserve remains 1 GiB; exclusive Vault
+    // admission uses its separate, measured post-load floor.
+    profile.gpu_bytes.saturating_add(postload_reserve)
 }
 
 fn wait_for_stable_gpu_snapshot(
@@ -1520,8 +1655,34 @@ fn is_full_gpu_residency(model_bytes: u64, gpu_bytes: u64) -> bool {
     model_bytes > 0 && gpu_bytes == model_bytes
 }
 
+fn warm_residency_satisfies_profile_gap(
+    target_was_resident: bool,
+    resident_context: u32,
+    requested_context: u32,
+    model_bytes: u64,
+    gpu_bytes: u64,
+) -> bool {
+    target_was_resident
+        && resident_context == requested_context
+        && is_full_gpu_residency(model_bytes, gpu_bytes)
+}
+
 fn meets_gpu_reserve(free_bytes: u64, reserve_bytes: u64) -> bool {
     free_bytes >= reserve_bytes
+}
+
+fn preload_capacity_satisfied(loaded_by_this_admission: bool, free_bytes: u64, reserve_bytes: u64) -> bool {
+    // The 1 GiB pre-load floor protects a new allocation. Reusing a verified
+    // model already resident at its admitted context adds no model allocation;
+    // its Vault-specific post-load floor is still checked after this snapshot.
+    !loaded_by_this_admission || free_bytes > reserve_bytes
+}
+
+fn postload_reserve_satisfied(loaded_by_this_admission: bool, free_bytes: u64, reserve_bytes: u64) -> bool {
+    // Existing verified residency is checked against the model profile and
+    // exact context below. Do not revoke a warm lease because WDDM free bytes
+    // fluctuate between inference calls; apply this floor to fresh loads only.
+    !loaded_by_this_admission || meets_gpu_reserve(free_bytes, reserve_bytes)
 }
 
 fn residency_profile_path() -> Result<PathBuf, String> {
@@ -1575,10 +1736,6 @@ fn verified_profile_impact(
     (impact > 0).then_some(impact)
 }
 
-fn resident_context_requires_reload(has_matching_profile: bool, resident_context: u32, requested_context: u32) -> bool {
-    !has_matching_profile || resident_context != requested_context
-}
-
 fn ollama_model_name_matches(requested: &str, available: &str) -> bool {
     requested == available
         || (!requested.contains(':') && available == format!("{requested}:latest"))
@@ -1611,10 +1768,13 @@ fn ollama_tags(endpoint: &str) -> Result<Vec<serde_json::Value>, String> {
 mod model_name_tests {
     use super::{
         has_model_capacity, inference_kind_from_capabilities, is_full_gpu_residency,
-        meets_gpu_reserve, ollama_model_name_matches, profile_matches,
+        lease_context_matches,
+        meets_gpu_reserve, ollama_model_name_matches, preload_capacity_satisfied,
+        postload_reserve_satisfied, profile_matches,
         release_competing_models_for_admission, residency_probe,
-        resident_context_requires_reload, verified_profile_impact,
-        verified_profile_required_free_bytes, preflight_model, ResidencyProfile,
+        verified_profile_impact, verified_profile_required_free_bytes,
+        warm_residency_satisfies_profile_gap, preflight_model,
+        ResidencyProfile, GPU_SAFETY_RESERVE_BYTES,
     };
 
     #[test]
@@ -1643,7 +1803,7 @@ mod model_name_tests {
     }
 
     #[test]
-    fn verified_admission_uses_full_gpu_model_allocation_plus_reserve() {
+    fn verified_admission_uses_full_gpu_allocation_plus_vault_postload_reserve() {
         let mib = 1024 * 1024;
         let profile = ResidencyProfile {
             digest: "gpt-oss-20b".into(), ollama_version: "0.40.6".into(),
@@ -1651,11 +1811,11 @@ mod model_name_tests {
             model_bytes: 13_154 * mib, gpu_bytes: 12_161 * mib,
             wddm_impact_bytes: 12_325 * mib,
         };
-        let free_bytes = 13_653 * mib;
-        let verified_requirement = verified_profile_required_free_bytes(&profile);
-        let historical_wddm_peak_requirement = 14_178 * mib;
+        let free_bytes = 12_900 * mib;
+        let verified_requirement = verified_profile_required_free_bytes(&profile, 512 * mib);
+        let historical_wddm_peak_requirement = profile.wddm_impact_bytes + GPU_SAFETY_RESERVE_BYTES;
 
-        assert_eq!(verified_requirement, 13_185 * mib);
+        assert_eq!(verified_requirement, 12_673 * mib);
         assert!(has_model_capacity(free_bytes, verified_requirement));
         assert!(!has_model_capacity(free_bytes, historical_wddm_peak_requirement));
     }
@@ -1667,6 +1827,22 @@ mod model_name_tests {
         assert!(!is_full_gpu_residency(0, 0));
         assert!(meets_gpu_reserve(1024 * 1024 * 1024, 1024 * 1024 * 1024));
         assert!(!meets_gpu_reserve(1024 * 1024 * 1024 - 1, 1024 * 1024 * 1024));
+    }
+
+    #[test]
+    fn warm_verified_model_does_not_need_the_preload_reserve_again() {
+        let mib = 1024 * 1024;
+        assert!(preload_capacity_satisfied(false, 721 * mib, GPU_SAFETY_RESERVE_BYTES));
+        assert!(!preload_capacity_satisfied(true, 721 * mib, GPU_SAFETY_RESERVE_BYTES));
+        assert!(preload_capacity_satisfied(true, 1025 * mib, GPU_SAFETY_RESERVE_BYTES));
+    }
+
+    #[test]
+    fn warm_verified_model_is_not_rejected_by_transient_postload_free_memory() {
+        let mib = 1024 * 1024;
+        assert!(postload_reserve_satisfied(false, 362 * mib, 512 * mib));
+        assert!(!postload_reserve_satisfied(true, 362 * mib, 512 * mib));
+        assert!(postload_reserve_satisfied(true, 512 * mib, 512 * mib));
     }
 
     #[test]
@@ -1683,17 +1859,18 @@ mod model_name_tests {
     }
 
     #[test]
-    fn warm_model_reloads_only_when_its_resident_context_does_not_match_the_profile_key() {
-        assert!(!resident_context_requires_reload(true, 32_768, 32_768));
-        assert!(resident_context_requires_reload(true, 4_096, 32_768));
-        assert!(resident_context_requires_reload(false, 32_768, 32_768));
+    fn exact_full_gpu_warm_model_is_accepted_without_a_version_matched_profile() {
+        assert!(warm_residency_satisfies_profile_gap(true, 16_384, 16_384, 12_000, 12_000));
+        assert!(!warm_residency_satisfies_profile_gap(true, 4_096, 16_384, 12_000, 12_000));
+        assert!(!warm_residency_satisfies_profile_gap(true, 16_384, 16_384, 12_000, 11_999));
+        assert!(!warm_residency_satisfies_profile_gap(false, 16_384, 16_384, 12_000, 12_000));
     }
 
     #[test]
     fn missing_context_budget_is_rejected_before_ollama_access() {
         let error = preflight_model(
             "http://127.0.0.1:9", "qwen", 0, 1, "0.0.0", false,
-            true, "generate", &std::collections::HashMap::new(),
+            true, "generate", GPU_SAFETY_RESERVE_BYTES, &std::collections::HashMap::new(),
         ).unwrap_err();
         assert!(error.contains("context"));
         assert!(error.contains("blocked"));
@@ -1714,6 +1891,15 @@ mod model_name_tests {
         assert_eq!(inference_kind_from_capabilities(&[serde_json::json!("embedding")]), Ok("embed"));
         assert_eq!(inference_kind_from_capabilities(&[serde_json::json!("completion"), serde_json::json!("embedding")]), Ok("generate"));
         assert!(inference_kind_from_capabilities(&[]).is_err());
+    }
+
+    #[test]
+    fn embedding_lease_renewal_accepts_ollama_unknown_context_but_generation_does_not() {
+        assert!(lease_context_matches("embed", 0, 2_048));
+        assert!(lease_context_matches("embed", 2_048, 2_048));
+        assert!(!lease_context_matches("embed", 4_096, 2_048));
+        assert!(!lease_context_matches("generate", 0, 16_384));
+        assert!(lease_context_matches("generate", 16_384, 16_384));
     }
 }
 

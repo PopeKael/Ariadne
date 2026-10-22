@@ -310,6 +310,7 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
                         lease_id: str | None = None, force: bool | None = None,
                         context_length: int | None = None, allow_calibration: bool | None = None,
                         restore_previous_models_on_failure: bool | None = None,
+                        session_lease: bool | None = None,
                         inference_kind: str | None = None,
                         workload: str | None = None, min_free_bytes: int | None = None,
                         owner_pid: int | None = None,
@@ -332,6 +333,8 @@ def _request_host_model(kind: str, *, endpoint: str, model: str | None = None,
         request["allow_calibration"] = bool(allow_calibration)
     if restore_previous_models_on_failure is not None:
         request["restore_previous_models_on_failure"] = bool(restore_previous_models_on_failure)
+    if session_lease is not None:
+        request["session_lease"] = bool(session_lease)
     if inference_kind is not None:
         request["inference_kind"] = inference_kind
     if lease_id is not None:
@@ -389,11 +392,14 @@ def inference_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_len
 
 def host_acquire_model_lease(model: str, endpoint: str = DEFAULT_ENDPOINT, *, context_length: int,
                              allow_calibration: bool = False,
-                             restore_previous_models_on_failure: bool = True) -> str:
+                             restore_previous_models_on_failure: bool = True,
+                             inference_kind: str = "generate") -> str:
     """Acquire a Rust-host model lease that survives beyond one inference call."""
     result = _request_host_model("admit_model", endpoint=endpoint, model=model,
                                  context_length=context_length, allow_calibration=allow_calibration,
                                  restore_previous_models_on_failure=restore_previous_models_on_failure,
+                                 inference_kind=inference_kind,
+                                 session_lease=True,
                                  timeout=330.0 if allow_calibration else 20.0)
     lease_id = str(result.get("lease_id") or "")
     if not lease_id:
@@ -457,7 +463,7 @@ def host_acquire_gpu_lease(workload: str, endpoint: str = DEFAULT_ENDPOINT, *,
     """Acquire a Rust-host workload lease for non-Ollama GPU work or transitions."""
     result = _request_host_model("acquire_gpu_lease", endpoint=endpoint, workload=workload,
                                  model=model, min_free_bytes=min_free_bytes,
-                                 owner_pid=os.getpid(), timeout=30.0)
+                                 owner_pid=os.getpid(), timeout=180.0 if workload == "vault" else 30.0)
     lease_id = str(result.get("lease_id") or "")
     if not lease_id:
         raise RuntimeError("Rust host admitted a GPU workload without returning a lease.")
@@ -467,6 +473,14 @@ def host_acquire_gpu_lease(workload: str, endpoint: str = DEFAULT_ENDPOINT, *,
 def host_release_gpu_lease(lease_id: str, endpoint: str = DEFAULT_ENDPOINT) -> None:
     if lease_id:
         _request_host_model("release_gpu_lease", endpoint=endpoint, lease_id=lease_id, timeout=20.0)
+
+
+def host_update_vault_gpu_lease_model(lease_id: str, model: str, endpoint: str = DEFAULT_ENDPOINT) -> None:
+    """Move an owned exclusive Vault lease between its configured workflow models."""
+    if not lease_id or not model:
+        raise RuntimeError("Vault GPU stage change requires a lease and model.")
+    _request_host_model("update_vault_gpu_lease_model", endpoint=endpoint, lease_id=lease_id,
+                        model=model, owner_pid=os.getpid(), timeout=20.0)
 
 
 def host_verify_gpu_lease_capacity(lease_id: str, min_free_bytes: int,
