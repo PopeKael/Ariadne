@@ -373,7 +373,7 @@ async function requestVaultSession(surface, transition) {
     try {
       return await postJson("/api/session/start", {surface});
     } catch (error) {
-      const transient = /already active in another tab|models are still active|models remain protected|GPU workload is still active|another Ariadne model is active|Home model .* is still loading|could not clear resident/i.test(error.message || "");
+      const transient = /already active in another tab|models are still active|models remain protected|GPU workload is still active|another Ariadne model is active|GPU preflight found Ollama model .* resident and in active use|Home model .* is still loading|could not clear resident/i.test(error.message || "");
       if (!transient || attempt >= 10 || transition !== vaultSessionTransition) throw error;
       const delaySeconds = Math.min(8, attempt + 1);
       vaultSessionLabel(`Waiting for the current Ariadne GPU handoff to finish; retrying in ${delaySeconds}s…`, "starting");
@@ -614,23 +614,14 @@ async function switchSessionSurface(surface) {
   const transition = ++vaultSessionTransition;
   const sessionId = vaultSessionId;
   if (surface === "knowledge-vault" && sessionId) {
-    vaultSessionLabel("Preparing Knowledge Vault: releasing the Home model and loading the configured ingestion model…", "starting");
+    vaultSessionLabel("Preparing Knowledge Vault: releasing the Home model before loading the configured ingestion model…", "starting");
     setVaultControlsDisabled(true);
-    try {
-      const session = await requestVaultSession(surface, transition);
-      if (transition !== vaultSessionTransition) {
-        postJson("/api/session/close", {session_id: session.session_id}).catch(() => {});
-        return;
-      }
-      activateVaultSession(session, surface);
-      try { await postJson("/api/session/close", {session_id: sessionId}); } catch (_error) {}
-    } catch (error) {
-      if (transition === vaultSessionTransition) {
-        vaultSessionLabel(`Knowledge Vault not ready · ${error.message}`, "offline");
-        setVaultControlsDisabled(true);
-      }
-    }
-    return;
+    if (vaultHeartbeat) clearInterval(vaultHeartbeat);
+    vaultHeartbeat = null;
+    vaultSessionId = null;
+    updateSessionButtons();
+    try { await postJson("/api/session/close", {session_id: sessionId}); } catch (_error) {}
+    if (transition !== vaultSessionTransition) return;
   }
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
   vaultHeartbeat = null;
@@ -925,7 +916,7 @@ function setViewMode(mode) {
   document.body.classList.toggle("control-mode", control);
   history.replaceState(null, "", control ? "#knowledge-vault" : window.location.pathname);
   window.scrollTo(0, 0);
-  if (control !== wasControl && !control) switchSessionSurface("home");
+  if (control !== wasControl) switchSessionSurface(control ? "knowledge-vault" : "home");
   if (!control) refresh();
 }
 
@@ -1050,7 +1041,8 @@ setupProfileControls();
 setupVaultControls();
 setupResourceControls();
 const openingVaultWorkspace = new URLSearchParams(window.location.search).get("workspace") === "knowledge-vault";
-if (!document.body.classList.contains("control-mode") && !openingVaultWorkspace) startVaultSession("home");
+if (openingVaultWorkspace) startVaultSession("knowledge-vault");
+else if (!document.body.classList.contains("control-mode")) startVaultSession("home");
 if (window.ariadneRuntime) {
   window.addEventListener("ariadne:runtime", event => render(event.detail));
   window.addEventListener("ariadne:runtime-error", () => {
