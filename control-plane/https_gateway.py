@@ -84,7 +84,8 @@ def create_gateway(settings):
                 try:
                     from ollama_runtime import inference_lease
                     model_lease = inference_lease("nomic-embed-text", settings["ollama_url"],
-                                                  context_length=embedding_context, inference_kind="embed")
+                                                  context_length=embedding_context, allow_calibration=True,
+                                                  inference_kind="embed")
                     model_lease.__enter__()
                 except (ImportError, OSError, RuntimeError, ValueError) as exc:
                     self.error(503, f"Rust-host model admission denied this embedding request: {exc}")

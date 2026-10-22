@@ -98,6 +98,79 @@ class EvidenceFirstTests(unittest.TestCase):
         self.assertFalse(decision.quiet_personal_context)
         self.assertFalse(decision.external_search)
 
+    def test_personal_story_with_when_is_not_misclassified_as_a_precision_question(self):
+        query = (
+            "This must be a reflection of the changing world we live in. I remember coming to Australia in my final days. "
+            "I had one month in an Airbnb and I wasn't asked to do anything. I was sharing a room in an occupied house. "
+            "It was an Airbnb. It's what you did back there 10 years ago. And yeah, when I left there after the four weeks "
+            "that I was spending there, I gave everything a wipe down and said goodbye. No questions asked."
+        )
+        classification = classify_request(query, {"semantic": {"needs_personal_history": True, "confidence": 0.95}})
+        self.assertFalse(classification["precision_claim"])
+        self.assertFalse(classification["verification_required"])
+
+        decision = decide(
+            query,
+            planner_result={"semantic": {"needs_personal_history": True, "confidence": 0.95}},
+            vault_mode="all", vault_available=True, search_available=True,
+        )
+        self.assertFalse(decision.verification_required)
+        self.assertFalse(decision.external_search)
+
+    def test_personal_reflection_generates_when_vault_has_no_matching_note(self):
+        class EmptyPersonalMcp:
+            def identity_system_prefix(self):
+                return "IDENTITY", {"id": "ariadne", "version": "1.1.0", "scope": "user"}
+
+            def retrieve_evidence(self, arguments):
+                return {"results": [], "candidate_count": 0, "selected_count": 0, "match_count": 0}
+
+            def ollama_chat(self, messages, **kwargs):
+                return "It sounds like the Airbnb experience has changed a lot since your stay."
+
+        query = (
+            "This must be a reflection of the changing world we live in. I remember coming to Australia in my final days. "
+            "I had one month in an Airbnb and I wasn't asked to do anything. I was sharing a room in an occupied house. "
+            "It was an Airbnb. It's what you did back there 10 years ago. And yeah, when I left there after the four weeks "
+            "that I was spending there, I gave everything a wipe down and said goodbye. No questions asked."
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_mcp = server._home_mcp
+            original_planner = server.home_planner_request
+            original_search = server.SEARCH_PROVIDER_REGISTRY
+            original_adaptive = server.home_adaptive_context_for_query
+            original_event = server.record_home_event
+            server.HOME_CHAT_STORE = ChatStore(Path(temporary))
+            server._home_mcp = lambda: EmptyPersonalMcp()
+            server.home_planner_request = lambda *args, **kwargs: {
+                "plan": {"intent": "personal_reflection", "use_vault": True, "tools": [], "needs_current_information": False},
+                "semantic": {"intent": "personal_reflection", "needs_personal_history": True,
+                             "needs_current_information": False, "confidence": 0.95},
+                "policy": {}, "world_state": {}, "fallback": False, "telemetry": {},
+            }
+            server.SEARCH_PROVIDER_REGISTRY = type("NoSearch", (), {"route": lambda self: None})()
+            server.home_adaptive_context_for_query = lambda *args, **kwargs: {}
+            server.record_home_event = lambda *args, **kwargs: None
+            try:
+                chat = server.HOME_CHAT_STORE.create()
+                result = server.home_chat_payload(query, [], "all", chat["chat_id"])
+            finally:
+                server.HOME_CHAT_STORE = original_store
+                server._home_mcp = original_mcp
+                server.home_planner_request = original_planner
+                server.SEARCH_PROVIDER_REGISTRY = original_search
+                server.home_adaptive_context_for_query = original_adaptive
+                server.record_home_event = original_event
+
+        self.assertEqual(result["answer"], "It sounds like the Airbnb experience has changed a lot since your stay.")
+        self.assertFalse(result["retrieval"]["evidence_policy"]["verification_required"])
+
+    def test_when_question_still_requires_verification(self):
+        classification = classify_request("When did Airbnb change its cleaning policy?")
+        self.assertTrue(classification["precision_claim"])
+        self.assertTrue(classification["verification_required"])
+
     def test_vault_and_attachment_evidence_precede_external_search_when_adequate(self):
         decision = decide(
             "What is the Hornsby Water Clock?",

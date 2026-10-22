@@ -110,6 +110,7 @@ class GatewayTests(unittest.TestCase):
             "model": "nomic-embed-text", "input": ["test"], "options": {"num_ctx": 2048},
         }])
         self.host_lease_mock.assert_called_once()
+        self.assertTrue(self.host_lease_mock.call_args.kwargs["allow_calibration"])
         self.assertEqual(self.host_lease_mock.call_args.kwargs["inference_kind"], "embed")
         self.assertEqual(self.host_lease_mock.call_args.kwargs["context_length"], 2048)
         before = list(Upstream.calls)

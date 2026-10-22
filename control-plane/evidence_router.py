@@ -18,7 +18,7 @@ CURRENT_WORDS = frozenset({
     "status", "price", "prices", "version", "versions", "release", "released", "update",
     "updated", "available", "exists", "working", "works", "open", "closed",
 })
-PRECISION_WORDS = frozenset({"exact", "exactly", "date", "dates", "when", "quote", "quoted", "quotation", "statistic", "statistics", "percentage", "number"})
+PRECISION_WORDS = frozenset({"exact", "exactly", "date", "dates", "quote", "quoted", "quotation", "statistic", "statistics", "percentage", "number"})
 CONFLICT_WORDS = frozenset({"conflicting", "contradictory", "contradiction", "disagree", "but", "versus", "vs"})
 FACTUAL_STARTERS = frozenset({"who", "what", "where", "when", "which", "is", "are", "was", "were", "did", "does", "do", "how"})
 KNOWN_PERSONAL_TERMS = frozenset({
@@ -103,10 +103,15 @@ def _personal_fact_verification(query: str, personal_context: bool, explicit_ver
         return True
     if not words.intersection(PERSONAL_FACT_WORDS):
         return False
-    return bool(re.search(
-        r"\b(?:has|have|had|did|does|is|are|was|were|can|will|would|what|when|where|whether|if)\b",
-        folded,
-    ))
+    asks_about_history = (
+        folded.rstrip().endswith("?")
+        or bool(re.match(r"\s*(?:what|when|where|whether|if)\b", folded))
+        or bool(re.search(
+            r"\b(?:tell me|let me know|do you know|can you tell me)\b.{0,100}\b(?:what|when|whether|if)\b",
+            folded,
+        ))
+    )
+    return asks_about_history
 
 
 def _remove_known_personal_terms(query: str) -> str:
@@ -124,7 +129,12 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
     explicit = bool(re.search(r"\b(?:search|browse)\b.*\b(?:web|internet|online)\b|\bweb\s+(?:search|research)\b", query.casefold())) or bool(word_set.intersection(VERIFY_WORDS)) or bool(re.search(r"\blook\s+up\b|\bfind\s+out\b", query.casefold()))
     conversational_greeting = bool(re.search(r"\bhow\s+(are|is)\s+you\b|\bhow'?s\s+it\s+going\b", query.casefold()))
     current = (bool(word_set.intersection(CURRENT_WORDS)) or bool(re.search(r"\b20\d{2}\b|\bthis\s+(month|week|year)\b", query.casefold()))) and not conversational_greeting
-    precise = bool(word_set.intersection(PRECISION_WORDS))
+    asks_when = "when" in word_set and (
+        query.strip().endswith("?")
+        or bool(re.match(r"\s*(?:when|what\s+date)\b", query, re.IGNORECASE))
+        or bool(re.search(r"\b(?:tell|show|find|check|verify|research|look\s+up|know)\b.{0,80}\bwhen\b", query, re.IGNORECASE))
+    )
+    precise = bool(word_set.intersection(PRECISION_WORDS)) or asks_when
     conflict = bool(word_set.intersection(CONFLICT_WORDS))
     personal_context = _personal_context_present(query, semantic)
     personal_fact_verification = _personal_fact_verification(query, personal_context, explicit)

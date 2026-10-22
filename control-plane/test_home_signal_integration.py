@@ -421,6 +421,75 @@ class HomeSignalIntegrationTests(unittest.TestCase):
                 self.assertEqual(result["feedback"]["rating"], "wrong")
                 self.assertEqual(result["feedback"]["active_source_signal_ids"], ["signal-1234567890abcdef"])
                 self.assertEqual(result["feedback"]["comment"], "The conclusion is not supported.")
+                candidate_request = urllib.request.Request(
+                    f"http://localhost:{port}/api/home/interaction-memories",
+                    data=json.dumps({
+                        "session_id": started_session["session_id"], "action": "candidate",
+                        "source_chat_id": chat["chat_id"], "source_message_id": assistant["message_id"],
+                        "lesson": "Support conclusions with evidence.", "scope": "general",
+                    }).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST",
+                )
+                with urllib.request.urlopen(candidate_request, timeout=5) as response:
+                    proposal = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(proposal["memory"]["status"], "candidate")
+                approve_request = urllib.request.Request(
+                    f"http://localhost:{port}/api/home/interaction-memories",
+                    data=json.dumps({"session_id": started_session["session_id"], "action": "approve",
+                                     "memory_id": proposal["memory"]["memory_id"]}).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}, method="POST",
+                )
+                with urllib.request.urlopen(approve_request, timeout=5) as response:
+                    approved = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(approved["memory"]["status"], "approved")
+                self.assertEqual(approved["memory"]["source"]["kind"], "explicit_feedback")
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                server.HOME_CHAT_STORE = original_store
+                server.HOME_EVENTS_PATH = original_events
+
+    def test_response_feedback_tag_set_and_comment_are_independent_http_operations(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original_store = server.HOME_CHAT_STORE
+            original_events = server.HOME_EVENTS_PATH
+            store = ChatStore(Path(temporary))
+            server.HOME_CHAT_STORE = store
+            server.HOME_EVENTS_PATH = Path(temporary) / "Journal" / "Ariadne Home Events.md"
+            chat = store.create()
+            turn_id, started = store.begin_turn(chat["chat_id"], "Question", "qwen3.5:9b", {})
+            assistant = next(item for item in started["messages"] if item["role"] == "assistant")
+            store.complete_turn(chat["chat_id"], turn_id, "Answer", model="qwen3.5:9b", used_vault=False,
+                                sources=[], retrieval={}, timing={}, identity_kernel={},
+                                active_source_signal_ids=["signal-provenance-1234567890"])
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+            thread.start()
+            try:
+                port = httpd.server_address[1]
+                def post(payload):
+                    request = urllib.request.Request(
+                        f"http://localhost:{port}/api/session/start" if payload.get("_start") else f"http://localhost:{port}/api/home/feedback",
+                        data=json.dumps({key: value for key, value in payload.items() if key != "_start"}).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}, method="POST",
+                    )
+                    with urllib.request.urlopen(request, timeout=5) as response:
+                        return json.loads(response.read().decode("utf-8"))
+                session = post({"_start": True, "chat_id": chat["chat_id"]})["session_id"]
+                common = {"session_id": session, "chat_id": chat["chat_id"],
+                          "message_id": assistant["message_id"], "active_source_signal_ids": ["signal-provenance-1234567890"]}
+                all_tags = ["like", "insightful", "clear", "engaging", "dry", "repetitive", "overreaching"]
+                saved = post({**common, "action": "set_tags", "ratings": all_tags})
+                self.assertEqual(saved["feedback"]["ratings"], all_tags)
+                saved = post({**common, "action": "set_tags", "ratings": ["like", "insightful", "clear", "overreaching"]})
+                self.assertEqual(saved["feedback"]["ratings"], ["like", "insightful", "clear", "overreaching"])
+                comment = post({**common, "action": "save_comment", "comment": "The insight was useful but overreached."})
+                self.assertEqual(comment["feedback"]["ratings"], ["like", "insightful", "clear", "overreaching"])
+                self.assertEqual(comment["feedback"]["comment"], "The insight was useful but overreached.")
+                evidence = store.response_feedback_evidence()
+                self.assertEqual(evidence["responses"][0]["ratings"], comment["feedback"]["ratings"])
+                self.assertEqual(evidence["responses"][0]["active_source_signal_ids"], ["signal-provenance-1234567890"])
+                self.assertEqual(store.response_preferences()["tag_counts"]["dry"], 0)
+                self.assertEqual(store.response_preferences()["tag_counts"]["overreaching"], 1)
             finally:
                 httpd.shutdown()
                 httpd.server_close()

@@ -40,6 +40,23 @@ class OrchestrationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_focus(bad, record)
 
+    def test_approved_behavioral_memories_are_contextual_guidance_not_hardcoded_rules(self):
+        memory = {"memory_id": "memory-1", "scope": "general",
+                  "lesson": "Engage with personal observations thoughtfully; avoid excessive praise and unsupported generalisations."}
+        messages = generation_messages(
+            [{"role": "system", "content": "Identity"}, {"role": "user", "content": "Explain how to configure a router."}],
+            None, "Explain how to configure a router.", "normal", 60, behavioral_memories=[memory],
+        )
+        self.assertIn("APPROVED INTERACTION MEMORIES", messages[0]["content"])
+        self.assertIn("semantic planner selected these by meaning", messages[0]["content"])
+        self.assertIn("do not force its wording into the reply", messages[0]["content"])
+        self.assertIn("[memory-1]", messages[0]["content"])
+        without = generation_messages(
+            [{"role": "system", "content": "Identity"}, {"role": "user", "content": "Explain."}],
+            None, "Explain.", "normal", 60,
+        )
+        self.assertNotIn("APPROVED INTERACTION MEMORIES", without[0]["content"])
+
 
 if __name__ == "__main__":
     unittest.main()

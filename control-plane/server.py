@@ -1790,6 +1790,12 @@ def _monitor_ollama_models_locked() -> dict[str, object]:
     global OLLAMA_RECOVERY_LAST_ATTEMPT, HOME_MODEL_PRELOAD_STATUS, OLLAMA_RUNTIME_IDENTITY
     if SHUTDOWN_REQUESTED:
         return {"state": "stopping", "unloaded": [], "detail": "Model recovery is disabled during Ariadne shutdown."}
+    with GPU_ARBITRATION_LOCK:
+        if GPU_OWNER == "VAULT" or GPU_VAULT_RESERVATION is not None:
+            return {
+                "state": "deferred", "unloaded": [],
+                "detail": "The Knowledge Vault owns the GPU; residency monitoring is deferred.",
+            }
     try:
         if ollama_update_in_progress():
             return {"state": "deferred", "unloaded": [], "detail": "Ollama is updating; Ariadne will recheck when installation finishes."}
@@ -6335,6 +6341,7 @@ def home_adaptive_payload() -> dict[str, object]:
     signal_health = SIGNAL_SERVICE_CLIENT.health()
     interest_payload = SIGNAL_SERVICE_CLIENT.interests()
     source_payload = SIGNAL_SERVICE_CLIENT.sources()
+    response_preferences = HOME_CHAT_STORE.response_preferences()
     ollama = ollama_status()
     inference_health = {
         "home_chat": "Configured" if str(ollama.get("state")) == "online" else "Unavailable",
@@ -6347,7 +6354,14 @@ def home_adaptive_payload() -> dict[str, object]:
         "signal_inference": signal_health.get("inference", {}),
         "interests": interest_payload.get("interests", []) if interest_payload.get("ok") and isinstance(interest_payload.get("interests"), list) else signal_health.get("active_interests", []),
         "learned_preferences": NEWS_RECOMMENDATIONS.profile(signal_health.get("active_interests", [])),
-        "response_preferences": HOME_CHAT_STORE.response_preferences(),
+        "response_preferences": {
+            "ratings": response_preferences.get("ratings", {}),
+            "comment_count": response_preferences.get("comment_count", 0),
+            "tag_counts": response_preferences.get("tag_counts", {}),
+            "tag_response_count": response_preferences.get("tag_response_count", 0),
+            "tag_comment_count": response_preferences.get("tag_comment_count", 0),
+        },
+        "interaction_memories": HOME_CHAT_STORE.interaction_memories(),
         "sources": source_payload.get("sources", []) if isinstance(source_payload, dict) else [],
         "source_registry_mode": "legacy_health_projection" if source_payload.get("legacy_projection") else "registry",
         "semantic": signal_health.get("semantic", {}),
@@ -7351,6 +7365,18 @@ def home_planner_request(query: str, history: object, attachments: list[dict[str
     planner_started = time.perf_counter()
     planner_keep_alive = -1 if str(PLANNER_KEEP_ALIVE).casefold() == "adaptive" else PLANNER_KEEP_ALIVE
     planner_context = home_planner_context(query, history, attachments, vault_mode, selected_tool_ids)
+    planner_context["approved_behavioral_memories"] = [
+        {"memory_id": str(item.get("memory_id") or ""), "scope": str(item.get("scope") or "general"),
+         "lesson": str(item.get("lesson") or "")[:800]}
+        for item in HOME_CHAT_STORE.interaction_memories()
+        if item.get("status") == "approved"
+    ][:12]
+    planner_context["response_feedback_evidence"] = HOME_CHAT_STORE.response_feedback_evidence(12)
+    response_feedback_by_id = {
+        item["evidence_id"]: item
+        for item in planner_context["response_feedback_evidence"].get("responses", [])
+        if isinstance(item, dict) and isinstance(item.get("evidence_id"), str)
+    }
     if session_id:
         try:
             record = HOME_CHAT_STORE.get(session_id)
@@ -7372,6 +7398,24 @@ def home_planner_request(query: str, history: object, attachments: list[dict[str
                 output_tokens=PLANNER_OUTPUT_TOKENS,
             )
         semantic = result.get("semantic") if isinstance(result.get("semantic"), dict) else {}
+        behavioral_proposal = semantic.get("behavioral_learning_candidate")
+        if isinstance(behavioral_proposal, dict):
+            evidence = [response_feedback_by_id[evidence_id]
+                        for evidence_id in behavioral_proposal.get("evidence_ids", [])
+                        if evidence_id in response_feedback_by_id]
+            try:
+                candidate = HOME_CHAT_STORE.create_interaction_memory_candidate(
+                    behavioral_proposal["lesson"], scope=behavioral_proposal["scope"],
+                    source={"kind": "semantic_feedback_pattern", "evidence": evidence},
+                )
+                semantic["behavioral_learning_candidate"] = {
+                    "memory_id": candidate["memory_id"], "status": candidate["status"],
+                    "lesson": candidate["lesson"], "scope": candidate["scope"],
+                    "evidence_count": len(candidate.get("source", {}).get("evidence", [])),
+                }
+                record_home_event("interaction_memory_candidate", f"{candidate['memory_id']} · {candidate['lesson'][:180]}")
+            except (KeyError, TypeError, ValueError, OSError) as exc:
+                semantic["behavioral_learning_candidate"] = {"status": "not_saved", "reason": str(exc)[:240]}
         policy = result.get("policy") if isinstance(result.get("policy"), dict) else {}
         telemetry = result.get("telemetry") if isinstance(result.get("telemetry"), dict) else {}
         LIBRARIAN_EVENT_STREAM.emit(
@@ -7389,6 +7433,11 @@ def home_planner_request(query: str, history: object, attachments: list[dict[str
         )
         result["world_state"] = planner_context.get("world_state", {})
         result["identity_guidance"] = planner_context.get("identity_guidance", "")
+        result["response_feedback"] = {
+            "planner_received": bool(response_feedback_by_id),
+            "response_count": len(response_feedback_by_id),
+            "tag_counts": planner_context["response_feedback_evidence"].get("counts", {}),
+        }
         return result
     except Exception as exc:
         reason = str(exc)
@@ -8262,6 +8311,11 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     mcp = _home_mcp()
     identity, identity_meta = mcp.identity_system_prefix()
     adaptive_context = {} if article_tldr else home_adaptive_context_for_query(query, planner_result)
+    approved_memory_by_id = {str(item.get("memory_id")): item for item in HOME_CHAT_STORE.interaction_memories()
+                             if item.get("status") == "approved"}
+    selected_memory_ids = planner_plan.get("relevant_behavioral_memory_ids", [])
+    approved_behavioral_memories = [approved_memory_by_id[memory_id] for memory_id in selected_memory_ids
+                                    if isinstance(memory_id, str) and memory_id in approved_memory_by_id]
     personality = configuration_snapshot().get("personality", {})
     personality_guidance = "\n".join(
         f"{label}: {personality.get(key)}"
@@ -8419,6 +8473,25 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     recipe = context_recipe(turn_job, semantic=planner_result.get("semantic", {}),
         plan=planner_plan, policy=planner_result.get("policy", {}), source_state=runtime_source_state,
         orchestration=orchestration, sources=sources, model=HOME_CHAT_MODEL)
+    recipe["behavioral_memory"] = {
+        "status": "selected" if approved_behavioral_memories else "none_relevant",
+        "candidate_count": len(approved_memory_by_id),
+        "retrieved_count": len(approved_behavioral_memories),
+        "memory_ids": [str(item.get("memory_id")) for item in approved_behavioral_memories],
+        "selection": "semantic_planner_contextual_relevance",
+        "model_received": False,
+    }
+    feedback_plan = planner_result.get("response_feedback") if isinstance(planner_result.get("response_feedback"), dict) else {}
+    learning_candidate = planner_result.get("semantic", {}).get("behavioral_learning_candidate") \
+        if isinstance(planner_result.get("semantic"), dict) else None
+    recipe["response_feedback"] = {
+        "planner_received": bool(feedback_plan.get("planner_received")),
+        "response_count": int(feedback_plan.get("response_count") or 0),
+        "tag_counts": feedback_plan.get("tag_counts", {}),
+        "learning_candidate_status": learning_candidate.get("status") if isinstance(learning_candidate, dict) else None,
+        "learning_candidate_id": learning_candidate.get("memory_id") if isinstance(learning_candidate, dict) else None,
+        "learning_candidate_evidence_count": int(learning_candidate.get("evidence_count") or 0) if isinstance(learning_candidate, dict) else 0,
+    }
     if planner_fallback:
         recipe["fallback_paths"].append("semantic_interpreter_failure")
         recipe["interpreter_failure_kind"] = planner_telemetry.get("failure_kind", "unavailable")
@@ -8431,7 +8504,8 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
                                    model=HOME_CHAT_MODEL, data=recipe)
     def generate(mcp, messages, timing, on_delta=None):
         controls_started = time.perf_counter()
-        prepared = generation_messages(messages, focus, query, voice_mode, voice_percentage, turn_job)
+        prepared = generation_messages(messages, focus, query, voice_mode, voice_percentage, turn_job,
+                                       approved_behavioral_memories)
         if web_first:
             prepared[-1]["content"] += (
                 "\n\nAnswer the latest research question first. Include inline [Live Source N] citations "
@@ -8450,6 +8524,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
             "recent_conversation": size("\n".join(m["content"] for m in generation_history[-4:])),
             "older_context": size("" if focus else "\n".join(m["content"] for m in generation_history[:-4])),
             "adaptive_profile": size(json.dumps(adaptive_context, ensure_ascii=False)),
+            "behavioral_memory": size("\n".join(str(item.get("lesson") or "") for item in approved_behavioral_memories)),
             "world_state": size(_home_world_state_context(world_state)) if use_vault and not use_documents else size(""),
             "turn_state": size(turn_context(turn_job)),
             "total": size("\n".join(m["content"] for m in prepared)),
@@ -8457,6 +8532,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
         orchestration["generation_controls_ms"] = round((time.perf_counter() - controls_started) * 1000, 3)
         orchestration["before_generation_ms"] = round((time.perf_counter() - request_started) * 1000, 3)
         recipe["context_blocks"] = orchestration["context"]
+        recipe["behavioral_memory"]["model_received"] = bool(approved_behavioral_memories)
         recipe["before_generation_ms"] = orchestration["before_generation_ms"]
         receipt_started = time.perf_counter()
         record_recipe()
@@ -10196,6 +10272,51 @@ class AriadneHandler(BaseHTTPRequestHandler):
             session_id = str(session_id)
             with SESSION_LOCK:
                 active_chat_id = str(SESSIONS[session_id].get("chat_id") or "")
+            if path == "/api/home/interaction-memories":
+                action = str(body.get("action") or "").strip()
+                try:
+                    if action == "candidate":
+                        source_chat_id = str(body.get("source_chat_id") or active_chat_id)
+                        if source_chat_id != active_chat_id:
+                            raise ValueError("Open the source chat before proposing a learning candidate.")
+                        source_message_id = str(body.get("source_message_id") or "")
+                        source_record = HOME_CHAT_STORE.get(source_chat_id)
+                        source_response = next((item for item in (source_record or {}).get("messages", [])
+                                                if isinstance(item, dict) and item.get("role") == "assistant"
+                                                and item.get("message_id") == source_message_id), None)
+                        source_kind = "explicit_feedback" if source_response and isinstance(source_response.get("feedback"), dict) else "explicit_instruction"
+                        item = HOME_CHAT_STORE.create_interaction_memory_candidate(
+                            body.get("lesson"), scope=str(body.get("scope") or "general"),
+                            source={"chat_id": source_chat_id, "message_id": source_message_id,
+                                    "kind": source_kind,
+                                    "feedback_timestamp": (source_response or {}).get("feedback", {}).get("timestamp", "")
+                                    if isinstance((source_response or {}).get("feedback"), dict) else ""},
+                        )
+                    elif action == "approve":
+                        item = HOME_CHAT_STORE.approve_interaction_memory(str(body.get("memory_id") or ""))
+                    elif action == "correct":
+                        memory_id = str(body.get("memory_id") or "")
+                        previous = next((entry for entry in HOME_CHAT_STORE.interaction_memories()
+                                         if entry.get("memory_id") == memory_id and entry.get("status") == "approved"), None)
+                        if not previous:
+                            raise ValueError("Only an approved interaction memory can be corrected.")
+                        item = HOME_CHAT_STORE.create_interaction_memory_candidate(
+                            body.get("lesson"), scope=str(body.get("scope") or previous.get("scope") or "general"),
+                            source={**(previous.get("source") or {}), "kind": "correction"},
+                            supersedes=memory_id,
+                        )
+                    elif action == "remove":
+                        item = HOME_CHAT_STORE.remove_interaction_memory(str(body.get("memory_id") or ""))
+                    else:
+                        raise ValueError("Choose candidate, approve, correct, or remove.")
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                    return
+                record_home_event("interaction_memory_" + str(item.get("status")),
+                                  f"{item.get('memory_id')} · {str(item.get('lesson') or '')[:180]}")
+                self.send_json({"ok": True, "memory": item,
+                                "interaction_memories": HOME_CHAT_STORE.interaction_memories()})
+                return
             if path == "/api/home/news/feedback":
                 article_id = _news_article_id(body.get("article_id"))
                 value = body.get("feedback")
@@ -10559,12 +10680,42 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "message": "The requested chat is not selected."}, 409)
                     return
                 message_id = body.get("message_id")
-                rating = body.get("rating")
-                comment = body.get("comment", "")
+                action = body.get("action")
                 source_signal_ids = body.get("active_source_signal_ids", [])
                 if not isinstance(message_id, str) or not message_id.strip():
                     self.send_json({"ok": False, "message": "A response message_id is required."}, 400)
                     return
+                if not isinstance(source_signal_ids, list):
+                    self.send_json({"ok": False, "message": "Active source signal IDs must be a list."}, 400)
+                    return
+                if action == "set_tags":
+                    try:
+                        feedback = HOME_CHAT_STORE.set_feedback_tags(
+                            active_chat_id, message_id.strip(), body.get("ratings"), source_signal_ids,
+                        )
+                    except ValueError as exc:
+                        self.send_json({"ok": False, "message": str(exc)}, 409)
+                        return
+                    record_home_event("response_feedback_tags_saved", f"{len(feedback.get('ratings', []))} tags for {message_id.strip()} in chat {active_chat_id}.")
+                    CORE_INTERACTION_STREAM.emit("feedback_recorded", conversation_id=active_chat_id,
+                        turn_id=message_id.strip(), response_id=message_id.strip(), data=feedback)
+                    self.send_json({"ok": True, "chat_id": active_chat_id, "feedback": feedback}, 200)
+                    return
+                if action == "save_comment":
+                    try:
+                        feedback = HOME_CHAT_STORE.save_feedback_comment(
+                            active_chat_id, message_id.strip(), body.get("comment", ""),
+                        )
+                    except ValueError as exc:
+                        self.send_json({"ok": False, "message": str(exc)}, 409)
+                        return
+                    record_home_event("response_feedback_comment_saved", f"Comment saved for {message_id.strip()} in chat {active_chat_id}.")
+                    CORE_INTERACTION_STREAM.emit("feedback_recorded", conversation_id=active_chat_id,
+                        turn_id=message_id.strip(), response_id=message_id.strip(), data=feedback)
+                    self.send_json({"ok": True, "chat_id": active_chat_id, "feedback": feedback}, 200)
+                    return
+                rating = body.get("rating")
+                comment = body.get("comment", "")
                 if rating not in {"good", "needs_work", "wrong"}:
                     self.send_json({"ok": False, "message": "Feedback rating must be good, needs_work, or wrong."}, 400)
                     return

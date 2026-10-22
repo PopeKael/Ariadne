@@ -351,6 +351,15 @@ class SignalService:
         recent = self.store.recent(limit=self.briefing_pool_limit)
         profile["feedback"] = self.store.latest_feedback([signal.signal_id for signal in recent])
         ranked = self.ranker.rank(recent, limit=self.briefing_pool_limit, profile=profile)
+        if self._semantic_status.get("state") == "healthy" and profile["semantic_interest_count"]:
+            # Keep source categorization durable, but keep the AI Watch view
+            # focused on items that match a configured interest.
+            ranked = [
+                replace(signal, category="Main News Feed")
+                if signal.category == "AI Watch" and not signal.semantic_matches
+                else signal
+                for signal in ranked
+            ]
         return self.store.save_briefing(ranked, collection)
 
     @staticmethod
@@ -570,11 +579,6 @@ class SignalService:
         return {"accepted": accepted, "duplicates": duplicates, "rejected": rejected, "errors": errors, "briefing": briefing}
 
     def refresh(self) -> dict[str, Any]:
-        if not self.feeds:
-            # Hera is intake-only. An empty local collection is not a failed
-            # Discovery intake and must not overwrite the last success state.
-            cached = self.store.latest_briefing()
-            return {"ok": bool(cached), "intake_only": True, "briefing": cached}
         # Hera receives candidates from Discovery/n8n rather than collecting
         # local RSS feeds. A scheduled refresh still runs for that deployment,
         # but an empty feed set is an intentional intake-only mode, not a

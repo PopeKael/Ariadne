@@ -146,11 +146,17 @@ class HomeModelPreloadTests(unittest.TestCase):
         host_result = {"detail": "Host verified residency", "residency": {"full_gpu_residency": True}}
         with patch.object(server, "inference_lease", return_value=nullcontext(host_result)) as lease, \
              patch.object(server, "post_json") as post:
-            result = server.preload_ollama_model("home-model")
+            result = server.preload_ollama_model(
+                "home-model", options={"num_ctx": server.HOME_CONTEXT_TOKENS}
+            )
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["residency"], host_result["residency"])
-        lease.assert_called_once_with("home-model", server.OLLAMA_URL, context_length=4096, allow_calibration=False)
+        lease.assert_called_once_with(
+            "home-model", server.OLLAMA_URL,
+            context_length=server.HOME_CONTEXT_TOKENS,
+            allow_calibration=False,
+        )
         post.assert_not_called()
 
     def test_home_generation_keeps_the_model_resident(self):

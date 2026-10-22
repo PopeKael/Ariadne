@@ -114,6 +114,7 @@ class SemanticPlannerTests(unittest.TestCase):
         )
         self.assertEqual(captured["schema"]["properties"]["tools"]["items"]["enum"], [])
         self.assertEqual(result["plan"]["tools"], [])
+
     def test_current_request_can_be_planned_without_inventing_external_tool(self):
         plan = self.valid_plan(
             intent="current_status_check",

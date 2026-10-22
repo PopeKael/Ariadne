@@ -2,6 +2,7 @@ const ARTICLE_FETCH_WATCHDOG_MS = 240000;
 const TLDR_PROMPT = "Give me a clear, plain-English summary of this article in 200 to 300 words. Focus on what happened, why it matters, and any important uncertainty.";
 const CHAT_PAGE = document.body.classList.contains("chat-page");
 const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, lastActivitySequence: 0, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
+const responseFeedbackQueues = new Map();
 
 function chatUrl({chatId = "", prompt = "", signalId = "", tldrStartedAt = "", articleId = "", articleAction = "", articleStartedAt = "", vaultMode = "", toolIds = []} = {}) {
   const url = new URL("/chat", window.location.origin);
@@ -843,7 +844,50 @@ function renderAdaptive(payload) {
   const response = payload?.response_preferences || {};
   const ratings = response.ratings || {};
   const ratingTotal = Object.values(ratings).reduce((total, value) => total + Number(value || 0), 0);
-  if (ratingTotal) root.append(el("p", "adaptive-response-evidence", `Answer-style evidence: ${ratingTotal} response rating${ratingTotal === 1 ? "" : "s"} · ${Number(response.comment_count || 0)} comment${Number(response.comment_count || 0) === 1 ? "" : "s"}.`));
+  const commentTotal = Number(response.comment_count || 0) + Number(response.tag_comment_count || 0);
+  if (ratingTotal || commentTotal) root.append(el("p", "adaptive-response-evidence", `Answer-style evidence: ${ratingTotal} response rating${ratingTotal === 1 ? "" : "s"} · ${commentTotal} comment${commentTotal === 1 ? "" : "s"}.`));
+  const tagCounts = response.tag_counts || {};
+  const tagSummary = Object.entries({like: "Like", insightful: "Insightful", clear: "Clear", engaging: "Engaging", dry: "Dry", repetitive: "Repetitive", overreaching: "Overreaching"})
+    .filter(([tag]) => Number(tagCounts[tag] || 0) > 0)
+    .map(([tag, label]) => `${label} ${Number(tagCounts[tag])}`);
+  if (tagSummary.length) root.append(el("p", "adaptive-response-evidence", `Response signals: ${tagSummary.join(" · ")} · ${Number(response.tag_response_count || 0)} rated responses.`));
+  const memories = Array.isArray(payload?.interaction_memories)
+    ? payload.interaction_memories.filter(item => ["candidate", "approved"].includes(item?.status)) : [];
+  root.append(el("strong", "adaptive-memory-heading", "Interaction memories"));
+  if (!memories.length) root.append(el("p", "quiet", "No behavioral lessons are approved. Propose one from response feedback, then review it here."));
+  for (const memory of memories.slice(0, 8)) {
+    const card = el("div", "adaptive-memory");
+    card.append(el("p", "adaptive-memory-lesson", memory.lesson || ""));
+    const source = memory.source || {};
+    const provenance = Array.isArray(source.evidence)
+      ? `feedback pattern from ${source.evidence.length} responses`
+      : `source ${String(source.chat_id || "").slice(0, 8)}/${String(source.message_id || "").slice(0, 8)}`;
+    card.append(el("span", "adaptive-memory-meta", `${memory.status} · ${memory.scope || "general"} · ${provenance}`));
+    const actions = el("div", "adaptive-memory-actions");
+    if (memory.status === "candidate") {
+      actions.append(memoryActionButton("Approve", () => updateInteractionMemory({action: "approve", memory_id: memory.memory_id})),
+        memoryActionButton("Remove", () => updateInteractionMemory({action: "remove", memory_id: memory.memory_id})));
+    } else if (memory.status === "approved") {
+      actions.append(memoryActionButton("Correct", async () => {
+        const lesson = window.prompt("Correct this interaction memory. The correction will wait for review.", memory.lesson || "");
+        if (lesson && lesson.trim()) await updateInteractionMemory({action: "correct", memory_id: memory.memory_id, lesson: lesson.trim(), scope: memory.scope || "general"});
+      }), memoryActionButton("Remove", () => updateInteractionMemory({action: "remove", memory_id: memory.memory_id})));
+    }
+    card.append(actions);
+    root.append(card);
+  }
+}
+function memoryActionButton(label, action) {
+  const button = el("button", "adaptive-memory-action", label);
+  button.type = "button";
+  button.addEventListener("click", () => { void action(); });
+  return button;
+}
+async function updateInteractionMemory(payload) {
+  const result = await postWithSessionRecovery("/api/home/interaction-memories", {session_id: state.sessionId, ...payload});
+  if (!result.ok) throw new Error(result.message || "Interaction memory was not saved.");
+  renderAdaptive(await getJson("/api/home/adaptive"));
+  return result;
 }
 async function submitNewsFeedback(articleId, value, card, feedbackRoot) {
   if (!state.sessionId && !(await startSession())) return;
@@ -1373,77 +1417,145 @@ async function purgeCurrentChat() {
     document.querySelector("#ask-status").textContent = "Purge failed: " + error.message;
   }
 }
-function responseFeedbackNeedsComment(rating) {
-  return rating === "needs_work" || rating === "wrong";
-}
 function applyResponseFeedbackState(root, feedback) {
-  const rating = feedback && feedback.rating ? feedback.rating : "";
+  const selected = new Set(Array.isArray(feedback?.ratings) ? feedback.ratings : (feedback?.rating === "good" ? ["like"] : []));
   root.querySelectorAll(".response-feedback-button").forEach(button => {
-    button.classList.toggle("selected", button.dataset.rating === rating);
+    const active = selected.has(button.dataset.ratingTag);
+    button.classList.toggle("selected", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
   });
-  const comment = root.querySelector(".response-feedback-comment");
-  const input = root.querySelector(".response-feedback-input");
-  if (comment) comment.hidden = !responseFeedbackNeedsComment(rating);
+  const input = root.querySelector(".response-feedback-comment-input");
   if (input && feedback && typeof feedback.comment === "string") input.value = feedback.comment;
 }
-async function saveResponseFeedback(metadata, root, rating, comment) {
-  const status = root.querySelector(".response-feedback-status");
-  const buttons = Array.from(root.querySelectorAll("button"));
-  buttons.forEach(button => { button.disabled = true; });
-  if (status) status.textContent = "Saving…";
+function responseFeedbackKey(metadata) {
+  return `${state.chatId || ""}:${metadata.message_id || metadata.turn_id || ""}`;
+}
+async function saveResponseFeedbackTags(metadata, root, ratings, revision) {
+  const key = responseFeedbackKey(metadata);
+  const previous = responseFeedbackQueues.get(key) || Promise.resolve();
+  const request = previous.catch(() => {}).then(() => postWithSessionRecovery("/api/home/feedback", {
+    session_id: state.sessionId,
+    chat_id: state.chatId,
+    message_id: metadata.message_id || metadata.turn_id,
+    active_source_signal_ids: Array.isArray(metadata.active_source_signal_ids) ? metadata.active_source_signal_ids : [],
+    action: "set_tags", ratings,
+  }));
+  responseFeedbackQueues.set(key, request);
   try {
-    const result = await postWithSessionRecovery("/api/home/feedback", {
-      session_id: state.sessionId,
-      chat_id: state.chatId,
-      message_id: metadata.message_id || metadata.turn_id,
-      active_source_signal_ids: Array.isArray(metadata.active_source_signal_ids) ? metadata.active_source_signal_ids : [],
-      rating,
-      comment: comment || "",
-    });
-    metadata.feedback = result.feedback;
-    applyResponseFeedbackState(root, result.feedback);
-    if (status) status.textContent = "Saved";
+    const result = await request;
+    metadata.persistedFeedback = result.feedback;
+    if (metadata.feedbackRevision === revision) {
+      metadata.feedback = result.feedback;
+      applyResponseFeedbackState(root, result.feedback);
+      root.querySelector(".response-feedback-status").textContent = "Saved";
+    }
   } catch (error) {
-    if (status) status.textContent = "Not saved";
+    if (metadata.feedbackRevision === revision) {
+      metadata.feedback = metadata.persistedFeedback || {ratings: []};
+      applyResponseFeedbackState(root, metadata.feedback);
+      root.querySelector(".response-feedback-status").textContent = "Not saved: " + (error.message || "service unavailable");
+    }
   } finally {
-    buttons.forEach(button => { button.disabled = false; });
+    if (responseFeedbackQueues.get(key) === request) responseFeedbackQueues.delete(key);
+  }
+}
+function toggleResponseFeedbackTag(metadata, root, tag) {
+  const current = new Set(Array.isArray(metadata.feedback?.ratings) ? metadata.feedback.ratings : []);
+  if (current.has(tag)) current.delete(tag); else current.add(tag);
+  const ratings = ["like", "insightful", "clear", "engaging", "dry", "repetitive", "overreaching"].filter(value => current.has(value));
+  metadata.feedback = {...(metadata.feedback || {}), ratings};
+  metadata.feedbackRevision = Number(metadata.feedbackRevision || 0) + 1;
+  const revision = metadata.feedbackRevision;
+  applyResponseFeedbackState(root, metadata.feedback);
+  root.querySelector(".response-feedback-status").textContent = "Saving…";
+  void saveResponseFeedbackTags(metadata, root, ratings, revision);
+}
+async function saveResponseFeedbackComment(metadata, root) {
+  const status = root.querySelector(".response-feedback-status");
+  const input = root.querySelector(".response-feedback-comment-input");
+  const key = responseFeedbackKey(metadata);
+  const previous = responseFeedbackQueues.get(key) || Promise.resolve();
+  const request = previous.catch(() => {}).then(() => postWithSessionRecovery("/api/home/feedback", {
+    session_id: state.sessionId, chat_id: state.chatId,
+    message_id: metadata.message_id || metadata.turn_id,
+    action: "save_comment", comment: input.value,
+  }));
+  responseFeedbackQueues.set(key, request);
+  try {
+    const result = await request;
+    metadata.persistedFeedback = result.feedback;
+    metadata.feedback = {...result.feedback, ratings: metadata.feedback?.ratings || []};
+    applyResponseFeedbackState(root, metadata.feedback);
+    status.textContent = "Saved";
+  } catch (error) {
+    status.textContent = "Not saved: " + (error.message || "service unavailable");
+  } finally {
+    if (responseFeedbackQueues.get(key) === request) responseFeedbackQueues.delete(key);
   }
 }
 function buildResponseFeedback(metadata) {
+  metadata.persistedFeedback = {...(metadata.feedback || {})};
   const root = el("div", "response-feedback");
   root.append(el("span", "response-feedback-label", "Response feedback"));
   const actions = el("div", "response-feedback-actions");
   const ratings = [
-    ["good", "Good answer"],
-    ["needs_work", "Needs work"],
-    ["wrong", "Wrong"],
+    ["like", "👍 Like", "Overall approval"], ["insightful", "Insightful", "The answer added useful understanding"],
+    ["clear", "Clear", "The answer was easy to follow"], ["engaging", "Engaging", "The answer held your interest"],
+    ["dry", "Dry", "The answer felt flat"], ["repetitive", "Repetitive", "The answer repeated itself or known information"],
+    ["overreaching", "Overreaching", "The answer went beyond its evidence or your request"],
   ];
-  for (const [rating, label] of ratings) {
+  for (const [tag, label, description] of ratings) {
     const button = el("button", "response-feedback-button", label);
     button.type = "button";
-    button.dataset.rating = rating;
-    button.addEventListener("click", () => {
-      applyResponseFeedbackState(root, {rating});
-      saveResponseFeedback(metadata, root, rating, root.querySelector(".response-feedback-input")?.value || "");
-    });
+    button.dataset.ratingTag = tag;
+    button.title = description;
+    button.setAttribute("aria-label", `${label}: ${description}`);
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => toggleResponseFeedbackTag(metadata, root, tag));
     actions.append(button);
   }
   root.append(actions);
+  root.append(el("span", "response-feedback-status"));
+  const optional = document.createElement("details");
+  optional.className = "response-feedback-more";
+  optional.append(el("summary", "", "Written feedback or reusable lesson (optional)"));
   const comment = el("div", "response-feedback-comment");
-  const label = el("label", "response-feedback-comment-label", "Tell Ariadne why (optional)");
-  const input = el("textarea", "response-feedback-input");
-  input.rows = 1;
+  const label = el("label", "response-feedback-comment-label", "Tell Ariadne why");
+  const input = el("textarea", "response-feedback-input response-feedback-comment-input");
+  input.rows = 2;
   input.maxLength = 2_000;
-  input.placeholder = "Tell Ariadne why";
+  input.placeholder = "Add context to these signals";
   label.append(input);
-  const save = el("button", "response-feedback-save", "Save feedback");
+  const save = el("button", "response-feedback-save", "Save comment");
   save.type = "button";
-  save.addEventListener("click", () => {
-    const rating = root.querySelector(".response-feedback-button.selected")?.dataset.rating;
-    if (rating) saveResponseFeedback(metadata, root, rating, input.value);
-  });
+  save.addEventListener("click", () => { void saveResponseFeedbackComment(metadata, root); });
   comment.append(label, save);
-  root.append(comment, el("span", "response-feedback-status"));
+  optional.append(comment);
+  const proposal = el("div", "response-memory-proposal");
+  const proposalLabel = el("label", "response-memory-label", "Propose a reusable lesson (review required)");
+  const lessonInput = el("textarea", "response-feedback-input");
+  lessonInput.rows = 2;
+  lessonInput.maxLength = 800;
+  lessonInput.placeholder = "Write the general interaction lesson Ariadne should consider next time";
+  proposalLabel.append(lessonInput);
+  const propose = el("button", "response-feedback-save", "Propose learning candidate");
+  propose.type = "button";
+  const proposalStatus = el("span", "response-feedback-status");
+  propose.addEventListener("click", async () => {
+    propose.disabled = true;
+    proposalStatus.textContent = "Saving candidate…";
+    try {
+      await updateInteractionMemory({action: "candidate", source_chat_id: state.chatId,
+        source_message_id: metadata.message_id || metadata.turn_id, lesson: lessonInput.value.trim(), scope: "general"});
+      proposalStatus.textContent = "Candidate saved for review";
+      lessonInput.value = "";
+    } catch (error) {
+      proposalStatus.textContent = "Not saved: " + (error.message || "error");
+    } finally { propose.disabled = false; }
+  });
+  proposal.append(proposalLabel, propose, proposalStatus);
+  optional.append(proposal);
+  root.append(optional);
   applyResponseFeedbackState(root, metadata.feedback);
   return root;
 }
@@ -2206,7 +2318,9 @@ async function postWithSessionRecovery(url, payload) {
   try {
     return await postJson(url, payload);
   } catch (error) {
-    if (!sessionLost(error)) throw error;
+    const missingDurableChat = url === "/api/home/chat/new"
+      && String(error && error.message || "") === "Durable Home chat not found.";
+    if (!sessionLost(error) && !missingDurableChat) throw error;
     state.sessionId = null;
     if (!(await startSession())) throw error;
     return postJson(url, {...payload, session_id: state.sessionId});

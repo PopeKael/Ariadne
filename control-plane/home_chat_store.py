@@ -16,6 +16,16 @@ from typing import Any, Callable, Iterator
 CHAT_SCHEMA_VERSION = 1
 RETENTION_DAYS = 7
 _CHAT_ID = re.compile(r"^[0-9a-f]{32}$")
+RESPONSE_FEEDBACK_TAGS = ("like", "insightful", "clear", "engaging", "dry", "repetitive", "overreaching")
+RESPONSE_FEEDBACK_MEANINGS = {
+    "like": "overall approval",
+    "insightful": "added useful understanding",
+    "clear": "easy to follow",
+    "engaging": "held the user's interest",
+    "dry": "felt flat",
+    "repetitive": "repeated itself or known information",
+    "overreaching": "went beyond the evidence or request",
+}
 
 
 def utc_now() -> datetime:
@@ -186,6 +196,159 @@ class ChatStore:
         self.lock_path = self.root / ".chats.lock"
         self.response_preferences_path = self.vault_root / "00_System" / "Data" / "response-preference-evidence.json"
         self.now_fn = now_fn
+
+    def _response_preferences_locked(self) -> dict[str, Any]:
+        try:
+            value = json.loads(self.response_preferences_path.read_text(encoding="utf-8"))
+            return value if isinstance(value, dict) else {}
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return {}
+
+    def _write_response_preferences_locked(self, value: dict[str, Any]) -> None:
+        _atomic_bytes(self.response_preferences_path, (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+
+    def interaction_memories(self, *, include_removed: bool = False) -> list[dict[str, Any]]:
+        """Read the reviewable behavioral-memory layer stored with response feedback."""
+        with _process_lock(self.lock_path):
+            payload = self._response_preferences_locked()
+            layer = payload.get("interaction_memories") if isinstance(payload.get("interaction_memories"), dict) else {}
+            items = layer.get("items") if isinstance(layer.get("items"), list) else []
+            return [dict(item) for item in items if isinstance(item, dict)
+                    and (include_removed or item.get("status") != "removed")]
+
+    def _mutate_interaction_memories(self, mutate: Callable[[list[dict[str, Any]]], Any]) -> Any:
+        with _process_lock(self.lock_path):
+            payload = self._response_preferences_locked()
+            layer = payload.get("interaction_memories") if isinstance(payload.get("interaction_memories"), dict) else {}
+            items = layer.get("items") if isinstance(layer.get("items"), list) else []
+            items = [dict(item) for item in items if isinstance(item, dict)]
+            result = mutate(items)
+            payload["interaction_memories"] = {"version": 1, "items": items}
+            self._write_response_preferences_locked(payload)
+            return result
+
+    def create_interaction_memory_candidate(self, lesson: str, *, scope: str = "general",
+                                            source: dict[str, Any] | None = None,
+                                            supersedes: str | None = None) -> dict[str, Any]:
+        lesson = str(lesson or "").strip()
+        scope = str(scope or "general").strip()
+        if not lesson or len(lesson) > 800:
+            raise ValueError("A learning candidate must contain 1–800 characters.")
+        if not scope or len(scope) > 160:
+            raise ValueError("A learning scope must contain 1–160 characters.")
+        provenance = dict(source) if isinstance(source, dict) else {}
+        evidence = provenance.get("evidence")
+        if isinstance(evidence, list):
+            if not 3 <= len(evidence) <= 8 or any(not isinstance(item, dict) for item in evidence):
+                raise ValueError("A feedback-pattern candidate must cite 3–8 completed responses.")
+            checked_evidence = []
+            for item in evidence:
+                source_chat = str(item.get("chat_id") or "")
+                source_message = str(item.get("message_id") or "")
+                if not _CHAT_ID.fullmatch(source_chat) or not re.fullmatch(r"[0-9a-f]{32}", source_message):
+                    raise ValueError("A feedback-pattern source has invalid response provenance.")
+                source_record = self.get(source_chat)
+                source_response = next((entry for entry in (source_record or {}).get("messages", [])
+                                        if isinstance(entry, dict) and entry.get("role") == "assistant"
+                                        and entry.get("message_id") == source_message), None)
+                if not source_response or source_response.get("state") != "complete":
+                    raise ValueError("A feedback-pattern candidate must cite completed Ariadne responses.")
+                checked_evidence.append({
+                    "chat_id": source_chat, "message_id": source_message,
+                    "ratings": [tag for tag in item.get("ratings", []) if tag in RESPONSE_FEEDBACK_TAGS],
+                    "active_source_signal_ids": list(item.get("active_source_signal_ids") or [])[:32],
+                    "timestamp": str(item.get("timestamp") or "")[:48],
+                })
+            if len({(item["chat_id"], item["message_id"]) for item in checked_evidence}) < 3:
+                raise ValueError("A feedback-pattern candidate needs three distinct responses.")
+            source_chat, source_message = checked_evidence[0]["chat_id"], checked_evidence[0]["message_id"]
+            provenance["evidence"] = checked_evidence
+        else:
+            source_chat = str(provenance.get("chat_id") or "")
+            source_message = str(provenance.get("message_id") or "")
+            if source_chat and not _CHAT_ID.fullmatch(source_chat):
+                raise ValueError("The source chat ID is invalid.")
+            if source_message and not re.fullmatch(r"[0-9a-f]{32}", source_message):
+                raise ValueError("The source response ID is invalid.")
+            if not source_chat or not source_message:
+                raise ValueError("A source chat and response ID are required for provenance.")
+            source_record = self.get(source_chat)
+            source_response = next((item for item in (source_record or {}).get("messages", [])
+                                    if isinstance(item, dict) and item.get("role") == "assistant"
+                                    and item.get("message_id") == source_message), None)
+            if not source_response or source_response.get("state") != "complete":
+                raise ValueError("A learning candidate must point to a completed Ariadne response.")
+        if not isinstance(evidence, list) and provenance.get("kind") == "explicit_feedback" \
+                and not isinstance(source_response.get("feedback"), dict):
+            raise ValueError("Explicit feedback provenance requires feedback recorded on the source response.")
+        candidate = {
+            "memory_id": uuid.uuid4().hex,
+            "lesson": lesson,
+            "scope": scope,
+            "status": "candidate",
+            "created_at": isoformat(self.now_fn()),
+            "source": {"chat_id": source_chat, "message_id": source_message,
+                       "kind": str(provenance.get("kind") or "explicit_feedback")[:48],
+                       "feedback_timestamp": str(provenance.get("feedback_timestamp") or "")[:48],
+                       **({"evidence": provenance["evidence"]} if isinstance(provenance.get("evidence"), list) else {})},
+            "revision": 1,
+            "supersedes": supersedes if isinstance(supersedes, str) else None,
+            "superseded_by": None,
+        }
+
+        def add(items: list[dict[str, Any]]) -> dict[str, Any]:
+            if supersedes:
+                old = next((item for item in items if item.get("memory_id") == supersedes), None)
+                if not old or old.get("status") != "approved":
+                    raise ValueError("Only an approved memory can be corrected or superseded.")
+                if any(item.get("status") == "candidate" and item.get("supersedes") == supersedes for item in items):
+                    raise ValueError("A correction candidate already exists for this memory.")
+            source_key = sorted((entry.get("chat_id"), entry.get("message_id"))
+                                for entry in candidate["source"].get("evidence", []))
+            for item in items:
+                if item.get("status") not in {"candidate", "approved"}:
+                    continue
+                old_source = item.get("source") if isinstance(item.get("source"), dict) else {}
+                old_key = sorted((entry.get("chat_id"), entry.get("message_id"))
+                                 for entry in old_source.get("evidence", []) if isinstance(entry, dict))
+                same_single_source = (not source_key and not old_key
+                                      and old_source.get("chat_id") == source_chat
+                                      and old_source.get("message_id") == source_message)
+                if ((source_key and source_key == old_key) or same_single_source) \
+                        and str(item.get("lesson") or "").strip().casefold() == lesson.casefold() \
+                        and str(item.get("scope") or "general").strip().casefold() == scope.casefold():
+                    return dict(item)
+            items.append(candidate)
+            return dict(candidate)
+        return self._mutate_interaction_memories(add)
+
+    def approve_interaction_memory(self, memory_id: str) -> dict[str, Any]:
+        def approve(items: list[dict[str, Any]]) -> dict[str, Any]:
+            item = next((value for value in items if value.get("memory_id") == memory_id), None)
+            if not item or item.get("status") != "candidate":
+                raise ValueError("Only a pending learning candidate can be approved.")
+            supersedes = item.get("supersedes")
+            if supersedes:
+                previous = next((value for value in items if value.get("memory_id") == supersedes), None)
+                if not previous or previous.get("status") != "approved":
+                    raise ValueError("The memory being corrected is no longer approved.")
+                previous["status"] = "superseded"
+                previous["superseded_by"] = memory_id
+                previous["reviewed_at"] = isoformat(self.now_fn())
+            item["status"] = "approved"
+            item["reviewed_at"] = isoformat(self.now_fn())
+            return dict(item)
+        return self._mutate_interaction_memories(approve)
+
+    def remove_interaction_memory(self, memory_id: str) -> dict[str, Any]:
+        def remove(items: list[dict[str, Any]]) -> dict[str, Any]:
+            item = next((value for value in items if value.get("memory_id") == memory_id), None)
+            if not item or item.get("status") in {"removed", "superseded"}:
+                raise ValueError("That interaction memory is not removable in its current state.")
+            item["status"] = "removed"
+            item["removed_at"] = isoformat(self.now_fn())
+            return dict(item)
+        return self._mutate_interaction_memories(remove)
 
     def _path(self, chat_id: str) -> Path:
         if not isinstance(chat_id, str) or not _CHAT_ID.fullmatch(chat_id):
@@ -482,6 +645,7 @@ class ChatStore:
                 raise ValueError("Feedback can only be recorded for a completed Ariadne response.")
             timestamp = isoformat(self.now_fn())
             feedback = {
+                **(message.get("feedback") if isinstance(message.get("feedback"), dict) else {}),
                 "chat_id": chat_id,
                 "message_id": str(message.get("message_id") or message.get("turn_id") or message_id),
                 "active_source_signal_ids": signal_ids,
@@ -493,33 +657,164 @@ class ChatStore:
             record["last_activity_at"] = timestamp
             record["expires_at"] = isoformat(self.now_fn() + timedelta(days=RETENTION_DAYS))
             self._write_locked(record)
-            self._record_response_preference(feedback)
-            return feedback
+        self._record_response_preference(feedback)
+        return feedback
+
+    def set_feedback_tags(self, chat_id: str, message_id: str, tags: list[str],
+                          active_source_signal_ids: list[str] | None = None) -> dict[str, Any]:
+        """Persist the complete independent selection set for one response."""
+        if not isinstance(tags, list) or any(not isinstance(tag, str) or tag not in RESPONSE_FEEDBACK_TAGS for tag in tags):
+            raise ValueError("Choose only the available response feedback tags.")
+        if not isinstance(message_id, str) or not message_id.strip():
+            raise ValueError("A response message_id is required.")
+        signal_ids = list(dict.fromkeys(
+            str(item).strip() for item in (active_source_signal_ids or [])
+            if isinstance(item, str) and item.strip()
+        ))[:32]
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record or record.get("status") != "active":
+                raise ValueError("The durable Home chat is not active.")
+            message = next((item for item in reversed(record.get("messages", []))
+                           if isinstance(item, dict) and item.get("role") == "assistant"
+                           and (item.get("message_id") == message_id or item.get("turn_id") == message_id)), None)
+            if not message or message.get("state") != "complete":
+                raise ValueError("Feedback can only be recorded for a completed Ariadne response.")
+            previous = message.get("feedback") if isinstance(message.get("feedback"), dict) else {}
+            current = list(dict.fromkeys(tags))
+            timestamp = isoformat(self.now_fn())
+            feedback = {
+                **previous,
+                "chat_id": chat_id,
+                "message_id": str(message.get("message_id") or message.get("turn_id") or message_id),
+                "active_source_signal_ids": signal_ids or list(previous.get("active_source_signal_ids")
+                                                                or message.get("active_source_signal_ids") or []),
+                "ratings": current,
+                "timestamp": timestamp,
+            }
+            message["feedback"] = feedback
+            record["last_activity_at"] = timestamp
+            record["expires_at"] = isoformat(self.now_fn() + timedelta(days=RETENTION_DAYS))
+            self._write_locked(record)
+        self._record_response_tag_state(feedback)
+        return feedback
+
+    def save_feedback_comment(self, chat_id: str, message_id: str, comment: str) -> dict[str, Any]:
+        if not isinstance(comment, str):
+            raise ValueError("Feedback comment must be text.")
+        with _process_lock(self.lock_path):
+            record = self._load_locked(chat_id)
+            if not record or record.get("status") != "active":
+                raise ValueError("The durable Home chat is not active.")
+            message = next((item for item in reversed(record.get("messages", []))
+                           if isinstance(item, dict) and item.get("role") == "assistant"
+                           and (item.get("message_id") == message_id or item.get("turn_id") == message_id)), None)
+            if not message or message.get("state") != "complete":
+                raise ValueError("Feedback can only be recorded for a completed Ariadne response.")
+            timestamp = isoformat(self.now_fn())
+            feedback = dict(message.get("feedback") or {})
+            feedback.update({"chat_id": chat_id,
+                             "message_id": str(message.get("message_id") or message.get("turn_id") or message_id),
+                             "comment": comment.strip()[:2_000], "timestamp": timestamp})
+            message["feedback"] = feedback
+            record["last_activity_at"] = timestamp
+            record["expires_at"] = isoformat(self.now_fn() + timedelta(days=RETENTION_DAYS))
+            self._write_locked(record)
+        self._record_response_comment(feedback)
+        return feedback
+
+    def _record_response_tag_state(self, feedback: dict[str, Any]) -> None:
+        with _process_lock(self.lock_path):
+            existing = self._response_preferences_locked()
+            responses = existing.get("tag_feedback_by_response")
+            responses = dict(responses) if isinstance(responses, dict) else {}
+            response_key = f"{feedback['chat_id']}:{feedback['message_id']}"
+            responses[response_key] = {
+                "chat_id": feedback["chat_id"], "message_id": feedback["message_id"],
+                "ratings": [tag for tag in feedback.get("ratings", []) if tag in RESPONSE_FEEDBACK_TAGS],
+                "active_source_signal_ids": list(feedback.get("active_source_signal_ids") or []),
+                "comment": str(feedback.get("comment") or "")[:500],
+                "timestamp": feedback.get("timestamp"),
+            }
+            tag_counts = {tag: 0 for tag in RESPONSE_FEEDBACK_TAGS}
+            for item in responses.values():
+                if isinstance(item, dict):
+                    for tag in {value for value in item.get("ratings", []) if isinstance(value, str)}:
+                        if tag in tag_counts:
+                            tag_counts[tag] += 1
+            existing["tag_feedback_by_response"] = responses
+            existing["tag_counts"] = tag_counts
+            existing["tag_response_count"] = sum(bool(item.get("ratings")) for item in responses.values() if isinstance(item, dict))
+            existing["tag_comment_count"] = sum(bool(str(item.get("comment") or "").strip())
+                                                 for item in responses.values() if isinstance(item, dict))
+            existing["updated_at"] = feedback.get("timestamp")
+            self._write_response_preferences_locked(existing)
+
+    def _record_response_comment(self, feedback: dict[str, Any]) -> None:
+        with _process_lock(self.lock_path):
+            existing = self._response_preferences_locked()
+            comments = existing.get("tag_feedback_by_response")
+            comments = dict(comments) if isinstance(comments, dict) else {}
+            response_key = f"{feedback['chat_id']}:{feedback['message_id']}"
+            item = comments.get(response_key) if isinstance(comments.get(response_key), dict) else {}
+            item.update({"chat_id": feedback["chat_id"], "message_id": feedback["message_id"],
+                         "ratings": [tag for tag in feedback.get("ratings", []) if tag in RESPONSE_FEEDBACK_TAGS],
+                         "active_source_signal_ids": list(feedback.get("active_source_signal_ids") or []),
+                         "comment": str(feedback.get("comment") or "")[:500], "timestamp": feedback.get("timestamp")})
+            comments[response_key] = item
+            existing["tag_feedback_by_response"] = comments
+            existing["tag_comment_count"] = sum(bool(str(value.get("comment") or "").strip())
+                                                  for value in comments.values() if isinstance(value, dict))
+            existing["updated_at"] = feedback.get("timestamp")
+            self._write_response_preferences_locked(existing)
+
+    def response_feedback_evidence(self, limit: int = 30) -> dict[str, Any]:
+        preferences = self.response_preferences()
+        responses = preferences.get("tag_feedback_by_response")
+        responses = responses if isinstance(responses, dict) else {}
+        responses = [item for item in responses.values() if isinstance(item, dict) and item.get("ratings")]
+        responses.sort(key=lambda item: str(item.get("timestamp") or ""), reverse=True)
+        bounded = []
+        for item in responses[:max(0, min(30, int(limit)))]:
+            chat_id = str(item.get("chat_id") or "")
+            message_id = str(item.get("message_id") or "")
+            record = self.get(chat_id) if _CHAT_ID.fullmatch(chat_id) else None
+            source = next((message for message in (record or {}).get("messages", [])
+                           if isinstance(message, dict) and message.get("role") == "assistant"
+                           and message.get("message_id") == message_id and message.get("state") == "complete"), None)
+            if not source:
+                continue
+            bounded.append({
+                "evidence_id": f"{chat_id}:{message_id}",
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "ratings": [tag for tag in item.get("ratings", []) if tag in RESPONSE_FEEDBACK_TAGS],
+                "active_source_signal_ids": list(item.get("active_source_signal_ids") or [])[:32],
+                "comment": str(item.get("comment") or "")[:500],
+                "timestamp": item.get("timestamp"),
+            })
+        return {"counts": preferences.get("tag_counts", {}),
+                "rating_guide": dict(RESPONSE_FEEDBACK_MEANINGS), "responses": bounded}
 
     def _record_response_preference(self, feedback: dict[str, Any]) -> None:
         """Persist answer-feedback evidence separately from chat transcripts."""
-        try:
-            existing = json.loads(self.response_preferences_path.read_text(encoding="utf-8")) if self.response_preferences_path.is_file() else {}
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            existing = {}
-        if not isinstance(existing, dict):
-            existing = {}
-        ratings = existing.get("ratings") if isinstance(existing.get("ratings"), dict) else {}
-        rating = str(feedback.get("rating") or "")
-        ratings[rating] = int(ratings.get(rating, 0)) + 1
-        comments = existing.get("comments") if isinstance(existing.get("comments"), list) else []
-        comment = str(feedback.get("comment") or "").strip()
-        if comment:
-            comments.append({"rating": rating, "comment": comment[:2_000], "timestamp": feedback.get("timestamp")})
-        payload = {"version": 1, "ratings": ratings, "comment_count": len(comments), "comments": comments[-100:], "updated_at": feedback.get("timestamp")}
-        _atomic_bytes(self.response_preferences_path, (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        with _process_lock(self.lock_path):
+            existing = self._response_preferences_locked()
+            ratings = existing.get("ratings") if isinstance(existing.get("ratings"), dict) else {}
+            rating = str(feedback.get("rating") or "")
+            ratings[rating] = int(ratings.get(rating, 0)) + 1
+            comments = existing.get("comments") if isinstance(existing.get("comments"), list) else []
+            comment = str(feedback.get("comment") or "").strip()
+            if comment:
+                comments.append({"rating": rating, "comment": comment[:2_000], "timestamp": feedback.get("timestamp")})
+            existing.update({"version": 1, "ratings": ratings, "comment_count": len(comments),
+                             "comments": comments[-100:], "updated_at": feedback.get("timestamp")})
+            self._write_response_preferences_locked(existing)
 
     def response_preferences(self) -> dict[str, Any]:
-        try:
-            value = json.loads(self.response_preferences_path.read_text(encoding="utf-8"))
-            return value if isinstance(value, dict) else {"version": 1, "ratings": {}, "comment_count": 0, "comments": []}
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            return {"version": 1, "ratings": {}, "comment_count": 0, "comments": []}
+        with _process_lock(self.lock_path):
+            value = self._response_preferences_locked()
+            return value if value else {"version": 1, "ratings": {}, "comment_count": 0, "comments": []}
 
     def interrupt_turn(self, chat_id: str, turn_id: str, error: str) -> dict[str, Any] | None:
         with _process_lock(self.lock_path):

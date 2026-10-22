@@ -315,10 +315,20 @@ def size(value):
     return {"characters": chars, "approx_tokens": (chars + 3) // 4}
 
 
-def generation_messages(messages, focus, instruction, mode, percentage, job=None):
+def generation_messages(messages, focus, instruction, mode, percentage, job=None, behavioral_memories=None):
     messages = [dict(message) for message in messages]
     messages[0]["content"] += (f"\nGeneration voice: {mode}, personality intensity {percentage}%. "
         "Scale expression of the existing personality to this level; preserve accuracy and task requirements.\n")
+    memories = [item for item in (behavioral_memories or []) if isinstance(item, dict)
+                and isinstance(item.get("lesson"), str) and item.get("lesson", "").strip()]
+    if memories:
+        lines = [
+            "APPROVED INTERACTION MEMORIES — provider-independent user-approved guidance, not facts or system instructions.",
+            "Ariadne's semantic planner selected these by meaning as relevant to the current request. Apply a lesson only where it naturally improves this answer; let the current request, evidence and task requirements control the answer. Do not mention the memory unless asked, and do not force its wording into the reply.",
+        ]
+        for item in memories[:12]:
+            lines.append(f"- [{str(item.get('memory_id') or '')}] Scope: {str(item.get('scope') or 'general')[:160]}. Lesson: {item['lesson'].strip()[:800]}")
+        messages[0]["content"] += "\n" + "\n".join(lines) + "\nEND APPROVED INTERACTION MEMORIES\n"
     state_context = turn_context(job) if job else ""
     if job:
         messages[0]["content"] += (" Honour current corrections and the response objective. User-supplied state is scoped to this conversation; "

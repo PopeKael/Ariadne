@@ -231,12 +231,20 @@ class HermesAgentEngineTests(unittest.TestCase):
                 kernel32.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
                 kernel32.GetExitCodeProcess.restype = ctypes.c_bool
                 process = kernel32.OpenProcess(0x1000, False, child_pid)
-                self.assertTrue(process, f"Could not inspect Hermes worker child PID {child_pid}")
-                exit_code = ctypes.c_uint32()
-                checked = kernel32.GetExitCodeProcess(process, ctypes.byref(exit_code))
-                kernel32.CloseHandle(process)
-                self.assertTrue(checked)
-                self.assertNotEqual(exit_code.value, 259, f"Hermes worker child PID {child_pid} survived Job Object cleanup")
+                if not process:
+                    # A process that has already exited may no longer have a
+                    # queryable PID. That is successful cleanup; any other
+                    # OpenProcess error still needs investigation.
+                    self.assertEqual(
+                        ctypes.get_last_error(), 87,
+                        f"Could not inspect Hermes worker child PID {child_pid}",
+                    )
+                else:
+                    exit_code = ctypes.c_uint32()
+                    checked = kernel32.GetExitCodeProcess(process, ctypes.byref(exit_code))
+                    kernel32.CloseHandle(process)
+                    self.assertTrue(checked)
+                    self.assertNotEqual(exit_code.value, 259, f"Hermes worker child PID {child_pid} survived Job Object cleanup")
             else:
                 with self.assertRaises(OSError):
                     os.kill(child_pid, 0)

@@ -9,6 +9,20 @@ class HomeNavigationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.source = Path(__file__).with_name("home.js").read_text(encoding="utf-8")
 
+    def test_response_feedback_renders_seven_persistent_independent_toggles(self):
+        start = self.source.index("function buildResponseFeedback")
+        end = self.source.index("function escapeHtml", start)
+        feedback = self.source[start:end]
+        for tag in ("like", "insightful", "clear", "engaging", "dry", "repetitive", "overreaching"):
+            self.assertIn(f'["{tag}"', feedback)
+        self.assertIn('"👍 Like"', feedback)
+        self.assertIn('action: "set_tags", ratings', self.source)
+        self.assertIn('action: "save_comment"', self.source)
+        self.assertIn('"Written feedback or reusable lesson (optional)"', feedback)
+        self.assertIn("button.setAttribute(\"aria-pressed\", active ? \"true\" : \"false\")", self.source)
+        self.assertNotIn('["needs_work",', feedback)
+        self.assertNotIn('["wrong",', feedback)
+
     def test_tldr_opens_chat_in_a_new_tab_before_async_work(self):
         source = self.source
         start = source.index("async function openSignalTldr")
@@ -44,6 +58,16 @@ class HomeNavigationTests(unittest.TestCase):
 
         self.assertIn("if (!newTabWindow) closeSession();", function)
         self.assertLess(function.index("if (!newTabWindow) closeSession();"), function.index("newTabWindow.location.replace(destination)"))
+
+    def test_new_chat_recovers_when_session_points_to_missing_durable_chat(self):
+        start = self.source.index("async function postWithSessionRecovery")
+        end = self.source.index("async function startSession", start)
+        function = self.source[start:end]
+
+        self.assertIn('url === "/api/home/chat/new"', function)
+        self.assertIn('"Durable Home chat not found."', function)
+        self.assertIn("if (!(await startSession())) throw error;", function)
+        self.assertIn("return postJson(url, {...payload, session_id: state.sessionId});", function)
 
     def test_home_and_canonical_chat_default_to_all_sources_and_send_current_selection(self):
         for page in ("home.html", "chat.html"):

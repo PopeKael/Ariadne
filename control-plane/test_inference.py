@@ -37,9 +37,10 @@ class InferenceRegistryTests(unittest.TestCase):
             "ARIADNE_HOME_CHAT_MODEL": "qwen3.5:9b-q4_K_M",
             "ARIADNE_PLANNER_MODEL": "qwen3.5:9b-q4_K_M",
             "ARIADNE_EMBEDDING_MODEL": "nomic-embed-text",
-        }, clear=False):
+        }, clear=True):
             registry = InferenceRegistry(Path(temporary) / "configuration.json")
-            snapshot = registry.snapshot({"home_chat": "Configured", "planner": "Configured"})
+            with patch.object(credential_store, "get_credential", return_value=""):
+                snapshot = registry.snapshot({"home_chat": "Configured", "planner": "Configured"})
         self.assertEqual(snapshot["routes"]["home_chat"]["provider_id"], "ollama-desktop")
         self.assertEqual(snapshot["routes"]["home_chat"]["model_id"], "qwen3.5:9b-q4_K_M")
         self.assertEqual(snapshot["routes"]["planner"]["model_id"], "qwen3.5:9b-q4_K_M")

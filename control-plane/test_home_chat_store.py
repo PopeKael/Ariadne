@@ -162,6 +162,112 @@ class HomeChatStoreTests(unittest.TestCase):
         self.assertEqual(stored["comment"], "The explanation needs one more example.")
         self.assertTrue(stored["timestamp"])
 
+    def test_response_feedback_tags_are_independent_persistent_and_deduplicated(self):
+        chat = self.store.create()
+        turn_id, started = self.store.begin_turn(chat["chat_id"], "Rate this answer", "qwen3.5:9b", {})
+        assistant = next(item for item in started["messages"] if item["role"] == "assistant")
+        self.store.complete_turn(chat["chat_id"], turn_id, "A durable answer.", model="qwen3.5:9b",
+                                 used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={},
+                                 active_source_signal_ids=["signal-feedback-source"])
+        self.store.record_feedback(chat["chat_id"], assistant["message_id"], "needs_work", [], "Original feedback retained.")
+        selected = ["like", "insightful", "clear", "engaging", "dry", "repetitive", "overreaching"]
+        feedback = self.store.set_feedback_tags(chat["chat_id"], assistant["message_id"], selected)
+        self.assertEqual(feedback["ratings"], selected)
+        self.store.set_feedback_tags(chat["chat_id"], assistant["message_id"], selected + ["clear", "like"])
+        self.store.set_feedback_tags(chat["chat_id"], assistant["message_id"], ["like", "clear", "overreaching"])
+        self.store.save_feedback_comment(chat["chat_id"], assistant["message_id"], "Interesting and too broad in the final paragraph.")
+        restarted = ChatStore(self.vault, now_fn=lambda: self.current)
+        stored = restarted.get(chat["chat_id"])["messages"][1]["feedback"]
+        self.assertEqual(stored["ratings"], ["like", "clear", "overreaching"])
+        self.assertEqual(stored["comment"], "Interesting and too broad in the final paragraph.")
+        self.assertEqual(stored["rating"], "needs_work")
+        prefs = restarted.response_preferences()
+        self.assertEqual(prefs["ratings"]["needs_work"], 1)
+        self.assertEqual(prefs["tag_counts"]["like"], 1)
+        self.assertEqual(prefs["tag_counts"]["insightful"], 0)
+        self.assertEqual(prefs["tag_counts"]["overreaching"], 1)
+        evidence = restarted.response_feedback_evidence()
+        self.assertEqual(len(evidence["responses"]), 1)
+        self.assertEqual(evidence["responses"][0]["ratings"], ["like", "clear", "overreaching"])
+        self.assertEqual(evidence["responses"][0]["message_id"], assistant["message_id"])
+        self.assertEqual(evidence["responses"][0]["active_source_signal_ids"], ["signal-feedback-source"])
+
+    def test_feedback_pattern_memory_requires_three_distinct_completed_sources(self):
+        evidence = []
+        for index in range(3):
+            chat = self.store.create()
+            turn_id, started = self.store.begin_turn(chat["chat_id"], f"Question {index}", "qwen3.5:9b", {})
+            assistant = next(item for item in started["messages"] if item["role"] == "assistant")
+            self.store.complete_turn(chat["chat_id"], turn_id, f"Answer {index}", model="qwen3.5:9b",
+                                     used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={})
+            evidence.append({"chat_id": chat["chat_id"], "message_id": assistant["message_id"],
+                             "ratings": ["insightful", "overreaching"], "timestamp": self.current.isoformat()})
+        candidate = self.store.create_interaction_memory_candidate(
+            "Keep useful insights grounded and avoid extending them beyond the available evidence.",
+            source={"kind": "semantic_feedback_pattern", "evidence": evidence},
+        )
+        self.assertEqual(candidate["status"], "candidate")
+        self.assertEqual(len(candidate["source"]["evidence"]), 3)
+        self.assertEqual(self.store.interaction_memories()[0]["status"], "candidate")
+        duplicate = self.store.create_interaction_memory_candidate(
+            "Keep useful insights grounded and avoid extending them beyond the available evidence.",
+            source={"kind": "semantic_feedback_pattern", "evidence": evidence},
+        )
+        self.assertEqual(duplicate["memory_id"], candidate["memory_id"])
+        self.assertEqual(len(self.store.interaction_memories()), 1)
+
+    def test_interaction_memory_requires_approval_and_survives_feedback_updates(self):
+        chat = self.store.create()
+        turn_id, started = self.store.begin_turn(chat["chat_id"], "Airbnb reflection", "qwen3.5:9b-q4_K_M", {})
+        assistant = next(item for item in started["messages"] if item["role"] == "assistant")
+        self.store.complete_turn(chat["chat_id"], turn_id, "Ariande overgeneralized.", model="qwen3.5:9b-q4_K_M",
+                                 used_vault=False, sources=[], retrieval={}, timing={}, identity_kernel={})
+        self.store.record_feedback(chat["chat_id"], assistant["message_id"], "needs_work", [], "Too much unsupported elaboration.")
+        candidate = self.store.create_interaction_memory_candidate(
+            "Engage with personal observations thoughtfully; avoid excessive praise, repetition, and unsupported generalisations.",
+            scope="general", source={"chat_id": chat["chat_id"], "message_id": assistant["message_id"],
+                                      "kind": "explicit_feedback"},
+        )
+        self.assertEqual(candidate["status"], "candidate")
+        self.assertEqual(self.store.response_preferences()["ratings"]["needs_work"], 1)
+        self.assertEqual([item["memory_id"] for item in self.store.interaction_memories() if item["status"] == "approved"], [])
+        approved = self.store.approve_interaction_memory(candidate["memory_id"])
+        self.assertEqual(approved["status"], "approved")
+        restarted = ChatStore(self.vault, now_fn=lambda: self.current)
+        self.assertEqual(restarted.interaction_memories()[0]["source"]["message_id"], assistant["message_id"])
+        self.assertEqual(restarted.response_preferences()["comment_count"], 1)
+
+    def test_interaction_memory_correction_waits_for_review_then_supersedes_and_can_be_removed(self):
+        chat = self.store.create()
+        turn_id, started = self.store.begin_turn(chat["chat_id"], "A request", "qwen3.5:9b", {})
+        assistant = next(item for item in started["messages"] if item["role"] == "assistant")
+        self.store.complete_turn(chat["chat_id"], turn_id, "Answer", model="qwen3.5:9b", used_vault=False,
+                                 sources=[], retrieval={}, timing={}, identity_kernel={})
+        source = {"chat_id": chat["chat_id"], "message_id": assistant["message_id"], "kind": "explicit_instruction"}
+        original = self.store.create_interaction_memory_candidate("Keep answers concise.", source=source)
+        self.store.approve_interaction_memory(original["memory_id"])
+        correction = self.store.create_interaction_memory_candidate("Be concise when the task permits.", source=source,
+                                                                   supersedes=original["memory_id"])
+        self.assertEqual(self.store.interaction_memories()[0]["status"], "approved")
+        self.store.approve_interaction_memory(correction["memory_id"])
+        states = {item["memory_id"]: item["status"] for item in self.store.interaction_memories()}
+        self.assertEqual(states[original["memory_id"]], "superseded")
+        self.assertEqual(states[correction["memory_id"]], "approved")
+        self.store.remove_interaction_memory(correction["memory_id"])
+        remaining = self.store.interaction_memories()
+        self.assertEqual([item["status"] for item in remaining], ["superseded"])
+        self.assertEqual(self.store.interaction_memories(include_removed=True)[-1]["status"], "removed")
+
+    def test_interaction_memory_rejects_nonexistent_or_pending_source(self):
+        chat = self.store.create()
+        turn_id, started = self.store.begin_turn(chat["chat_id"], "Wait", "qwen3.5:9b", {})
+        assistant = next(item for item in started["messages"] if item["role"] == "assistant")
+        source = {"chat_id": chat["chat_id"], "message_id": assistant["message_id"], "kind": "explicit_instruction"}
+        with self.assertRaisesRegex(ValueError, "completed Ariadne response"):
+            self.store.create_interaction_memory_candidate("Keep it concise", source=source)
+        with self.assertRaisesRegex(ValueError, "source chat and response"):
+            self.store.create_interaction_memory_candidate("Keep it concise")
+
     def test_expiry_removes_only_json_and_preserves_archive(self):
         chat = self.store.create()
         turn_id, _ = self.store.begin_turn(chat["chat_id"], "Keep my history", "qwen3.5:9b", {"version": "1.1.0"})
