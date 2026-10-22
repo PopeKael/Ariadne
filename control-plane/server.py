@@ -54,6 +54,7 @@ from ariadne_tools import TOOL_REGISTRY, attach_document, clear_documents, list_
 STARTUP_TRACE.mark("config_load_start", "started")
 from ariadne_config import (
     CANONICAL_AVATAR_STATES,
+    DEFAULT_VAULT_RUNTIME,
     avatar_pack_status,
     configuration_snapshot,
     default_avatar_directory,
@@ -141,8 +142,9 @@ LM_STUDIO_PATH = Path(r"C:\Program Files\AMD\AI_Bundle\LMStudio\LM Studio.exe")
 PUBLIC_ORIGIN = "https://ariadne.dia.net.au"
 OLLAMA_URL = "http://127.0.0.1:11434"
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
-VAULT_QUERY_CONTEXT_TOKENS = 16_384
-VAULT_QUERY_OUTPUT_TOKENS = 2_048
+VAULT_RUNTIME = {**DEFAULT_VAULT_RUNTIME, **configuration_snapshot().get("vault_runtime", {})}
+VAULT_INGESTION_MODEL = os.environ.get("ARIADNE_VAULT_INGESTION_MODEL", str(VAULT_RUNTIME["ingestion_model"]))
+VAULT_INGESTION_CONTEXT_TOKENS = int(os.environ.get("ARIADNE_VAULT_INGESTION_CONTEXT", str(VAULT_RUNTIME["ingestion_context_tokens"])))
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 HOME_MODEL_KEEP_ALIVE = -1
 _DEFAULT_HOME_CONTEXT_TOKENS = DEFAULT_CONTEXT_TOKENS
@@ -415,7 +417,6 @@ HOME_ACTIVITY_STREAM = ActivityStateStream(
     emit_avatar_state=emit_state,
 )
 VAULT_SYSTEM = VAULT_ROOT / "00_System"
-VAULT_WORKER_PATH = ROOT / "vault_worker.py"
 MCP_MODULE_PATH = PROJECT_ROOT / "00_System" / "ariadne_mcp.py"
 WORLD_STATE_MODULE_PATH = PROJECT_ROOT / "00_System" / "world_state.py"
 VAULT_JOB_ROOT = ROOT / "runtime" / "vault_jobs"
@@ -466,6 +467,7 @@ IMAGE_MODELS = {
 }
 SESSION_TTL_SECONDS = max(30, int(os.environ.get("ARIADNE_SESSION_TTL_SECONDS", "90")))
 JOB_TIMEOUT_SECONDS = max(30, int(os.environ.get("ARIADNE_JOB_TIMEOUT_SECONDS", "300")))
+OLLAMA_REQUEST_TIMEOUT_SECONDS = max(30, int(os.environ.get("ARIADNE_OLLAMA_REQUEST_TIMEOUT_SECONDS", "300")))
 VAULT_ACTION_TIMEOUT_SECONDS = {
     "ingest": max(300, int(os.environ.get("ARIADNE_INGEST_TIMEOUT_SECONDS", "7200"))),
     "full_rebuild": max(3600, int(os.environ.get("ARIADNE_FULL_REBUILD_TIMEOUT_SECONDS", "86400"))),
@@ -602,7 +604,11 @@ VAULT_ACTIONS = {
 def apply_runtime_configuration() -> dict[str, object]:
     """Refresh safe path consumers after a saved configuration change."""
     global VAULT_ROOT, VAULT_ROOT_SOURCE, VAULT_SYSTEM, HOME_EVENTS_PATH, HOME_CHAT_STORE, HOME_CHAT_MODEL, PLANNER_MODEL
+    global VAULT_RUNTIME, VAULT_INGESTION_MODEL, VAULT_INGESTION_CONTEXT_TOKENS
     snapshot = configuration_snapshot()
+    VAULT_RUNTIME = {**DEFAULT_VAULT_RUNTIME, **snapshot.get("vault_runtime", {})}
+    VAULT_INGESTION_MODEL = os.environ.get("ARIADNE_VAULT_INGESTION_MODEL", str(VAULT_RUNTIME["ingestion_model"]))
+    VAULT_INGESTION_CONTEXT_TOKENS = int(os.environ.get("ARIADNE_VAULT_INGESTION_CONTEXT", str(VAULT_RUNTIME["ingestion_context_tokens"])))
     VAULT_ROOT = Path(str(snapshot["storage"]["knowledge_vault"]))
     VAULT_ROOT_SOURCE = str(snapshot["sources"]["knowledge_vault"])
     VAULT_SYSTEM = VAULT_ROOT / "00_System"
@@ -4677,6 +4683,41 @@ def _close_session(session_id: str) -> bool:
 def _close_session_locked(session_id: str) -> bool:
     global GPU_OWNER, GPU_VAULT_RESERVATION
     with SESSION_LOCK:
+        candidate = SESSIONS.get(session_id)
+        if not candidate:
+            return False
+        candidate_jobs = [JOBS.get(job_id) for job_id in candidate.get("jobs", set())]
+        checkpoint_jobs = [job for job in candidate_jobs if job and candidate.get("surface") == "knowledge-vault"
+                           and job.get("controllable") and job.get("action") in {"ingest", "full_rebuild"}
+                           and isinstance(job.get("process"), subprocess.Popen)
+                           and job["process"].poll() is None]
+        if checkpoint_jobs:
+            candidate["closing"] = True
+            for job in checkpoint_jobs:
+                if job.get("control_requested") == "close":
+                    continue
+                control_path = job.get("control_path")
+                if isinstance(control_path, Path):
+                    control_path.parent.mkdir(parents=True, exist_ok=True)
+                    temporary = Path(str(control_path) + ".request.tmp")
+                    temporary.write_text(json.dumps({"command": "stop"}), encoding="utf-8")
+                    os.replace(temporary, control_path)
+                job["control_requested"] = "close"
+                job["message"] = "Workspace exit requested; waiting for the current model call to checkpoint."
+    if checkpoint_jobs:
+        # The Vault's checkpoint boundary follows the current model request.
+        # Give that request its full configured timeout. If it does not finish,
+        # keep the session and Host leases alive for the watchdog to retry;
+        # never kill an in-progress ingest merely because a tab closed.
+        deadline = time.monotonic() + OLLAMA_REQUEST_TIMEOUT_SECONDS + 30
+        while time.monotonic() < deadline:
+            if all(job["process"].poll() is not None for job in checkpoint_jobs):
+                break
+            time.sleep(0.25)
+        if any(job["process"].poll() is None for job in checkpoint_jobs):
+            print(f"[vault-session] Close deferred; ingest has not reached its checkpoint boundary for session {session_id}.", flush=True)
+            return False
+    with SESSION_LOCK:
         session = SESSIONS.pop(session_id, None)
         if not session:
             return False
@@ -4802,6 +4843,13 @@ def _start_process(command: list[str], cwd: Path, *, chat_model: str | None = No
     child_environment["ARIADNE_VAULT_ROOT"] = str(VAULT_ROOT)
     child_environment["ARIADNE_CONTROL_PLANE"] = str(ROOT)
     child_environment["ARIADNE_CHAT_MODEL"] = str(chat_model or OLLAMA_CHAT_MODEL)
+    child_environment["ARIADNE_VAULT_INGESTION_MODEL"] = str(VAULT_INGESTION_MODEL)
+    child_environment["ARIADNE_VAULT_INGESTION_CONTEXT"] = str(VAULT_INGESTION_CONTEXT_TOKENS)
+    child_environment["ARIADNE_EMBEDDING_MODEL"] = str(VAULT_RUNTIME["embedding_model"])
+    child_environment["ARIADNE_EMBEDDING_CONTEXT"] = str(VAULT_RUNTIME["embedding_context_tokens"])
+    child_environment["ARIADNE_VAULT_TEMPERATURE"] = str(VAULT_RUNTIME["temperature"])
+    child_environment["ARIADNE_VAULT_SEED"] = str(VAULT_RUNTIME["seed"])
+    child_environment["ARIADNE_VAULT_THINK_LEVEL"] = str(VAULT_RUNTIME["think_level"])
     if context_tokens is not None:
         child_environment["ARIADNE_NUM_CTX"] = str(context_tokens)
     if output_tokens is not None:
@@ -4883,12 +4931,12 @@ def _structured_organiser_summary(payload: dict[str, object], fallback: dict[str
 def _acquire_vault_ingestion_gpu(job_id: str) -> dict[str, object]:
     """Track a batch inside the Vault's existing Rust-host workload lease."""
     global GPU_OWNER, GPU_VAULT_RESERVATION
-    model = str(OLLAMA_CHAT_MODEL or "").strip()
+    model = str(_workspace_requirements("knowledge-vault", {"vault_runtime": VAULT_RUNTIME}).get("model") or "").strip()
     if not model:
         raise RuntimeError("No Knowledge Vault ingestion model is configured.")
     # The Vault page already holds an exclusive Rust-host `vault` workload
     # lease. A nested `ai` lease would conflict with that owner.
-    activity = model_activity(model, context_length=VAULT_QUERY_CONTEXT_TOKENS)
+    activity = model_activity(model, context_length=VAULT_INGESTION_CONTEXT_TOKENS)
     activity_entered = False
     try:
         activity.__enter__()
@@ -5102,6 +5150,10 @@ def control_vault_action(session_id: str, job_id: str, command: str) -> dict:
 
 
 def start_vault_action(session_id: str, action: str, *, resume_run: Path | None = None) -> str:
+    with SESSION_LOCK:
+        session = SESSIONS.get(session_id)
+        if not session or session.get("closing"):
+            raise RuntimeError("The Knowledge Vault workspace is finishing and no longer accepts jobs.")
     script_name, arguments = VAULT_ACTIONS[action]
     script_path = VAULT_SYSTEM / script_name
     if not script_path.is_file():
@@ -5132,6 +5184,10 @@ def start_vault_action(session_id: str, action: str, *, resume_run: Path | None 
         process = _start_process(
             [shell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script_path), *arguments],
             VAULT_ROOT,
+            chat_model=VAULT_INGESTION_MODEL,
+            context_tokens=VAULT_INGESTION_CONTEXT_TOKENS,
+            output_tokens=int(VAULT_RUNTIME["ingestion_output_tokens"]),
+            ollama_url=OLLAMA_URL,
         )
     except Exception:
         if gpu_state:
@@ -5163,6 +5219,19 @@ def _plugin_record(plugin_id: str):
         if record.manifest and record.manifest.get("plugin_id") == requested:
             return record
     return None
+
+
+def _workspace_requirements(plugin_id: str, configuration: dict[str, object] | None = None) -> dict[str, object]:
+    record = _plugin_record(plugin_id)
+    if not record or not record.manifest:
+        raise RuntimeError(f"Workspace plugin '{plugin_id}' is not registered.")
+    resolved_configuration = dict(configuration or {})
+    if plugin_id == "knowledge-vault":
+        runtime = dict(VAULT_RUNTIME)
+        runtime["ingestion_model"] = VAULT_INGESTION_MODEL
+        runtime["ingestion_context_tokens"] = VAULT_INGESTION_CONTEXT_TOKENS
+        resolved_configuration["vault_runtime"] = runtime
+    return PLUGIN_REGISTRY.resolve_workspace_requirements(record.manifest, resolved_configuration)
 
 
 def _active_plugin_job(session_id: str, plugin_id: str) -> str | None:
@@ -5393,42 +5462,6 @@ def start_plugin_action(session_id: str, plugin_id: str, action: str, *, confirm
     return run_plugin_action(session_id, plugin_id, action, trigger="manual", confirmed=confirmed)
 
 
-def start_vault_query(session_id: str, query: str, mode: str, limit: int) -> str:
-    with SESSION_LOCK:
-        session = SESSIONS.get(session_id)
-        if not session or session.get("surface") != "knowledge-vault":
-            raise RuntimeError("Start a Knowledge Vault session before asking a question.")
-        if not session.get("ingestion_model_protected"):
-            raise RuntimeError("The Vault model is no longer protected for this session. Restart the Vault session before asking.")
-        query_model = str(session.get("ingestion_model") or "").strip()
-        if not query_model:
-            raise RuntimeError("The Vault session has no reserved query model.")
-    VAULT_JOB_ROOT.mkdir(parents=True, exist_ok=True)
-    job_id = uuid.uuid4().hex
-    spec_path = VAULT_JOB_ROOT / f"{job_id}.json"
-    status_path = Path(str(spec_path) + ".status.json")
-    spec_path.write_text(json.dumps({"query": query, "mode": mode, "limit": limit}, ensure_ascii=False), encoding="utf-8")
-    status_path.write_text(json.dumps({"state": "starting", "stage": "starting", "message": "Starting vault worker…", "completed": 0, "total": 0}), encoding="utf-8")
-    process = _start_process(
-        [sys.executable, "-u", str(VAULT_WORKER_PATH), str(spec_path)],
-        VAULT_ROOT,
-        chat_model=query_model,
-        context_tokens=VAULT_QUERY_CONTEXT_TOKENS,
-        output_tokens=VAULT_QUERY_OUTPUT_TOKENS,
-        ollama_url=OLLAMA_URL,
-    )
-    job = {"session_id": session_id, "kind": "query", "process": process, "started": time.monotonic(),
-           "state": "running", "message": f"Connecting to {query_model} with a 16K context…",
-           "spec_path": spec_path, "status_path": status_path, "mode": mode,
-           "model": query_model, "context_tokens": VAULT_QUERY_CONTEXT_TOKENS}
-    with SESSION_LOCK:
-        JOBS[job_id] = job
-        SESSIONS[session_id].setdefault("jobs", set()).add(job_id)
-        SESSIONS[session_id]["used_ollama"] = True
-    threading.Thread(target=_timeout_job, args=(job_id,), daemon=True).start()
-    return job_id
-
-
 def job_payload(job_id: str) -> dict[str, object] | None:
     with SESSION_LOCK:
         job = JOBS.get(job_id)
@@ -5453,17 +5486,6 @@ def job_payload(job_id: str) -> dict[str, object] | None:
             try:
                 worker_status = json.loads(status_path.read_text(encoding="utf-8"))
                 result.update(worker_status)
-                if (job.get("kind") == "query"
-                        and worker_status.get("state") in {"complete", "error", "cancelled"}
-                        and job.get("state") == "running"):
-                    # The Vault worker writes its durable terminal status before
-                    # exiting. Reflect it in the in-memory job too, so the GPU
-                    # admission tracker and session status do not treat a
-                    # finished query as permanently in flight.
-                    job["state"] = worker_status["state"]
-                    job["message"] = worker_status.get("message") or job.get("message")
-                    if "result" in worker_status:
-                        job["result"] = worker_status["result"]
             except (OSError, ValueError, json.JSONDecodeError):
                 pass
         result["job_id"] = job_id
@@ -5494,7 +5516,9 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
         catalog = ollama_catalog()
         if not catalog.get("available"):
             return {"ok": False, "state": "unverified", "detail": str(catalog.get("detail") or "Ollama residency could not be verified.")}
-        ingestion_model = str(OLLAMA_CHAT_MODEL or "").strip()
+        workspace_requirements = _workspace_requirements("knowledge-vault", {"vault_runtime": VAULT_RUNTIME})
+        ingestion_model = str(workspace_requirements.get("model") or "").strip()
+        context_tokens = int(workspace_requirements.get("context_tokens") or 0)
         if not ingestion_model:
             return {"ok": False, "state": "unconfigured", "detail": "Knowledge Vault ingestion model is not configured."}
         try:
@@ -5504,12 +5528,21 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
         with GPU_ARBITRATION_LOCK:
             GPU_VAULT_RESERVATION = reservation_id
             GPU_OWNER = "VAULT"
+        # A verified profile is admitted alongside resident models when
+        # capacity allows. Starting the explicit Vault session is a model
+        # handoff, so let Rust Host unload idle residents before checking the
+        # 20B model's measured footprint. Active leases and the reserve remain
+        # enforced by the Host.
+        idle_release = release_idle_ollama_models(force=True)
+        if not idle_release.get("available"):
+            return {"ok": False, "state": "model_admission_failed",
+                    "detail": str(idle_release.get("detail") or "Rust Host could not release idle model residency for the Vault session.")}
         # Rust owns model loading, verified runtime profiles and the session lease.
         # A first explicit Vault start may calibrate this exact digest/runtime key.
         try:
             host_model_lease_id = host_acquire_model_lease(
                 ingestion_model, OLLAMA_URL,
-                context_length=VAULT_QUERY_CONTEXT_TOKENS,
+                context_length=context_tokens,
                 allow_calibration=True,
             )
         except RuntimeError as exc:
@@ -5519,8 +5552,9 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
             MODEL_LAST_USED[ingestion_model] = time.monotonic()
             ingestion_model_protected = True
         preflight_succeeded = True
-        return {"ok": True, "state": "ready", "detail": f"Ariadne GPU is clear; Vault model {ingestion_model} is resident and protected with a {VAULT_QUERY_CONTEXT_TOKENS:,}-token query context.",
-                "models_released": [], "ingestion_model": OLLAMA_CHAT_MODEL,
+        return {"ok": True, "state": "ready", "detail": f"Ariadne GPU is clear; Vault model {ingestion_model} is resident and protected with a {context_tokens:,}-token ingestion context.",
+                "models_released": [], "ingestion_model": ingestion_model,
+                "context_tokens": context_tokens,
                 "_host_model_lease_id": host_model_lease_id,
                 "_host_gpu_lease_id": host_gpu_lease_id,
                 "_gpu_reservation_id": reservation_id}
@@ -5538,11 +5572,11 @@ def vault_gpu_entry_preflight(session_id: str | None = None) -> dict[str, object
                     print(f"[vault-session] Rust-host GPU workload lease rollback failed: {exc}", flush=True)
             if ingestion_model_protected:
                 with MODEL_ACTIVITY_LOCK:
-                    remaining = MODEL_IN_FLIGHT.get(OLLAMA_CHAT_MODEL, 1) - 1
+                    remaining = MODEL_IN_FLIGHT.get(ingestion_model, 1) - 1
                     if remaining > 0:
-                        MODEL_IN_FLIGHT[OLLAMA_CHAT_MODEL] = remaining
+                        MODEL_IN_FLIGHT[ingestion_model] = remaining
                     else:
-                        MODEL_IN_FLIGHT.pop(OLLAMA_CHAT_MODEL, None)
+                        MODEL_IN_FLIGHT.pop(ingestion_model, None)
         if not preflight_succeeded:
             with GPU_ARBITRATION_LOCK:
                 if GPU_VAULT_RESERVATION == reservation_id:
@@ -10038,8 +10072,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
                         return
                 inference = body.get("inference") if isinstance(body.get("inference"), dict) else None
                 personality = body.get("personality") if isinstance(body.get("personality"), dict) else None
+                vault_runtime = body.get("vault_runtime") if isinstance(body.get("vault_runtime"), dict) else None
                 try:
-                    saved = save_configuration(storage=storage, plugins=plugins, inference=inference, personality=personality)
+                    saved = save_configuration(storage=storage, plugins=plugins, inference=inference,
+                                               personality=personality, vault_runtime=vault_runtime)
                 except ValueError as exc:
                     try:
                         errors = json.loads(str(exc))
@@ -11023,21 +11059,6 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json(control_vault_action(session_id, str(body.get("job_id") or ""), str(body.get("command") or "")))
                 except (RuntimeError, ValueError) as exc:
                     self.send_json({"ok": False, "message": str(exc)}, 409)
-                return
-            if path == "/api/vault/query":
-                query = body.get("query")
-                mode = body.get("mode", "search")
-                limit = body.get("limit", 8)
-                if not isinstance(query, str) or not query.strip():
-                    self.send_json({"ok": False, "message": "A non-empty vault query is required."}, 400)
-                    return
-                if mode not in {"search", "summary", "answer"}:
-                    self.send_json({"ok": False, "message": "Unknown vault query mode."}, 400)
-                    return
-                if not isinstance(limit, int) or isinstance(limit, bool):
-                    self.send_json({"ok": False, "message": "Query limit must be an integer."}, 400)
-                    return
-                self.send_json({"ok": True, "job_id": start_vault_query(session_id, query.strip(), str(mode), max(1, min(limit, 20)))})
                 return
             self.send_json({"ok": False, "message": "Not found."}, 404)
         except (OSError, RuntimeError, ValueError, TypeError, json.JSONDecodeError, subprocess.SubprocessError) as exc:

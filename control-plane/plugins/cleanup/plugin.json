@@ -10,7 +10,7 @@
   "actions": ["preview", "apply"],
   "action_metadata": {"preview": {"schedulable": true, "mutating": false}, "apply": {"schedulable": true, "mutating": true}},
   "entry_point": "cleanup:build_command",
-  "ui": {"available": false, "route": null},
+  "ui": {"available": true, "route": "/configuration?plugin=cleanup&focus=workflow", "label": "Open Cleanup"},
   "settings": {"available": true, "route": "/configuration", "label": "Configure Cleanup"},
   "permissions": ["filesystem.read", "filesystem.move"],
   "dependencies": [],

@@ -1,0 +1,31 @@
+{
+  "manifest_version": "0.1",
+  "plugin_id": "dungeon",
+  "name": "Dungeon Crawl",
+  "version": "0.1.0",
+  "description": "Standalone game application with Rust Host supervised GPU handoff and Ariadne recovery.",
+  "author": "Ariadne Core",
+  "plugin_type": "service",
+  "capabilities": ["application.launch", "gpu.workspace.exclusive"],
+  "entry_point": "Ariadne Rust Host Dungeon supervisor",
+  "ui": {"available": true, "route": "/", "label": "Open Ariadne Home"},
+  "settings": {"available": false, "route": null},
+  "permissions": ["local-process.launch", "rust-host.gpu-lease"],
+  "dependencies": ["Dungeon application installation", "Ariadne Rust Host"],
+  "hardware_requirements": {"gpu": "Exclusive workload handoff; no Ollama model required"},
+  "resource_requirements": {"ownership": "Exclusive GPU workspace", "model": "None"},
+  "startup": "application",
+  "enabled": true,
+  "health": {"state": "healthy", "detail": "Launched and monitored by Rust Host; application data remains independent."},
+  "activity": {"supported": true, "transport": "ariadne-core", "progress": true},
+  "workspace": {
+    "entry_point": "Ariadne Rust Host launch_dungeon lifecycle",
+    "ownership_mode": "exclusive",
+    "model": null,
+    "dependencies": ["Dungeon launcher", "Rust Host GPU lease", "Ariadne status callback"],
+    "startup": "Rust Host acquires exclusive GPU ownership, launches Dungeon and waits for its readiness signal.",
+    "readiness": "Dungeon HTTP health and fresh startup progress must both confirm readiness.",
+    "shutdown": "Rust Host detects process exit or explicit shutdown and releases the workload lease.",
+    "recovery": "Failed launch or unhealthy process triggers Host recovery and normal Ollama reconciliation."
+  }
+}

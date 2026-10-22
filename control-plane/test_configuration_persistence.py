@@ -178,6 +178,22 @@ class ConfigurationPersistenceTests(unittest.TestCase):
             self.assertEqual(normalized["collision_policy"], "skip")
             self.assertEqual(normalized["unmatched_policy"], "leave_in_place")
 
+    def test_vault_runtime_defaults_and_settings_persist_across_reads(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "configuration.json"
+            storage = self.storage(root)
+            defaults = configuration_snapshot(target)["vault_runtime"]
+            self.assertEqual(defaults["ingestion_model"], "gpt-oss:20b")
+            self.assertEqual(defaults["ingestion_context_tokens"], 16384)
+            self.assertEqual(defaults["embedding_model"], "nomic-embed-text")
+            settings = {**defaults, "ingestion_model": "other-model:latest", "ingestion_context_tokens": 32768,
+                        "embedding_model": "other-embed:latest", "embedding_context_tokens": 4096}
+            save_configuration(storage=storage, vault_runtime=settings, path=target)
+            self.assertEqual(configuration_snapshot(target)["vault_runtime"], settings)
+            with self.assertRaises(ValueError):
+                save_configuration(storage=storage, vault_runtime={**settings, "ingestion_context_tokens": 512}, path=target)
+
     def test_multiple_saves_end_with_c_and_do_not_resurrect_a_or_b(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

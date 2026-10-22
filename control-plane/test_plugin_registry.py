@@ -94,6 +94,38 @@ class PluginRegistryTests(unittest.TestCase):
         with self.assertRaises(ManifestValidationError):
             validate_manifest(value)
 
+    def test_workspace_requirements_are_validated_and_discovered(self):
+        value = manifest("example.workspace")
+        value["workspace"] = {
+            "entry_point": "/api/workspaces/example/start",
+            "ownership_mode": "exclusive",
+            "model": {"role": "tools", "setting": "workspace.model", "default": "model:latest", "context_setting": "workspace.context"},
+            "dependencies": ["Rust Host"],
+            "startup": "Explicit launch",
+            "readiness": "Host admission confirmed",
+            "shutdown": "Release Host lease",
+            "recovery": "Heartbeat expiry releases abandoned ownership",
+        }
+        normalized = validate_manifest(value)
+        self.assertEqual(normalized["workspace"]["ownership_mode"], "exclusive")
+        self.assertEqual(normalized["workspace"]["model"]["context_setting"], "workspace.context")
+        resolved = PluginRegistry.resolve_workspace_requirements(
+            normalized, {"workspace": {"model": "actual-model:latest", "context": 32768}},
+        )
+        self.assertEqual(resolved["model"], "actual-model:latest")
+        self.assertEqual(resolved["context_tokens"], 32768)
+        value["workspace"]["ownership_mode"] = "python-managed"
+        with self.assertRaises(ManifestValidationError):
+            validate_manifest(value)
+
+    def test_bundled_vault_workspace_is_registered_with_open_action(self):
+        registry = PluginRegistry(ROOT / "plugins", self.user)
+        records = {record.manifest.get("plugin_id"): record for record in registry.discover() if record.manifest}
+        vault = records["knowledge-vault"].manifest
+        self.assertEqual(vault["ui"]["label"], "Open Knowledge Vault Tools")
+        self.assertEqual(vault["workspace"]["ownership_mode"], "exclusive")
+        self.assertEqual(vault["workspace"]["model"]["setting"], "vault_runtime.ingestion_model")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,16 @@ from typing import Any
 
 
 CONFIG_VERSION = 1
+DEFAULT_VAULT_RUNTIME = {
+    "ingestion_model": "gpt-oss:20b",
+    "ingestion_context_tokens": 16_384,
+    "ingestion_output_tokens": 2_048,
+    "embedding_model": "nomic-embed-text",
+    "embedding_context_tokens": 2_048,
+    "temperature": 0,
+    "seed": 42,
+    "think_level": "low",
+}
 CANONICAL_AVATAR_STATES = (
     "idle",
     "listening",
@@ -256,6 +266,7 @@ def save_configuration(
     plugins: dict[str, object] | None = None,
     inference: dict[str, object] | None = None,
     personality: dict[str, object] | None = None,
+    vault_runtime: dict[str, object] | None = None,
     path: Path | None = None,
 ) -> dict[str, Any]:
     target = path or configuration_path()
@@ -300,12 +311,42 @@ def save_configuration(
     selected_personality.update(current_personality)
     if personality is not None:
         selected_personality.update(personality)
+    current_vault_runtime = current.get("vault_runtime", {})
+    if not isinstance(current_vault_runtime, dict):
+        current_vault_runtime = {}
+    selected_vault_runtime = {**DEFAULT_VAULT_RUNTIME, **current_vault_runtime}
+    if vault_runtime is not None:
+        selected_vault_runtime.update(vault_runtime)
     from conversation_orchestration import normalize_intensity
     selected_personality["intensity"] = normalize_intensity(selected_personality.get("intensity"))
     selected_avatar.setdefault("state_assets", current_avatar.get("state_assets", {}))
     storage_errors = validate_storage(selected_storage)
     avatar_errors = validate_avatar(selected_avatar)
-    errors = {**storage_errors, **{f"avatar.{key}": value for key, value in avatar_errors.items()}}
+    runtime_errors: dict[str, str] = {}
+    for key in ("ingestion_context_tokens", "ingestion_output_tokens", "embedding_context_tokens"):
+        try:
+            value = int(selected_vault_runtime[key])
+            if not 1_024 <= value <= 131_072:
+                raise ValueError
+            selected_vault_runtime[key] = value
+        except (TypeError, ValueError, KeyError):
+            runtime_errors[key] = "Enter a whole number from 1,024 to 131,072."
+    for key in ("ingestion_model", "embedding_model"):
+        value = selected_vault_runtime.get(key)
+        if not isinstance(value, str) or not value.strip():
+            runtime_errors[key] = "Enter a model name."
+        else:
+            selected_vault_runtime[key] = value.strip()
+    for key in ("temperature",):
+        try:
+            value = float(selected_vault_runtime[key])
+            if not 0 <= value <= 2:
+                raise ValueError
+            selected_vault_runtime[key] = value
+        except (TypeError, ValueError, KeyError):
+            runtime_errors[key] = "Enter a value from 0 to 2."
+    errors = {**storage_errors, **{f"avatar.{key}": value for key, value in avatar_errors.items()},
+              **{f"vault_runtime.{key}": value for key, value in runtime_errors.items()}}
     if errors:
         raise ValueError(json.dumps(errors, ensure_ascii=False))
     payload = dict(current)
@@ -320,6 +361,7 @@ def save_configuration(
         "plugins": selected_plugins,
         "inference": selected_inference,
         "personality": selected_personality,
+        "vault_runtime": selected_vault_runtime,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     })
     _atomic_write_configuration(payload, target)
@@ -453,5 +495,6 @@ def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
         "avatar_sources": avatar_sources,
         "plugins": saved_plugins,
         "inference": saved.get("inference", {}) if isinstance(saved.get("inference", {}), dict) else {},
+        "vault_runtime": {**DEFAULT_VAULT_RUNTIME, **(saved.get("vault_runtime", {}) if isinstance(saved.get("vault_runtime", {}), dict) else {})},
         "personality": {**DEFAULT_PERSONALITY, **(saved.get("personality", {}) if isinstance(saved.get("personality", {}), dict) else {})},
     }

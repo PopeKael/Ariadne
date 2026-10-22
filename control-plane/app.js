@@ -361,6 +361,7 @@ async function postJson(url, payload, keepalive = false) {
   if (!response.ok || value.ok === false) {
     const error = new Error(value.message || `HTTP ${response.status}`);
     error.status = response.status;
+    error.payload = value;
     throw error;
   }
   return value;
@@ -398,7 +399,7 @@ function updateSessionButtons() {
 }
 
 function setVaultControlsDisabled(disabled) {
-  document.querySelectorAll("[data-vault-action], [data-plugin-action], #vault-query-form button").forEach((button) => {
+  document.querySelectorAll("[data-vault-action]").forEach((button) => {
     button.disabled = disabled;
   });
   if (!vaultSessionId) {
@@ -431,13 +432,16 @@ function markVaultSessionUnavailable(message) {
   vaultHeartbeat = null;
   vaultSessionId = null;
   vaultIngestionModel = null;
-  vaultSessionLabel("Session unavailable", "offline");
+  const busy = /exclusive GPU workload lease|active GPU or model leases|already active in another tab|delegated to Dungeon/i.test(message || "");
+  vaultSessionLabel(busy ? "WORKSPACE BUSY" : "Session unavailable", "offline");
   const modelBadge = document.querySelector("#vault-query-model");
   if (modelBadge) modelBadge.textContent = "MODEL · NOT READY";
   const status = document.querySelector("#vault-query-status");
   if (status) {
     status.className = "vault-status error";
-    status.textContent = message;
+    status.textContent = busy
+      ? `The Knowledge Vault workspace is active. Return to the current workspace or finish it before starting another. ${message}`
+      : message;
   }
   setVaultControlsDisabled(true);
   updateSessionButtons();
@@ -520,8 +524,9 @@ function activateVaultSession(session, surface) {
   vaultSessionId = session.session_id;
   vaultIngestionModel = session.gpu?.ingestion_model || null;
   const modelBadge = document.querySelector("#vault-query-model");
+  const contextTokens = Number(session.gpu?.context_tokens || 0);
   if (modelBadge) modelBadge.textContent = vaultIngestionModel
-    ? `MODEL · ${vaultIngestionModel} · 16K CONTEXT` : "MODEL · UNAVAILABLE";
+    ? `MODEL · ${vaultIngestionModel} · ${contextTokens ? `${Math.round(contextTokens / 1024)}K CONTEXT` : "CONTEXT CONFIGURED"}` : "MODEL · UNAVAILABLE";
   const gpuDetail = session.gpu?.detail ? ` · ${session.gpu.detail}` : "";
   const homeModelDetail = session.home_model?.model
     ? ` · Home model ${session.home_model.state}: ${session.home_model.model}`
@@ -561,10 +566,10 @@ async function startVaultSession(surface = document.body.classList.contains("con
   vaultHeartbeatInFlight = false;
   vaultSessionId = null;
   vaultSessionLabel(surface === "knowledge-vault"
-    ? `Preparing Knowledge Vault: checking GPU, clearing other Ariadne models, then loading the configured ingestion model…`
+    ? `Preparing Environment · Rust Host is checking workspace ownership and preparing the configured Vault model…`
     : "Starting Home session…", "starting");
   const modelBadge = document.querySelector("#vault-query-model");
-  if (modelBadge && surface === "knowledge-vault") modelBadge.textContent = "MODEL · 16K CONTEXT · LOADING";
+  if (modelBadge && surface === "knowledge-vault") modelBadge.textContent = "MODEL · CONFIGURED CONTEXT · LOADING";
   setVaultControlsDisabled(true);
   updateSessionButtons();
   try {
@@ -666,23 +671,6 @@ async function waitForVaultJob(jobId, onUpdate, onReconnect) {
   }
 }
 
-function renderVaultResult(result, mode) {
-  const root = document.querySelector("#vault-query-results");
-  if (!root) return;
-  if (mode === "search") {
-    const rows = result.results || [];
-    root.innerHTML = rows.length ? rows.map((item) => `<article class="vault-result"><strong>${esc(item.title || "Untitled")}</strong><span>${esc(item.heading || "Document")} · ${esc(item.path || "")}</span><p>${esc(item.content || item.excerpt || "")}</p><small>${esc(item.citation_text || "")}</small></article>`).join("") : `<p class="state-empty">No matching passages were found.</p>`;
-    return;
-  }
-  const sources = (result.sources || []).map((source) => `<li><strong>[Source ${source.source_number}]</strong> ${esc(source.citation_text || "")}</li>`).join("");
-  const model = result.model || vaultIngestionModel;
-  const contextLabel = result.context_tokens ? `${Math.round(result.context_tokens / 1024)}K context` : "";
-  const heading = mode === "answer"
-    ? `Vault answer${model ? ` · ${model}` : ""}${contextLabel ? ` · ${contextLabel}` : ""}`
-    : "Vault summary";
-  root.innerHTML = `<article class="vault-result"><strong>${esc(heading)}</strong><p>${esc(result.summary || "No summary was returned.")}</p>${sources ? `<small><strong>Sources</strong><ul>${sources}</ul></small>` : ""}</article>`;
-}
-
 async function runVaultAction(button) {
   if (!vaultSessionId) return;
   if (button.dataset.confirm && !window.confirm(button.dataset.confirm)) return;
@@ -764,52 +752,6 @@ async function controlVaultJob(button) {
     status.className = "vault-status error";
     status.textContent = error.message;
     button.disabled = false;
-  }
-}
-
-async function runVaultQuery() {
-  const mode = "answer";
-  if (!vaultSessionId) return;
-  const input = document.querySelector("#vault-query-input");
-  const status = document.querySelector("#vault-query-status");
-  const query = input.value.trim();
-  if (!query) return;
-  setVaultControlsDisabled(true);
-  document.querySelector("#vault-query-results").innerHTML = "";
-  status.className = "vault-status";
-  const selectedModel = vaultIngestionModel || "the session model";
-  status.textContent = `Asking ${selectedModel} to plan a vault search, retrieve evidence, and write a cited answer…`;
-  renderVaultJob({action: "vault question", model: vaultIngestionModel, state: "starting", stage: "connecting to model", message: status.textContent});
-  let jobStarted = false;
-  try {
-    const started = await postJson("/api/vault/query", {session_id: vaultSessionId, query, mode, limit: mode === "answer" ? 6 : 8});
-    jobStarted = true;
-    const finished = await waitForVaultJob(
-      started.job_id,
-      (job) => { status.textContent = job.message || "Working…"; renderVaultJob({...job, model: vaultIngestionModel}); },
-      (attempt, retrySeconds) => {
-        const message = `Lost contact with Ariadne’s job monitor; retrying status in ${retrySeconds}s (attempt ${attempt}).`;
-        status.textContent = message;
-        renderVaultJob({action: "vault question", model: vaultIngestionModel, state: "running", stage: "monitor reconnecting", message});
-      },
-    );
-    if (finished.state !== "complete") {
-      status.className = "vault-status error";
-      status.textContent = finished.message || "The vault query failed.";
-      return;
-    }
-    renderVaultResult(finished.result || {}, mode);
-    const sourceCount = Array.isArray(finished.result?.sources) ? finished.result.sources.length : 0;
-    status.textContent = sourceCount
-      ? `Answer ready · ${sourceCount} cited vault sources · ${finished.result?.model || selectedModel} · ${Math.round((finished.result?.context_tokens || 32_768) / 1024)}K context.`
-      : `The vault search found no passages to cite. ${finished.result?.model || selectedModel} did not invent an answer.`;
-  } catch (error) {
-    status.className = "vault-status error";
-    status.textContent = error.message;
-    if (jobStarted) renderVaultJobStatusError("vault question", error);
-    else renderVaultJob({action: "vault question", model: vaultIngestionModel, state: "error", message: error.message, output: error.message});
-  } finally {
-    setVaultControlsDisabled(!vaultSessionId);
   }
 }
 
@@ -983,12 +925,12 @@ function setViewMode(mode) {
   document.body.classList.toggle("control-mode", control);
   history.replaceState(null, "", control ? "#knowledge-vault" : window.location.pathname);
   window.scrollTo(0, 0);
-  if (control !== wasControl) switchSessionSurface(control ? "knowledge-vault" : "home");
+  if (control !== wasControl && !control) switchSessionSurface("home");
   if (!control) refresh();
 }
 
 function setupViewModes() {
-  const launch = document.querySelector('a[href="#knowledge-vault"]');
+  const launch = document.querySelector('a[href*="#knowledge-vault"]');
   const panel = document.querySelector("#knowledge-vault");
   if (!launch || !panel) return;
 
@@ -1001,15 +943,15 @@ function setupViewModes() {
   start.type = "button";
   start.id = "vault-start-session";
   start.className = "view-back";
-  start.textContent = "Start session";
-  start.addEventListener("click", () => startVaultSession());
+  start.textContent = "Open Knowledge Vault Tools";
+  start.addEventListener("click", () => switchSessionSurface("knowledge-vault"));
 
   const stop = document.createElement("button");
   stop.type = "button";
   stop.id = "vault-stop-session";
   stop.className = "view-back";
   stop.textContent = "Stop session";
-  stop.addEventListener("click", () => closeVaultSession());
+  stop.addEventListener("click", () => switchSessionSurface("home"));
 
   const back = document.createElement("button");
   back.type = "button";
@@ -1033,7 +975,6 @@ function setupViewModes() {
 function setupVaultControls() {
   document.querySelectorAll("[data-vault-action]").forEach((button) => button.addEventListener("click", () => runVaultAction(button)));
   document.querySelectorAll("[data-vault-control]").forEach((button) => button.addEventListener("click", () => controlVaultJob(button)));
-  document.querySelector("#vault-query-form")?.addEventListener("submit", (event) => { event.preventDefault(); runVaultQuery(); });
 }
 function setupLaunchActions() {
   const launch = document.querySelector('a[href="/launch/lmstudio"]');
@@ -1108,7 +1049,8 @@ setupViewModes();
 setupProfileControls();
 setupVaultControls();
 setupResourceControls();
-if (!document.body.classList.contains("control-mode")) startVaultSession("home");
+const openingVaultWorkspace = new URLSearchParams(window.location.search).get("workspace") === "knowledge-vault";
+if (!document.body.classList.contains("control-mode") && !openingVaultWorkspace) startVaultSession("home");
 if (window.ariadneRuntime) {
   window.addEventListener("ariadne:runtime", event => render(event.detail));
   window.addEventListener("ariadne:runtime-error", () => {

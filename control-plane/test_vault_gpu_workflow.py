@@ -22,6 +22,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
             "transition_detail": server.GPU_TRANSITION_DETAIL,
             "home_model": server.HOME_CHAT_MODEL,
             "ingest_model": server.OLLAMA_CHAT_MODEL,
+            "vault_ingest_model": server.VAULT_INGESTION_MODEL,
             "home_preload_thread": server.HOME_MODEL_PRELOAD_THREAD,
             "jobs": server.JOBS,
             "sessions": server.SESSIONS,
@@ -33,6 +34,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
         server.GPU_TRANSITION_DETAIL = "GPU is available."
         server.HOME_CHAT_MODEL = "home-model"
         server.OLLAMA_CHAT_MODEL = "ingestion-model"
+        server.VAULT_INGESTION_MODEL = "ingestion-model"
         server.JOBS = {}
         server.SESSIONS = {}
         self.inference_lease_patch = patch.object(
@@ -64,6 +66,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
             server.GPU_TRANSITION_DETAIL = self.original["transition_detail"]
         server.HOME_CHAT_MODEL = self.original["home_model"]
         server.OLLAMA_CHAT_MODEL = self.original["ingest_model"]
+        server.VAULT_INGESTION_MODEL = self.original["vault_ingest_model"]
         server.HOME_MODEL_PRELOAD_THREAD = self.original["home_preload_thread"]
         server.JOBS = self.original["jobs"]
         server.SESSIONS = self.original["sessions"]
@@ -289,6 +292,7 @@ class VaultGpuWorkflowTests(unittest.TestCase):
     def test_page_entry_model_residency_failure_unloads_partial_model(self):
         catalog = {"available": True, "loaded": [], "loaded_details": []}
         with patch.object(server, "ollama_catalog", return_value=catalog), \
+             patch.object(server, "release_idle_ollama_models", return_value={"available": True, "unloaded": [], "protected": []}), \
              patch.object(server, "host_acquire_model_lease", return_value="host-lease"), \
              patch.object(server, "preload_ollama_model") as preload:
             result = server.vault_gpu_entry_preflight("session-residency-fail")

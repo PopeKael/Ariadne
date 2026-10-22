@@ -13,12 +13,19 @@ import server
 
 class VaultV2ControlTests(unittest.TestCase):
     def test_worker_process_receives_authoritative_control_plane_path(self):
-        with patch.object(server.subprocess, "Popen") as popen:
+        with patch.object(server.subprocess, "Popen") as popen, \
+             patch.object(server, "VAULT_INGESTION_MODEL", "configured-ingest:latest"), \
+             patch.object(server, "VAULT_INGESTION_CONTEXT_TOKENS", 32768), \
+             patch.object(server, "VAULT_RUNTIME", {**server.VAULT_RUNTIME, "embedding_model": "configured-embed:latest", "embedding_context_tokens": 4096}):
             server._start_process(["worker"], Path(server.ROOT))
 
         child_environment = popen.call_args.kwargs["env"]
         self.assertEqual(Path(child_environment["ARIADNE_CONTROL_PLANE"]), Path(server.ROOT))
         self.assertTrue((Path(child_environment["ARIADNE_CONTROL_PLANE"]) / "ollama_runtime.py").is_file())
+        self.assertEqual(child_environment["ARIADNE_VAULT_INGESTION_MODEL"], "configured-ingest:latest")
+        self.assertEqual(child_environment["ARIADNE_VAULT_INGESTION_CONTEXT"], "32768")
+        self.assertEqual(child_environment["ARIADNE_EMBEDDING_MODEL"], "configured-embed:latest")
+        self.assertEqual(child_environment["ARIADNE_EMBEDDING_CONTEXT"], "4096")
 
     def test_vault_buttons_dispatch_external_vault_wrappers(self):
         system = Path(__file__).resolve().parents[2] / "KnowledgeVault/00_System"

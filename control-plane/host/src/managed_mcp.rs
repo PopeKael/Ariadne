@@ -38,7 +38,7 @@ static DIAGNOSTIC_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 static TEST_KILL_MCP_CHILD: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct ServiceConfig {
     vault_root: PathBuf,
     control_plane: PathBuf,
@@ -47,6 +47,8 @@ struct ServiceConfig {
     tunnel_client: PathBuf,
     tunnel_id: Option<String>,
     tunnel_key: Option<String>,
+    embedding_model: String,
+    embedding_context_tokens: String,
 }
 
 pub struct ManagedMcpServices {
@@ -272,6 +274,14 @@ fn service_config(project_root: &Path) -> Result<ServiceConfig, String> {
             None
         }
     };
+    let embedding_model = env::var("ARIADNE_EMBEDDING_MODEL")
+        .ok()
+        .or_else(|| saved.pointer("/vault_runtime/embedding_model").and_then(Value::as_str).map(str::to_owned))
+        .unwrap_or_else(|| "nomic-embed-text".into());
+    let embedding_context_tokens = env::var("ARIADNE_EMBEDDING_CONTEXT")
+        .ok()
+        .or_else(|| saved.pointer("/vault_runtime/embedding_context_tokens").and_then(Value::as_u64).map(|value| value.to_string()))
+        .unwrap_or_else(|| "2048".into());
     if !mcp_script.is_file() {
         return Err(format!(
             "Knowledge Vault MCP server was not found at {}",
@@ -297,6 +307,8 @@ fn service_config(project_root: &Path) -> Result<ServiceConfig, String> {
         tunnel_client,
         tunnel_id,
         tunnel_key,
+        embedding_model,
+        embedding_context_tokens,
     })
 }
 
@@ -365,7 +377,17 @@ fn supervise(project_root: PathBuf, stop: Arc<AtomicBool>) {
         }
         if Instant::now() >= next_config_read {
             match service_config(&project_root) {
-                Ok(value) => config = Some(value),
+                Ok(value) => {
+                    let changed = config.as_ref().is_some_and(|previous| previous != &value);
+                    if changed {
+                        stop_slot(&mut tunnel, "Tunnel configuration changed");
+                        stop_slot(&mut mcp, "Knowledge Vault MCP configuration changed");
+                        mcp_retry = RetryState::default();
+                        tunnel_retry = RetryState::default();
+                        mcp_log("Knowledge Vault runtime configuration changed; restarting managed MCP workers with the saved settings");
+                    }
+                    config = Some(value);
+                }
                 Err(error) => mcp_log(&error),
             }
             next_config_read = Instant::now() + Duration::from_secs(10);
@@ -504,6 +526,8 @@ fn spawn_mcp(config: &ServiceConfig, bearer: &str) -> Result<ProcessSlot, String
         .env("ARIADNE_MCP_PORT", mcp_port().to_string())
         .env("ARIADNE_MCP_PATH", "/mcp")
         .env("ARIADNE_CONTROL_PLANE", &config.control_plane)
+        .env("ARIADNE_EMBEDDING_MODEL", &config.embedding_model)
+        .env("ARIADNE_EMBEDDING_CONTEXT", &config.embedding_context_tokens)
         .env("ARIADNE_MCP_BEARER_TOKEN", bearer)
         .stdin(Stdio::null())
         .stdout(Stdio::null())

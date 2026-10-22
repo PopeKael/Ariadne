@@ -8,6 +8,31 @@ import server
 
 
 class VaultIngestControlTests(unittest.TestCase):
+    def test_closing_active_ingest_requests_checkpoint_and_keeps_lease_owner(self):
+        class ActiveProcess:
+            def poll(self):
+                return None
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            control_path = root / "job.control.json"
+            process = ActiveProcess()
+            job = {"session_id": "owner", "action": "ingest", "state": "running",
+                   "process": process, "control_path": control_path, "controllable": True}
+            session = {"surface": "knowledge-vault", "jobs": {"job"}, "host_gpu_lease_id": "held-lease"}
+            sessions = {"owner": session}
+            with patch.object(server, "JOBS", {"job": job}), patch.object(server, "SESSIONS", sessions), \
+                 patch.object(server.subprocess, "Popen", ActiveProcess), \
+                 patch.object(server, "OLLAMA_REQUEST_TIMEOUT_SECONDS", -30), \
+                 patch.object(server, "_terminate_process") as terminate, \
+                 patch.object(server, "host_release_gpu_lease") as release:
+                self.assertFalse(server._close_session("owner"))
+            self.assertEqual(json.loads(control_path.read_text(encoding="utf-8"))["command"], "stop")
+            self.assertTrue(session["closing"])
+            self.assertIn("owner", sessions)
+            terminate.assert_not_called()
+            release.assert_not_called()
+
     def test_controlled_ingest_is_not_killed_by_elapsed_batch_timeout(self):
         for action in ("ingest", "full_rebuild"):
             with patch.object(server, "JOBS", {"job": {"action": action, "controllable": True}}), \

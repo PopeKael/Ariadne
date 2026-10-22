@@ -72,6 +72,17 @@
           <div class="card-heading"><div><span class="eyebrow">KNOWLEDGE SYSTEM STATUS</span><h2>Live Vault evidence</h2><p id="vault-source-note">Checking the active source…</p></div><span class="active-vault-badge" id="vault-active-badge">Checking</span></div>
           <div class="metric-grid"><div><span>Catalogue records</span><strong id="catalogue-count">—</strong></div><div><span>Embedding documents</span><strong id="embedding-documents">—</strong></div><div><span>Embedding chunks</span><strong id="embedding-chunks">—</strong></div><div><span>Last ingest / rebuild</span><strong id="last-ingest">—</strong></div></div>
         </section>
+        <section class="configuration-card knowledge-card" aria-labelledby="vault-runtime-heading">
+          <div class="card-heading"><div><span class="eyebrow">KNOWLEDGE VAULT TOOLS</span><h2 id="vault-runtime-heading">Workspace runtime</h2><p>These settings are passed to the Vault workers and Rust Host admission checks.</p></div></div>
+          <div class="personality-fields">
+            <label class="path-field"><span class="field-label">Ingestion model</span><input id="vault-ingestion-model" type="text" required></label>
+            <label class="path-field"><span class="field-label">Ingestion context tokens</span><input id="vault-ingestion-context" type="number" min="1024" max="131072" step="1024" required></label>
+            <label class="path-field"><span class="field-label">Ingestion output tokens</span><input id="vault-ingestion-output" type="number" min="1024" max="131072" step="256" required></label>
+            <label class="path-field"><span class="field-label">Embedding model</span><input id="vault-embedding-model" type="text" required></label>
+            <label class="path-field"><span class="field-label">Embedding context tokens</span><input id="vault-embedding-context" type="number" min="1024" max="131072" step="1024" required></label>
+            <label class="path-field"><span class="field-label">Temperature</span><input id="vault-temperature" type="number" min="0" max="2" step="0.1" required></label>
+          </div>
+        </section>
         <div id="plugin-configuration-sections" aria-live="polite"></div>
         <div class="configuration-actions"><a id="back-link" class="secondary-button" href="/">Cancel / Back</a><button class="primary-button" type="submit">Save configuration</button></div>
       </form>

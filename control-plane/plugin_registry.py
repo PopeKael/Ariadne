@@ -41,7 +41,8 @@ REQUIRED_FIELDS = {
     "health",
     "activity",
 }
-OPTIONAL_FIELDS = {"actions", "action_metadata"}
+OPTIONAL_FIELDS = {"actions", "action_metadata", "workspace"}
+WORKSPACE_OWNERSHIP_MODES = {"exclusive", "shared", "none"}
 
 
 class ManifestValidationError(ValueError):
@@ -110,6 +111,25 @@ def validate_manifest(payload: object, *, source: str = "manifest") -> dict[str,
         raise ManifestValidationError("activity.supported must be a boolean")
     if activity.get("transport", "ariadne-core") != "ariadne-core":
         raise ManifestValidationError("activity.transport must be ariadne-core")
+    workspace = payload.get("workspace")
+    if workspace is not None:
+        if not isinstance(workspace, dict):
+            raise ManifestValidationError("workspace must be an object")
+        unknown_workspace = set(workspace) - {"entry_point", "ownership_mode", "model", "dependencies", "startup", "readiness", "shutdown", "recovery"}
+        if unknown_workspace:
+            raise ManifestValidationError(f"workspace contains unsupported fields: {', '.join(sorted(unknown_workspace))}")
+        if workspace.get("ownership_mode") not in WORKSPACE_OWNERSHIP_MODES:
+            raise ManifestValidationError("workspace.ownership_mode must be exclusive, shared or none")
+        for field in ("entry_point", "startup", "readiness", "shutdown", "recovery"):
+            if not isinstance(workspace.get(field), str) or not workspace[field].strip():
+                raise ManifestValidationError(f"workspace.{field} must be a non-empty string")
+        if not isinstance(workspace.get("dependencies", []), list) or any(not isinstance(item, str) or not item.strip() for item in workspace.get("dependencies", [])):
+            raise ManifestValidationError("workspace.dependencies must be a list of non-empty strings")
+        model = workspace.get("model")
+        if model is not None and not isinstance(model, dict):
+            raise ManifestValidationError("workspace.model must be an object or null")
+        if isinstance(model, dict) and set(model) - {"role", "setting", "default", "context_setting"}:
+            raise ManifestValidationError("workspace.model contains unsupported fields")
     ui = dict(payload["ui"])
     settings = dict(payload["settings"])
     for field, value in (("ui.available", ui.get("available", False)), ("settings.available", settings.get("available", False))):
@@ -151,6 +171,9 @@ def validate_manifest(payload: object, *, source: str = "manifest") -> dict[str,
         "enabled": payload["enabled"],
         "health": health,
         "activity": activity,
+        **({"workspace": {**workspace, "dependencies": list(workspace.get("dependencies", [])),
+                            "model": dict(workspace["model"]) if isinstance(workspace.get("model"), dict) else None}}
+           if workspace is not None else {}),
     }
 
 
@@ -256,6 +279,47 @@ class PluginRegistry:
         if not self.records:
             self.discover()
         return [record for record in self.records if record.manifest and capability_id in record.manifest["capabilities"] and (not enabled_only or record.manifest["enabled"])]
+
+    @staticmethod
+    def resolve_workspace_requirements(manifest: dict[str, Any], configuration: dict[str, Any]) -> dict[str, Any]:
+        """Resolve a declarative workspace model/context against saved settings."""
+        workspace = manifest.get("workspace")
+        if not isinstance(workspace, dict):
+            raise ManifestValidationError("Plugin does not declare workspace requirements.")
+        model_spec = workspace.get("model")
+        model = None
+        context_tokens = None
+        if isinstance(model_spec, dict):
+            def configured_value(path: object) -> object:
+                if not isinstance(path, str) or not path.strip():
+                    return None
+                value: object = configuration
+                for part in path.split("."):
+                    value = value.get(part) if isinstance(value, dict) else None
+                return value
+
+            model = configured_value(model_spec.get("setting")) or model_spec.get("default")
+            context_tokens = configured_value(model_spec.get("context_setting"))
+            if not isinstance(model, str) or not model.strip():
+                raise ManifestValidationError("Workspace model requirement did not resolve to a model name.")
+            try:
+                context_tokens = int(context_tokens)
+                if not 1_024 <= context_tokens <= 131_072:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ManifestValidationError("Workspace context requirement did not resolve to a supported token count.") from None
+        return {
+            "plugin_id": manifest["plugin_id"],
+            "entry_point": workspace["entry_point"],
+            "ownership_mode": workspace["ownership_mode"],
+            "model": model.strip() if isinstance(model, str) else None,
+            "context_tokens": context_tokens,
+            "dependencies": list(workspace.get("dependencies", [])),
+            "startup": workspace["startup"],
+            "readiness": workspace["readiness"],
+            "shutdown": workspace["shutdown"],
+            "recovery": workspace["recovery"],
+        }
 
     def payload(self) -> dict[str, Any]:
         plugins = self.list_plugins()

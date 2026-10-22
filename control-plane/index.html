@@ -93,7 +93,7 @@
             <span class="launch-copy"><strong>LM Studio</strong><small>Local model runtime</small></span>
             <span class="launch-status" id="lmstudio-status">Checking</span><span class="launch-arrow">↗</span>
           </a>
-          <a class="launch-row" href="#knowledge-vault">
+          <a class="launch-row" href="/?workspace=knowledge-vault#knowledge-vault">
             <span class="launch-icon ariadne-control-icon">◈</span>
             <span class="launch-copy"><strong>Knowledge Vault controls</strong><small>Ariadne Core · local only</small></span>
             <span class="launch-status local" id="ariadne-control-status">Ready</span><span class="launch-arrow">↓</span>
@@ -128,18 +128,11 @@
 
   <section class="panel vault-panel" id="knowledge-vault">
     <div class="section-head">
-      <div><h2>Knowledge Vault</h2><p>Ask a private question against this corpus. This stays separate from Ariadne chat.</p></div>
+      <div><h2>Knowledge Vault Tools</h2><p>Processing and maintenance workspace. Ask knowledge questions in Ariadne Chat.</p></div>
       <span class="badge" id="vault-session-state">Starting session</span>
     </div>
-    <div class="vault-query">
-      <div class="vault-query-head"><div><h3>Ask the Vault</h3><p>The session-resident 20B model plans focused searches, retrieves vault evidence, and writes a cited answer. This is separate from Ariadne chat.</p></div><span class="badge muted-badge" id="vault-query-model">MODEL · 16K CONTEXT · SESSION STARTING</span></div>
-      <form id="vault-query-form">
-        <textarea id="vault-query-input" placeholder="Ask a specific question about your Knowledge Vault…" required></textarea>
-        <div class="vault-query-actions"><button type="submit">Ask the Vault</button></div>
-      </form>
-      <p id="vault-query-status" class="vault-status" role="status" aria-live="polite">Ready when the session is active.</p>
-      <div id="vault-query-results" class="vault-results" aria-live="polite"></div>
-    </div>
+    <p id="vault-query-status" class="vault-status" role="status" aria-live="polite">Open the workspace to prepare its configured runtime.</p>
+    <span class="badge muted-badge" id="vault-query-model">MODEL · NOT PREPARED</span>
     <div class="vault-job-monitor" id="vault-job-monitor" hidden>
       <div class="vault-job-monitor-head"><strong id="vault-job-title">Vault operation</strong><span id="vault-job-state">Waiting</span></div>
       <div class="vault-job-controls" id="vault-job-controls" hidden>
@@ -156,8 +149,6 @@
       <article class="vault-card"><div><h3>Embedding Index</h3><p>Check the local semantic-search index without changing vault notes.</p></div><button data-vault-action="embedding_status">Check status</button></article>
       <article class="vault-card"><div><h3>Evaluate Retrieval</h3><p>Run the versioned chunk-retrieval benchmark.</p></div><button data-vault-action="retrieval_evaluation">Run evaluation</button></article>
       <article class="vault-card"><div><h3>Regression Tests</h3><p>Validate current v2 ingestion, chronology, catalogue, retrieval and publication safeguards.</p></div><button data-vault-action="regression_tests">Run tests</button></article>
-      <article class="vault-card"><div><h3>Cleanup Plugin · Preview</h3><p>Show proposed Downloads filing moves. Preview mode makes no filesystem changes.</p></div><button data-plugin-id="cleanup" data-plugin-action="preview">Preview moves</button></article>
-      <article class="vault-card warning-card"><div><h3>Cleanup Plugin · Organise</h3><p>Move files using the configured Cleanup rules. Collisions are skipped; existing files are never overwritten.</p></div><button data-plugin-id="cleanup" data-plugin-action="apply" data-confirm="Move the configured Downloads files now? Existing files will not be overwritten.">Organise Downloads</button></article>
       <article class="vault-card"><div><h3>Failure Audit</h3><p>Audit current v2 unresolved, retryable and manual-review state.</p></div><button data-vault-action="audit_failures">Run audit</button></article>
       <article class="vault-card warning-card"><div><h3>Rebuild Embeddings</h3><p>Regenerate accepted-record embeddings and publish only a complete replacement. Source Markdown is not altered.</p></div><button data-vault-action="embedding_rebuild" data-confirm="Rebuild the local embedding index now?">Rebuild index</button></article>
       <article class="vault-card warning-card"><div><h3>Calibrate Embedding Profile</h3><p>Explicitly calibrate an unknown full GPU profile through Rust Host, then rebuild the local embedding index. The 1 GiB reserve remains enforced.</p></div><button data-vault-action="embedding_calibrate" data-confirm="Release idle models, calibrate the configured embedding model through Rust Host, and rebuild the local index? This uses GPU memory and keeps the 1 GiB reserve.">Calibrate and rebuild</button></article>

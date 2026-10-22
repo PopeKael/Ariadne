@@ -107,6 +107,33 @@ function renderStorage(payload) {
   }
 }
 
+function renderVaultRuntime(payload) {
+  const runtime = payload.vault_runtime || payload.config?.vault_runtime || {};
+  const values = {
+    "vault-ingestion-model": runtime.ingestion_model || "gpt-oss:20b",
+    "vault-ingestion-context": runtime.ingestion_context_tokens || 16384,
+    "vault-ingestion-output": runtime.ingestion_output_tokens || 2048,
+    "vault-embedding-model": runtime.embedding_model || "nomic-embed-text",
+    "vault-embedding-context": runtime.embedding_context_tokens || 2048,
+    "vault-temperature": runtime.temperature ?? 0,
+  };
+  for (const [id, value] of Object.entries(values)) {
+    const input = document.getElementById(id);
+    if (input && document.activeElement !== input) input.value = value;
+  }
+}
+
+function formVaultRuntime() {
+  return {
+    ingestion_model: document.querySelector("#vault-ingestion-model").value.trim(),
+    ingestion_context_tokens: Number(document.querySelector("#vault-ingestion-context").value),
+    ingestion_output_tokens: Number(document.querySelector("#vault-ingestion-output").value),
+    embedding_model: document.querySelector("#vault-embedding-model").value.trim(),
+    embedding_context_tokens: Number(document.querySelector("#vault-embedding-context").value),
+    temperature: Number(document.querySelector("#vault-temperature").value),
+  };
+}
+
 function renderRuntime(payload) {
   const runtime = payload.runtime || {};
   setText("active-vault", runtime.active_vault);
@@ -591,6 +618,7 @@ function renderPluginConfigurations(payload) {
 
 function render(payload) {
   renderStorage(payload);
+  renderVaultRuntime(payload);
   renderAvatar(payload.avatar);
   renderInference(payload);
   void loadInferenceModelCatalogue();
@@ -806,7 +834,7 @@ async function save(event) {
   setStatus("Validating and saving configuration…");
   try {
     const plugins = formPlugins();
-    const body = {storage: formStorage(), inference: formInference(), personality: formPersonality()};
+    const body = {storage: formStorage(), inference: formInference(), personality: formPersonality(), vault_runtime: formVaultRuntime()};
     if (plugins) body.plugins = plugins;
     const payload = await configurationJson("/api/configuration", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     if (!payload.persistence?.verified) throw new Error("The server did not verify the persisted configuration.");
