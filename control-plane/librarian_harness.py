@@ -47,8 +47,6 @@ def request_needs_personal_context(request: str) -> bool:
     terms = set(re.findall(r"[a-z0-9]+", str(request or "").casefold()))
     if not terms:
         return False
-    if terms.intersection({"warren", "wazza", "chanya", "ariadne", "pope", "kael", "trolls"}):
-        return True
     if terms.intersection(PERSONAL_PRONOUNS) and terms.intersection(PERSONAL_WORLD_TERMS):
         return True
     if terms.intersection(PERSONAL_PRONOUNS) and terms.intersection(PERSONAL_CONTINUITY_TERMS):
@@ -357,7 +355,15 @@ def resolve_policy(semantic: dict[str, Any], runtime_context: dict[str, Any]) ->
         if semantic["needs_personal_history"]:
             overrides.append("vault_never")
     else:
+        # The semantic planner owns intent. A non-empty search query with no
+        # personal-history dependency is affirmative evidence for public
+        # research, so incidental first-person words and names must not force
+        # a Vault lookup on top of that route.
+        turn_search_query = turn.get("search_query", "") if isinstance(turn, dict) else ""
+        planner_requests_research = isinstance(turn_search_query, str) and bool(turn_search_query.strip())
         personal_floor = request_needs_personal_context(str(runtime_context.get("request") or ""))
+        if planner_requests_research and not semantic["needs_personal_history"]:
+            personal_floor = False
         use_vault = bool((semantic["needs_personal_history"] or personal_floor) and vault_available)
         if update_sufficient:
             use_vault = False
@@ -378,14 +384,20 @@ def resolve_policy(semantic: dict[str, Any], runtime_context: dict[str, Any]) ->
         use_documents = False
         overrides.append("document_tool_not_selected")
 
+    # The interpreter's non-empty search query means it judged public research
+    # relevant, even when the answer is explanatory rather than time-sensitive.
+    # Keep that interpretation distinct from deterministic mode/tool limits.
+    turn_search_query = turn.get("search_query", "") if isinstance(turn, dict) else ""
+    needs_external_research = bool(semantic["needs_current_information"] or
+                                   (isinstance(turn_search_query, str) and turn_search_query.strip()))
     needs_current = bool(semantic["needs_current_information"])
     external_search_allowed = bool(capabilities.get("external_research_allowed", mode != "local"))
-    if needs_current and "external-research" not in available:
+    if needs_external_research and "external-research" not in available:
         gaps.append("current_source_restricted" if not external_search_allowed else "current_source_unavailable")
     tools: list[str] = []
     if use_documents:
         tools.append("document-analysis")
-    if needs_current and external_search_allowed and "external-research" in available and (not selected or "external-research" in selected):
+    if needs_external_research and external_search_allowed and "external-research" in available and (not selected or "external-research" in selected):
         tools.append("external-research")
     if selected:
         tools = [tool for tool in tools if tool in selected]
@@ -394,7 +406,7 @@ def resolve_policy(semantic: dict[str, Any], runtime_context: dict[str, Any]) ->
         primary_source = "attachment"
     elif use_vault:
         primary_source = "vault"
-    elif needs_current:
+    elif needs_external_research:
         primary_source = "external"
     else:
         primary_source = "user_message"
@@ -404,8 +416,8 @@ def resolve_policy(semantic: dict[str, Any], runtime_context: dict[str, Any]) ->
         tasks.append("analyze attached evidence")
     if use_vault:
         tasks.append("retrieve relevant personal or project history")
-    if needs_current:
-        tasks.append("obtain genuinely current information")
+    if needs_external_research:
+        tasks.append("obtain relevant external research")
     if use_heavy:
         tasks.append("use the high reasoning tier")
     plan = {

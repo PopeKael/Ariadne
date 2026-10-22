@@ -98,6 +98,27 @@ class EvidenceFirstTests(unittest.TestCase):
         self.assertFalse(decision.quiet_personal_context)
         self.assertFalse(decision.external_search)
 
+    def test_planner_public_research_is_not_reclassified_as_personal_history(self):
+        challenge = (
+            "Ariadne, I'm challenging your last response. I didn't ask you to guess. I asked you to investigate how the PHP "
+            "vulnerabilities could be exploited. Use your available research capabilities and explain the attack mechanisms "
+            "using verifiable sources."
+        )
+        decision = decide(
+            challenge,
+            planner_result={
+                "plan": {"primary_source": "external", "tools": ["external-research"], "use_vault": False},
+                "semantic": {"needs_personal_history": False, "needs_current_information": False,
+                    "turn": {"search_query": "PHP vulnerability exploit attack mechanisms"}},
+            },
+            vault_mode="all", vault_available=True, search_available=True,
+        )
+        self.assertTrue(decision.verification_required)
+        self.assertTrue(decision.external_search)
+        self.assertFalse(decision.personal_context)
+        self.assertFalse(decision.personal_fact_verification)
+        self.assertFalse(decision.use_vault)
+
     def test_personal_story_with_when_is_not_misclassified_as_a_precision_question(self):
         query = (
             "This must be a reflection of the changing world we live in. I remember coming to Australia in my final days. "

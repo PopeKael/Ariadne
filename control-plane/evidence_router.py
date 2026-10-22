@@ -124,6 +124,8 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
     word_set = set(words)
     planner = planner_result if isinstance(planner_result, dict) else {}
     semantic = planner.get("semantic") if isinstance(planner.get("semantic"), dict) else {}
+    plan = planner.get("plan") if isinstance(planner.get("plan"), dict) else {}
+    turn = semantic.get("turn") if isinstance(semantic.get("turn"), dict) else {}
     reasons: list[str] = []
 
     explicit = bool(re.search(r"\b(?:search|browse)\b.*\b(?:web|internet|online)\b|\bweb\s+(?:search|research)\b", query.casefold())) or bool(word_set.intersection(VERIFY_WORDS)) or bool(re.search(r"\blook\s+up\b|\bfind\s+out\b", query.casefold()))
@@ -137,6 +139,15 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
     precise = bool(word_set.intersection(PRECISION_WORDS)) or asks_when
     conflict = bool(word_set.intersection(CONFLICT_WORDS))
     personal_context = _personal_context_present(query, semantic)
+    planner_requests_research = bool(
+        plan.get("primary_source") == "external"
+        or "external-research" in (plan.get("tools") if isinstance(plan.get("tools"), list) else [])
+        or (isinstance(turn.get("search_query"), str) and turn["search_query"].strip())
+    )
+    # A name used to address Ariadne is not evidence that the user wants a
+    # personal-history lookup. Respect the planner's public-research reading.
+    if planner_requests_research and not bool(semantic.get("needs_personal_history")):
+        personal_context = False
     personal_fact_verification = _personal_fact_verification(query, personal_context, explicit)
     named = _capitalized_name_phrase(_remove_known_personal_terms(query)) if personal_context else _capitalized_name_phrase(query)
     if not named:
@@ -150,6 +161,7 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
     for enabled, code in (
         (current or planner_current, "current_information"),
         (explicit, "explicit_verification"),
+        (planner_requests_research, "planner_external_research"),
         (named, "named_or_obscure"),
         (precise, "precision_claim"),
         (conflict or planner_ambiguous, "conflicting_or_ambiguous"),
@@ -164,7 +176,7 @@ def classify_request(query: str, planner_result: dict[str, Any] | None = None) -
     # Vault search; the caller either supplies the missing attachment/context
     # or receives a clear request for it.
     verification_required = bool(reasons) and (
-        factual or explicit or named or current or planner_current or precise
+        factual or explicit or planner_requests_research or named or current or planner_current or precise
         or conflict or planner_low_confidence or personal_fact_verification
     )
     return {
@@ -228,8 +240,10 @@ def decide(
             reason_codes=("missing_attachment_context",),
             failure_message="I don't have the referenced story attached to this Home chat. Please select the article again and retry.",
         )
+    # Conversation and history intent come from the semantic interpretation
+    # above. Isolated words such as "decided" in a request to audit a research
+    # response must not independently force retrieval from personal memory.
     personal = bool(classification["personal_context"])
-    personal = personal or bool(re.search(r"\b(vault|remember|discussed|decided)\b", query.casefold()))
     mode = vault_mode if vault_mode in {"all", "auto", "local", "always", "never"} else "all"
     if mode == "always":
         use_vault = vault_available
@@ -286,9 +300,10 @@ def external_search_needed(
     """Apply evidence precedence after local retrieval has actually run."""
     if not decision.external_search:
         return False
-    if attachment_source_count > 0 and not decision.current_information and not decision.explicit_verification:
+    planner_research = "planner_external_research" in decision.reason_codes
+    if attachment_source_count > 0 and not decision.current_information and not decision.explicit_verification and not planner_research:
         return False
-    if vault_source_count > 0 and not decision.current_information and not decision.explicit_verification:
+    if vault_source_count > 0 and not decision.current_information and not decision.explicit_verification and not planner_research:
         return False
     return True
 

@@ -24,7 +24,14 @@ from typing import Any, Callable
 # chunks without the provenance required for citations.
 INDEX_VERSION = 3
 DEFAULT_MODEL = os.environ.get("ARIADNE_EMBEDDING_MODEL", "nomic-embed-text")
-DEFAULT_OLLAMA_URL = os.environ.get("ARIADNE_OLLAMA_URL", "http://localhost:11434")
+_CONTROL_PLANE = Path(__file__).resolve().parents[1] / "control-plane"
+if str(_CONTROL_PLANE) not in sys.path:
+    sys.path.insert(0, str(_CONTROL_PLANE))
+from inference import ipv4_ollama_endpoint
+
+DEFAULT_OLLAMA_URL = ipv4_ollama_endpoint(
+    os.environ.get("ARIADNE_OLLAMA_URL", "http://127.0.0.1:11434")
+)
 # Ollama's verified /api/ps residency for the configured nomic-embed-text
 # model is 2,048 tokens. Keep requests, Host profile keys, and observed runtime
 # state aligned; Ollama may silently clamp larger values.

@@ -91,6 +91,7 @@ class HomeSourceRoutingTests(unittest.TestCase):
             "publish_home_activity": server.publish_home_activity,
             "record_model_residency_event": server.record_model_residency_event,
             "model_activity": server.model_activity,
+            "list_documents": server.list_documents,
             "LIBRARIAN_EVENT_STREAM": server.LIBRARIAN_EVENT_STREAM,
             "CORE_INTERACTION_STREAM": server.CORE_INTERACTION_STREAM,
             "DOCUMENT_WORK_ROOT": server.DOCUMENT_WORK_ROOT,
@@ -130,6 +131,134 @@ class HomeSourceRoutingTests(unittest.TestCase):
         for name, value in self.originals.items():
             setattr(server, name, value)
         self.temporary.cleanup()
+
+    def test_php_conversation_routes_to_research_and_recovers_once(self):
+        original_question = (
+            "I've already reached out to my hosting service through their support system. They have given me a reply saying "
+            "that they're updating all their PHP backend systems and I'm not to worry about it. I've looked at my local systems. "
+            "There's no vulnerability attack vector we can see internally here, but aside from that, nobody really tells us how "
+            "the attack can be performed. So has there been any sort of information on how the attack vectors propagate?"
+        )
+        followup_challenge = (
+            "Ariadne, I'm challenging your last response.\n\n"
+            "I didn't ask you to guess. I asked you to investigate how the PHP vulnerabilities could be exploited.\n\n"
+            "You have web research tools available through your architecture, so why didn't you use them?\n\n"
+            "I want you to reconsider my original question, use your available research capabilities, and explain the attack mechanisms using verifiable sources.\n\n"
+            "If you cannot access those tools, tell me specifically what's preventing you. Don't invent an explanation or claim to have searched when you haven't.\n\n"
+            "I also want you to distinguish between what you decided as the AI and what your controller prevented you from doing.\n\n"
+            "Now, can you complete the original research task?"
+        )
+        search_query = "PHP recent AI-discovered vulnerability attack vector propagation exploit mechanism"
+        source_text = (
+            "Wiz reports that PHP2Shell consists of remote code execution vulnerabilities in PHP. "
+            "An attacker can exploit the flaws remotely; the report recommends immediate patching."
+        )
+        source = {
+            "title": "PHP2Shell: AI uncovers critical RCE vulnerabilities affecting PHP",
+            "url": "https://www.wiz.io/blog/php2shell-php-rce",
+            "source_id": "https://www.wiz.io/blog/php2shell-php-rce",
+            "snippet": source_text, "content": source_text, "fetched": True,
+        }
+        interpreted = []
+
+        def planner(query, *args, **kwargs):
+            interpreted.append(query)
+            semantic = {
+                "intent": "explain PHP vulnerability exploitation",
+                "needs_personal_history": False, "needs_current_information": False,
+                "needs_attachment": False, "reasoning_complexity": "medium",
+                "ambiguity": "low", "confidence": .96,
+                "turn": {"types": ["question"], "subject": "PHP vulnerabilities",
+                    "objective": "Explain how the PHP vulnerabilities are exploited and how attacks propagate.",
+                    "search_query": search_query, "response_objective": "answer", "changes": []},
+            }
+            return {
+                "plan": {"intent": semantic["intent"], "primary_source": "external",
+                    "tools": ["external-research"], "use_vault": False,
+                    "needs_current_information": False},
+                "semantic": semantic, "fallback": False, "world_state": {}, "telemetry": {},
+            }
+
+        server.home_planner_request = planner
+        search_calls = []
+        server.list_documents = lambda *args: [{
+            "document_id": "article-d035ec0b9f40085582d2eee51989",
+            "filename": "news-article__article-d035ec0b9f40085582d2eee51989.md",
+            "title": "What is PHP and why did it spark a global cyber-security scramble?",
+            "metadata": {"type": "source-article", "article_status": "ready",
+                         "title": "What is PHP and why did it spark a global cyber-security scramble?"},
+            "chunk_count": 11,
+        }]
+
+        def search(query, **kwargs):
+            search_calls.append(query)
+            if len(search_calls) % 2:
+                return {"ok": False, "provider": "searxng", "results": [],
+                    "attempts": [{"provider_id": "searxng", "http_status": 200,
+                        "response_classification": "html_no_results", "parsed_candidate_count": 0,
+                        "accepted_result_count": 0, "rejections": []}]}
+            return {"ok": True, "provider": "searxng", "results": [source],
+                "attempts": [{"provider_id": "searxng", "http_status": 200,
+                    "response_classification": "html", "parsed_candidate_count": 1,
+                    "accepted_result_count": 1, "rejections": []}]}
+
+        self.search.search = search
+        def answer(messages, **kwargs):
+            self.mcp.chat_calls.append(messages)
+            return "Wiz describes PHP2Shell as remotely exploitable PHP code execution flaws; it advises patching. [Live Source 1]"
+        self.mcp.ollama_chat = answer
+
+        for question in (original_question, followup_challenge):
+            with self.subTest(turn=question[:36]):
+                chat = server.HOME_CHAT_STORE.create()
+                before = len(search_calls)
+                result = server.home_chat_payload(question, [], "all", chat["chat_id"])
+                self.assertTrue(search_calls[before].startswith(search_query))
+                self.assertIn("scramble", search_calls[before].casefold())
+                self.assertNotEqual(search_calls[before + 1], search_query)
+                self.assertIn("PHP", search_calls[before + 1])
+                self.assertIn("vulnerability", search_calls[before + 1].casefold())
+                self.assertTrue(result["retrieval"]["evidence_policy"]["external_search"])
+                self.assertFalse(result["retrieval"]["evidence_policy"]["use_vault"])
+                self.assertFalse(result["retrieval"]["evidence_policy"]["personal_fact_verification"])
+                self.assertFalse(result["runtime_source_state"]["vault_searched"])
+                self.assertFalse(any(source.get("source_type") == "vault" for source in result["sources"]))
+                self.assertEqual(result["retrieval"]["live_search"]["passes"][1]["query_origin"], "semantic_recovery")
+                self.assertTrue(result["runtime_source_state"]["web_search_recovery_attempted"])
+                self.assertEqual(result["runtime_source_state"]["web_search_result_count"], 1)
+                self.assertIn("[Live Source 1]", result["answer"])
+                self.assertIn(source_text, "\n".join(message["content"] for message in self.mcp.chat_calls[-1]))
+        self.assertEqual(interpreted, [original_question, followup_challenge])
+
+    def test_php_followup_reports_the_provider_limit_after_retry_is_exhausted(self):
+        challenge = (
+            "Ariadne, I'm challenging your last response. I didn't ask you to guess. I asked you to investigate how the PHP "
+            "vulnerabilities could be exploited. You have web research tools available through your architecture, so why "
+            "didn't you use them? I want you to reconsider my original question, use your available research capabilities, "
+            "and explain the attack mechanisms using verifiable sources."
+        )
+        server.home_planner_request = lambda *args, **kwargs: {
+            "plan": {"intent": "PHP exploitation research", "primary_source": "external",
+                "tools": ["external-research"], "use_vault": False},
+            "semantic": {"intent": "PHP exploitation research", "needs_personal_history": False,
+                "needs_current_information": False, "needs_attachment": False,
+                "confidence": .95, "ambiguity": "low", "reasoning_complexity": "medium",
+                "turn": {"types": ["question"], "subject": "PHP vulnerabilities", "objective": "Explain exploit mechanisms.",
+                    "search_query": "PHP vulnerability exploit attack mechanisms", "response_objective": "answer", "changes": []}},
+            "fallback": False, "world_state": {}, "telemetry": {},
+        }
+        self.search.search = lambda query, **kwargs: {
+            "ok": False, "provider": "searxng", "results": [],
+            "attempts": [{"provider_id": "searxng", "http_status": 200,
+                "response_classification": "html_no_results", "parsed_candidate_count": 0,
+                "accepted_result_count": 0, "rejections": []}],
+        }
+        result = server.home_chat_payload(challenge, [], "all", server.HOME_CHAT_STORE.create()["chat_id"])
+        self.assertTrue(result["runtime_source_state"]["web_search_recovery_attempted"])
+        self.assertEqual(result["runtime_source_state"]["web_search_pass_count"], 2)
+        self.assertIn("retried once with a broader query", result["answer"])
+        self.assertIn("SearXNG returned an HTML no-results page", result["answer"])
+        self.assertNotIn("[Live Source", result["answer"])
 
     def test_existing_chat_can_enable_search_mid_conversation_and_prompt_gets_runtime_truth(self):
         chat = server.HOME_CHAT_STORE.create()
@@ -488,11 +617,18 @@ class HomeSourceRoutingTests(unittest.TestCase):
         self.assertEqual(result["runtime_source_state"]["attachment_chunks_used"], 6)
         self.assertEqual(result["runtime_source_state"]["web_search_result_count"], 0)
         self.assertEqual(result["answer"], server._NO_CURRENT_LIVE_SOURCES)
-        self.assertEqual(result["retrieval"]["live_search"]["attempts"], diagnostics)
+        attempts = result["retrieval"]["live_search"]["attempts"]
+        self.assertEqual(len(attempts), 2)
+        self.assertEqual([attempt["query_pass"] for attempt in attempts], [1, 2])
+        self.assertEqual([attempt["response_classification"] for attempt in attempts],
+                         ["html_no_results", "html_no_results"])
+        self.assertNotEqual(attempts[0]["query"], attempts[1]["query"])
         stored = json.loads((server.HOME_CHAT_STORE.root / (chat_id + ".json")).read_text(encoding="utf-8"))
         self.assertEqual(stored["messages"][1]["content"], stale)
         self.assertEqual(stored["messages"][-1]["content"], result["answer"])
-        self.assertEqual(stored["messages"][-1]["retrieval"]["live_search"]["attempts"], diagnostics)
+        self.assertEqual(stored["messages"][-1]["retrieval"]["live_search"]["attempts"], attempts)
+        self.assertEqual(stored["messages"][-1]["retrieval"]["live_search"]["passes"][1]["query_origin"],
+                         "semantic_recovery")
         self.assertEqual([event["text"] for event in events if event.get("type") == "delta"], [stale])
         self.assertTrue(result["timing"]["context_recipe"]["generation"]["source_guard_rejected"])
 

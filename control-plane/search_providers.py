@@ -99,6 +99,53 @@ def compact_source_query(title: str, lead: str, intent: str, *, task_query: str 
     return " ".join([*terms, suffix]).strip()
 
 
+def recovery_source_query(query: str, semantic: dict[str, Any] | None = None,
+                          *, user_query: str = "") -> str:
+    """Build one broader retry from the interpreted and actual request terms."""
+    semantic = semantic if isinstance(semantic, dict) else {}
+    turn = semantic.get("turn") if isinstance(semantic.get("turn"), dict) else {}
+    subject = str(turn.get("subject") or "")
+    objective = str(turn.get("objective") or "")
+    # Keep the interpreted query's complete subject/event phrase first. The
+    # semantic subject and objective can add useful synonyms without replacing
+    # named entities, locations, or event terms from the query.
+    query_anchors = _subject_tokens(query)
+    request_words = re.findall(r"[A-Za-z][A-Za-z0-9]*", user_query)
+    adjacent_terms: list[str] = []
+    for index, word in enumerate(request_words):
+        if _subject_tokens(word).intersection(query_anchors):
+            adjacent_terms.extend(request_words[max(0, index - 1):index])
+            adjacent_terms.extend(request_words[index + 1:index + 2])
+    sources = [query, " ".join(adjacent_terms), subject, objective]
+    drop = SEARCH_STOP_WORDS | {
+        "recently", "discovered", "discovery", "discoveries", "mechanism", "mechanisms",
+        "explain", "explaining", "research", "information", "details", "attacker", "attackers", "attacks",
+        "find", "specific",
+        "already", "reached", "out", "through", "ve", "re", "ll", "given", "saying",
+        "hosting", "hosted", "service", "services", "support", "backend", "method", "methods",
+        "system", "systems", "updating", "update", "reply", "worry", "looked", "local",
+        "internally", "aside", "nobody", "tell", "tells", "performed", "sort", "kind",
+    }
+    terms: list[str] = []
+    seen: set[str] = set()
+    for source in sources:
+        for word in re.findall(r"[A-Za-z][A-Za-z0-9]*", source):
+            folded = word.casefold()
+            normalized = next(iter(_subject_tokens(word)), folded)
+            if folded in drop or len(folded) < 2 or normalized in seen:
+                continue
+            seen.add(normalized)
+            terms.append(word)
+            if len(terms) >= 16:
+                break
+        if len(terms) >= 16:
+            break
+    retry = " ".join(terms[:16])[:200].strip()
+    # A repeated query is still useful for transient provider failures, but
+    # prefer a distinct, broader query when the interpreted wording allows it.
+    return retry or str(query or "")[:200].strip()
+
+
 def _topical_result(query: str, item: dict[str, str]) -> bool:
     subject = _subject_tokens(query)
     if not subject:
@@ -398,6 +445,8 @@ class SearchProviderRegistry:
                         classification = "html_no_results"
                     elif not results and re.search(r"captcha|too many requests|rate.limit", decoded, re.I):
                         classification = "html_challenge_or_rate_limit"
+                    elif not results and classification == "html":
+                        classification = "html_parse_miss"
                     attempt["response_classification"] = classification
                 attempt["parsed_candidate_count"] = len(results)
                 unique: list[dict[str, str]] = []

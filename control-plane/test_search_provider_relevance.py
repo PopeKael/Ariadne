@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
-from search_providers import SearchProviderRegistry, compact_source_query, default_search_providers
+from search_providers import SearchProviderRegistry, compact_source_query, default_search_providers, recovery_source_query
 
 
 FIXTURE_PATH = Path(__file__).parent / "test-fixtures" / "article-followup-08e15e7d1a4748ecbd8fa930c913d87c.json"
@@ -141,6 +141,33 @@ class SearchProviderRelevanceTests(unittest.TestCase):
             self.assertEqual(attempt["accepted_result_count"], 0)
             self.assertEqual(attempt["outcome"], "no_accepted_results")
             self.assertEqual(attempt["rejection_counts"], {"topical_mismatch": len(self.irrelevant)})
+
+    def test_html_parser_miss_is_distinguished_from_an_empty_search_page(self):
+        bodies = [b'<html><body><div class="new-result-layout">Unexpected result markup</div></body></html>',
+                  b'<html><body>No results were found.</body></html>',
+                  json.dumps({"results": self.irrelevant}).encode()]
+        with patch("search_providers._request", side_effect=[(body, "utf-8") for body in bodies]):
+            result = self.registry.search(self.query, fetch_limit=0)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["attempts"][0]["response_classification"], "html_parse_miss")
+        self.assertEqual(result["attempts"][1]["response_classification"], "html_no_results")
+
+    def test_recovery_query_uses_interpreted_subject_and_broadens_without_domain_rules(self):
+        query = "PHP recent AI-discovered vulnerability attack vector propagation exploit mechanism"
+        semantic = {"turn": {"subject": "PHP vulnerabilities",
+            "objective": "Explain how attackers exploit the vulnerabilities and propagate attacks."}}
+        retry = recovery_source_query(query, semantic,
+            user_query="PHP backend systems have a vulnerability attack vector that explains propagation.")
+        self.assertIn("PHP", retry)
+        self.assertIn("vulnerabilities", retry)
+        self.assertIn("vulnerability", retry)
+        self.assertIn("exploit", retry)
+        self.assertNotIn("recent", retry.casefold())
+        self.assertLessEqual(len(retry), 200)
+        general = recovery_source_query("Thailand commercial property flood insurance coverage", {
+            "turn": {"subject": "Thailand commercial property", "objective": "Explain insurance coverage."}})
+        self.assertIn("Thailand", general)
+        self.assertIn("insurance", general)
 
     def test_diagnostics_are_bounded_and_record_success_and_http_failure(self):
         irrelevant = [{"title": "Tourism " + "x" * 1000,

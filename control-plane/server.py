@@ -116,7 +116,7 @@ from https_gateway import load_gateway, start_gateway
 from evidence_router import decide as decide_evidence, external_search_needed
 from conversation_orchestration import (validate_focus, personality_mode, normalize_intensity,
     generation_messages, size, history_candidates, planner_state, assembled_history, context_recipe, turn_context, semantic_receipt)
-from search_providers import SearchProviderRegistry, compact_source_query
+from search_providers import SearchProviderRegistry, compact_source_query, recovery_source_query
 from watchlist import Watchlist
 from rabbit_discovery import excluded_names, visible_result
 from rabbit_library import RabbitLibrary, repository_name as rabbit_repository_name
@@ -7649,6 +7649,34 @@ def _home_live_sources(search_result: dict[str, object]) -> list[dict[str, objec
     return sources
 
 
+def _home_search_failure_message(search_result: dict[str, object]) -> str:
+    """Report what the live search actually failed to provide."""
+    attempts = search_result.get("attempts") if isinstance(search_result.get("attempts"), list) else []
+    providers = list(dict.fromkeys(
+        str(item.get("provider_id")) for item in attempts
+        if isinstance(item, dict) and item.get("provider_id")
+    ))
+    passes = search_result.get("passes") if isinstance(search_result.get("passes"), list) else []
+    retried = len(passes) > 1
+    label = ", ".join(providers) if providers else "the configured live search provider"
+    if not attempts:
+        return "I couldn't verify this because the live search provider did not return diagnostics or usable sources. I stopped rather than guess."
+    if any(isinstance(item, dict) and item.get("response_classification") == "html_parse_miss" for item in attempts):
+        limitation = "at least one provider returned HTML that Ariadne could not parse into result cards"
+    elif any(isinstance(item, dict) and item.get("response_classification") == "html_no_results" for item in attempts):
+        limitation = "SearXNG returned an HTML no-results page and the other providers supplied no usable result cards"
+    elif any(isinstance(item, dict) and (item.get("rejection_counts") or {}).get("topical_mismatch") for item in attempts):
+        limitation = "providers returned candidates, but none passed the topic relevance check"
+    elif any(isinstance(item, dict) and item.get("http_status") for item in attempts):
+        limitation = "the providers returned no usable result cards"
+    else:
+        errors = [str(item.get("error"))[:160] for item in attempts
+                  if isinstance(item, dict) and item.get("error")]
+        limitation = "the provider requests failed" + (f" ({'; '.join(errors[:2])})" if errors else "")
+    retry_text = " and I retried once with a broader query" if retried else ""
+    return f"I searched {label}{retry_text}, but {limitation}. I couldn't establish the attack mechanism from verifiable sources, so I stopped rather than guess."
+
+
 def _home_live_context(search_result: dict[str, object]) -> str:
     sources = _home_live_sources(search_result)
     if not sources:
@@ -7929,6 +7957,35 @@ def _home_research_query(query: str, planner_result: dict[str, object], article:
         anchor = query + " " + (focus["text"] if focus else "")
         if current_year not in anchor and not re.search(r"\b(?:latest|current|recent|today|now)\b|this\s+year", anchor, re.I):
             task_query = re.sub(r"\b" + current_year + r"\b", "", task_query)
+        # A related, attached news article can disambiguate a broad semantic
+        # query. Use only its title as a search anchor when the planner's
+        # interpreted subject overlaps it; the attachment remains answer
+        # evidence only when document analysis is separately selected.
+        documents = document_analysis.get("documents") if isinstance(document_analysis, dict) else None
+        article_titles = []
+        if article is None and isinstance(documents, list):
+            for document in documents:
+                if not isinstance(document, dict):
+                    continue
+                metadata = document.get("metadata") if isinstance(document.get("metadata"), dict) else {}
+                if metadata.get("type") == "source-article" and metadata.get("article_status") == "ready":
+                    title = str(metadata.get("title") or document.get("title") or "").strip()
+                    if title:
+                        article_titles.append(title)
+        semantic_subject = str(turn.get("subject") or task_query)
+        subject_words = {word.casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9]*", semantic_subject + " " + query)}
+        matching_titles = [title for title in article_titles
+                           if subject_words.intersection(word.casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9]*", title))]
+        if len(matching_titles) == 1:
+            title_stop_words = {"what", "why", "did", "does", "is", "it", "a", "an", "and", "the", "to", "of", "in", "on"}
+            query_words = {word.casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9]*", task_query)}
+            title_terms = [word for word in re.findall(r"[A-Za-z][A-Za-z0-9]*", matching_titles[0])
+                           if len(word) > 3 and word.casefold() not in title_stop_words
+                           and word.casefold() not in query_words]
+            for word in title_terms[:5]:
+                if len(task_query) + len(word) + 1 > 200:
+                    break
+                task_query = f"{task_query} {word}".strip()
         return compact_source_query("", "", query, task_query=task_query), "semantic_interpretation"
     if focus:
         return compact_source_query(focus["text"], "", query), "focus_fallback"
@@ -8234,6 +8291,12 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     ))
     planner_plan = planner_result.get("plan") if isinstance(planner_result.get("plan"), dict) else {}
     planner_semantic = planner_result.get("semantic") if isinstance(planner_result.get("semantic"), dict) else {}
+    planner_turn = planner_semantic.get("turn") if isinstance(planner_semantic.get("turn"), dict) else {}
+    planner_external_research = bool(
+        planner_plan.get("primary_source") == "external"
+        or "external-research" in (planner_plan.get("tools") if isinstance(planner_plan.get("tools"), list) else [])
+        or (isinstance(planner_turn.get("search_query"), str) and planner_turn["search_query"].strip())
+    )
     coding_request = is_coding_intent(query) or (
         str(planner_semantic.get("intent") or "").casefold() in {"coding", "coding_task"}
         and "coding-agent" in selected_tools
@@ -8275,7 +8338,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
             personal_context=False, personal_fact_verification=False,
             quiet_personal_context=False, reason_codes=("coding_execution",),
         )
-    web_first = bool(not article_tldr and web_search_allowed and (web_search_automatic or web_search_requested) and (web_search_requested or evidence_decision.current_information or evidence_decision.explicit_verification) and not evidence_decision.personal_fact_verification)
+    web_first = bool(not article_tldr and web_search_allowed and (web_search_automatic or web_search_requested) and (web_search_requested or planner_external_research or evidence_decision.current_information or evidence_decision.explicit_verification) and not evidence_decision.personal_fact_verification)
     use_vault = evidence_decision.use_vault
     planner_memory = bool(planner_plan.get("use_vault") and planner_plan.get("primary_source") == "vault")
     if web_search_requested and not evidence_decision.personal_context and not planner_memory and mode != "always":
@@ -8382,7 +8445,48 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     if external_needed:
         emit_activity("Searching web", "search")
         search_query, search_query_origin = _home_research_query(query, planner_result, referenced_article, document_analysis, focus)
-        live_result = SEARCH_PROVIDER_REGISTRY.search(search_query, limit=5, fetch_limit=3)
+        first_result = SEARCH_PROVIDER_REGISTRY.search(search_query, limit=5, fetch_limit=3)
+        first_sources = _home_live_sources(first_result)
+        first_attempts = [dict(item) for item in first_result.get("attempts", [])
+                          if isinstance(item, dict)] if isinstance(first_result.get("attempts"), list) else []
+        for attempt in first_attempts:
+            if isinstance(attempt, dict):
+                attempt.setdefault("query", search_query)
+                attempt.setdefault("query_pass", 1)
+        passes: list[dict[str, object]] = [{
+            "query": search_query, "query_origin": search_query_origin,
+            "ok": bool(first_result.get("ok")), "provider": first_result.get("provider"),
+            "result_count": len(first_sources),
+        }]
+        live_result = first_result
+        live_sources = first_sources
+        if not live_sources:
+            retry_query = recovery_source_query(search_query, planner_semantic, user_query=query)
+            retry_result = SEARCH_PROVIDER_REGISTRY.search(retry_query, limit=5, fetch_limit=3)
+            retry_sources = _home_live_sources(retry_result)
+            retry_attempts = [dict(item) for item in retry_result.get("attempts", [])
+                              if isinstance(item, dict)] if isinstance(retry_result.get("attempts"), list) else []
+            for attempt in retry_attempts:
+                if isinstance(attempt, dict):
+                    attempt.setdefault("query", retry_query)
+                    attempt.setdefault("query_pass", 2)
+            passes.append({
+                "query": retry_query, "query_origin": "semantic_recovery",
+                "ok": bool(retry_result.get("ok")), "provider": retry_result.get("provider"),
+                "result_count": len(retry_sources),
+            })
+            live_result = dict(retry_result)
+            live_result.update({
+                "query": search_query,
+                "attempts": [*first_attempts, *retry_attempts],
+                "passes": passes,
+                "recovery_attempted": True,
+                "recovery_query": retry_query,
+            })
+            live_sources = retry_sources
+        else:
+            live_result = dict(first_result)
+            live_result.update({"passes": passes, "recovery_attempted": False})
         live_sources = _home_live_sources(live_result)
         if live_sources:
             emit_activity("Reading sources", "reading")
@@ -8424,6 +8528,8 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
         "web_search_provider": search_provider,
         "web_search_provider_ok": bool(live_result.get("ok")) if live_result else False,
         "web_search_result_count": len(live_sources),
+        "web_search_recovery_attempted": bool(live_result.get("recovery_attempted")) if live_result else False,
+        "web_search_pass_count": len(live_result.get("passes", [])) if live_result and isinstance(live_result.get("passes"), list) else 0,
         "attachment_count": len(attachment_summaries),
         "attachment_chunks_used": int(document_analysis.get("retrieved_chunks", 0)),
     }
@@ -8721,7 +8827,7 @@ def _home_chat_payload_impl(query: str, history: object, vault_mode: str = "all"
     try:
         if verification_failed:
             result = vault_result
-            answer = evidence_decision.failure_message
+            answer = _home_search_failure_message(live_result) if external_needed else evidence_decision.failure_message
             record_home_event("verification_failed", "No usable evidence was available; response generation was blocked to prevent guessing.")
         elif use_vault:
             result = vault_result

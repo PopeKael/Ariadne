@@ -184,6 +184,51 @@ class LibrarianHarnessTests(unittest.TestCase):
         self.assertEqual(result["plan"]["tools"], ["external-research"])
         self.assertNotIn("current_source_unavailable", result["capability_gaps"])
 
+    def test_interpreted_public_research_routes_explanatory_questions_to_search(self):
+        value = semantic(needs_current_information=False)
+        value["turn"] = {"search_query": "PHP vulnerability exploit attack mechanisms"}
+        result = resolve_policy(
+            value,
+            context(
+                request="Ariadne, investigate the PHP vulnerabilities and explain the attack mechanisms.",
+                active_knowledge_source="all",
+                available_tools=[{"tool_id": "external-research", "enabled": True}],
+                capabilities={"vault_available": True, "external_research_available": True,
+                    "external_research_allowed": True},
+            ),
+        )
+        self.assertFalse(result["plan"]["use_vault"])
+        self.assertEqual(result["plan"]["primary_source"], "external")
+        self.assertEqual(result["plan"]["tools"], ["external-research"])
+        self.assertNotIn("personal_context_floor", result["policy_overrides"])
+
+    def test_exact_php_followup_challenge_keeps_public_research_out_of_vault(self):
+        request = (
+            "Ariadne, I'm challenging your last response.\n\n"
+            "I didn't ask you to guess. I asked you to investigate how the PHP vulnerabilities could be exploited.\n\n"
+            "You have web research tools available through your architecture, so why didn't you use them?\n\n"
+            "I want you to reconsider my original question, use your available research capabilities, and explain the attack mechanisms using verifiable sources.\n\n"
+            "If you cannot access those tools, tell me specifically what's preventing you. Don't invent an explanation or claim to have searched when you haven't.\n\n"
+            "I also want you to distinguish between what you decided as the AI and what your controller prevented you from doing.\n\n"
+            "Now, can you complete the original research task?"
+        )
+        value = semantic(needs_personal_history=False, needs_current_information=True)
+        value["turn"] = {
+            "search_query": "PHP CVE exploitation mechanisms",
+            "response_objective": "perform_task",
+        }
+        result = resolve_policy(value, context(
+            request=request,
+            active_knowledge_source="all",
+            available_tools=[{"tool_id": "external-research", "enabled": True}],
+            capabilities={"vault_available": True, "external_research_available": True,
+                          "external_research_allowed": True},
+        ))
+        self.assertFalse(result["plan"]["use_vault"])
+        self.assertEqual(result["plan"]["primary_source"], "external")
+        self.assertEqual(result["plan"]["tools"], ["external-research"])
+        self.assertNotIn("personal_context_floor", result["policy_overrides"])
+
     def test_local_only_is_an_explicit_live_search_restriction(self):
         result = resolve_policy(
             semantic(needs_current_information=True),
