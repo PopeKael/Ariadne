@@ -110,8 +110,8 @@ function renderStorage(payload) {
 function renderVaultRuntime(payload) {
   const runtime = payload.vault_runtime || payload.config?.vault_runtime || {};
   const values = {
-    "vault-ingestion-model": runtime.ingestion_model || "gpt-oss:20b",
-    "vault-ingestion-context": runtime.ingestion_context_tokens || 16384,
+    "vault-ingestion-model": "gpt-oss:20b",
+    "vault-ingestion-context": 8192,
     "vault-ingestion-output": runtime.ingestion_output_tokens || 2048,
     "vault-embedding-model": runtime.embedding_model || "nomic-embed-text",
     "vault-embedding-context": runtime.embedding_context_tokens || 2048,
@@ -125,8 +125,8 @@ function renderVaultRuntime(payload) {
 
 function formVaultRuntime() {
   return {
-    ingestion_model: document.querySelector("#vault-ingestion-model").value.trim(),
-    ingestion_context_tokens: Number(document.querySelector("#vault-ingestion-context").value),
+    ingestion_model: "gpt-oss:20b",
+    ingestion_context_tokens: 8192,
     ingestion_output_tokens: Number(document.querySelector("#vault-ingestion-output").value),
     embedding_model: document.querySelector("#vault-embedding-model").value.trim(),
     embedding_context_tokens: Number(document.querySelector("#vault-embedding-context").value),
@@ -587,8 +587,12 @@ function applyConfigurationView(selectedPlugin) {
   const focused = Boolean(requestedPluginId);
   const core = document.querySelector("#core-configuration");
   const knowledge = document.querySelector("#core-knowledge");
+  const adaptive = document.querySelector("#adaptive-settings");
+  const vaultRuntime = document.querySelector("#vault-runtime-settings");
   if (core) core.hidden = focused;
   if (knowledge) knowledge.hidden = focused;
+  if (adaptive) adaptive.hidden = focused;
+  if (vaultRuntime) vaultRuntime.hidden = focused && selectedPlugin?.plugin_id !== "knowledge-vault";
   const title = document.querySelector("#configuration-page-title");
   const description = document.querySelector("#configuration-page-description");
   const back = document.querySelector("#back-link");
@@ -609,7 +613,10 @@ function renderPluginConfigurations(payload) {
   const plugins = pluginRecords(payload).filter(plugin => plugin && plugin.settings?.available && plugin.settings?.route);
   const selectedPlugin = requestedPluginId ? plugins.find(plugin => plugin.plugin_id === requestedPluginId) : null;
   const visible = requestedPluginId ? (selectedPlugin ? [selectedPlugin] : []) : plugins;
-  root.innerHTML = visible.map(plugin => plugin.plugin_id === "cleanup" ? cleanupMarkup() : genericPluginMarkup(plugin)).join("");
+  root.innerHTML = visible.map(plugin => plugin.plugin_id === "cleanup" ? cleanupMarkup()
+    : plugin.plugin_id === "knowledge-vault"
+      ? `<section class="configuration-card plugin-configuration-card" data-plugin-id="knowledge-vault"><div class="card-heading"><div><span class="eyebrow">KNOWLEDGE VAULT PLUGIN</span><h2>Ingestion management</h2><p>Run and monitor Vault ingestion from its dedicated workspace. This plugin owns its job lifecycle and GPU handoff.</p></div><span class="active-vault-badge active">Available</span></div><a class="secondary-button" href="/knowledge-vault">Open Knowledge Vault management</a></section>`
+      : genericPluginMarkup(plugin)).join("");
   if (visible.some(plugin => plugin.plugin_id === "cleanup")) renderCleanup(visible.find(plugin => plugin.plugin_id === "cleanup"));
   if (requestedPluginId && !selectedPlugin) root.innerHTML = unavailablePluginMarkup(requestedPluginId);
   applyConfigurationView(selectedPlugin);
@@ -619,10 +626,12 @@ function renderPluginConfigurations(payload) {
 function render(payload) {
   renderStorage(payload);
   renderVaultRuntime(payload);
-  renderAvatar(payload.avatar);
-  renderInference(payload);
-  void loadInferenceModelCatalogue();
-  renderPersonality(payload);
+  if (!requestedPluginId) {
+    renderAvatar(payload.avatar);
+    renderInference(payload);
+    void loadInferenceModelCatalogue();
+    renderPersonality(payload);
+  }
   const selectedPlugin = renderPluginConfigurations(payload);
   if (payload.runtime || payload.vault) renderRuntime(payload);
   return selectedPlugin;
@@ -833,6 +842,18 @@ async function save(event) {
   event.preventDefault();
   setStatus("Validating and saving configuration…");
   try {
+    if (requestedPluginId === "knowledge-vault") {
+      const payload = await configurationJson("/api/plugins/knowledge-vault/configuration", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({vault_runtime: formVaultRuntime()}),
+      });
+      if (!payload.persistence?.verified) throw new Error("The plugin configuration was not verified after saving.");
+      dirty = false;
+      render(payload);
+      setStatus(payload.message || "Knowledge Vault plugin settings saved.", "success");
+      void showConfigurationDialog({title: "Plugin settings saved", message: payload.message || "Knowledge Vault ingestion settings were saved.", tone: "success"});
+      return;
+    }
     const plugins = formPlugins();
     const body = {storage: formStorage(), inference: formInference(), personality: formPersonality(), vault_runtime: formVaultRuntime()};
     if (plugins) body.plugins = plugins;

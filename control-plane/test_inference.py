@@ -8,7 +8,7 @@ from unittest.mock import patch
 import credential_store
 from inference import (
     DEFAULT_CONTEXT_TOKENS, InferenceRegistry, Provider, default_providers,
-    effective_context_tokens, normalize_ollama_model_id, ollama_model_catalogue,
+    effective_context_tokens, local_model_context_limit, normalize_ollama_model_id, ollama_model_catalogue,
     resolve_ollama_model_id,
 )
 
@@ -126,6 +126,29 @@ class InferenceRegistryTests(unittest.TestCase):
         self.assertEqual(effective_context_tokens(262144), 32768)
         self.assertEqual(effective_context_tokens(16384), 16384)
         self.assertEqual(effective_context_tokens(None), 32768)
+
+    def test_local_gpt_oss_20b_catalogue_limit_overrides_larger_runtime_metadata(self):
+        entry = {"name": "gpt-oss:20b", "digest": "gpt-oss", "details": {"family": "gptoss"}}
+        metadata = {"gpt-oss:20b": {"capabilities": ["completion"], "model_info": {"gptoss.context_length": 131072}}}
+        row = ollama_model_catalogue([entry], metadata)[0]
+        self.assertEqual(row["context_max"], 8192)
+        self.assertEqual(row["effective_context_tokens"], 8192)
+        self.assertEqual(local_model_context_limit("gpt-oss:20b:latest", 32768), 8192)
+        self.assertEqual(local_model_context_limit("qwen3.5:9b", 32768), 32768)
+
+    def test_gpt_oss_local_context_limit_follows_same_weight_catalogue_aliases(self):
+        names = ["gpt-oss:20b", "ariadne-gpt-oss:20b-16k"]
+        shared = {
+            "modelfile": "FROM /models/blobs/sha256-gpt-oss\n",
+            "template": "{{ .Prompt }}", "parameters": "num_ctx 16384",
+            "model_info": {"gptoss.context_length": 131072},
+        }
+        catalogue = ollama_model_catalogue(
+            [{"name": name, "details": {"family": "gptoss"}} for name in names],
+            {name: shared for name in names},
+        )
+        self.assertEqual(len(catalogue), 1)
+        self.assertEqual(catalogue[0]["context_max"], 8192)
 
     def test_embedding_only_model_is_not_chat_capable(self):
         catalogue = ollama_model_catalogue([

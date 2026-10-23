@@ -113,15 +113,48 @@ class ConfigurationPageTests(unittest.TestCase):
                 httpd.shutdown()
                 httpd.server_close()
 
+    def test_knowledge_vault_plugin_has_a_scoped_configuration_save_route(self):
+        httpd = None
+        runtime = {"ingestion_model": "gpt-oss:20b", "ingestion_context_tokens": 8192,
+                   "ingestion_output_tokens": 2048, "embedding_model": "nomic-embed-text",
+                   "embedding_context_tokens": 2048, "temperature": 0}
+        try:
+            httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.AriadneHandler)
+            threading.Thread(target=httpd.serve_forever, daemon=True).start()
+            url = f"http://127.0.0.1:{httpd.server_port}/api/plugins/knowledge-vault/configuration"
+            request = urllib.request.Request(url, data=json.dumps({"vault_runtime": runtime}).encode(),
+                                             headers={"Content-Type": "application/json"}, method="POST")
+            snapshot = {"path": "test-configuration.json", "revision": "rev-1"}
+            with patch.object(server, "save_configuration", return_value={"updated_at": "now"}) as save, \
+                 patch.object(server, "apply_runtime_configuration") as apply, \
+                 patch.object(server, "configuration_snapshot", return_value=snapshot), \
+                 patch.object(server, "configuration_payload", return_value={"config": {}, "plugins": [], "vault_runtime": runtime}):
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    payload = json.loads(response.read())
+            self.assertTrue(payload["persistence"]["verified"])
+            self.assertEqual(payload["vault_runtime"], runtime)
+            save.assert_called_once_with(vault_runtime=runtime)
+            apply.assert_called_once_with()
+        finally:
+            if httpd is not None:
+                httpd.shutdown()
+                httpd.server_close()
+
     def test_configuration_page_uses_dynamic_plugin_mount_and_focused_mode(self):
         html = Path(__file__).with_name("configuration.html").read_text(encoding="utf-8")
         javascript = Path(__file__).with_name("configuration.js").read_text(encoding="utf-8")
         self.assertIn('id="plugin-configuration-sections"', html)
+        self.assertIn('id="vault-runtime-settings"', html)
+        self.assertIn('id="vault-ingestion-context" type="number" min="8192" max="8192"', html)
+        self.assertIn('href="/knowledge-vault">Open Knowledge Vault management', javascript)
+        self.assertIn("Local GPT-OSS 20B uses a fixed 8,192-token total context budget", html)
         self.assertNotIn('id="cleanup-enabled"', html)
         self.assertIn("requestedPluginId", javascript)
         self.assertIn("unavailablePluginMarkup", javascript)
         self.assertIn('data-plugin-id="cleanup"', javascript)
         self.assertIn("configuration/health", javascript)
+        self.assertIn("/api/plugins/knowledge-vault/configuration", javascript)
+        self.assertIn('if (!requestedPluginId)', javascript)
         self.assertIn('id="configuration-dialog"', html)
         self.assertIn('id="cleanup-preview-run"', javascript)
         self.assertIn('id="cleanup-apply-run"', javascript)

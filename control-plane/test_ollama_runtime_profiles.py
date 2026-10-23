@@ -20,6 +20,16 @@ import ariadne_mcp  # noqa: E402
 
 
 class OllamaRuntimeProfileRequestTests(unittest.TestCase):
+    def test_gpt_oss_catalogue_and_runtime_capabilities_enforce_the_local_8k_limit(self):
+        with patch.object(server, "post_json", return_value={
+            "capabilities": ["completion"],
+            "model_info": {"gptoss.context_length": 131_072},
+        }):
+            details = server.ollama_model_capability_details("gpt-oss:20b")
+            effective = server._context_for_model("gpt-oss:20b", 32_768)
+        self.assertEqual(details["context_max"], 8192)
+        self.assertEqual(effective, 8192)
+
     def test_model_lease_api_requires_an_explicit_context_budget(self):
         with self.assertRaisesRegex(TypeError, "context_length"):
             ollama_runtime.inference_lease("qwen3.5:9b-q4_K_M")
@@ -53,21 +63,23 @@ class OllamaRuntimeProfileRequestTests(unittest.TestCase):
         self.assertEqual(request.call_args_list[1].args, ("release_gpu_lease",))
         self.assertEqual(request.call_args_list[1].kwargs["lease_id"], "gpu-1")
 
-    def test_vault_acquisition_marks_explicit_16k_calibration(self):
+    def test_model_acquisition_forwards_requested_context_to_rust_host(self):
         with patch.object(ollama_runtime, "_request_host_model", return_value={"lease_id": "lease-1"}) as request:
             lease_id = ollama_runtime.host_acquire_model_lease(
-                "gpt-oss:20b", "http://127.0.0.1:11434",
+                "qwen3.5:9b", "http://127.0.0.1:11434",
                 context_length=16_384, allow_calibration=True,
             )
         self.assertEqual(lease_id, "lease-1")
         request.assert_called_once_with(
-            "admit_model", endpoint="http://127.0.0.1:11434", model="gpt-oss:20b",
-            context_length=16_384, allow_calibration=True, timeout=330.0,
+            "admit_model", endpoint="http://127.0.0.1:11434", model="qwen3.5:9b",
+            context_length=16_384, allow_calibration=True,
+            restore_previous_models_on_failure=True, inference_kind="generate",
+            session_lease=True, timeout=330.0,
         )
 
     def test_inference_lease_forwards_profile_context_and_releases_lease(self):
         with patch.object(ollama_runtime, "_request_host_model", side_effect=[{"lease_id": "lease-2"}, {}]) as request:
-            with ollama_runtime.inference_lease("gpt-oss:20b", context_length=16_384):
+            with ollama_runtime.inference_lease("qwen3.5:9b", context_length=16_384):
                 pass
         self.assertEqual(request.call_args_list[0].kwargs["context_length"], 16_384)
         self.assertFalse(request.call_args_list[0].kwargs["allow_calibration"])
@@ -81,14 +93,14 @@ class OllamaRuntimeProfileRequestTests(unittest.TestCase):
              patch.object(server, "post_json") as post, \
              patch.object(server, "record_model_residency_event"):
             result = server.preload_ollama_model(
-                "gpt-oss:20b", options={"num_ctx": 16_384},
+                "qwen3.5:9b", options={"num_ctx": 16_384},
                 reason="test_explicit_calibration", allow_calibration=True,
             )
         self.assertTrue(result["ok"])
         self.assertEqual(result["residency"], admission["residency"])
         post.assert_not_called()
         lease.assert_called_once_with(
-            "gpt-oss:20b", server.OLLAMA_URL, context_length=16_384,
+            "qwen3.5:9b", server.OLLAMA_URL, context_length=16_384,
             allow_calibration=True,
         )
 

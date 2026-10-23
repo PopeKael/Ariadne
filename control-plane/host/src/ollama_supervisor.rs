@@ -27,6 +27,7 @@ const GPU_SAFETY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
 // The full 1 GiB reserve is still required before loading it.
 const VAULT_MODEL_POSTLOAD_RESERVE_BYTES: u64 = 512 * 1024 * 1024;
 const UNKNOWN_GPU_OWNER_BLOCK_BYTES: u64 = GPU_SAFETY_RESERVE_BYTES;
+const GPT_OSS_20B_LOCAL_CONTEXT_MAX: u32 = 8_192;
 
 #[derive(Debug, Deserialize)]
 struct RuntimeRequest {
@@ -209,6 +210,9 @@ impl OllamaSupervisor {
 
     fn admit_model(&self, endpoint: String, model: String, context_length: u32, allow_calibration: bool,
                    restore_previous_models_on_failure: bool, session_lease: bool, inference_kind: &str) -> RuntimeResponse {
+        if let Some(detail) = local_model_context_policy_error(&model, context_length) {
+            return RuntimeResponse::error(detail);
+        }
         let Ok(mut state) = self.state.lock() else { return RuntimeResponse::error("Ollama supervisor state is unavailable.") };
         if state.externally_delegated { return RuntimeResponse::error("Ariadne runtime is delegated to Dungeon; model admission is paused."); }
         prune_expired_leases(&mut state);
@@ -1741,6 +1745,17 @@ fn ollama_model_name_matches(requested: &str, available: &str) -> bool {
         || (!requested.contains(':') && available == format!("{requested}:latest"))
 }
 
+fn local_model_context_policy_error(model: &str, context_length: u32) -> Option<String> {
+    let model = model.trim().to_ascii_lowercase();
+    if model.contains("gpt-oss") && model.contains("20b")
+        && context_length > GPT_OSS_20B_LOCAL_CONTEXT_MAX {
+        return Some(format!(
+            "Local GPT-OSS 20B is limited to an 8,192-token context by the Ariadne hardware policy; requested {context_length}."
+        ));
+    }
+    None
+}
+
 fn uuid_like() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     format!("{:x}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos())
@@ -1768,7 +1783,7 @@ fn ollama_tags(endpoint: &str) -> Result<Vec<serde_json::Value>, String> {
 mod model_name_tests {
     use super::{
         has_model_capacity, inference_kind_from_capabilities, is_full_gpu_residency,
-        lease_context_matches,
+        lease_context_matches, local_model_context_policy_error,
         meets_gpu_reserve, ollama_model_name_matches, preload_capacity_satisfied,
         postload_reserve_satisfied, profile_matches,
         release_competing_models_for_admission, residency_probe,
@@ -1874,6 +1889,15 @@ mod model_name_tests {
         ).unwrap_err();
         assert!(error.contains("context"));
         assert!(error.contains("blocked"));
+    }
+
+    #[test]
+    fn local_gpt_oss_20b_context_policy_allows_8k_and_rejects_larger_windows() {
+        assert_eq!(local_model_context_policy_error("gpt-oss:20b", 8192), None);
+        assert!(local_model_context_policy_error("gpt-oss:20b", 16_384).unwrap().contains("8,192-token"));
+        assert!(local_model_context_policy_error("gpt-oss:20b:latest", 32_768).is_some());
+        assert!(local_model_context_policy_error("ariadne-gpt-oss:20b-16k", 16_384).is_some());
+        assert_eq!(local_model_context_policy_error("qwen3.5:9b", 32_768), None);
     }
 
     #[test]

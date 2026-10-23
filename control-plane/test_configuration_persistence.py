@@ -185,14 +185,33 @@ class ConfigurationPersistenceTests(unittest.TestCase):
             storage = self.storage(root)
             defaults = configuration_snapshot(target)["vault_runtime"]
             self.assertEqual(defaults["ingestion_model"], "gpt-oss:20b")
-            self.assertEqual(defaults["ingestion_context_tokens"], 16384)
+            self.assertEqual(defaults["ingestion_context_tokens"], 8192)
             self.assertEqual(defaults["embedding_model"], "nomic-embed-text")
-            settings = {**defaults, "ingestion_model": "other-model:latest", "ingestion_context_tokens": 32768,
-                        "embedding_model": "other-embed:latest", "embedding_context_tokens": 4096}
+            settings = {**defaults, "embedding_model": "other-embed:latest", "embedding_context_tokens": 4096}
             save_configuration(storage=storage, vault_runtime=settings, path=target)
             self.assertEqual(configuration_snapshot(target)["vault_runtime"], settings)
             with self.assertRaises(ValueError):
                 save_configuration(storage=storage, vault_runtime={**settings, "ingestion_context_tokens": 512}, path=target)
+            with self.assertRaises(ValueError):
+                save_configuration(storage=storage, vault_runtime={**settings, "ingestion_context_tokens": 16384}, path=target)
+            with self.assertRaises(ValueError):
+                save_configuration(storage=storage, vault_runtime={**settings, "ingestion_model": "other-model:latest"}, path=target)
+            with self.assertRaises(ValueError):
+                save_configuration(storage=storage, vault_runtime={**settings, "ingestion_output_tokens": 8192}, path=target)
+
+    def test_legacy_16k_vault_setting_is_read_as_fixed_8k_without_rewriting_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "configuration.json"
+            target.write_text(json.dumps({"vault_runtime": {"ingestion_model": "gpt-oss:20b", "ingestion_context_tokens": 16384}}), encoding="utf-8")
+            before = target.read_bytes()
+            runtime = configuration_snapshot(target)["vault_runtime"]
+            self.assertEqual(runtime["ingestion_context_tokens"], 8192)
+            self.assertEqual(target.read_bytes(), before)
+            save_configuration(storage=self.storage(root), path=target)
+            persisted = configuration_snapshot(target)["vault_runtime"]
+            self.assertEqual(persisted["ingestion_model"], "gpt-oss:20b")
+            self.assertEqual(persisted["ingestion_context_tokens"], 8192)
 
     def test_multiple_saves_end_with_c_and_do_not_resurrect_a_or_b(self):
         with tempfile.TemporaryDirectory() as temporary:

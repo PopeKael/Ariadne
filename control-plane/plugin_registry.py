@@ -128,7 +128,7 @@ def validate_manifest(payload: object, *, source: str = "manifest") -> dict[str,
         model = workspace.get("model")
         if model is not None and not isinstance(model, dict):
             raise ManifestValidationError("workspace.model must be an object or null")
-        if isinstance(model, dict) and set(model) - {"role", "setting", "default", "context_setting"}:
+        if isinstance(model, dict) and set(model) - {"role", "setting", "default", "context_setting", "context_tokens", "maximum_context_tokens"}:
             raise ManifestValidationError("workspace.model contains unsupported fields")
     ui = dict(payload["ui"])
     settings = dict(payload["settings"])
@@ -299,15 +299,18 @@ class PluginRegistry:
                 return value
 
             model = configured_value(model_spec.get("setting")) or model_spec.get("default")
-            context_tokens = configured_value(model_spec.get("context_setting"))
+            context_tokens = model_spec.get("context_tokens", configured_value(model_spec.get("context_setting")))
+            maximum_context_tokens = model_spec.get("maximum_context_tokens")
             if not isinstance(model, str) or not model.strip():
                 raise ManifestValidationError("Workspace model requirement did not resolve to a model name.")
             try:
                 context_tokens = int(context_tokens)
                 if not 1_024 <= context_tokens <= 131_072:
                     raise ValueError
+                if maximum_context_tokens is not None and context_tokens > int(maximum_context_tokens):
+                    raise ValueError
             except (TypeError, ValueError):
-                raise ManifestValidationError("Workspace context requirement did not resolve to a supported token count.") from None
+                raise ManifestValidationError("Workspace context requirement exceeds the plugin's supported token budget.") from None
         return {
             "plugin_id": manifest["plugin_id"],
             "entry_point": workspace["entry_point"],

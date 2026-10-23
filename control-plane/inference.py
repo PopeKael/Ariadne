@@ -28,6 +28,22 @@ TASKS = {
     "summarization_classification": {"classification"},
 }
 DEFAULT_CONTEXT_TOKENS = 32_768
+GPT_OSS_20B_LOCAL_CONTEXT_MAX = 8_192
+
+
+def local_model_context_limit(model_id: str, declared_maximum: Any = None) -> int | None:
+    """Return the effective local catalogue limit for a named model."""
+    maximum = declared_maximum
+    normalized = normalize_ollama_model_id(model_id).casefold()
+    if "gpt-oss" in normalized and re.search(r"(?<!\d)20b(?!\d)", normalized):
+        try:
+            maximum = min(int(maximum), GPT_OSS_20B_LOCAL_CONTEXT_MAX) if maximum else GPT_OSS_20B_LOCAL_CONTEXT_MAX
+        except (TypeError, ValueError, OverflowError):
+            maximum = GPT_OSS_20B_LOCAL_CONTEXT_MAX
+    try:
+        return int(maximum) if maximum else None
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 def ipv4_ollama_endpoint(endpoint: str) -> str:
@@ -153,7 +169,7 @@ def ollama_model_catalogue(entries: Any, show_metadata: dict[str, Any] | None = 
         groups.setdefault(signature, []).append((entry, {
             "name": installed_id, "show": show, "role": role,
             "capabilities": role_features, "can_chat": is_chat,
-            "context_max": _context_max(show),
+            "context_max": local_model_context_limit(installed_id, _context_max(show)),
         }))
 
     models: list[dict[str, Any]] = []
@@ -179,6 +195,8 @@ def ollama_model_catalogue(entries: Any, show_metadata: dict[str, Any] | None = 
             purpose = "coding alias" if meta["role"] == "Coding" and primary["role"] != "Coding" else "Ollama tag alias"
             aliases.append({"name": name, "purpose": purpose, "role": meta["role"]})
         context_max = max((meta["context_max"] or 0 for _, meta in members), default=0) or None
+        if any(local_model_context_limit(meta["name"]) == GPT_OSS_20B_LOCAL_CONTEXT_MAX for _, meta in members):
+            context_max = min(context_max or GPT_OSS_20B_LOCAL_CONTEXT_MAX, GPT_OSS_20B_LOCAL_CONTEXT_MAX)
         models.append({
             "id": canonical_name, "name": canonical_name, "canonical_id": signature,
             "canonical_name": canonical_name, "runtime_model": primary["name"],

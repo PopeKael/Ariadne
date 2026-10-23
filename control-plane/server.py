@@ -65,7 +65,7 @@ from ariadne_config import (
     save_storage,
 )
 from inference import (DEFAULT_CONTEXT_TOKENS, InferenceRegistry, default_providers,
-                       effective_context_tokens, ollama_model_catalogue,
+                       effective_context_tokens, local_model_context_limit, ollama_model_catalogue,
                        resolve_ollama_model_id)
 import hermes_pilot
 import credential_store
@@ -144,8 +144,9 @@ PUBLIC_ORIGIN = "https://ariadne.dia.net.au"
 OLLAMA_URL = "http://127.0.0.1:11434"
 OLLAMA_CHAT_MODEL = os.environ.get("ARIADNE_CHAT_MODEL", "gpt-oss:20b")
 VAULT_RUNTIME = {**DEFAULT_VAULT_RUNTIME, **configuration_snapshot().get("vault_runtime", {})}
-VAULT_INGESTION_MODEL = os.environ.get("ARIADNE_VAULT_INGESTION_MODEL", str(VAULT_RUNTIME["ingestion_model"]))
-VAULT_INGESTION_CONTEXT_TOKENS = int(os.environ.get("ARIADNE_VAULT_INGESTION_CONTEXT", str(VAULT_RUNTIME["ingestion_context_tokens"])))
+VAULT_INGESTION_MODEL = "gpt-oss:20b"
+VAULT_INGESTION_CONTEXT_TOKENS = 8_192
+VAULT_RUNTIME["ingestion_context_tokens"] = VAULT_INGESTION_CONTEXT_TOKENS
 HOME_CHAT_MODEL = os.environ.get("ARIADNE_HOME_CHAT_MODEL", "qwen3.5:9b-q4_K_M")
 HOME_MODEL_KEEP_ALIVE = -1
 _DEFAULT_HOME_CONTEXT_TOKENS = DEFAULT_CONTEXT_TOKENS
@@ -608,8 +609,10 @@ def apply_runtime_configuration() -> dict[str, object]:
     global VAULT_RUNTIME, VAULT_INGESTION_MODEL, VAULT_INGESTION_CONTEXT_TOKENS
     snapshot = configuration_snapshot()
     VAULT_RUNTIME = {**DEFAULT_VAULT_RUNTIME, **snapshot.get("vault_runtime", {})}
-    VAULT_INGESTION_MODEL = os.environ.get("ARIADNE_VAULT_INGESTION_MODEL", str(VAULT_RUNTIME["ingestion_model"]))
-    VAULT_INGESTION_CONTEXT_TOKENS = int(os.environ.get("ARIADNE_VAULT_INGESTION_CONTEXT", str(VAULT_RUNTIME["ingestion_context_tokens"])))
+    VAULT_INGESTION_MODEL = "gpt-oss:20b"
+    VAULT_RUNTIME["ingestion_model"] = VAULT_INGESTION_MODEL
+    VAULT_INGESTION_CONTEXT_TOKENS = 8_192
+    VAULT_RUNTIME["ingestion_context_tokens"] = VAULT_INGESTION_CONTEXT_TOKENS
     VAULT_ROOT = Path(str(snapshot["storage"]["knowledge_vault"]))
     VAULT_ROOT_SOURCE = str(snapshot["sources"]["knowledge_vault"])
     VAULT_SYSTEM = VAULT_ROOT / "00_System"
@@ -1651,9 +1654,8 @@ def _ollama_model_index(entries: list[dict[str, object]]) -> list[dict[str, obje
 def _context_for_model(model: str, requested: int) -> int:
     """Apply the default context subject to the selected model's declared limit."""
     details = ollama_model_capability_details(model)
-    if not details.get("available"):
-        return requested
-    return effective_context_tokens(details.get("context_max"), requested)
+    maximum = local_model_context_limit(model, details.get("context_max"))
+    return effective_context_tokens(maximum, requested)
 
 
 def _apply_model_context_policy() -> None:
@@ -2208,11 +2210,12 @@ def ollama_model_capability_details(model: str) -> dict[str, object]:
         int(value) for key, value in model_info.items()
         if str(key).casefold().endswith("context_length") and isinstance(value, (int, float)) and int(value) > 0
     ]
+    context_max = local_model_context_limit(model, max(context_values) if context_values else None)
     supports_thinking = "thinking" in capabilities
     return {
         "available": True,
         "capabilities": capabilities,
-        "context_max": max(context_values) if context_values else None,
+        "context_max": context_max,
         "text": "completion" in capabilities or not capabilities,
         "vision": "vision" in capabilities,
         "tools": "tools" in capabilities,
@@ -10233,6 +10236,37 @@ class AriadneHandler(BaseHTTPRequestHandler):
                 INFERENCE_REGISTRY.reload()
                 provider = next((item for item in INFERENCE_REGISTRY.providers if item.provider_id == credential_provider_id), None)
                 self.send_json({"ok": True, "credential_state": INFERENCE_REGISTRY.credential_state(provider) if provider else "Missing"})
+                return
+            if path == "/api/plugins/knowledge-vault/configuration":
+                vault_runtime = body.get("vault_runtime") if isinstance(body.get("vault_runtime"), dict) else None
+                if vault_runtime is None:
+                    self.send_json({"ok": False, "message": "Knowledge Vault plugin settings are required."}, 400)
+                    return
+                try:
+                    saved = save_configuration(vault_runtime=vault_runtime)
+                except ValueError as exc:
+                    try:
+                        errors = json.loads(str(exc))
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        errors = {"vault_runtime": str(exc)}
+                    self.send_json({"ok": False, "message": "Knowledge Vault plugin settings could not be saved.", "errors": errors}, 400)
+                    return
+                except OSError as exc:
+                    self.send_json({"ok": False, "message": "Knowledge Vault plugin settings could not be persisted.", "errors": {"configuration": str(exc)}}, 500)
+                    return
+                apply_runtime_configuration()
+                persisted_snapshot = configuration_snapshot()
+                self.send_json({
+                    "ok": True,
+                    "message": "Knowledge Vault plugin settings saved.",
+                    "persistence": {
+                        "verified": True,
+                        "path": persisted_snapshot["path"],
+                        "revision": persisted_snapshot.get("revision"),
+                        "updated_at": saved.get("updated_at") if isinstance(saved, dict) else None,
+                    },
+                    **configuration_payload(persisted_snapshot),
+                })
                 return
             if path == "/api/configuration":
                 storage = body.get("storage")

@@ -122,9 +122,18 @@ class PluginRegistryTests(unittest.TestCase):
         registry = PluginRegistry(ROOT / "plugins", self.user)
         records = {record.manifest.get("plugin_id"): record for record in registry.discover() if record.manifest}
         vault = records["knowledge-vault"].manifest
-        self.assertEqual(vault["ui"]["label"], "Open Knowledge Vault Tools")
+        self.assertEqual(vault["ui"]["label"], "Open Knowledge Vault Management")
+        self.assertNotIn("knowledge.mcp", vault["capabilities"])
+        self.assertNotIn("Ariadne Knowledge Vault MCP", vault["dependencies"])
+        self.assertEqual(vault["ui"]["route"], "/knowledge-vault")
         self.assertEqual(vault["workspace"]["ownership_mode"], "exclusive")
         self.assertEqual(vault["workspace"]["model"]["setting"], "vault_runtime.ingestion_model")
+        self.assertEqual(vault["workspace"]["model"]["context_tokens"], 8192)
+        self.assertEqual(vault["workspace"]["model"]["maximum_context_tokens"], 8192)
+        resolved = PluginRegistry.resolve_workspace_requirements(
+            vault, {"vault_runtime": {"ingestion_model": "gpt-oss:20b", "ingestion_context_tokens": 16384}},
+        )
+        self.assertEqual(resolved["context_tokens"], 8192)
 
 
 if __name__ == "__main__":

@@ -11,16 +11,15 @@ completes successfully on Warren's machine.
 2. Ask an ordinary Knowledge Vault question in Ariadne Chat. Confirm the answer
    uses the normal Chat model and cites Vault material through the existing
    retrieval/MCP path; this must not load the ingestion model just for the query.
-3. Open **Tools & Plugins** and select **Open Knowledge Vault Tools**. The
+3. Open **Tools & Plugins** and select **Open Knowledge Vault Management**. The
    workspace must show **Preparing Environment** while Rust Host handles the
-   handoff. Verify the configured ingestion model and context in Configuration.
+   handoff. In its focused settings view verify local `gpt-oss:20b` and the
+   fixed 8,192-token total context budget; Home provider settings stay separate.
    Model-backed controls must remain unavailable until Host reports readiness.
-4. Start **Full Vault Rebuild** from the workspace page. Confirm the worker
-   reports the configured model and the same context length Rust Host admitted.
-   Confirm it advances through sources and segments, writes checkpoints, and
-   reports completion without an 8K-versus-16K profile rejection. For the
-   current default that profile is GPT-OSS 20B at 16K; configured overrides
-   must be reflected identically by Host and worker.
+4. Start a small real Inbox intake from the workspace page. Confirm the worker
+   reports local `gpt-oss:20b` at 8,192 tokens, matching Rust Host admission.
+   Confirm bounded segments, reasoning, validation, accepted checkpoints, and
+   embedding handoff complete without changing source Markdown.
 5. While an exclusive Vault operation is active, try opening another
    GPU-consuming Ariadne workspace. It must report **WORKSPACE BUSY** and keep
    the current workspace available. Verify status-only and other explicitly
@@ -43,10 +42,12 @@ completes successfully on Warren's machine.
 
 ## Pass criteria
 
-- Full Vault Rebuild reaches its terminal complete state with a completion
-  report and no unprocessed source rows.
+- The small Inbox intake reaches its terminal complete state with accepted
+  outcomes, no new failures, and valid checkpoints.
 - Worker model, context, output settings and embedding settings match the saved
   Configuration values.
+- The prior ten-source, zero-failure 16K checkpoint remains preserved as
+  recovery evidence; it is not the target runtime configuration.
 - Host ownership, BUSY responses, checkpoint handling, Dungeon handoff and
   Home restoration match the sequence above.
 - Ordinary Knowledge Vault questions continue to work in Ariadne Chat and via
