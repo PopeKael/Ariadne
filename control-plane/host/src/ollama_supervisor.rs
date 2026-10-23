@@ -23,6 +23,10 @@ const DEFAULT_STORE: &str = r"F:\AI\Models\Ollama";
 const PIPE_NAME: &str = r"\\.\pipe\ariadne-runtime";
 const RUNTIME_PIPE_WORKERS: usize = 8;
 const GPU_SAFETY_RESERVE_BYTES: u64 = 1024 * 1024 * 1024;
+// Windows Radeon Ollama builds can default to one loaded model. Rust Host
+// performs the authoritative per-model VRAM admission, so allow multiple
+// resident runners and let its measured capacity policy decide what fits.
+const OLLAMA_MAX_LOADED_MODELS: u32 = 3;
 // A verified, exclusive Vault model keeps a 512 MiB live floor after load.
 // The full 1 GiB reserve is still required before loading it.
 const VAULT_MODEL_POSTLOAD_RESERVE_BYTES: u64 = 512 * 1024 * 1024;
@@ -920,7 +924,9 @@ fn ensure_locked(state: &mut State, endpoint: String, store: String, models: Vec
     let executable = find_ollama_executable()?;
     let num_parallel = effective_num_parallel()?;
     let mut command = Command::new(&executable);
-    command.arg("serve").env("OLLAMA_MODELS", &store).env("OLLAMA_NUM_PARALLEL", num_parallel.to_string()).current_dir(executable.parent().unwrap_or(Path::new(".")))
+    command.arg("serve").env("OLLAMA_MODELS", &store).env("OLLAMA_NUM_PARALLEL", num_parallel.to_string())
+        .env("OLLAMA_MAX_LOADED_MODELS", OLLAMA_MAX_LOADED_MODELS.to_string())
+        .current_dir(executable.parent().unwrap_or(Path::new(".")))
         .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     #[cfg(windows)] { use std::os::windows::process::CommandExt; command.creation_flags(0x0800_0000); }
     let child = command.spawn().map_err(|error| format!("Rust host could not start {}: {error}", executable.display()))?;
@@ -1425,12 +1431,18 @@ fn preflight_model(
     if reload_target_for_admission && leases.values().any(|leased| ollama_model_name_matches(leased, model)) {
         return Err(format!("'{model}' is already in active use at context {resident_context}; it cannot be reloaded for requested context {context_length} or profile calibration while leased."));
     }
-    for row in &resident {
-        let Some(name) = row.get("name").and_then(|v| v.as_str()) else { continue };
-        if ollama_model_name_matches(model, name) { continue; }
-        if leases.values().any(|leased| ollama_model_name_matches(leased, name)) {
-            return Err(format!("GPU preflight found Ollama model '{name}' resident and in active use; '{model}' must wait."));
-        }
+    let loaded_by_this_admission = !target_was_resident || reload_target_for_admission;
+    let has_active_competing_lease = resident.iter().any(|row| {
+        row.get("name").and_then(|v| v.as_str()).is_some_and(|name|
+            !ollama_model_name_matches(model, name)
+                && leases.values().any(|leased| ollama_model_name_matches(leased, name)))
+    });
+    if blocks_profileless_co_residency(
+        loaded_by_this_admission,
+        known_profile.is_some() || warm_residency_verified,
+        has_active_competing_lease,
+    ) {
+        return Err(format!("'{model}' has no verified residency profile and cannot be calibrated beside a leased model; the Host will not evict active residency to estimate its allocation."));
     }
     let previous_models: Vec<serde_json::Value> = resident.iter().filter(|row| {
         row.get("name").and_then(|v| v.as_str()).is_some_and(|name| !ollama_model_name_matches(model, name))
@@ -1438,7 +1450,7 @@ fn preflight_model(
     // A verified profile supplies this model's incremental footprint, so admit
     // it against fresh WDDM free memory while keeping other models warm.
     // Unknown-profile calibration still needs an isolated baseline.
-    let mut models_to_release = if !release_competing_models_for_admission(known_profile.is_some()) {
+    let mut models_to_release = if !release_competing_models_for_admission(known_profile.is_some() || warm_residency_verified) {
         Vec::new()
     } else {
         previous_models.clone()
@@ -1457,7 +1469,6 @@ fn preflight_model(
         }
         // Baseline includes retained verified residents and follows any
         // release required for calibration or target-context reconciliation.
-        let loaded_by_this_admission = !target_was_resident || reload_target_for_admission;
         let preload_capacity = if loaded_by_this_admission {
             known_profile.as_ref().map(|profile| verified_profile_required_free_bytes(profile, postload_reserve))
         } else {
@@ -1613,6 +1624,14 @@ fn lease_context_matches(inference_kind: &str, actual_context: u32, expected_con
 
 fn release_competing_models_for_admission(has_verified_profile: bool) -> bool {
     !has_verified_profile
+}
+
+fn blocks_profileless_co_residency(
+    loading_target: bool,
+    has_verified_footprint: bool,
+    has_active_competing_lease: bool,
+) -> bool {
+    loading_target && !has_verified_footprint && has_active_competing_lease
 }
 
 fn verified_profile_required_free_bytes(profile: &ResidencyProfile, postload_reserve: u64) -> u64 {
@@ -1786,7 +1805,7 @@ mod model_name_tests {
         lease_context_matches, local_model_context_policy_error,
         meets_gpu_reserve, ollama_model_name_matches, preload_capacity_satisfied,
         postload_reserve_satisfied, profile_matches,
-        release_competing_models_for_admission, residency_probe,
+        blocks_profileless_co_residency, release_competing_models_for_admission, residency_probe,
         verified_profile_impact, verified_profile_required_free_bytes,
         warm_residency_satisfies_profile_gap, preflight_model,
         ResidencyProfile, GPU_SAFETY_RESERVE_BYTES,
@@ -1796,6 +1815,14 @@ mod model_name_tests {
     fn verified_profile_admits_alongside_resident_models_instead_of_evicting_them() {
         assert!(!release_competing_models_for_admission(true));
         assert!(release_competing_models_for_admission(false));
+    }
+
+    #[test]
+    fn verified_capacity_allows_co_residency_with_a_leased_model() {
+        assert!(!blocks_profileless_co_residency(true, true, true));
+        assert!(!blocks_profileless_co_residency(false, false, true));
+        assert!(blocks_profileless_co_residency(true, false, true));
+        assert!(!blocks_profileless_co_residency(true, false, false));
     }
 
     #[test]

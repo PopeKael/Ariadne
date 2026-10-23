@@ -487,6 +487,10 @@ ACTIVE_PROFILE = "RUN"
 INTERACTIVE_PROCESS: subprocess.Popen | None = None
 WAN2GP_PROCESS: subprocess.Popen | None = None
 IMAGE_ENGINE_PROCESS: subprocess.Popen | None = None
+IMAGE_GPU_LEASE_ID: str | None = None
+IMAGE_ENGINE_LOCK = threading.RLock()
+IMAGE_ENGINE_STOPPING = False
+IMAGE_STOP_PENDING = False
 GODS_EYE_VIEW_PROCESS: subprocess.Popen | None = None
 GODS_EYE_VIEW_LOCK = threading.RLock()
 IMAGE_GENERATION_LOCK = threading.Lock()
@@ -496,6 +500,12 @@ MUSIC_GENERATION_LOCK = threading.Lock()
 MUSIC_GENERATION_ACTIVE = False
 MUSIC_JOBS_LOCK = threading.RLock()
 MUSIC_JOBS: dict[str, dict[str, object]] = {}
+MEDIA_WORKSPACE_LOCK = threading.RLock()
+MEDIA_WORKSPACE_SESSIONS: dict[str, dict[str, dict[str, object]]] = {"image": {}, "renderer": {}}
+MEDIA_WORKSPACE_TIMERS: dict[str, threading.Timer] = {}
+MEDIA_WORKSPACE_HEARTBEAT_SECONDS = 5.0
+MEDIA_WORKSPACE_TIMEOUT_SECONDS = 20.0
+MEDIA_WORKSPACE_CLOSE_GRACE_SECONDS = 3.0
 MUSIC_FLOW_CHUNK_SECONDS = 4.2
 MUSIC_DEFAULT_FLOW_MS = 11_300.0
 MUSIC_DEFAULT_VOCODER_MS = 490.0
@@ -1433,6 +1443,44 @@ def gpu_owner_status() -> dict[str, object]:
             "operation_id": GPU_TRANSITION_OPERATION,
             "elapsed_seconds": elapsed,
         }
+
+
+def _set_media_gpu_owner(owner: str, detail: str, *, transition: str = "IDLE") -> None:
+    global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL
+    global GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
+    with GPU_ARBITRATION_LOCK:
+        GPU_OWNER = owner
+        GPU_TRANSITION_STATE = transition
+        GPU_TRANSITION_DETAIL = detail
+        if transition == "IDLE":
+            GPU_TRANSITION_OPERATION = None
+            GPU_TRANSITION_STARTED_AT = None
+
+
+@contextmanager
+def media_gpu_lease(workload: str, *, min_free_bytes: int = 0):
+    """Keep Rust Host ownership visible for the full media GPU operation."""
+    labels = {"music": "Music", "image": "Image"}
+    label = labels.get(workload, workload.title())
+    if ARIADNE_DELEGATION.get("state") != "ARIADNE_ACTIVE":
+        raise RuntimeError("Ariadne is handing GPU ownership to another workload; media generation is paused.")
+    lease_id = host_acquire_gpu_lease(
+        workload, OLLAMA_URL, min_free_bytes=min_free_bytes or None,
+    )
+    _set_media_gpu_owner(workload.upper(), f"{label} workload owns the GPU through Rust Host.")
+    announce_media_lifecycle(label, "BUSY", f"{label} workload acquired its Rust Host GPU lease.")
+    try:
+        yield lease_id
+    finally:
+        _set_media_gpu_owner("TRANSITION", f"Rust Host is releasing the {label} GPU lease.", transition=f"RELEASING_{workload.upper()}")
+        try:
+            host_release_gpu_lease(lease_id, OLLAMA_URL)
+        except Exception as exc:
+            _set_media_gpu_owner("TRANSITION", f"Rust Host could not confirm release of the {label} GPU lease: {exc}", transition="RELEASE_FAILED")
+            announce_media_lifecycle(label, "ERROR", f"Rust Host could not confirm GPU lease release: {exc}")
+            raise
+        _set_media_gpu_owner("NONE", "GPU is available to the next approved workload.")
+        announce_media_lifecycle(label, "STOPPED", f"{label} GPU lease released; Ariadne can request its model when its page is active.")
 
 
 def _model_residency_snapshot() -> dict[str, object]:
@@ -3559,13 +3607,8 @@ def generate_music(body: dict[str, object], *, progress_job_id: str | None = Non
                 if progress_job is not None:
                     progress_job.update({"log_path": str(log_path), "output_path": str(output), "target_seconds": duration})
         MUSIC_GENERATION_ACTIVE = True
-        announce_media_lifecycle("Music", "BUSY", "Generating a local MiniMax song candidate.")
         try:
-            admission = host_gpu_lease(
-                "music", OLLAMA_URL,
-                min_free_bytes=int(MUSIC_MINIMUM_FREE_GB * 1024**3),
-            )
-            with admission as music_gpu_lease_id:
+            with media_gpu_lease("music", min_free_bytes=int(MUSIC_MINIMUM_FREE_GB * 1024**3)) as music_gpu_lease_id:
                 preflight = {
                     "llm": {"model": caption_preflight.get("model") or HOME_CHAT_MODEL, "completed": True, "caption_reviewed": True, "metrics": caption_preflight.get("metrics", {})},
                     "lyrics": {"validated": True, "normalized": True, "tag_count": lyric_check.get("tag_count"), "section_count": lyric_check.get("section_count")},
@@ -3614,7 +3657,9 @@ def image_engine_status() -> dict[str, object]:
     global IMAGE_ENGINE_PROCESS
     process = IMAGE_ENGINE_PROCESS
     if process is not None and process.poll() is not None:
-        IMAGE_ENGINE_PROCESS = None
+        with IMAGE_ENGINE_LOCK:
+            if IMAGE_ENGINE_PROCESS is process:
+                IMAGE_ENGINE_PROCESS = None
         process = None
     models = image_models_payload()
     try:
@@ -3674,54 +3719,217 @@ def announce_media_lifecycle(capability: str, lifecycle_state: str, detail: str)
     _send_avatar_event_async(lambda: emit_say(message[:500]))
 
 
-def start_image_engine() -> dict[str, object]:
-    global IMAGE_ENGINE_PROCESS
-    current = image_engine_status()
-    if current["state"] in {"online", "starting"}:
-        return {"ok": True, "image": current}
-    if not IMAGE_ENGINE_ROOT.is_dir() or not IMAGE_ENGINE_PYTHON.is_file():
-        announce_media_lifecycle("Image", "ERROR", f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}")
-        return {
-            "ok": False,
-            "message": f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}",
-            "image": {**current, "state": "error", "lifecycle_state": "ERROR"},
-        }
-    try:
-        IMAGE_ENGINE_LOG.parent.mkdir(parents=True, exist_ok=True)
-        log_handle = IMAGE_ENGINE_LOG.open("a", encoding="utf-8")
-        with host_gpu_lease("image", OLLAMA_URL):
-            IMAGE_ENGINE_PROCESS = subprocess.Popen(
+def start_image_engine(*, allow_handoff_recovery: bool = False) -> dict[str, object]:
+    global IMAGE_ENGINE_PROCESS, IMAGE_GPU_LEASE_ID, IMAGE_STOP_PENDING
+    with IMAGE_ENGINE_LOCK:
+        current = image_engine_status()
+        if IMAGE_ENGINE_PROCESS is not None and IMAGE_ENGINE_PROCESS.poll() is None and IMAGE_GPU_LEASE_ID:
+            return {"ok": True, "image": current}
+        if current["state"] == "online":
+            message = "ComfyUI is responding without an Ariadne-owned process and Rust Host lease; refusing to adopt an unmanaged GPU workload."
+            return {"ok": False, "message": message, "image": {**current, "lifecycle_state": "UNMANAGED"}}
+        stale_lease_id = IMAGE_GPU_LEASE_ID
+        if stale_lease_id:
+            try:
+                host_release_gpu_lease(stale_lease_id, OLLAMA_URL)
+            except Exception as exc:
+                _set_media_gpu_owner("TRANSITION", f"Rust Host could not clear the exited image process lease: {exc}", transition="RELEASE_FAILED")
+                return {"ok": False, "message": f"The previous image process exited, but Rust Host has not confirmed its lease release: {exc}", "image": current}
+            IMAGE_GPU_LEASE_ID = None
+            _set_media_gpu_owner("NONE", "Exited image process lease cleared before a new admission.")
+        delegation_state = str(ARIADNE_DELEGATION.get("state") or "")
+        recovery_admission = allow_handoff_recovery and delegation_state == "RECOVERING"
+        if delegation_state != "ARIADNE_ACTIVE" and not recovery_admission:
+            return {"ok": False, "message": "Ariadne is handing GPU ownership to another workload; image startup is paused.", "image": current}
+        if not IMAGE_ENGINE_ROOT.is_dir() or not IMAGE_ENGINE_PYTHON.is_file():
+            announce_media_lifecycle("Image", "ERROR", f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}")
+            return {
+                "ok": False,
+                "message": f"The configured ComfyUI runtime is unavailable: {IMAGE_ENGINE_ROOT}",
+                "image": {**current, "state": "error", "lifecycle_state": "ERROR"},
+            }
+        _set_media_gpu_owner("TRANSITION", "Rust Host is admitting the image workspace.", transition="IMAGE_ADMISSION")
+        lease_id = ""
+        log_handle = None
+        try:
+            lease_id = host_acquire_gpu_lease("image", OLLAMA_URL)
+            IMAGE_ENGINE_LOG.parent.mkdir(parents=True, exist_ok=True)
+            log_handle = IMAGE_ENGINE_LOG.open("a", encoding="utf-8")
+            process = subprocess.Popen(
                 [str(IMAGE_ENGINE_PYTHON), "main.py", "--listen", "127.0.0.1", "--port", str(IMAGE_ENGINE_PORT)],
                 cwd=str(IMAGE_ENGINE_ROOT),
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
-        log_handle.close()
-    except RuntimeError as exc:
-        IMAGE_ENGINE_PROCESS = None
-        log_handle.close()
-        return {"ok": False, "message": str(exc), "image": current}
-    except OSError as exc:
-        IMAGE_ENGINE_PROCESS = None
-        announce_media_lifecycle("Image", "ERROR", f"Could not start ComfyUI: {exc}")
-        return {"ok": False, "message": f"Could not start ComfyUI: {exc}", "image": {**current, "state": "error", "lifecycle_state": "ERROR"}}
+            IMAGE_ENGINE_PROCESS = process
+            IMAGE_GPU_LEASE_ID = lease_id
+            IMAGE_STOP_PENDING = False
+            _set_media_gpu_owner("IMAGE", "Image workspace owns the GPU through its live Rust Host lease.")
+        except (OSError, RuntimeError, ValueError, TypeError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            IMAGE_ENGINE_PROCESS = None
+            IMAGE_GPU_LEASE_ID = None
+            if log_handle is not None:
+                log_handle.close()
+            if lease_id:
+                try:
+                    host_release_gpu_lease(lease_id, OLLAMA_URL)
+                    _set_media_gpu_owner("NONE", "GPU is available to the next approved workload.")
+                except Exception as release_error:
+                    _set_media_gpu_owner("TRANSITION", f"Image startup failed and Rust Host lease release needs recovery: {release_error}", transition="RELEASE_FAILED")
+            else:
+                _set_media_gpu_owner("NONE", "Image workspace admission failed; GPU remains available.")
+            announce_media_lifecycle("Image", "ERROR", f"Could not start the managed ComfyUI workspace: {exc}")
+            return {"ok": False, "message": str(exc), "image": {**current, "state": "error", "lifecycle_state": "ERROR"}}
+        finally:
+            if log_handle is not None:
+                log_handle.close()
+    threading.Thread(target=_watch_image_engine, args=(process, lease_id), daemon=True, name="ariadne-image-lifecycle").start()
     status = image_engine_status()
     announce_media_lifecycle("Image", str(status.get("lifecycle_state") or "STARTING_BACKEND"), str(status.get("detail") or "ComfyUI image process is starting."))
-    return {"ok": True, "message": "ComfyUI image process is starting.", "image": status}
+    return {"ok": True, "message": "ComfyUI is starting under a persistent Rust Host GPU lease.", "image": status}
+
+
+def _watch_image_engine(process: subprocess.Popen, lease_id: str) -> None:
+    global IMAGE_ENGINE_PROCESS, IMAGE_GPU_LEASE_ID
+    process.wait()
+    with IMAGE_ENGINE_LOCK:
+        if IMAGE_ENGINE_STOPPING:
+            return
+        if IMAGE_ENGINE_PROCESS is not process or IMAGE_GPU_LEASE_ID != lease_id:
+            return
+        IMAGE_ENGINE_PROCESS = None
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        if image_engine_status().get("state") != "online":
+            break
+        time.sleep(0.25)
+    if image_engine_status().get("state") == "online":
+        _set_media_gpu_owner("TRANSITION", "ComfyUI exited but its listener remains active; the Rust Host GPU lease is retained.", transition="IMAGE_RELEASE_BLOCKED")
+        announce_media_lifecycle("Image", "ERROR", "ComfyUI exited while its GPU listener remained active; Rust Host lease retained for recovery.")
+        return
+    with IMAGE_ENGINE_LOCK:
+        if IMAGE_GPU_LEASE_ID != lease_id:
+            return
+        IMAGE_GPU_LEASE_ID = None
+    try:
+        host_release_gpu_lease(lease_id, OLLAMA_URL)
+    except Exception as exc:
+        with IMAGE_ENGINE_LOCK:
+            IMAGE_GPU_LEASE_ID = lease_id
+        _set_media_gpu_owner("TRANSITION", f"Rust Host could not confirm image GPU lease release: {exc}", transition="RELEASE_FAILED")
+        announce_media_lifecycle("Image", "ERROR", f"Rust Host could not confirm GPU lease release: {exc}")
+        return
+    _set_media_gpu_owner("NONE", "Image process exited; GPU is available to the next approved workload.")
+    announce_media_lifecycle("Image", "STOPPED", "Image process exited and Rust Host released its GPU lease.")
 
 
 def stop_image_engine() -> dict[str, object]:
-    global IMAGE_ENGINE_PROCESS
-    if IMAGE_GENERATION_ACTIVE:
-        return {"ok": False, "message": "An image is still rendering; wait for it to finish before stopping the process.", "image": image_engine_status()}
-    process = IMAGE_ENGINE_PROCESS
-    if process is not None:
-        _terminate_process(process)
-        IMAGE_ENGINE_PROCESS = None
+    global IMAGE_ENGINE_PROCESS, IMAGE_GPU_LEASE_ID, IMAGE_ENGINE_STOPPING, IMAGE_STOP_PENDING
+    with IMAGE_ENGINE_LOCK:
+        if IMAGE_GENERATION_ACTIVE:
+            return {"ok": False, "message": "An image is still rendering; the Rust Host lease remains active until the job finishes.", "image": image_engine_status()}
+        process = IMAGE_ENGINE_PROCESS
+        lease_id = IMAGE_GPU_LEASE_ID
+        if process is None and lease_id is None:
+            return {"ok": True, "message": "Image process is already stopped and no Rust Host lease remains.", "image": image_engine_status()}
+        if process is None and image_engine_status().get("state") == "online":
+            return {"ok": False, "message": "ComfyUI is still listening after its managed process exited; retaining the Rust Host lease.", "image": image_engine_status()}
+        IMAGE_STOP_PENDING = False
+        IMAGE_ENGINE_STOPPING = True
+        _set_media_gpu_owner("TRANSITION", "Stopping ComfyUI before releasing its Rust Host GPU lease.", transition="STOPPING_IMAGE")
+        if process is not None:
+            _terminate_process(process)
+            IMAGE_ENGINE_PROCESS = None
+        IMAGE_ENGINE_STOPPING = False
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline and image_engine_status().get("state") == "online":
+            time.sleep(0.25)
+        if image_engine_status().get("state") == "online":
+            _set_media_gpu_owner("TRANSITION", "ComfyUI did not confirm shutdown; Rust Host lease retained.", transition="IMAGE_STOP_UNCONFIRMED")
+            return {"ok": False, "message": "ComfyUI did not confirm shutdown; the Rust Host lease remains active.", "image": image_engine_status()}
+        if lease_id:
+            try:
+                host_release_gpu_lease(lease_id, OLLAMA_URL)
+            except Exception as exc:
+                _set_media_gpu_owner("TRANSITION", f"Rust Host could not confirm image GPU lease release: {exc}", transition="RELEASE_FAILED")
+                return {"ok": False, "message": f"Image stopped, but Rust Host could not confirm lease release: {exc}", "image": image_engine_status()}
+            IMAGE_GPU_LEASE_ID = None
+    _set_media_gpu_owner("NONE", "Image process stopped; GPU is available to the next approved workload.")
     status = image_engine_status()
-    announce_media_lifecycle("Image", str(status.get("lifecycle_state") or "STOPPED"), str(status.get("detail") or "ComfyUI image process stopped."))
-    return {"ok": True, "message": "ComfyUI image process stopped.", "image": status}
+    announce_media_lifecycle("Image", "STOPPED", "ComfyUI stopped and Rust Host released the image GPU lease.")
+    return {"ok": True, "message": "ComfyUI stopped and its Rust Host GPU lease was released.", "image": status}
+
+
+def _schedule_media_workspace_reconcile(workload: str, delay_seconds: float) -> None:
+    with MEDIA_WORKSPACE_LOCK:
+        previous = MEDIA_WORKSPACE_TIMERS.pop(workload, None)
+        if previous is not None:
+            previous.cancel()
+        timer = threading.Timer(delay_seconds, _reconcile_media_workspace, args=(workload,))
+        timer.daemon = True
+        MEDIA_WORKSPACE_TIMERS[workload] = timer
+        timer.start()
+
+
+def _reconcile_media_workspace(workload: str) -> None:
+    now = time.monotonic()
+    with MEDIA_WORKSPACE_LOCK:
+        MEDIA_WORKSPACE_TIMERS.pop(workload, None)
+        sessions = MEDIA_WORKSPACE_SESSIONS.setdefault(workload, {})
+        for session_id, session in list(sessions.items()):
+            closed_at = session.get("closed_at")
+            last_seen = float(session.get("last_seen") or 0)
+            if (closed_at is not None and now - float(closed_at) >= MEDIA_WORKSPACE_CLOSE_GRACE_SECONDS) or now - last_seen >= MEDIA_WORKSPACE_TIMEOUT_SECONDS:
+                sessions.pop(session_id, None)
+        if any(session.get("closed_at") is None for session in sessions.values()):
+            _schedule_media_workspace_reconcile(workload, MEDIA_WORKSPACE_TIMEOUT_SECONDS)
+            return
+    if workload == "image":
+        global IMAGE_STOP_PENDING
+        if IMAGE_GENERATION_ACTIVE:
+            IMAGE_STOP_PENDING = True
+            return
+        if IMAGE_GPU_LEASE_ID or IMAGE_ENGINE_PROCESS is not None:
+            stop_image_engine()
+        return
+    if workload == "renderer":
+        if renderer_is_busy():
+            _schedule_media_workspace_reconcile(workload, 5.0)
+            return
+        if RENDERER_GPU_LEASE_ID or GPU_OWNER == "RENDERER" or RENDERER_START_THREAD and RENDERER_START_THREAD.is_alive():
+            stop_wan2gp(wait=False)
+
+
+def update_media_workspace_session(body: dict[str, object]) -> tuple[dict[str, object], int]:
+    workload = str(body.get("workload") or "").strip().lower()
+    action = str(body.get("action") or "").strip().lower()
+    session_id = str(body.get("session_id") or "").strip()
+    if workload not in {"image", "renderer"}:
+        return {"ok": False, "message": "Workspace lifecycle is available for image and video workspaces only."}, 400
+    if not re.fullmatch(r"[a-f0-9]{32}", session_id):
+        return {"ok": False, "message": "A valid media workspace session ID is required."}, 400
+    if action not in {"open", "heartbeat", "close"}:
+        return {"ok": False, "message": "Workspace action must be open, heartbeat or close."}, 400
+    now = time.monotonic()
+    with MEDIA_WORKSPACE_LOCK:
+        sessions = MEDIA_WORKSPACE_SESSIONS.setdefault(workload, {})
+        if action == "close":
+            existing = sessions.get(session_id)
+            if existing is not None:
+                existing["closed_at"] = now
+                existing["last_seen"] = now
+        else:
+            sessions[session_id] = {"last_seen": now, "closed_at": None}
+            if workload == "image":
+                global IMAGE_STOP_PENDING
+                IMAGE_STOP_PENDING = False
+            else:
+                global RENDERER_STOP_REQUESTED
+                RENDERER_STOP_REQUESTED = False
+    delay = MEDIA_WORKSPACE_CLOSE_GRACE_SECONDS if action == "close" else MEDIA_WORKSPACE_TIMEOUT_SECONDS
+    _schedule_media_workspace_reconcile(workload, delay)
+    return {"ok": True, "workload": workload, "action": action}, 200
 
 
 def image_prompt_workflow(model_filename: str, prompt: str, negative_prompt: str, width: int, height: int, seed: int) -> dict[str, object]:
@@ -3779,10 +3987,12 @@ def write_unassigned_image_sidecar(image_path: Path, provenance: dict[str, objec
 
 
 def generate_image(body: dict[str, object], on_progress=None) -> tuple[dict[str, object], int]:
-    global IMAGE_GENERATION_ACTIVE
+    global IMAGE_GENERATION_ACTIVE, IMAGE_STOP_PENDING
     if not IMAGE_GENERATION_LOCK.acquire(blocking=False):
         return {"ok": False, "message": "Ariadne is already rendering an image."}, 409
     try:
+        if ARIADNE_DELEGATION.get("state") != "ARIADNE_ACTIVE":
+            return {"ok": False, "message": "Ariadne is handing GPU ownership to another workload; image generation is paused."}, 409
         prompt = str(body.get("prompt") or "").strip()
         model_id = str(body.get("model") or "sdxl-base-1.0").strip()
         project_id = str(body.get("project_id") or "").strip()
@@ -3816,11 +4026,16 @@ def generate_image(body: dict[str, object], on_progress=None) -> tuple[dict[str,
         current = image_engine_status()
         if current["state"] != "online":
             return {"ok": False, "message": "Start the image process before generating.", "image": current}, 409
+        with IMAGE_ENGINE_LOCK:
+            image_gpu_lease_id = IMAGE_GPU_LEASE_ID
+            managed_process = IMAGE_ENGINE_PROCESS
+        if not image_gpu_lease_id or managed_process is None or managed_process.poll() is not None:
+            return {"ok": False, "message": "The image process is not admitted by a live Rust Host GPU lease. Stop and restart it from Create before generating.", "image": current}, 409
         IMAGE_GENERATION_ACTIVE = True
         client_id = str(uuid.uuid4())
         if on_progress:
             on_progress(stage="Waiting for GPU")
-        with host_gpu_lease("image", OLLAMA_URL) as image_gpu_lease_id, (comfy_progress(IMAGE_ENGINE_URL, client_id, on_progress) if on_progress else nullcontext()):
+        with (comfy_progress(IMAGE_ENGINE_URL, client_id, on_progress) if on_progress else nullcontext()):
             if on_progress:
                 on_progress(stage="Submitting image workflow")
             queued = post_json(f"{IMAGE_ENGINE_URL}/prompt", {"client_id": client_id, "prompt_id": client_id, "prompt": image_prompt_workflow(str(model["filename"]), prompt, negative_prompt, width, height, seed)}, timeout=30.0)
@@ -3886,6 +4101,9 @@ def generate_image(body: dict[str, object], on_progress=None) -> tuple[dict[str,
     finally:
         IMAGE_GENERATION_ACTIVE = False
         IMAGE_GENERATION_LOCK.release()
+        if IMAGE_STOP_PENDING:
+            IMAGE_STOP_PENDING = False
+            stop_image_engine()
 
 
 def _start_wan2gp_backend() -> dict[str, object]:
@@ -4028,29 +4246,34 @@ def _renderer_start_worker(operation_id: str) -> None:
             _stop_wan2gp_backend()
         except Exception:
             pass
+        release_error = None
         if gpu_lease_id:
             try:
                 host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
-            except Exception:
-                pass
-        RENDERER_GPU_LEASE_ID = None
+            except Exception as lease_exc:
+                release_error = lease_exc
+        RENDERER_GPU_LEASE_ID = gpu_lease_id if release_error else None
         with GPU_ARBITRATION_LOCK:
-            GPU_OWNER = "NONE"
-            GPU_TRANSITION_STATE = "IDLE"
-            GPU_TRANSITION_DETAIL = f"Renderer transition failed: {exc}"
-            GPU_TRANSITION_OPERATION = None
-            GPU_TRANSITION_STARTED_AT = None
+            GPU_OWNER = "TRANSITION" if release_error else "NONE"
+            GPU_TRANSITION_STATE = "RELEASE_FAILED" if release_error else "IDLE"
+            GPU_TRANSITION_DETAIL = f"Renderer transition failed: {exc}" + (f"; Rust Host lease release failed: {release_error}" if release_error else "")
+            GPU_TRANSITION_OPERATION = operation_id if release_error else None
+            GPU_TRANSITION_STARTED_AT = time.monotonic() if release_error else None
             RENDERER_LIFECYCLE_STATE = "ERROR"
-            RENDERER_LIFECYCLE_ERROR = str(exc)
-        log_renderer_lifecycle("start_failed", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), error=str(exc))
-        announce_media_lifecycle("Video", "ERROR", f"Video renderer startup failed: {exc}")
+            RENDERER_LIFECYCLE_ERROR = GPU_TRANSITION_DETAIL
+        log_renderer_lifecycle("start_failed", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), error=str(exc), lease_release_error=str(release_error) if release_error else None)
+        announce_media_lifecycle("Video", "ERROR", f"Video renderer startup failed: {exc}" + (f" Rust Host lease release also failed: {release_error}" if release_error else ""))
 
 
-def start_wan2gp() -> dict[str, object]:
+def start_wan2gp(*, allow_handoff_recovery: bool = False) -> dict[str, object]:
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION
     global GPU_TRANSITION_STARTED_AT, RENDERER_START_THREAD, RENDERER_OPERATION_ID
     global RENDERER_LIFECYCLE_STATE, RENDERER_LIFECYCLE_ERROR, RENDERER_STOP_REQUESTED
     with GPU_ARBITRATION_LOCK:
+        delegation_state = str(ARIADNE_DELEGATION.get("state") or "")
+        recovery_admission = allow_handoff_recovery and delegation_state == "RECOVERING"
+        if delegation_state != "ARIADNE_ACTIVE" and not recovery_admission:
+            return {"ok": False, "message": "Ariadne is handing GPU ownership to another workload; video startup is paused.", "wan2gp": wan2gp_status()}
         current = wan2gp_status(ignore_transition=True)
         if GPU_OWNER == "RENDERER" and current.get("state") == "online":
             return {"ok": True, "wan2gp": current}
@@ -4154,11 +4377,12 @@ def _renderer_stop_worker(operation_id: str) -> None:
         raise TimeoutError("Renderer did not confirm shutdown within 30 seconds.")
     except Exception as exc:
         with GPU_ARBITRATION_LOCK:
-            GPU_OWNER = "NONE"
-            GPU_TRANSITION_STATE = "IDLE"
+            lease_retained = bool(RENDERER_GPU_LEASE_ID)
+            GPU_OWNER = "TRANSITION" if lease_retained else "NONE"
+            GPU_TRANSITION_STATE = "RELEASE_FAILED" if lease_retained else "IDLE"
             GPU_TRANSITION_DETAIL = f"Renderer shutdown needs attention: {exc}"
-            GPU_TRANSITION_OPERATION = None
-            GPU_TRANSITION_STARTED_AT = None
+            GPU_TRANSITION_OPERATION = operation_id if lease_retained else None
+            GPU_TRANSITION_STARTED_AT = time.monotonic() if lease_retained else None
             RENDERER_LIFECYCLE_STATE = "ERROR"
             RENDERER_LIFECYCLE_ERROR = str(exc)
         log_renderer_lifecycle("stop_failed", operation_id=operation_id, elapsed_seconds=round(time.monotonic() - started, 2), error=str(exc))
@@ -4232,6 +4456,13 @@ def release_workloads(force: bool = False, *, terminate_wsl: bool = True) -> Non
     if not force and renderer_is_busy():
         return
     stop_wan2gp(wait=True)
+    if IMAGE_GENERATION_ACTIVE:
+        global IMAGE_STOP_PENDING
+        IMAGE_STOP_PENDING = True
+    elif IMAGE_GPU_LEASE_ID or IMAGE_ENGINE_PROCESS is not None:
+        image_result = stop_image_engine()
+        if not image_result.get("ok"):
+            print(f"[image] lifecycle release needs attention: {image_result.get('message', 'stop failed')}", flush=True)
     stop_interactive_session()
     if terminate_wsl:
         run_readonly(["wsl.exe", "--terminate", VIDEO_RENDERER_DISTRO])
@@ -4240,7 +4471,9 @@ def release_workloads(force: bool = False, *, terminate_wsl: bool = True) -> Non
 
 def restore_dungeon_suspended_workloads() -> None:
     if ARIADNE_DELEGATION.get("image_engine_was_running"):
-        start_image_engine()
+        start_image_engine(allow_handoff_recovery=True)
+    if ARIADNE_DELEGATION.get("renderer_was_running"):
+        start_wan2gp(allow_handoff_recovery=True)
     if ARIADNE_DELEGATION.get("gods_eye_was_running"):
         _start_gods_eye_view()
     if ARIADNE_DELEGATION.get("interactive_wsl_was_running"):
@@ -4268,7 +4501,6 @@ def log_dungeon_handoff(event: str, *, status: str = "info", operation_id: str |
 def begin_dungeon_handoff() -> dict[str, object]:
     """Quiesce Ariadne, suspend its host-owned runtime, then ask Rust to launch Dungeon."""
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
-    global IMAGE_ENGINE_PROCESS
     if not ARIADNE_DELEGATION_LOCK.acquire(blocking=False):
         log_dungeon_handoff("rejected", status="busy", reason="handoff_lock")
         return {"ok": False, "state": "busy", "message": "Ariadne is already changing GPU ownership."}
@@ -4277,6 +4509,7 @@ def begin_dungeon_handoff() -> dict[str, object]:
     dungeon_gpu_lease_id = ""
     prior_profile = ACTIVE_PROFILE
     image_engine_was_running = False
+    renderer_was_running = False
     gods_eye_was_running = False
     interactive_wsl_was_running = INTERACTIVE_PROCESS is not None and INTERACTIVE_PROCESS.poll() is None
     workloads_released = False
@@ -4293,35 +4526,39 @@ def begin_dungeon_handoff() -> dict[str, object]:
                                 reason="ollama_catalog_unavailable")
             raise RuntimeError("Ariadne cannot verify its Ollama runtime.")
         prior_models = [str(name) for name in catalog.get("loaded", [])]
-        dungeon_gpu_lease_id = host_acquire_gpu_lease("dungeon", OLLAMA_URL)
+        if MUSIC_GENERATION_ACTIVE or IMAGE_GENERATION_ACTIVE or renderer_is_busy():
+            raise RuntimeError("A media generation is still active; finish or cancel it before handing the GPU to Dungeon.")
         with GPU_ARBITRATION_LOCK:
-            # The Rust-host lease is the admission decision. Python state here
-            # is only transition progress for the UI and diagnostics.
             GPU_OWNER = "TRANSITION"
             GPU_TRANSITION_STATE = "DUNGEON_DRAINING"
             GPU_TRANSITION_DETAIL = "Releasing Ariadne workloads and resident models for Dungeon."
             GPU_TRANSITION_OPERATION = operation_id
             GPU_TRANSITION_STARTED_AT = time.monotonic()
         ARIADNE_DELEGATION.update(state="DRAINING", operation_id=operation_id, models=prior_models,
-                                  profile=prior_profile, detail=GPU_TRANSITION_DETAIL,
-                                  gpu_lease_id=dungeon_gpu_lease_id)
+                                  profile=prior_profile, detail=GPU_TRANSITION_DETAIL)
         log_dungeon_handoff("draining", status="started", operation_id=operation_id,
                             resident_models=prior_models)
         stage = "stop_managed_workloads"
         eye = gods_eye_view_status()
         gods_eye_was_running = eye.get("state") in {"Running", "Starting"} and bool(eye.get("managed"))
+        renderer_was_running = bool(RENDERER_GPU_LEASE_ID) or GPU_OWNER == "RENDERER" or RENDERER_START_THREAD is not None and RENDERER_START_THREAD.is_alive()
         stopped_eye = _stop_gods_eye_view()
         if not stopped_eye.get("ok"):
             raise RuntimeError(str(stopped_eye.get("message") or "God's Eye View could not be safely released."))
-        image_engine_was_running = IMAGE_ENGINE_PROCESS is not None and IMAGE_ENGINE_PROCESS.poll() is None
+        image_engine_was_running = IMAGE_GPU_LEASE_ID is not None and IMAGE_ENGINE_PROCESS is not None and IMAGE_ENGINE_PROCESS.poll() is None
         ARIADNE_DELEGATION.update(image_engine_was_running=image_engine_was_running,
+                                  renderer_was_running=renderer_was_running,
                                   gods_eye_was_running=gods_eye_was_running,
                                   interactive_wsl_was_running=interactive_wsl_was_running)
-        if IMAGE_ENGINE_PROCESS is not None:
-            _terminate_process(IMAGE_ENGINE_PROCESS)
-            IMAGE_ENGINE_PROCESS = None
+        if image_engine_was_running:
+            image_stop = stop_image_engine()
+            if not image_stop.get("ok"):
+                raise RuntimeError(str(image_stop.get("message") or "The image engine could not release its Rust Host lease."))
         release_workloads(force=True, terminate_wsl=interactive_wsl_was_running)
         workloads_released = True
+        stage = "acquire_dungeon_gpu_lease"
+        dungeon_gpu_lease_id = host_acquire_gpu_lease("dungeon", OLLAMA_URL)
+        ARIADNE_DELEGATION.update(gpu_lease_id=dungeon_gpu_lease_id)
         stage = "suspend_ollama_runtime"
         log_dungeon_handoff("runtime_suspend_requested", status="started", operation_id=operation_id)
         suspend_requested = True
@@ -4386,11 +4623,13 @@ def begin_dungeon_handoff() -> dict[str, object]:
                 log_dungeon_handoff("gpu_lease_recovery", status="error", operation_id=operation_id,
                                     error_type=type(release_error).__name__, error=str(release_error)[:500])
         with GPU_ARBITRATION_LOCK:
-            GPU_OWNER = "TRANSITION" if recovery_errors else "NONE"
-            GPU_TRANSITION_STATE = "DUNGEON_RECOVERY_FAILED" if recovery_errors else "IDLE"
-            GPU_TRANSITION_DETAIL = ("Ariadne recovery needs attention: " + "; ".join(recovery_errors)) if recovery_errors else "Ariadne is available after a failed Dungeon handoff."
-            GPU_TRANSITION_OPERATION = operation_id if recovery_errors else None
-            GPU_TRANSITION_STARTED_AT = time.monotonic() if recovery_errors else None
+            renderer_restarting = RENDERER_START_THREAD is not None and RENDERER_START_THREAD.is_alive()
+            remaining_media_owner = "IMAGE" if IMAGE_GPU_LEASE_ID else "RENDERER" if RENDERER_GPU_LEASE_ID else "MUSIC" if MUSIC_GENERATION_ACTIVE else "TRANSITION" if renderer_restarting else "NONE"
+            GPU_OWNER = "TRANSITION" if recovery_errors or remaining_media_owner == "TRANSITION" else remaining_media_owner
+            GPU_TRANSITION_STATE = "DUNGEON_RECOVERY_FAILED" if recovery_errors else (GPU_TRANSITION_STATE if renderer_restarting else "IDLE")
+            GPU_TRANSITION_DETAIL = ("Ariadne recovery needs attention: " + "; ".join(recovery_errors)) if recovery_errors else (GPU_TRANSITION_DETAIL if renderer_restarting else ("Ariadne is available after a failed Dungeon handoff." if remaining_media_owner == "NONE" else f"{remaining_media_owner.title()} retains its Rust Host GPU lease after the handoff was cancelled."))
+            GPU_TRANSITION_OPERATION = operation_id if recovery_errors else (GPU_TRANSITION_OPERATION if renderer_restarting else None)
+            GPU_TRANSITION_STARTED_AT = time.monotonic() if recovery_errors else (GPU_TRANSITION_STARTED_AT if renderer_restarting else None)
         ARIADNE_DELEGATION.update(state="RECOVERY_FAILED" if recovery_errors else "ARIADNE_ACTIVE",
                                   operation_id=operation_id if recovery_errors else None,
                                   detail=GPU_TRANSITION_DETAIL if recovery_errors else str(exc))
@@ -4654,9 +4893,9 @@ def shutdown_all_workloads(*, stop_server: bool = True) -> None:
             f"[shutdown] God's Eye View cleanup: {gods_eye_report.get('message', 'no report')}",
             flush=True,
         )
-        if IMAGE_ENGINE_PROCESS is not None:
-            _terminate_process(IMAGE_ENGINE_PROCESS)
-        IMAGE_ENGINE_PROCESS = None
+        image_result = stop_image_engine()
+        if not image_result.get("ok"):
+            print(f"[shutdown] image lifecycle cleanup needs attention: {image_result.get('message', 'stop failed')}", flush=True)
         try:
             _unload_ollama_models()
         finally:
@@ -9982,6 +10221,12 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/plugins":
             self.send_asset("plugins.html", "text/html; charset=utf-8")
             return
+        if path == "/knowledge-vault":
+            self.send_asset("knowledge-vault.html", "text/html; charset=utf-8")
+            return
+        if path == "/knowledge-vault.css":
+            self.send_asset("knowledge-vault.css", "text/css; charset=utf-8")
+            return
         if path == "/rabbit-hole":
             self.send_asset("rabbit-hole.html", "text/html; charset=utf-8")
             return
@@ -10017,7 +10262,7 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/configuration/avatar":
             self.send_asset("configuration-avatar.html", "text/html; charset=utf-8")
             return
-        if path in {"/system-details", "/details", "/knowledge-vault", "/index.html"}:
+        if path in {"/system-details", "/details", "/index.html"}:
             self.send_asset("index.html", "text/html; charset=utf-8")
             return
         if path == "/home.css":
@@ -10079,6 +10324,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/image.js":
             self.send_asset("image.js", "text/javascript; charset=utf-8")
+            return
+        if path == "/media-workspace.js":
+            self.send_asset("media-workspace.js", "text/javascript; charset=utf-8")
             return
         if path == "/music.js":
             self.send_asset("music.js", "text/javascript; charset=utf-8")
@@ -10473,6 +10721,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "message": "A profile name is required."}, 400)
                     return
                 self.send_json(set_profile(profile))
+                return
+            if path == "/api/media/workspace":
+                result, status = update_media_workspace_session(body)
+                self.send_json(result, status)
                 return
             if path == "/api/wan2gp/start":
                 self.send_json(start_wan2gp())

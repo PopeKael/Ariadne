@@ -198,6 +198,37 @@ def proxy_workspace(handler, prefix, origin):
                 javascript="javascript" in content_type,
                 html="text/html" in content_type,
             ) if textual else None
+            if (
+                rewritten is not None
+                and "text/html" in content_type
+                and handler.command == "GET"
+                and prefix.rstrip("/") == "/workspaces/video"
+                and path in {"/", "/index.html"}
+            ):
+                page = rewritten.decode("utf-8")
+                lifecycle = """<script>(function(){
+  const workload="renderer";
+  const key="ariadne.media-workspace.renderer";
+  let sessionId=sessionStorage.getItem(key);
+  if(!/^[a-f0-9]{32}$/.test(sessionId||"")){
+    sessionId=crypto.randomUUID().replaceAll("-","");
+    sessionStorage.setItem(key,sessionId);
+  }
+  const send=(action)=>fetch("/api/media/workspace",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({workload,action,session_id:sessionId}),cache:"no-store"
+  }).catch(()=>{});
+  void send("open");
+  const heartbeat=setInterval(()=>void send("heartbeat"),5000);
+  addEventListener("pagehide",()=>{
+    clearInterval(heartbeat);
+    navigator.sendBeacon("/api/media/workspace",new Blob([
+      JSON.stringify({workload,action:"close",session_id:sessionId})
+    ],{type:"application/json"}));
+  },{once:true});
+})();</script>"""
+                page = re.sub(r"</body\s*>", lambda match: lifecycle + match.group(0), page, count=1, flags=re.IGNORECASE)
+                rewritten = page.encode("utf-8")
             handler.send_response(response.status)
             for name, value in response.getheaders():
                 if name.lower() in {"connection", "transfer-encoding", "content-encoding"} or (

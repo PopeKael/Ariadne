@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knowledge Vault Management · Ariadne</title>
+  <script>if (location.pathname === "/knowledge-vault") document.documentElement.classList.add("vault-gate-pending");</script>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/knowledge-vault.css">
+</head>
+<body class="vault-workspace-page">
+  <div id="vault-loading-gate" role="status" aria-live="polite" aria-atomic="true">
+    <div class="vault-gate-card">
+      <span class="vault-gate-spinner" aria-hidden="true"></span>
+      <h1 id="vault-gate-title">Please wait. We are loading the model.</h1>
+      <p id="vault-gate-detail">The Knowledge Vault will open when Rust Host confirms the model is ready.</p>
+      <button id="vault-gate-retry" type="button" hidden>Retry model loading</button>
+    </div>
+  </div>
+  <div class="shell vault-shell">
+    <header class="vault-page-header">
+      <a class="vault-page-link" href="/plugins">← Tools &amp; Plugins</a>
+      <div>
+        <span class="eyebrow">KNOWLEDGE VAULT PLUGIN</span>
+        <h1>Knowledge Vault Management</h1>
+        <p>Ingestion, maintenance, job monitoring and local model ownership. Ask knowledge questions in Ariadne Chat.</p>
+      </div>
+      <a class="vault-page-link" href="/configuration?plugin=knowledge-vault">Plugin setup</a>
+    </header>
+    <main>
+      <section class="panel vault-panel" id="knowledge-vault" aria-labelledby="vault-workspace-heading">
+        <div class="section-head">
+          <div><h2 id="vault-workspace-heading">Ingestion workspace</h2><p>Independent from Ariadne Home chat and the Knowledge Vault MCP interface.</p></div>
+          <span class="badge" id="vault-session-state">Starting session</span>
+        </div>
+        <div class="vault-workspace-actions"><span class="badge muted-badge" id="vault-query-model">MODEL · NOT PREPARED</span><button class="view-back" id="vault-stop-session" type="button">Stop and return to Tools</button></div>
+        <p id="vault-query-status" class="vault-status" role="status" aria-live="polite">Preparing the configured runtime…</p>
+        <div class="vault-job-monitor" id="vault-job-monitor" hidden>
+          <div class="vault-job-monitor-head"><strong id="vault-job-title">Vault operation</strong><span id="vault-job-state">Waiting</span></div>
+          <div class="vault-job-controls" id="vault-job-controls" hidden>
+            <button data-vault-control="pause">Pause</button>
+            <button data-vault-control="resume" disabled>Resume</button>
+            <button data-vault-control="stop">Stop</button>
+            <span id="vault-job-control-note">Pause or Stop saves the current segment before taking effect.</span>
+          </div>
+          <pre id="vault-job-output" aria-live="polite"></pre>
+        </div>
+        <div class="vault-management-head"><h3>Knowledge Vault ingestion plugin</h3><p>Local GPT-OSS 20B is fixed at an 8,192-token total context budget, including instructions, source input, reasoning, and generated output. <a href="/configuration?plugin=knowledge-vault">Configure plugin runtime</a></p></div>
+        <div class="vault-grid">
+          <article class="vault-card"><div><h3>Process Inbox</h3><p>Run the v2 intake for genuinely new Inbox files.</p></div><button data-vault-action="ingest">Run intake</button></article>
+          <article class="vault-card"><div><h3>Embedding Index</h3><p>Check the local semantic-search index without changing vault notes.</p></div><button data-vault-action="embedding_status">Check status</button></article>
+          <article class="vault-card"><div><h3>Evaluate Retrieval</h3><p>Run the versioned chunk-retrieval benchmark.</p></div><button data-vault-action="retrieval_evaluation">Run evaluation</button></article>
+          <article class="vault-card"><div><h3>Regression Tests</h3><p>Validate current v2 ingestion, chronology, catalogue, retrieval and publication safeguards.</p></div><button data-vault-action="regression_tests">Run tests</button></article>
+          <article class="vault-card"><div><h3>Failure Audit</h3><p>Audit current v2 unresolved, retryable and manual-review state.</p></div><button data-vault-action="audit_failures">Run audit</button></article>
+          <article class="vault-card warning-card"><div><h3>Rebuild Embeddings</h3><p>Regenerate accepted-record embeddings and publish only a complete replacement. Source Markdown is not altered.</p></div><button data-vault-action="embedding_rebuild" data-confirm="Rebuild the local embedding index now?">Rebuild index</button></article>
+          <article class="vault-card warning-card"><div><h3>Calibrate Embedding Profile</h3><p>Explicitly calibrate an unknown full GPU profile through Rust Host, then rebuild the local embedding index. The 1 GiB reserve remains enforced.</p></div><button data-vault-action="embedding_calibrate" data-confirm="Release idle models, calibrate the configured embedding model through Rust Host, and rebuild the local index? This uses GPU memory and keeps the 1 GiB reserve.">Calibrate and rebuild</button></article>
+          <article class="vault-card warning-card"><div><h3>Full Vault Rebuild</h3><p>Run the maintained v2 rebuild over every canonical Markdown file through the extraction model, oldest dated source first. Rebuild chronology, lineage, relationships and search indexes. Progress is shown here; checkpoints let it resume. Source Markdown is preserved.</p></div><button data-vault-action="full_rebuild" data-confirm="Start the full Knowledge Vault rebuild? This can run overnight. It will not edit source Markdown.">Full rebuild</button></article>
+        </div>
+      </section>
+    </main>
+    <footer class="vault-page-footer">Knowledge Vault ingestion plugin · Rust Host manages model and GPU ownership</footer>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

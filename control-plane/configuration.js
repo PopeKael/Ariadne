@@ -760,7 +760,7 @@ function renderPluginConfigurations(payload) {
   const visible = requestedPluginId ? (selectedPlugin ? [selectedPlugin] : []) : plugins;
   root.innerHTML = visible.map(plugin => plugin.plugin_id === "cleanup" ? cleanupMarkup()
     : plugin.plugin_id === "knowledge-vault"
-      ? `<section class="configuration-card plugin-configuration-card" data-plugin-id="knowledge-vault"><div class="card-heading"><div><span class="eyebrow">KNOWLEDGE VAULT PLUGIN</span><h2>Ingestion management</h2><p>Run and monitor Vault ingestion from its dedicated workspace. This plugin owns its job lifecycle and GPU handoff.</p></div><span class="active-vault-badge active">Available</span></div><a class="secondary-button" href="/knowledge-vault">Open Knowledge Vault management</a></section>`
+      ? `<section class="configuration-card plugin-configuration-card knowledge-vault-plugin-card" data-plugin-id="knowledge-vault"><div class="card-heading"><div><span class="eyebrow">KNOWLEDGE VAULT PLUGIN</span><h2>Ingestion management</h2><p>Run and monitor Vault ingestion from its dedicated workspace. This plugin owns its job lifecycle and GPU handoff.</p></div><span class="active-vault-badge active">Available</span></div><a class="secondary-button knowledge-vault-management-link" href="/knowledge-vault">Open Knowledge Vault management</a></section>`
       : genericPluginMarkup(plugin)).join("");
   if (visible.some(plugin => plugin.plugin_id === "cleanup")) renderCleanup(visible.find(plugin => plugin.plugin_id === "cleanup"));
   if (requestedPluginId && !selectedPlugin) root.innerHTML = unavailablePluginMarkup(requestedPluginId);

@@ -350,9 +350,7 @@ let vaultIngestionModel = null;
 let vaultSessionTransition = 0;
 
 function isVaultWorkspaceLocation() {
-  return window.location.pathname === "/knowledge-vault"
-    || new URLSearchParams(window.location.search).get("workspace") === "knowledge-vault"
-    || window.location.hash === "#knowledge-vault";
+  return window.location.pathname === "/knowledge-vault";
 }
 
 function setVaultGateLoading() {
@@ -597,7 +595,7 @@ function activateVaultSession(session, surface) {
   }, seconds * 1000);
 }
 
-async function startVaultSession(surface = document.body.classList.contains("control-mode") ? "knowledge-vault" : "home") {
+async function startVaultSession(surface = "home") {
   const transition = ++vaultSessionTransition;
   if (surface === "knowledge-vault") setVaultGateLoading();
   if (vaultHeartbeat) clearInterval(vaultHeartbeat);
@@ -647,31 +645,6 @@ function closeVaultSession() {
   vaultSessionLabel("Session stopped", "offline");
   setVaultControlsDisabled(true);
   updateSessionButtons();
-}
-
-async function switchSessionSurface(surface) {
-  const transition = ++vaultSessionTransition;
-  if (surface === "knowledge-vault") setVaultGateLoading();
-  else setVaultGateReady();
-  const sessionId = vaultSessionId;
-  if (surface === "knowledge-vault" && sessionId) {
-    vaultSessionLabel("Preparing Knowledge Vault: releasing the Home model before loading the configured ingestion model…", "starting");
-    setVaultControlsDisabled(true);
-    if (vaultHeartbeat) clearInterval(vaultHeartbeat);
-    vaultHeartbeat = null;
-    vaultSessionId = null;
-    updateSessionButtons();
-    try { await postJson("/api/session/close", {session_id: sessionId}); } catch (_error) {}
-    if (transition !== vaultSessionTransition) return;
-  }
-  if (vaultHeartbeat) clearInterval(vaultHeartbeat);
-  vaultHeartbeat = null;
-  vaultSessionId = null;
-  if (sessionId) {
-    try { await postJson("/api/session/close", {session_id: sessionId}); } catch (_error) {}
-  }
-  if (transition !== vaultSessionTransition) return;
-  await startVaultSession(surface);
 }
 
 window.addEventListener("pagehide", closeVaultSession, {once: true});
@@ -951,56 +924,12 @@ function setupProfileControls() {
   }
 }
 
-function setViewMode(mode) {
-  const control = mode === "control";
-  const wasControl = document.body.classList.contains("control-mode");
-  if (control) setVaultGateLoading();
-  else setVaultGateReady();
-  document.body.classList.toggle("control-mode", control);
-  history.replaceState(null, "", control ? "/knowledge-vault" : "/system-details");
-  window.scrollTo(0, 0);
-  if (control !== wasControl) switchSessionSurface(control ? "knowledge-vault" : "home");
-  if (!control) refresh();
-}
-
-function setupViewModes() {
-  const launch = document.querySelector('a[href="/knowledge-vault"]');
-  const panel = document.querySelector("#knowledge-vault");
-  if (!launch || !panel) return;
-  if (isVaultWorkspaceLocation()) document.body.classList.add("control-mode");
-
-  const header = panel.querySelector(".section-head");
-  const badge = panel.querySelector("#vault-session-state");
-  const actions = document.createElement("div");
-  actions.className = "vault-session-actions";
-
-  const start = document.createElement("button");
-  start.type = "button";
-  start.id = "vault-start-session";
-  start.className = "view-back";
-  start.textContent = "Open Knowledge Vault Tools";
-  start.addEventListener("click", () => window.location.assign("/knowledge-vault"));
-
-  const stop = document.createElement("button");
-  stop.type = "button";
-  stop.id = "vault-stop-session";
-  stop.className = "view-back";
-  stop.textContent = "Stop session";
-  stop.addEventListener("click", () => switchSessionSurface("home"));
-
-  const back = document.createElement("button");
-  back.type = "button";
-  back.className = "view-back";
-  back.textContent = "← Overview";
-  back.addEventListener("click", () => setViewMode("overview"));
-
-  if (badge) actions.append(badge);
-  actions.append(start, stop, back);
-  header?.append(actions);
-  updateSessionButtons();
+function setupVaultPageControls() {
+  document.querySelector("#vault-stop-session")?.addEventListener("click", () => {
+    closeVaultSession();
+    window.location.assign("/plugins");
+  });
   document.querySelector("#vault-gate-retry")?.addEventListener("click", () => startVaultSession("knowledge-vault"));
-
-  if (isVaultWorkspaceLocation()) document.body.classList.add("control-mode");
 }
 
 function setupVaultControls() {
@@ -1075,25 +1004,28 @@ async function refresh() {
   }
 }
 
-setupLaunchActions();
-setupViewModes();
-setupProfileControls();
 setupVaultControls();
-setupResourceControls();
 const openingVaultWorkspace = isVaultWorkspaceLocation();
-if (openingVaultWorkspace) startVaultSession("knowledge-vault");
-else if (!document.body.classList.contains("control-mode")) startVaultSession("home");
-if (window.ariadneRuntime) {
-  window.addEventListener("ariadne:runtime", event => render(event.detail));
-  window.addEventListener("ariadne:runtime-error", () => {
-    renderGauge("memory", null);
-    renderGauge("gpu", null);
-    renderModelMemory(null);
-    document.querySelector("#last-update").textContent = "Telemetry unavailable · retrying…";
-  });
-  if (window.ariadneRuntime.snapshot) render(window.ariadneRuntime.snapshot);
-  refresh();
+if (openingVaultWorkspace) {
+  setupVaultPageControls();
+  startVaultSession("knowledge-vault");
 } else {
-  refresh();
-  setInterval(refresh, 5000);
+  setupLaunchActions();
+  setupProfileControls();
+  setupResourceControls();
+  startVaultSession("home");
+  if (window.ariadneRuntime) {
+    window.addEventListener("ariadne:runtime", event => render(event.detail));
+    window.addEventListener("ariadne:runtime-error", () => {
+      renderGauge("memory", null);
+      renderGauge("gpu", null);
+      renderModelMemory(null);
+      document.querySelector("#last-update").textContent = "Telemetry unavailable · retrying…";
+    });
+    if (window.ariadneRuntime.snapshot) render(window.ariadneRuntime.snapshot);
+    refresh();
+  } else {
+    refresh();
+    setInterval(refresh, 5000);
+  }
 }
