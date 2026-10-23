@@ -17,9 +17,12 @@ from typing import Any
 
 
 CONFIG_VERSION = 1
+# Fixed local GPT-OSS 20B budget for the bounded Knowledge Vault ingestion job.
+# Cloud inference is a separate provider path, not an excuse to resize this runner.
+LOCAL_GPT_OSS_20B_CONTEXT_TOKENS = 8_192
 DEFAULT_VAULT_RUNTIME = {
     "ingestion_model": "gpt-oss:20b",
-    "ingestion_context_tokens": 8_192,
+    "ingestion_context_tokens": LOCAL_GPT_OSS_20B_CONTEXT_TOKENS,
     "ingestion_output_tokens": 2_048,
     "embedding_model": "nomic-embed-text",
     "embedding_context_tokens": 2_048,
@@ -27,6 +30,20 @@ DEFAULT_VAULT_RUNTIME = {
     "seed": 42,
     "think_level": "low",
 }
+
+
+def effective_vault_runtime(configured: object = None) -> dict[str, object]:
+    """Return the local Vault worker contract, migrating stale 16K settings in memory.
+
+    Persisted configuration may still contain the former 16K default. It cannot
+    silently override the 8K budget for the local gpt-oss:20b model.
+    """
+    runtime = {**DEFAULT_VAULT_RUNTIME, **(configured if isinstance(configured, dict) else {})}
+    if str(runtime.get("ingestion_model") or "").strip().casefold() == "gpt-oss:20b":
+        runtime["ingestion_context_tokens"] = LOCAL_GPT_OSS_20B_CONTEXT_TOKENS
+    return runtime
+
+
 CANONICAL_AVATAR_STATES = (
     "idle",
     "listening",
@@ -314,14 +331,14 @@ def save_configuration(
     current_vault_runtime = current.get("vault_runtime", {})
     if not isinstance(current_vault_runtime, dict):
         current_vault_runtime = {}
-    selected_vault_runtime = {**DEFAULT_VAULT_RUNTIME, **current_vault_runtime}
+    selected_vault_runtime = effective_vault_runtime(current_vault_runtime)
     if vault_runtime is not None:
         selected_vault_runtime.update(vault_runtime)
-    else:
-        # Unrelated configuration saves migrate the legacy 16K value without
-        # requiring a plugin settings form to be submitted.
-        selected_vault_runtime["ingestion_model"] = DEFAULT_VAULT_RUNTIME["ingestion_model"]
-        selected_vault_runtime["ingestion_context_tokens"] = DEFAULT_VAULT_RUNTIME["ingestion_context_tokens"]
+        if (str(selected_vault_runtime.get("ingestion_model") or "").strip().casefold() == "gpt-oss:20b"
+                and int(selected_vault_runtime.get("ingestion_context_tokens") or 0) != LOCAL_GPT_OSS_20B_CONTEXT_TOKENS):
+            raise ValueError(json.dumps({"vault_runtime.ingestion_context_tokens":
+                "Local gpt-oss:20b is fixed to an 8,192-token context for Vault ingestion. Larger jobs require a separately configured cloud route."}))
+    selected_vault_runtime = effective_vault_runtime(selected_vault_runtime)
     from conversation_orchestration import normalize_intensity
     selected_personality["intensity"] = normalize_intensity(selected_personality.get("intensity"))
     selected_avatar.setdefault("state_assets", current_avatar.get("state_assets", {}))
@@ -331,24 +348,13 @@ def save_configuration(
     for key in ("ingestion_context_tokens", "ingestion_output_tokens", "embedding_context_tokens"):
         try:
             value = int(selected_vault_runtime[key])
-            if key == "ingestion_context_tokens" and value != DEFAULT_VAULT_RUNTIME[key]:
-                raise ValueError
-            if key == "ingestion_output_tokens" and value > 4_096:
-                raise ValueError
             if not 1_024 <= value <= 131_072:
                 raise ValueError
             selected_vault_runtime[key] = value
         except (TypeError, ValueError, KeyError):
-            runtime_errors[key] = ("Local GPT-OSS 20B ingestion context is fixed at 8,192 tokens."
-                                   if key == "ingestion_context_tokens"
-                                   else "Ingestion output must be between 1,024 and 4,096 tokens."
-                                   if key == "ingestion_output_tokens"
-                                   else "Enter a whole number from 1,024 to 131,072.")
+            runtime_errors[key] = "Enter a whole number from 1,024 to 131,072."
     for key in ("ingestion_model", "embedding_model"):
         value = selected_vault_runtime.get(key)
-        if key == "ingestion_model" and value != DEFAULT_VAULT_RUNTIME[key]:
-            runtime_errors[key] = "Knowledge Vault ingestion currently requires local gpt-oss:20b."
-            continue
         if not isinstance(value, str) or not value.strip():
             runtime_errors[key] = "Enter a model name."
         else:
@@ -496,11 +502,6 @@ def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
     saved_plugins = saved.get("plugins", {})
     if not isinstance(saved_plugins, dict):
         saved_plugins = {}
-    vault_runtime = {**DEFAULT_VAULT_RUNTIME, **(saved.get("vault_runtime", {}) if isinstance(saved.get("vault_runtime", {}), dict) else {})}
-    # Older saved files may still contain the 16K pilot setting. Expose the
-    # hardware policy immediately; the next normal save persists this value.
-    vault_runtime["ingestion_context_tokens"] = DEFAULT_VAULT_RUNTIME["ingestion_context_tokens"]
-    vault_runtime["ingestion_model"] = DEFAULT_VAULT_RUNTIME["ingestion_model"]
     return {
         "path": str(target),
         "revision": configuration_file_revision(target),
@@ -516,6 +517,6 @@ def configuration_snapshot(path: Path | None = None) -> dict[str, Any]:
         "avatar_sources": avatar_sources,
         "plugins": saved_plugins,
         "inference": saved.get("inference", {}) if isinstance(saved.get("inference", {}), dict) else {},
-        "vault_runtime": vault_runtime,
+        "vault_runtime": effective_vault_runtime(saved.get("vault_runtime", {})),
         "personality": {**DEFAULT_PERSONALITY, **(saved.get("personality", {}) if isinstance(saved.get("personality", {}), dict) else {})},
     }
