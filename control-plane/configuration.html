@@ -59,6 +59,10 @@
             </dialog>
             <div class="inference-section-heading"><h3>Task Routing</h3><small>Choose an available provider model for each task.</small></div>
             <div id="inference-routes" class="inference-routes"><div class="loading-row">Reading inference routes…</div></div>
+            <div class="inference-section-heading model-library-heading"><h3>Installed local models</h3><small>Declared window shows the catalogue limit; Checked shows context sizes verified in a run; assignment shows Ariadne’s current use.</small></div>
+            <label class="model-library-search"><span class="field-label">Find a model</span><input id="model-library-search" type="search" autocomplete="off" placeholder="Search name, role, or assigned task"></label>
+            <div class="model-library-columns" aria-hidden="true"><span>Model</span><span>Declared window</span><span>Checked</span><span>Ariadne assignment</span><span></span></div>
+            <div id="model-library" class="model-library"><div class="loading-row">Reading installed models…</div></div>
           </article>
           <article class="configuration-card personality-card">
             <div class="card-heading"><div><span class="eyebrow">PERSONALITY / VOICE</span><h2>How Ariadne speaks</h2><p>Guidance is separate from factual memory and is sent with every Home conversation.</p></div><span id="identity-badge" class="active-vault-badge">Checking</span></div>

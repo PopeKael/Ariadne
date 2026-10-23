@@ -114,7 +114,7 @@ from ollama_runtime import (
     stop_owned_ollama,
 )
 from tls_transport import client_context, server_context
-from https_gateway import load_gateway, start_gateway
+from https_gateway import EMBED_CONTEXT_TOKENS, load_gateway, start_gateway
 from evidence_router import decide as decide_evidence, external_search_needed
 from conversation_orchestration import (validate_focus, personality_mode, normalize_intensity,
     generation_messages, size, history_candidates, planner_state, assembled_history, context_recipe, turn_context, semantic_receipt)
@@ -6314,6 +6314,30 @@ def inference_model_catalogue() -> dict[str, object]:
     providers = INFERENCE_REGISTRY.providers
     catalogues: dict[str, dict[str, object]] = {}
 
+    checked_contexts = {
+        "gpt-oss:20b": [
+            {"context_tokens": 8_192, "note": "Verified working at 8K; this is the selected target."},
+            {"context_tokens": 16_384, "note": "A previous 16K ingestion succeeded, but this was too tight for the hardware."},
+        ],
+        "nomic-embed-text": [
+            {"context_tokens": 2_048, "note": "Verified with the Ariadne embedding profile."},
+        ],
+        "qwen2.5-coder:14b": [
+            {"context_tokens": 32_768, "note": "Verified in a live coding run with 32K residency."},
+        ],
+        "qwen3.5:9b-q4_K_M": [
+            {"context_tokens": 16_384, "note": "Verified in a live Home model return at 16K."},
+            {"context_tokens": 32_768, "note": "Verified in a live Home turn at 32K."},
+        ],
+    }
+
+    def positive_limit(value: object) -> int | None:
+        try:
+            result = int(value)
+            return result if result > 0 else None
+        except (TypeError, ValueError, OverflowError):
+            return None
+
     def request_json(url: str, *, headers: dict[str, str] | None = None,
                      payload: dict[str, object] | None = None) -> dict[str, object]:
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
@@ -6335,6 +6359,15 @@ def inference_model_catalogue() -> dict[str, object]:
             payload = request_json(f"{endpoint}/api/tags")
             entries = payload.get("models") if isinstance(payload.get("models"), list) else []
             models = _ollama_model_index(entries)
+            for model in models:
+                identities = [model.get("canonical_name"), model.get("name"), model.get("id"), model.get("runtime_model")]
+                identities.extend(model.get("installed_names") or [])
+                identities.extend(alias.get("name") for alias in model.get("aliases", []) if isinstance(alias, dict))
+                check = next((checked_contexts.get(normalize_ollama_model_id(str(name or "")).casefold())
+                              for name in identities
+                              if normalize_ollama_model_id(str(name or "")).casefold() in checked_contexts), None)
+                if check:
+                    model["checked_contexts"] = check
             for provider in ollama_profiles:
                 if provider.endpoint.rstrip("/") == endpoint:
                     catalogues[provider.provider_id] = {"state": "available", "models": models}
@@ -6357,14 +6390,22 @@ def inference_model_catalogue() -> dict[str, object]:
                     headers={"Authorization": f"Bearer {api_key}"},
                 )
                 entries = payload.get("data") if isinstance(payload.get("data"), list) else []
-                model_ids = sorted({
-                    str(entry.get("id") or "").strip()
-                    for entry in entries if isinstance(entry, dict)
-                    and entry.get("active", True) is not False and str(entry.get("id") or "").strip()
-                }, key=str.casefold)
-                catalogues[provider.provider_id] = {"state": "available", "models": [{"id": model_id, "capabilities": ["chat"]} for model_id in model_ids]}
+                models = []
+                for entry in entries:
+                    model_id = str(entry.get("id") or "").strip() if isinstance(entry, dict) else ""
+                    if not model_id or entry.get("active", True) is False:
+                        continue
+                    model = {"id": model_id, "capabilities": ["chat"]}
+                    context_max = positive_limit(entry.get("context_window"))
+                    output_max = positive_limit(entry.get("max_completion_tokens"))
+                    if context_max:
+                        model["context_max"] = context_max
+                    if output_max:
+                        model["output_max"] = output_max
+                    models.append(model)
+                catalogues[provider.provider_id] = {"state": "available", "models": sorted(models, key=lambda model: str(model["id"]).casefold())}
             elif provider.provider_type == "google-generative-language":
-                model_ids: set[str] = set()
+                models_by_id: dict[str, dict[str, object]] = {}
                 page_token = ""
                 for _ in range(10):
                     query = {"pageSize": "100"}
@@ -6379,11 +6420,19 @@ def inference_model_catalogue() -> dict[str, object]:
                         methods = entry.get("supportedGenerationMethods")
                         name = str(entry.get("name") or "").strip()
                         if name and isinstance(methods, list) and "generateContent" in methods:
-                            model_ids.add(name.removeprefix("models/"))
+                            model_id = name.removeprefix("models/")
+                            model = {"id": model_id, "capabilities": ["chat", "structured_output", "classification"], "context_kind": "input"}
+                            input_limit = positive_limit(entry.get("inputTokenLimit"))
+                            output_limit = positive_limit(entry.get("outputTokenLimit"))
+                            if input_limit:
+                                model["context_max"] = input_limit
+                            if output_limit:
+                                model["output_max"] = output_limit
+                            models_by_id[model_id] = model
                     page_token = str(payload.get("nextPageToken") or "")
                     if not page_token:
                         break
-                catalogues[provider.provider_id] = {"state": "available", "models": [{"id": model_id, "capabilities": ["chat", "structured_output", "classification"]} for model_id in sorted(model_ids, key=str.casefold)]}
+                catalogues[provider.provider_id] = {"state": "available", "models": sorted(models_by_id.values(), key=lambda model: str(model["id"]).casefold())}
             elif provider.provider_type == "openai-compatible":
                 payload = request_json(
                     f"{provider.endpoint.rstrip('/')}/models",
@@ -6402,7 +6451,14 @@ def inference_model_catalogue() -> dict[str, object]:
             # Error detail may contain request metadata; keep the UI response
             # generic and never echo an API key or an authenticated URL.
             catalogues[provider.provider_id] = {"state": "unavailable", "models": []}
-    return {"ok": True, "providers": catalogues}
+    task_contexts = {
+        "coding": {"requested_tokens": CODING_DEFAULT_CONTEXT_TOKENS, "source": "Ariadne coding policy"},
+        "home_chat": {"requested_tokens": HOME_CONTEXT_POLICY_TOKENS, "source": "Ariadne Home policy"},
+        "planner": {"requested_tokens": PLANNER_CONTEXT_POLICY_TOKENS, "source": "Ariadne planner policy"},
+        "embedding": {"requested_tokens": EMBED_CONTEXT_TOKENS, "source": "Verified embedding profile"},
+        "summarization_classification": {"provider_managed": True, "source": "Provider managed"},
+    }
+    return {"ok": True, "providers": catalogues, "task_contexts": task_contexts}
 
 
 def configuration_health_payload(snapshot: dict[str, object] | None = None) -> dict[str, object]:

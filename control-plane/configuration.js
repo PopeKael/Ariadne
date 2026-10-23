@@ -12,6 +12,19 @@ let cleanupRunPollTimer = null;
 let inferenceProviders = [];
 let inferenceModelCatalog = {};
 let inferenceRoutes = {};
+let inferenceTaskContexts = {};
+const verifiedLocalContextRuns = {
+  "gpt-oss:20b": [
+    {context_tokens: 8192, note: "Verified working at 8K; this is the selected target."},
+    {context_tokens: 16384, note: "A previous 16K ingestion succeeded, but this was too tight for the hardware."},
+  ],
+  "nomic-embed-text": [{context_tokens: 2048, note: "Verified with the Ariadne embedding profile."}],
+  "qwen2.5-coder:14b": [{context_tokens: 32768, note: "Verified in a live coding run with 32K residency."}],
+  "qwen3.5:9b-q4_k_m": [
+    {context_tokens: 16384, note: "Verified in a live Home model return at 16K."},
+    {context_tokens: 32768, note: "Verified in a live Home turn at 32K."},
+  ],
+};
 let managedInterests = new Map();
 const interestPriorityEdits = new Map();
 const CleanupState = window.AriadneCleanupState;
@@ -195,6 +208,24 @@ function inferenceModelIdentity(provider, modelId) {
   return provider?.provider_type === "ollama" ? value.replace(/:latest$/i, "") : value;
 }
 
+function contextLabel(value) {
+  const tokens = Number(value);
+  if (!Number.isFinite(tokens) || tokens <= 0) return "Limit not reported";
+  const thousands = tokens / 1024;
+  return `${Number.isInteger(thousands) ? thousands.toLocaleString() : thousands.toFixed(1)}K`;
+}
+
+function taskContextSummary(task, option) {
+  const policy = inferenceTaskContexts[task] || {};
+  if (option?.dataset.providerType !== "ollama" || policy.provider_managed) return "Context: provider-managed · limit not reported";
+  const requested = Number(policy.requested_tokens);
+  const maximum = Number(option?.dataset.contextMax);
+  if (!Number.isFinite(requested) || requested <= 0) return "Context budget not reported";
+  const effective = Number.isFinite(maximum) && maximum > 0 ? Math.min(requested, maximum) : requested;
+  const limit = Number.isFinite(maximum) && maximum > 0 ? contextLabel(maximum) : "not reported";
+  return `Ariadne total context ${contextLabel(effective)} · model max ${limit}`;
+}
+
 function inferenceModelOptions(task, route, currentValue = "") {
   const required = inferenceTaskCapability(task);
   const selectedProvider = currentValue ? currentValue.split("::", 1)[0] : route.provider_id;
@@ -231,13 +262,24 @@ function inferenceModelOptions(task, route, currentValue = "") {
     const value = candidateValue({provider, modelId, identity, selectedRouteModel});
     const modelName = modelInfo?.canonical_name || modelInfo?.name || modelId;
     const role = Array.isArray(modelInfo?.roles) && modelInfo.roles.length ? modelInfo.roles.join("/") : modelInfo?.role || "Chat";
-    const context = Math.round(Number(modelInfo?.effective_context_tokens || 32768) / 1024);
     const purpose = modelId !== modelName ? ` · alias ${modelId}` : "";
-    const label = `${providerLabel(provider.provider_id)} · ${modelName} · ${role} · ${context}K${purpose} · ${provider.location}`;
-    return `<option value="${htmlEscape(value)}" ${value === selectedValue ? "selected" : ""}>${htmlEscape(label)}</option>`;
+    const modelLimit = modelInfo?.context_max ? `max ${contextLabel(modelInfo.context_max)}` : "limit not reported";
+    const label = `${providerLabel(provider.provider_id)} · ${modelName} · ${role}${purpose} · ${modelLimit} · ${provider.location}`;
+    const contextMax = Number(modelInfo?.context_max);
+    const contextAttribute = Number.isFinite(contextMax) && contextMax > 0 ? `data-context-max="${contextMax}"` : "";
+    return `<option value="${htmlEscape(value)}" data-provider-type="${htmlEscape(provider.provider_type)}" ${contextAttribute} ${value === selectedValue ? "selected" : ""}>${htmlEscape(label)}</option>`;
   });
   if (selectedValue && !selectedFound && route.provider_id && route.model_id) {
-    options.unshift(`<option value="${htmlEscape(selectedValue)}" selected>${htmlEscape(`${providerLabel(route.provider_id)} · ${route.model_id} · saved selection (not in discovered list)`)}</option>`);
+    const provider = inferenceProviders.find(item => item.provider_id === route.provider_id);
+    const models = inferenceModelCatalog[route.provider_id]?.models || [];
+    const target = inferenceModelIdentity(provider, route.model_id).toLowerCase();
+    const savedModel = models.find(model => [model.canonical_name, model.name, model.id, ...(model.installed_names || []), ...(model.aliases || []).map(alias => alias?.name)]
+      .filter(Boolean).some(name => inferenceModelIdentity(provider, name).toLowerCase() === target));
+    const contextMax = Number(savedModel?.context_max);
+    const contextAttribute = Number.isFinite(contextMax) && contextMax > 0 ? `data-context-max="${contextMax}"` : "";
+    const providerType = provider?.provider_type || route.provider_type || "";
+    const suffix = savedModel ? "saved model" : "saved selection (not in discovered list)";
+    options.unshift(`<option value="${htmlEscape(selectedValue)}" data-provider-type="${htmlEscape(providerType)}" ${contextAttribute} selected>${htmlEscape(`${providerLabel(route.provider_id)} · ${route.model_id} · ${suffix}`)}</option>`);
   }
   if (!options.length) options.push(`<option value="" disabled selected>Model catalogue unavailable</option>`);
   return options.join("");
@@ -246,23 +288,114 @@ function inferenceModelOptions(task, route, currentValue = "") {
 function renderInferenceRoutes() {
   const root = document.querySelector("#inference-routes");
   if (!root) return;
-  const labels = {home_chat: "Home conversation", planner: "Planner", embedding: "Semantic matching", summarization_classification: "Classification / summarisation"};
+  const labels = {coding: "Coding", home_chat: "Home conversation", planner: "Planner", embedding: "Semantic matching", summarization_classification: "Classification / summarisation"};
   const currentSelections = new Map([...root.querySelectorAll("[data-inference-task]")].map(row => [row.dataset.inferenceTask, row.querySelector("[data-inference-select]")?.value || ""]));
   root.innerHTML = Object.entries(inferenceRoutes).map(([task, route]) => {
     const options = inferenceModelOptions(task, route, currentSelections.get(task));
-    return `<div class="inference-route" data-inference-task="${htmlEscape(task)}"><div><strong>${htmlEscape(labels[task] || task)}</strong><small>${htmlEscape(route.provider_type || "No compatible provider")} · ${htmlEscape(route.model_id || "No model selected")} · ${htmlEscape(route.location || "—")}</small></div><div class="inference-route-controls"><select data-inference-select aria-label="${htmlEscape(labels[task] || task)} provider and model">${options}</select><span class="active-vault-badge ${route.state === "Configured" ? "active" : "attention"}">${htmlEscape(route.state || "Unavailable")}</span></div></div>`;
+    return `<div class="inference-route" data-inference-task="${htmlEscape(task)}"><div class="inference-route-description"><strong>${htmlEscape(labels[task] || task)}</strong><small>${htmlEscape(route.provider_type || "No compatible provider")} · ${htmlEscape(route.model_id || "No model selected")} · ${htmlEscape(route.location || "—")}</small><small class="route-context-summary">${htmlEscape(taskContextSummary(task, null))}</small></div><div class="inference-route-controls"><select data-inference-select aria-label="${htmlEscape(labels[task] || task)} provider and model">${options}</select><span class="active-vault-badge ${route.state === "Configured" ? "active" : "attention"}">${htmlEscape(route.state || "Unavailable")}</span></div></div>`;
   }).join("") || `<p class="configuration-note">No compatible inference routes are configured.</p>`;
-  root.querySelectorAll("[data-inference-select]").forEach(select => select.addEventListener("change", () => { dirty = true; }));
+  root.querySelectorAll("[data-inference-task]").forEach(row => {
+    const select = row.querySelector("[data-inference-select]");
+    const updateContext = () => {
+      const summary = row.querySelector(".route-context-summary");
+      if (summary) summary.textContent = taskContextSummary(row.dataset.inferenceTask, select?.selectedOptions[0]);
+      dirty = true;
+    };
+    if (select) { select.addEventListener("change", updateContext); updateContextContextLabel(row, select); }
+  });
+  renderModelLibrary();
+}
+
+function updateContextContextLabel(row, select) {
+  const summary = row.querySelector(".route-context-summary");
+  if (summary) summary.textContent = taskContextSummary(row.dataset.inferenceTask, select?.selectedOptions[0]);
+}
+
+function renderModelLibrary() {
+  const root = document.querySelector("#model-library");
+  if (!root) return;
+  const catalogue = inferenceModelCatalog["ollama-desktop"] || {};
+  const models = Array.isArray(catalogue.models) ? catalogue.models : [];
+  const labels = {coding: "Coding", home_chat: "Home", planner: "Planner", embedding: "Semantic matching", summarization_classification: "Classification / summarisation"};
+  const assignmentsFor = model => Object.entries(inferenceRoutes).flatMap(([task, route]) => {
+    const provider = inferenceProviders.find(item => item.provider_id === route.provider_id);
+    if (provider?.provider_type !== "ollama") return [];
+    const identity = inferenceModelIdentity(provider, route.model_id);
+    const names = new Set([model.canonical_name, model.name, model.id, ...(model.installed_names || []), ...(model.aliases || []).map(alias => alias?.name)].filter(Boolean).map(name => inferenceModelIdentity(provider, name).toLowerCase()));
+    if (!names.has(identity.toLowerCase())) return [];
+    const selectedOption = document.querySelector(`[data-inference-task="${CSS.escape(task)}"] [data-inference-select]`)?.selectedOptions[0];
+    return [`${labels[task] || task} · ${taskContextSummary(task, selectedOption).replace(/^Ariadne total context /, "").replace(/ · model max .*/, "")}`];
+  });
+  const rows = models.map(model => {
+    const name = model.canonical_name || model.name || model.id || "Unnamed model";
+    const roles = Array.isArray(model.roles) && model.roles.length ? model.roles.join(" · ") : model.role || "Role not reported";
+    const assigned = assignmentsFor(model);
+    const max = contextLabel(model.context_max);
+    const localIdentities = [model.canonical_name, model.name, model.id, ...(model.installed_names || []), ...(model.aliases || []).map(alias => alias?.name)]
+      .filter(Boolean).map(value => String(value).replace(/:latest$/i, "").toLowerCase());
+    const checked = Array.isArray(model.checked_contexts) ? model.checked_contexts
+      : localIdentities.map(identity => verifiedLocalContextRuns[identity]).find(Array.isArray) || [];
+    const checkedMarkup = checked.map(item => {
+      const tokens = Number(item?.context_tokens);
+      if (!Number.isFinite(tokens) || tokens <= 0) return "";
+      const note = String(item.note || "Context size verified");
+      return `<span class="checked-context" title="${htmlEscape(note)}">${htmlEscape(contextLabel(tokens))}</span>`;
+    }).filter(Boolean).join(" ");
+    const searchable = `${name} ${roles} ${assigned.join(" ")} ${checked.map(item => contextLabel(item?.context_tokens)).join(" ")}`.toLowerCase();
+    return `<article class="model-library-row" data-model-search="${htmlEscape(searchable)}"><div class="model-library-name"><strong>${htmlEscape(name)}</strong><small>${htmlEscape(roles)}</small></div><div class="model-library-context"><span class="model-library-label">Declared window</span><strong>${htmlEscape(max)}</strong></div><div class="model-library-checked"><span class="model-library-label">Checked</span><strong>${checkedMarkup}</strong></div><div class="model-library-assignment"><span class="model-library-label">Ariadne assignment</span><strong>${assigned.length ? htmlEscape(assigned.join(" · ")) : "Library only"}</strong></div><button class="secondary-button model-configure-placeholder" type="button" disabled title="Model configuration is not available yet">Configure</button></article>`;
+  });
+  root.innerHTML = models.length ? rows.join("") : `<p class="configuration-note">${catalogue.state === "unavailable" ? "The local model catalogue is unavailable." : "No installed local models were reported."}</p>`;
+  const search = document.querySelector("#model-library-search");
+  if (search && !search.dataset.bound) {
+    search.dataset.bound = "true";
+    search.addEventListener("input", () => filterModelLibrary(search.value));
+  }
+  filterModelLibrary(search?.value || "");
+}
+
+function filterModelLibrary(query) {
+  const needle = String(query || "").trim().toLowerCase();
+  document.querySelectorAll("#model-library [data-model-search]").forEach(row => {
+    row.hidden = needle !== "" && !row.dataset.modelSearch.includes(needle);
+  });
 }
 
 async function loadInferenceModelCatalogue() {
   try {
     const payload = await configurationJson("/api/inference/models");
     inferenceModelCatalog = payload.providers || {};
+    inferenceTaskContexts = payload.task_contexts || {};
+    if (!Object.keys(inferenceTaskContexts).length) await loadLiveTaskContextFallback();
   } catch {
     inferenceModelCatalog = {};
+    inferenceTaskContexts = {};
   }
   renderInferenceRoutes();
+  renderInferenceProviders(inferenceProviders, inferenceRoutes);
+}
+
+async function loadLiveTaskContextFallback() {
+  try {
+    const health = await configurationJson("/api/home/health");
+    const modelFor = task => {
+      const route = inferenceRoutes[task] || {};
+      const provider = inferenceProviders.find(item => item.provider_id === route.provider_id);
+      const models = inferenceModelCatalog[route.provider_id]?.models || [];
+      const target = inferenceModelIdentity(provider, route.model_id).toLowerCase();
+      return models.find(model => [model.canonical_name, model.name, model.id, ...(model.installed_names || []), ...(model.aliases || []).map(alias => alias?.name)]
+        .filter(Boolean).some(name => inferenceModelIdentity(provider, name).toLowerCase() === target));
+    };
+    const fallback = (task, requested, source) => ({requested_tokens: Number(requested) || Number(modelFor(task)?.effective_context_tokens) || 0, source});
+    inferenceTaskContexts = {
+      coding: fallback("coding", modelFor("coding")?.effective_context_tokens, "Ariadne coding default"),
+      home_chat: fallback("home_chat", health.context_tokens, "Live Ariadne Home context"),
+      planner: fallback("planner", health.planner_context_tokens, "Live Ariadne planner context"),
+      embedding: fallback("embedding", modelFor("embedding")?.effective_context_tokens, "Installed embedding model profile"),
+      summarization_classification: {provider_managed: true, source: "Provider managed"},
+    };
+  } catch {
+    inferenceTaskContexts = {};
+  }
 }
 
 function providerLabel(providerId) {
@@ -273,10 +406,22 @@ function providerCardMarkup(provider, label, kind) {
   const configured = provider?.credential_state === "Configured";
   const model = provider?.model_id || "Model not selected";
   const title = kind === "groq" ? "Groq" : kind === "google" ? "Google Gemini" : provider?.display_name || "External provider";
+  const discoveredModels = inferenceModelCatalog[provider?.provider_id]?.models || [];
+  const discovered = discoveredModels.find(item => String(item.id || item.name || "").toLowerCase() === String(model).toLowerCase());
+  const published = provider?.provider_id === "groq-cloud" && model === "openai/gpt-oss-120b"
+    ? {context_max: 131072, output_max: 65536, context_kind: "window", limit_source: "Groq published model specification"}
+    : provider?.provider_id === "google-cloud" && model === "gemini-3.8-flash"
+      ? {context_max: 1048576, output_max: 65536, context_kind: "input", limit_source: "Google published model specification"}
+      : null;
+  const limits = discovered?.context_max ? discovered : published;
+  const contextDescription = limits?.context_max
+    ? `${limits.context_kind === "input" ? "Input limit" : "Context window"} ${contextLabel(limits.context_max)}${limits.output_max ? ` · output max ${contextLabel(limits.output_max)}` : ""}`
+    : "Limits not reported";
+  const limitsTitle = limits?.limit_source || (discovered ? "Reported by provider catalogue" : "Provider limit metadata unavailable");
   const safeKind = String(kind).replace(/[^a-z0-9-]/gi, "");
   const keyId = `ariadne-${safeKind}-provider-secret-v4`;
   const keyName = `ariadne_${safeKind.replaceAll("-", "_")}_provider_secret_v4`;
-  return `<article class="provider-card"><div class="provider-card-top"><strong>${htmlEscape(label)}</strong><span class="active-vault-badge ${configured ? "active" : "attention"}">${configured ? "Key saved" : "Key missing"}</span></div><small>Optional · ${htmlEscape(provider?.location || "cloud")}</small><div class="provider-model">${htmlEscape(model)}</div><details class="provider-edit"><summary>Edit provider</summary><div class="provider-edit-fields"><label class="path-field"><span class="field-label">Default model</span><input type="text" value="${htmlEscape(model === "Model not selected" ? "" : model)}" data-provider-model="${htmlEscape(provider?.provider_id || "")}" autocomplete="off" spellcheck="false"></label><label class="path-field"><span class="field-label">${htmlEscape(title)} API key <small>Stored in Windows Credential Manager.</small></span><span class="groq-key-input-wrap"><input id="${keyId}" name="${keyName}" type="text" class="groq-key-masked" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="${configured ? "••••••••••••••••" : `Enter ${htmlEscape(title)} API key`}" data-provider-key data-provider-id="${htmlEscape(provider?.provider_id || "")}" data-lpignore="true" data-form-type="other" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true"><button class="groq-key-visibility" type="button" data-provider-key-action="visibility" data-provider-id="${htmlEscape(provider?.provider_id || "")}" data-has-stored-key="${configured}" aria-label="Show saved ${htmlEscape(title)} API key" aria-pressed="false" title="Show saved API key" ${configured ? "" : "disabled"}><svg class="groq-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="groq-eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.9-.5"/></svg></button></span></label><div class="compact-actions"><button class="secondary-button" type="button" data-provider-key-action="save" data-provider-id="${htmlEscape(provider?.provider_id || "")}">Save key securely</button><button class="secondary-button" type="button" data-provider-key-action="remove" data-provider-id="${htmlEscape(provider?.provider_id || "")}">Remove saved key</button></div></div></details></article>`;
+  return `<article class="provider-card"><div class="provider-card-top"><strong>${htmlEscape(label)}</strong><span class="active-vault-badge ${configured ? "active" : "attention"}">${configured ? "Key saved" : "Key missing"}</span></div><small>Optional · ${htmlEscape(provider?.location || "cloud")}</small><div class="provider-model">${htmlEscape(model)}</div><small class="provider-limits" title="${htmlEscape(limitsTitle)}">${htmlEscape(contextDescription)}</small><details class="provider-edit"><summary>Edit provider</summary><div class="provider-edit-fields"><label class="path-field"><span class="field-label">Default model</span><input type="text" value="${htmlEscape(model === "Model not selected" ? "" : model)}" data-provider-model="${htmlEscape(provider?.provider_id || "")}" autocomplete="off" spellcheck="false"></label><label class="path-field"><span class="field-label">${htmlEscape(title)} API key <small>Stored in Windows Credential Manager.</small></span><span class="groq-key-input-wrap"><input id="${keyId}" name="${keyName}" type="text" class="groq-key-masked" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="${configured ? "••••••••••••••••" : `Enter ${htmlEscape(title)} API key`}" data-provider-key data-provider-id="${htmlEscape(provider?.provider_id || "")}" data-lpignore="true" data-form-type="other" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true"><button class="groq-key-visibility" type="button" data-provider-key-action="visibility" data-provider-id="${htmlEscape(provider?.provider_id || "")}" data-has-stored-key="${configured}" aria-label="Show saved ${htmlEscape(title)} API key" aria-pressed="false" title="Show saved API key" ${configured ? "" : "disabled"}><svg class="groq-eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="groq-eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.9-.5"/></svg></button></span></label><div class="compact-actions"><button class="secondary-button" type="button" data-provider-key-action="save" data-provider-id="${htmlEscape(provider?.provider_id || "")}">Save key securely</button><button class="secondary-button" type="button" data-provider-key-action="remove" data-provider-id="${htmlEscape(provider?.provider_id || "")}">Remove saved key</button></div></div></details></article>`;
 }
 
 function renderInferenceProviders(providers, routes) {
