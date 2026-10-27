@@ -64,3 +64,15 @@ made by that guide.
 Choose your own Vault using Configuration or `ARIADNE_VAULT_ROOT`. The current
 default is an installation-specific path, not the repository root. Do not copy
 Wazza's private Vault or network configuration to make a clone work.
+
+## License and acknowledgements
+
+The repository's source is distributed under the [Apache License 2.0](LICENSE). Keep any applicable third-party notices and licenses with their components; private vault contents are not part of the published source.
+
+## Help and community
+
+Please [open an Issue](https://github.com/PopeKael/Ariadne/issues) for a reproducible bug or a practical improvement idea. Include your Windows version, relevant component, setup steps and the behaviour observed. Do not publish personal vault content, credentials or private network details.
+
+Part of [Garage Alchemy](https://garage.dia.net.au/): useful tools, practical experiments, and the lessons learned while building them.
+
+**Support is optional:** [Buy Me a Coffee](https://buymeacoffee.com/warrengerdes) · [Join the Tribe on Patreon](https://www.patreon.com/c/chanyawazza). No payment is required to use or contribute to this project under its licence.
