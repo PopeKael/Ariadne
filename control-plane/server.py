@@ -8,6 +8,8 @@ STARTUP_TRACE.mark("imports_start", "started")
 import csv
 import base64
 import binascii
+from email import policy as email_policy
+from email.parser import BytesParser
 import hashlib
 import html
 from collections.abc import Callable
@@ -128,6 +130,7 @@ from plugin_execution import PluginExecutionError, build_plugin_command, load_pl
 from plugin_registry import PLUGIN_REGISTRY
 from production_projects import ASSET_SCHEMA, ProductionProjectStore, utc_now
 from music_engine import AudioCppMiniMaxEngine, MusicRequest
+from speech_studio import SpeechStudio
 from plugins.cleanup.cleanup import PLUGIN_CAPABILITY, effective_configuration, normalize_configuration
 from signal_service_client import SignalServiceClient
 from news_briefing_cache import NewsBriefingCache
@@ -442,6 +445,8 @@ AUDIOCPP_RUNTIME_ROOT = Path(os.environ.get("ARIADNE_AUDIOCPP_ROOT", str(ROOT / 
 LOCAL_MUSIC_ENGINE = AudioCppMiniMaxEngine(AUDIOCPP_RUNTIME_ROOT)
 MUSIC_GENERATION_TIMEOUT_SECONDS = max(60, int(os.environ.get("ARIADNE_MUSIC_GENERATION_TIMEOUT_SECONDS", "900")))
 MUSIC_MINIMUM_FREE_GB = float(os.environ.get("ARIADNE_MUSIC_MINIMUM_FREE_GB", "6"))
+SPEECH_OUTPUT_ROOT = Path(os.environ.get("ARIADNE_SPEECH_ROOT", r"D:\Downloads\Speech"))
+SPEECH_PRIVATE_ROOT = Path(os.environ.get("ARIADNE_SPEECH_PRIVATE_ROOT", str(Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "Ariadne" / "speech-studio")))
 SEQUENCE_PROJECTS = ProductionProjectStore()
 IMAGE_SIZE_OPTIONS = {
     "768x768": {"label": "768 × 768", "width": 768, "height": 768, "orientation": "square"},
@@ -1481,6 +1486,18 @@ def media_gpu_lease(workload: str, *, min_free_bytes: int = 0):
             raise
         _set_media_gpu_owner("NONE", "GPU is available to the next approved workload.")
         announce_media_lifecycle(label, "STOPPED", f"{label} GPU lease released; Ariadne can request its model when its page is active.")
+
+
+SPEECH_STUDIO = SpeechStudio(
+    AUDIOCPP_RUNTIME_ROOT,
+    LOCAL_MUSIC_ENGINE.ffmpeg,
+    lambda: Path(str(configuration_snapshot().get("storage", {}).get("speech") or SPEECH_OUTPUT_ROOT)),
+    SPEECH_PRIVATE_ROOT,
+    lambda workload, minimum: media_gpu_lease(workload, min_free_bytes=minimum),
+    lambda lease_id, minimum: host_verify_gpu_lease_capacity(lease_id, minimum, OLLAMA_URL),
+    gpu_status,
+    gpu_owner_status,
+)
 
 
 def _model_residency_snapshot() -> dict[str, object]:
@@ -9776,6 +9793,34 @@ class AriadneHandler(BaseHTTPRequestHandler):
             raise ValueError("Request body must be a JSON object.")
         return value
 
+    def read_multipart_form(self) -> tuple[dict[str, str], str, bytes]:
+        content_type = self.headers.get("Content-Type", "")
+        if not content_type.lower().startswith("multipart/form-data;"):
+            raise ValueError("Expected a multipart form with an uploaded media file.")
+        length = int(self.headers.get("Content-Length", "0"))
+        if length <= 0 or length > 512 * 1024 * 1024 + 1024 * 1024:
+            raise ValueError("The upload is empty or exceeds the 512 MiB limit.")
+        raw = self.rfile.read(length)
+        envelope = (f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n").encode("ascii") + raw
+        message = BytesParser(policy=email_policy.default).parsebytes(envelope)
+        if not message.is_multipart():
+            raise ValueError("The uploaded media form could not be parsed.")
+        fields: dict[str, str] = {}
+        filename = ""
+        media = b""
+        for part in message.iter_parts():
+            key = str(part.get_param("name", header="content-disposition") or "")
+            payload = part.get_payload(decode=True) or b""
+            part_filename = part.get_filename()
+            if part_filename is not None and key in {"file", "recording"}:
+                filename = Path(part_filename).name
+                media = payload
+            elif key:
+                fields[key] = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+        if not filename or not media:
+            raise ValueError("Select a non-empty audio or video file.")
+        return fields, filename, media
+
     def workspace_request(self) -> bool:
         for prefix, origin in (("/workspaces/video/", VIDEO_RENDERER_URL), ("/workspaces/gods-eye-view/", GODS_EYE_VIEW_URL)):
             if self.path.startswith(prefix):
@@ -10100,6 +10145,39 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if path == "/api/image/status":
             self.send_json(image_engine_status())
             return
+        if path == "/api/speech/status":
+            self.send_json(SPEECH_STUDIO.status())
+            return
+        if path == "/api/speech/jobs":
+            self.send_json({"ok": True, "jobs": SPEECH_STUDIO.list_jobs()})
+            return
+        if path == "/api/speech/voices":
+            self.send_json({"ok": True, "voices": SPEECH_STUDIO.list_voices()})
+            return
+        speech_job_match = re.fullmatch(r"/api/speech/jobs/([a-f0-9]{32})", path)
+        if speech_job_match:
+            job = SPEECH_STUDIO.snapshot(speech_job_match.group(1))
+            self.send_json({"ok": job is not None, "job": job, "message": "Speech job not found." if job is None else ""}, 200 if job else 404)
+            return
+        speech_audio_match = re.fullmatch(r"/api/speech/audio/([a-f0-9]{32})", path)
+        if speech_audio_match:
+            query = parse_qs(parsed.query)
+            try:
+                path_to_send = SPEECH_STUDIO.audio_path(speech_audio_match.group(1), query.get("format", ["wav"])[0])
+                self.send_audio_file(path_to_send, download=bool(query.get("download")))
+            except (FileNotFoundError, OSError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 404)
+            return
+        speech_export_match = re.fullmatch(r"/api/speech/exports/([a-f0-9]{32})", path)
+        if speech_export_match:
+            kind = parse_qs(parsed.query).get("kind", ["text"])[0]
+            try:
+                export_path = SPEECH_STUDIO.export_path(speech_export_match.group(1), kind)
+                content_type = "application/x-subrip; charset=utf-8" if kind == "srt" else "application/json; charset=utf-8" if kind == "segments" else "text/plain; charset=utf-8"
+                self.send_bytes(export_path.read_bytes(), content_type)
+            except (FileNotFoundError, OSError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 404)
+            return
         image_job_match = re.fullmatch(r"/api/image/generation/([a-f0-9]{32})", path)
         if image_job_match:
             job = IMAGE_JOBS.snapshot(image_job_match.group(1))
@@ -10237,6 +10315,14 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if path == "/create":
             self.send_asset("create.html", "text/html; charset=utf-8")
+            return
+        if path == "/speech":
+            self.send_asset("speech.html", "text/html; charset=utf-8")
+            return
+        if path in {"/speech.js", "/speech.css"}:
+            filename = path[1:]
+            content_type = "text/javascript; charset=utf-8" if filename.endswith(".js") else "text/css; charset=utf-8"
+            self.send_asset(filename, content_type)
             return
         if path == "/image":
             self.send_asset("image.html", "text/html; charset=utf-8")
@@ -10378,8 +10464,37 @@ class AriadneHandler(BaseHTTPRequestHandler):
         if (path.startswith("/api/code-lab/") and path != "/api/code-lab/runner/status") or path in {"/api/home/chat/lab-run"}:
             self.send_json({"ok": False, "state": "retired", "message": "The legacy 14B Chat Lab workflow has been retired. Use the coding capability in Chat."}, 410)
             return
+        if path in {"/api/speech/transcribe", "/api/speech/voices"}:
+            try:
+                fields, filename, media = self.read_multipart_form()
+                if path == "/api/speech/transcribe":
+                    result, status = SPEECH_STUDIO.submit_transcription(filename, media, fields.get("language", "auto"))
+                else:
+                    result, status = SPEECH_STUDIO.create_voice(filename, media, fields.get("name", ""), fields.get("transcript", ""), fields.get("description", ""), fields.get("consent", "").lower() in {"true", "1", "yes", "on"})
+                self.send_json(result, status)
+            except (ValueError, OSError, UnicodeError) as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
+            return
         try:
             body = self.read_json()
+            if path == "/api/speech/generate":
+                result, status = SPEECH_STUDIO.submit_synthesis(body)
+                self.send_json(result, status)
+                return
+            if path == "/api/speech/stop":
+                result, status = SPEECH_STUDIO.cancel(str(body.get("job_id") or ""))
+                self.send_json(result, status)
+                return
+            speech_job_delete = re.fullmatch(r"/api/speech/jobs/([a-f0-9]{32})/delete", path)
+            if speech_job_delete:
+                result, status = SPEECH_STUDIO.delete_job(speech_job_delete.group(1))
+                self.send_json(result, status)
+                return
+            speech_voice_delete = re.fullmatch(r"/api/speech/voices/([a-f0-9]{32})/delete", path)
+            if speech_voice_delete:
+                result, status = SPEECH_STUDIO.delete_voice(speech_voice_delete.group(1))
+                self.send_json(result, status)
+                return
             if path == "/api/dungeon/start":
                 result = begin_dungeon_handoff()
                 self.send_json(result, 202 if result.get("ok") else 409)

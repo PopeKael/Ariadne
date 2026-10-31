@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "runtime": {
+    "name": "audio.cpp",
+    "version": "0.8.0",
+    "commit": "4af1432",
+    "build_date": "2026-09-15",
+    "platform": "Windows AMD64",
+    "backends": [
+      "cpu",
+      "vulkan"
+    ],
+    "executable": "runtime/external/audio-cpp-v0.8.0-vulkan/app/audiocpp_cli.exe",
+    "sha256": "b250aabdd50a80a89dd34e7b48e88b47d9f27d95513ee21fa07bbf082929375e"
+  },
+  "models": {
+    "qwen3_asr_0_6b_q8_0": {
+      "repo": "audio-cpp/audio.cpp-gguf",
+      "source_revision": "main",
+      "source_file": "Qwen3-ASR-0.6B-GGUF/qwen3-asr-0.6b-q8_0.gguf",
+      "size_bytes": 1151279968,
+      "sha256": "5c53bbb9a6b2ade85c16c290c560658ca18b78a23c323378528f1f945683fcbe",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/QwenLM/Qwen3-ASR"
+    },
+    "voxcpm2_q8_0": {
+      "repo": "audio-cpp/audio.cpp-gguf",
+      "source_revision": "main",
+      "source_file": "VoxCPM2-GGUF/voxcpm2-q8_0.gguf",
+      "size_bytes": 2955007488,
+      "sha256": "8df1faf274e1bdeedef1fd9ddd6aba6632536f66f2e080991d2352af35ceef72",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/OpenBMB/VoxCPM"
+    }
+  },
+  "transcoder": {
+    "name": "FFmpeg",
+    "version": "7.0.1",
+    "build": "essentials_build-www.gyan.dev",
+    "sha256": "d7b51e782c79f564d6e33907b17b010f01634c00e3c42559975cbc7a82982f8f",
+    "resolved_by": "Ariadne's existing AudioCppMiniMaxEngine configuration"
+  }
+}

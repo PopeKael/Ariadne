@@ -76,8 +76,14 @@ def event_progress(message, prompt_id):
 
 @contextmanager
 def comfy_progress(engine_url, client_id, on_progress):
-    # Imported only for image generation; the existing desktop Python has websockets.
-    from websockets.sync.client import connect
+    try:
+        from websockets.sync.client import connect
+    except ModuleNotFoundError as exc:
+        if not str(exc.name or "").startswith("websockets"):
+            raise
+        on_progress(stage="Rendering; live progress connection unavailable", step=None, total_steps=None)
+        yield
+        return
     url = engine_url.replace('http://', 'ws://', 1).replace('https://', 'wss://', 1)
     stop = threading.Event()
     with connect(f'{url}/ws?clientId={client_id}', open_timeout=10, proxy=None) as ws:

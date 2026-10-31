@@ -1,8 +1,9 @@
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
-from image_jobs import ImageJobs, event_progress
+from image_jobs import ImageJobs, comfy_progress, event_progress
 
 
 class ImageJobTests(unittest.TestCase):
@@ -46,6 +47,22 @@ class ImageJobTests(unittest.TestCase):
         self.assertEqual(event_progress({'type': 'progress', 'data': {'prompt_id': 'other'}}, 'mine'), {})
         self.assertEqual(event_progress({'type': 'progress', 'data': {'prompt_id': 'mine', 'value': 12, 'max': 24}}, 'mine')['step'], 12)
         self.assertEqual(event_progress({'type': 'executing', 'data': {'prompt_id': 'mine', 'node': '8'}}, 'mine')['stage'], 'Decoding image')
+
+    def test_render_continues_when_optional_websocket_progress_dependency_is_missing(self):
+        progress = []
+        real_import = __import__
+
+        def without_websockets(name, *args, **kwargs):
+            if name.startswith('websockets'):
+                raise ModuleNotFoundError("No module named 'websockets'", name='websockets')
+            return real_import(name, *args, **kwargs)
+
+        with patch('builtins.__import__', side_effect=without_websockets):
+            with comfy_progress('http://127.0.0.1:8188', 'a' * 32, lambda **event: progress.append(event)):
+                progress.append({'stage': 'render body entered'})
+
+        self.assertEqual(progress[0]['stage'], 'Rendering; live progress connection unavailable')
+        self.assertEqual(progress[1]['stage'], 'render body entered')
 
 
 if __name__ == '__main__':

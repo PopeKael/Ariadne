@@ -303,7 +303,7 @@ impl OllamaSupervisor {
 
     fn acquire_gpu_lease(&self, workload: String, model: Option<String>, min_free_bytes: u64,
                          owner_pid: Option<u32>) -> RuntimeResponse {
-        if !matches!(workload.as_str(), "ai" | "vault" | "renderer" | "dungeon" | "transition" | "music" | "image") {
+        if !matches!(workload.as_str(), "ai" | "vault" | "renderer" | "dungeon" | "transition" | "music" | "image" | "speech") {
             return RuntimeResponse::error(format!("Unknown Rust-host GPU workload '{workload}'."));
         }
         let Some(owner_pid) = owner_pid else {
@@ -1176,7 +1176,7 @@ fn is_exclusive_gpu_workload(workload: &str) -> bool {
 }
 
 fn releases_idle_ollama_for_workload(workload: &str) -> bool {
-    matches!(workload, "vault" | "renderer" | "dungeon" | "music" | "image")
+    matches!(workload, "vault" | "renderer" | "dungeon" | "music" | "image" | "speech")
 }
 
 fn restore_residency_models(endpoint: &str, rows: &[serde_json::Value], num_parallel: u32, version: &str,
@@ -1248,6 +1248,8 @@ mod gpu_workload_lease_tests {
         assert!(gpu_workload_conflicts("ai", true, &[], 0));
         assert!(gpu_workload_conflicts("ai", false, &["renderer".into()], 0));
         assert!(gpu_workload_conflicts("renderer", false, &["ai".into()], 0));
+        assert!(gpu_workload_conflicts("speech", false, &["ai".into()], 0));
+        assert!(gpu_workload_conflicts("ai", false, &["speech".into()], 0));
         assert!(gpu_workload_conflicts("dungeon", false, &[], 1));
     }
 
@@ -1265,7 +1267,7 @@ mod gpu_workload_lease_tests {
 
     #[test]
     fn external_gpu_workloads_require_host_model_release_before_capacity_check() {
-        for workload in ["vault", "renderer", "dungeon", "music", "image"] {
+        for workload in ["vault", "renderer", "dungeon", "music", "image", "speech"] {
             assert!(releases_idle_ollama_for_workload(workload), "{workload} must free Ollama residency before checking its reserve");
         }
         for workload in ["transition", "ai"] {

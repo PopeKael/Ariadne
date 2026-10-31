@@ -32,6 +32,16 @@
   const videoStop = document.querySelector("#video-stop");
   const videoOpen = document.querySelector("#video-open");
 
+  const speechState = document.querySelector("#speech-state");
+  const speechModel = document.querySelector("#speech-model");
+  const speechLifecycle = document.querySelector("#speech-lifecycle");
+  const speechGpu = document.querySelector("#speech-gpu");
+  const speechOutput = document.querySelector("#speech-output");
+  const speechOpen = document.querySelector("#speech-open");
+  const speechStop = document.querySelector("#speech-stop");
+  const speechFeedback = document.querySelector("#speech-feedback");
+  let speechActiveJob = null;
+
   function renderImageStatus(payload) {
     const image = payload || {};
     const state = String(image.state || "unknown").toLowerCase();
@@ -64,15 +74,25 @@
     videoFeedback.textContent = online ? `Renderer is ready at ${renderer.url || "the local renderer endpoint"}.` : renderer.detail || "Renderer is stopped.";
   }
 
-  function fallbackMusicCatalog() {
-    return {
-      output_root: "D:\\Downloads\\Music",
-      default_provider: "ariadne-local",
-      providers: [
-        { id: "ariadne-local", label: "Ariadne Local · MiniMax Music 3 Q4", state: "ready", runtime: "audio.cpp 0.8.0 · MiniMax Music 3 Q4 · Vulkan", gpu: "Vulkan · shared GPU on demand", launchable: true, launch_url: "/music", detail: "Standalone candidates wait under D:\\Downloads\\Music\\Candidates and move into D:\\Downloads\\Music only after you accept them. Projects remain optional." },
-        { id: "suno-web", label: "Suno (browser fallback)", state: "ready", runtime: "BROWSER SESSION", gpu: "None", launchable: true, launch_url: "https://suno.com/", detail: "Suno opens in your browser and does not reserve Ariadne's local GPU." },
-      ],
-    };
+  function renderSpeechStatus(payload) {
+    const speech = payload || {};
+    const state = String(speech.state || "unknown").toLowerCase();
+    const models = Array.isArray(speech.models) ? speech.models : [];
+    const asr = models.find((model) => model.package === "qwen3_asr_0_6b_q8_0");
+    const tts = models.find((model) => model.package === "voxcpm2_q8_0");
+    const modelSummary = `${speech.runtime || "Runtime unavailable"} · ASR ${asr?.installed ? "installed" : "missing"} · TTS ${tts?.installed ? "installed" : "missing"}`;
+    speechState.textContent = state;
+    speechModel.textContent = modelSummary;
+    speechLifecycle.textContent = speech.lifecycle_state || state;
+    const owner = speech.gpu_owner?.current_gpu_owner || "UNKNOWN";
+    const free = speech.gpu?.available ? `${speech.gpu.free_gb} GB WDDM free` : "WDDM telemetry unavailable";
+    speechGpu.textContent = `${owner} · ${free}`;
+    speechOutput.textContent = speech.output_root || "Not configured";
+    speechActiveJob = speech.job || null;
+    const installed = Boolean(asr?.installed && tts?.installed && speech.executable);
+    speechOpen.hidden = !installed;
+    speechStop.disabled = !speechActiveJob || !["queued", "running", "stopping"].includes(speechActiveJob.state);
+    speechFeedback.textContent = speech.detail || "Speech runtime status unavailable.";
   }
 
   function renderMusicProvider() {
@@ -83,7 +103,7 @@
     musicRuntime.textContent = provider.runtime || "Provider required";
     musicGpu.textContent = provider.gpu || "Not configured";
     musicStart.disabled = !provider.launchable;
-    musicStart.textContent = provider.launchable ? (provider.id === "ariadne-local" ? "Open Music Studio" : "Open Suno") : "Local engine not installed";
+    musicStart.textContent = provider.launchable ? (provider.id === "ariadne-local" ? "Open Music Studio" : "Open Suno") : "Music unavailable";
     musicFeedback.textContent = provider.detail || "Music provider status unavailable.";
   }
 
@@ -91,14 +111,14 @@
     selectedMusicProvider = musicProviders.find((provider) => provider.id === providerId) || musicProviders[0] || null;
     if (selectedMusicProvider) {
       musicProviderSelect.value = selectedMusicProvider.id;
-      window.localStorage.setItem(MUSIC_PROVIDER_PREFERENCE, selectedMusicProvider.id);
+      if (selectedMusicProvider.id !== "unavailable") window.localStorage.setItem(MUSIC_PROVIDER_PREFERENCE, selectedMusicProvider.id);
     }
     renderMusicProvider();
   }
 
   function renderMusicStatus(payload) {
-    const music = payload || fallbackMusicCatalog();
-    musicProviders = Array.isArray(music.providers) ? music.providers : fallbackMusicCatalog().providers;
+    const music = payload || {};
+    musicProviders = Array.isArray(music.providers) ? music.providers : [];
     musicOutput.textContent = music.output_root || "Not configured";
     const remembered = window.localStorage.getItem(MUSIC_PROVIDER_PREFERENCE);
     const preferred = remembered || music.default_provider || musicProviders[0]?.id;
@@ -128,10 +148,19 @@
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
       renderMusicStatus(payload);
-    } catch (_error) {
-      // Keep the launch card useful while an already-running host waits for
-      // its next normal restart to load this optional status route.
-      renderMusicStatus(fallbackMusicCatalog());
+    } catch (error) {
+      renderMusicStatus({ providers: [{ id: "unavailable", label: "Status unavailable", state: "unknown", launchable: false, detail: `Music provider status unavailable: ${error.message}` }] });
+    }
+  }
+
+  async function loadSpeechStatus() {
+    try {
+      const response = await fetch("/api/speech/status", { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+      renderSpeechStatus(payload);
+    } catch (error) {
+      renderSpeechStatus({ state: "unknown", detail: `Speech status unavailable: ${error.message}` });
     }
   }
 
@@ -140,7 +169,7 @@
       const response = await fetch("/api/configuration", { cache: "no-store" });
       const payload = await response.json();
       const storage = payload.storage || {};
-      const values = [["Images", storage.images?.path], ["Music", storage.music?.path], ["Videos", storage.videos?.path], ["Screenshots", storage.screenshots?.path], ["Documents", storage.documents?.path]];
+      const values = [["Images", storage.images?.path], ["Music", storage.music?.path], ["Speech", storage.speech?.path], ["Videos", storage.videos?.path], ["Screenshots", storage.screenshots?.path], ["Documents", storage.documents?.path]];
       document.querySelector("#create-storage").replaceChildren(...values.map(([label, path]) => {
         const item = document.createElement("div");
         item.className = "storage-item";
@@ -153,7 +182,6 @@
       }));
       imageOutput.textContent = storage.images?.path || "Not configured";
       document.querySelector("#video-output").textContent = storage.videos?.path || "Not configured";
-      document.querySelector("#transcript-input").textContent = storage.videos?.path || storage.documents?.path || "Not configured";
     } catch (_error) {
       document.querySelector("#create-storage").textContent = "Configuration could not be read.";
     }
@@ -214,9 +242,26 @@
   });
   videoStart.addEventListener("click", () => rendererAction("start"));
   videoStop.addEventListener("click", () => rendererAction("stop"));
+  speechStop.addEventListener("click", async () => {
+    if (!speechActiveJob?.id) return;
+    speechStop.disabled = true;
+    speechFeedback.textContent = "Stopping the active speech job…";
+    try {
+      const response = await fetch("/api/speech/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ job_id: speechActiveJob.id }) });
+      const payload = await response.json();
+      if (!response.ok || payload.ok === false) throw new Error(payload.message || `HTTP ${response.status}`);
+      speechFeedback.textContent = payload.message || payload.job?.message || "Cancellation requested.";
+    } catch (error) {
+      speechFeedback.textContent = error.message;
+    } finally {
+      window.setTimeout(loadSpeechStatus, 1000);
+    }
+  });
   configuration();
   loadImageStatus();
   loadMusicStatus();
+  loadSpeechStatus();
   window.setInterval(loadImageStatus, 5000);
   window.setInterval(loadMusicStatus, 15000);
+  window.setInterval(loadSpeechStatus, 4000);
 })();

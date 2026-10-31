@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" class="ariadne-page">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speech Studio · Ariadne</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/page-shell.css">
+  <link rel="stylesheet" href="/speech.css">
+</head>
+<body class="ariadne-page speech-page">
+  <div class="workspace-shell">
+    <main class="workspace-main">
+      <div class="studio-toolbar"><a class="ws-button" href="/create">← Back to Create</a><span id="speech-top-status" class="lane-note">Checking local speech runtime…</span></div>
+      <header class="speech-heading">
+        <div><span class="workspace-kicker">SPEECH STUDIO</span><h1>Speech in, speech out.</h1><p>Transcribe local recordings, keep authorized voice references on this PC, and synthesize new speech with Ariadne’s managed audio.cpp runtime.</p></div>
+        <div class="speech-runtime"><strong id="speech-runtime-state">Checking</strong><span id="speech-runtime-detail">Reading installed models and WDDM telemetry…</span><small id="speech-runtime-gpu">GPU ownership: checking</small></div>
+      </header>
+
+      <section class="speech-grid" aria-label="Speech Studio">
+        <article class="speech-panel transcription-panel">
+          <div class="speech-panel-heading"><div><span class="workspace-kicker">01 · TRANSCRIBE</span><h2>Audio to editable text</h2></div><span class="capability-badge">QWEN3 ASR · LOCAL</span></div>
+          <p class="speech-help">Choose audio or video, or record through the browser microphone. Video audio is extracted locally. Transcripts and source files are kept in your local Speech folder.</p>
+          <div class="speech-input-row">
+            <label class="field-label">Audio or video file<input id="speech-file" class="ws-input" type="file" accept="audio/*,video/*,.m4a,.mp3,.wav,.mp4,.webm,.mov,.mkv"></label>
+            <label class="field-label">Transcript language<select id="speech-language" class="ws-select"><option value="auto">Automatic</option><option value="en">English</option><option value="th">Thai</option><option value="zh">Chinese</option><option value="ja">Japanese</option><option value="id">Indonesian</option><option value="vi">Vietnamese</option><option value="fr">French</option><option value="de">German</option><option value="es">Spanish</option></select></label>
+          </div>
+          <div class="speech-record-row"><button id="speech-record-start" class="ws-button" type="button">Record microphone</button><button id="speech-record-stop" class="ws-button" type="button" disabled>Stop recording</button><audio id="speech-record-preview" controls hidden></audio><span id="speech-record-state" class="field-hint">Microphone access is requested only when you start recording.</span></div>
+          <div class="speech-actions"><button id="speech-transcribe" class="ws-button primary" type="button" disabled>Transcribe recording</button><button id="speech-transcribe-stop" class="ws-button" type="button" disabled>Cancel job</button><span id="speech-asr-progress" class="field-hint" role="status"></span></div>
+          <label class="field-label" for="speech-transcript">Transcript · editable</label>
+          <textarea id="speech-transcript" class="ws-textarea speech-transcript" rows="9" placeholder="Your transcript will appear here. You can edit and copy it."></textarea>
+          <div class="speech-actions"><button id="speech-copy" class="ws-button" type="button">Copy text</button><a id="speech-export-txt" class="ws-button" hidden>Download edited TXT</a><a id="speech-export-srt" class="ws-button" title="SRT timing and wording from the original ASR result" hidden>Download original SRT</a></div>
+        </article>
+
+        <article class="speech-panel voice-panel">
+          <div class="speech-panel-heading"><div><span class="workspace-kicker">02 · VOICE LIBRARY</span><h2>Your local references</h2></div><span class="capability-badge">PRIVATE · LOCAL</span></div>
+          <p class="speech-help">A voice reference is kept as local audio plus an optional transcript. Clip analysis reports duration and audio format; you can add your own voice notes. Ariadne does not infer identity, gender, or a speaker embedding. Use a recording you own or have permission to reproduce.</p>
+          <label class="field-label" for="voice-name">Voice name</label><input id="voice-name" class="ws-input" maxlength="80" placeholder="e.g. My narration voice">
+          <label class="field-label" for="voice-description">Voice notes <span>(optional; your description)</span></label><input id="voice-description" class="ws-input" maxlength="300" placeholder="e.g. Warm, steady English narration">
+          <label class="field-label" for="voice-file">Reference recording</label><input id="voice-file" class="ws-input" type="file" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg">
+          <label class="field-label" for="voice-transcript">Reference transcript <span>(optional for VoxCPM2)</span></label><textarea id="voice-transcript" class="ws-textarea" rows="3" placeholder="Accurate words from the reference recording help maintain the voice."></textarea>
+          <label class="speech-consent"><input id="voice-consent" type="checkbox"><span>I own this voice recording or have the speaker’s permission to use it for speech synthesis.</span></label>
+          <div class="speech-actions"><button id="voice-save" class="ws-button primary" type="button">Save local voice reference</button><span id="voice-feedback" class="field-hint" role="status"></span></div>
+          <div class="voice-library-heading"><strong>Saved voices</strong><button id="voice-refresh" class="ws-button compact" type="button">Refresh</button></div>
+          <div id="voice-library" class="voice-library"><span class="field-hint">Loading local voice references…</span></div>
+        </article>
+
+        <article class="speech-panel synthesis-panel">
+          <div class="speech-panel-heading"><div><span class="workspace-kicker">03 · CREATE SPEECH</span><h2>Text to voice</h2></div><span class="capability-badge">VOXCPM2 · VULKAN</span></div>
+          <p class="speech-help">Choose a saved authorized voice reference, or describe a new synthetic voice. Voice design does not clone a recorded person.</p>
+          <label class="field-label" for="speech-voice-mode">Voice mode</label><select id="speech-voice-mode" class="ws-select"><option value="design">Design a synthetic voice</option><option value="reference">Use a saved voice reference</option></select>
+          <div id="speech-design-fields"><label class="field-label" for="speech-voice-design">Synthetic voice description</label><textarea id="speech-voice-design" class="ws-textarea" rows="3" placeholder="A warm, clear middle-aged Australian narrator speaking at a relaxed pace."></textarea></div>
+          <div id="speech-reference-fields" hidden><label class="field-label" for="speech-voice-select">Saved voice reference</label><select id="speech-voice-select" class="ws-select"><option value="">No saved voices</option></select><span id="speech-reference-detail" class="field-hint">Uses the local reference WAV and its optional transcript.</span></div>
+          <label class="field-label" for="speech-text">Text to speak</label><textarea id="speech-text" class="ws-textarea speech-text" rows="8" maxlength="20000" placeholder="Write or paste the words you want spoken…"></textarea>
+          <div class="speech-input-row"><label class="field-label">Synthesis steps<select id="speech-steps" class="ws-select"><option value="6">6 · quicker</option><option value="10" selected>10 · standard</option><option value="16">16 · slower</option></select></label><span class="field-hint speech-license">VoxCPM2 · Apache-2.0 · local model</span></div>
+          <div class="speech-actions"><button id="speech-generate" class="ws-button primary" type="button" disabled>Generate speech</button><button id="speech-generate-stop" class="ws-button" type="button" disabled>Cancel job</button><span id="speech-tts-progress" class="field-hint" role="status"></span></div>
+          <audio id="speech-audio-preview" controls preload="metadata" hidden></audio>
+          <div class="speech-actions"><a id="speech-wav-download" class="ws-button" hidden download>Download WAV</a><a id="speech-mp3-download" class="ws-button" hidden download>Download MP3</a></div>
+        </article>
+
+        <article class="speech-panel history-panel">
+          <div class="speech-panel-heading"><div><span class="workspace-kicker">04 · JOBS</span><h2>Recent work</h2></div><button id="speech-history-refresh" class="ws-button compact" type="button">Refresh</button></div>
+          <p class="speech-help">Completed transcripts and audio remain available after refresh or restart. Active jobs are marked interrupted if Ariadne stops before they finish.</p>
+          <div id="speech-history" class="speech-history"><span class="field-hint">Loading job history…</span></div>
+          <div class="speech-private-note"><strong>Local storage</strong><span>Source recordings, voice references, transcripts and generated WAV/MP3 files stay on this PC. Nothing is uploaded to a speech provider.</span></div>
+        </article>
+      </section>
+      <div id="speech-global-feedback" class="speech-global-feedback" role="status"></div>
+    </main>
+    <footer class="workspace-footer">Private · Local · Ariadne-managed speech jobs and GPU leases</footer>
+  </div>
+  <script src="/page-shell.js"></script><script src="/speech.js"></script>
+</body>
+</html>
