@@ -24,6 +24,87 @@ MAX_UPLOAD_BYTES = 512 * 1024 * 1024
 MIN_FREE_GPU_BYTES = 9 * 1024**3
 
 
+def assess_gpu_handoff(
+    gpu: dict[str, Any],
+    gpu_owner: dict[str, Any],
+    in_flight: dict[str, Any],
+    catalog: dict[str, Any],
+) -> dict[str, Any]:
+    """Check current admission safety and any required idle-model handoff."""
+    def blocked(detail: str) -> dict[str, Any]:
+        return {"ready": False, "safe_to_submit": False, "detail": detail}
+
+    if gpu.get("available") is not True:
+        return blocked(str(gpu.get("detail") or "GPU WDDM telemetry is unavailable; Speech handoff is blocked."))
+    try:
+        free_bytes = int(gpu.get("free_bytes") or 0)
+    except (TypeError, ValueError, OverflowError):
+        free_bytes = 0
+    if free_bytes <= 0:
+        return blocked("GPU WDDM telemetry has no valid free-memory measurement; Speech handoff is blocked.")
+    if str(gpu_owner.get("current_gpu_owner") or "UNKNOWN").upper() not in {"AI", "NONE"}:
+        return blocked(str(gpu_owner.get("detail") or "Another GPU workload owns the GPU."))
+    if gpu_owner.get("transition_state") != "IDLE":
+        return blocked(str(gpu_owner.get("detail") or "A GPU ownership transition is in progress."))
+    if gpu_owner.get("delegation_state") != "ARIADNE_ACTIVE":
+        return blocked("Ariadne has delegated GPU ownership; Speech admission is paused.")
+    try:
+        admissions = int(in_flight.get("admissions"))
+    except (TypeError, ValueError, OverflowError):
+        admissions = -1
+    try:
+        session_model_leases = int(in_flight.get("session_model_leases", 0))
+    except (TypeError, ValueError, OverflowError):
+        session_model_leases = -1
+    if (in_flight.get("busy") is not False or admissions != 0 or session_model_leases != 0
+            or bool(in_flight.get("local_models")) or bool(in_flight.get("vault_jobs"))):
+        return blocked("An active Ariadne GPU or model lease prevents Speech handoff.")
+    if free_bytes >= MIN_FREE_GPU_BYTES:
+        return {
+            "ready": False,
+            "safe_to_submit": True,
+            "detail": "Measured WDDM free memory meets Speech's admission requirement.",
+        }
+    if catalog.get("available") is not True:
+        return blocked("Rust Host could not verify idle Ariadne model residency; Speech handoff is blocked.")
+    loaded = catalog.get("loaded_details")
+    if not isinstance(loaded, list) or not loaded:
+        return blocked("No verified idle Ariadne model allocation can be reclaimed; measured free VRAM is insufficient.")
+
+    reclaimable_bytes = 0
+    for item in loaded:
+        if not isinstance(item, dict):
+            return blocked("Rust Host returned an incomplete resident-model snapshot; Speech handoff is blocked.")
+        size_vram = item.get("size_vram")
+        if isinstance(size_vram, bool) or not isinstance(size_vram, (int, float)):
+            return blocked("Rust Host could not quantify resident model VRAM; Speech handoff is blocked.")
+        try:
+            allocation = int(size_vram)
+        except (ValueError, OverflowError):
+            return blocked("Rust Host returned an invalid resident-model VRAM allocation; Speech handoff is blocked.")
+        if allocation < 0 or allocation != size_vram:
+            return blocked("Rust Host returned an invalid resident-model VRAM allocation; Speech handoff is blocked.")
+        reclaimable_bytes += allocation
+
+    projected_free = free_bytes + reclaimable_bytes
+    if reclaimable_bytes <= 0 or projected_free < MIN_FREE_GPU_BYTES:
+        return {
+            "ready": False,
+            "safe_to_submit": False,
+            "projected_free_bytes": projected_free,
+            "reclaimable_vram_bytes": reclaimable_bytes,
+            "detail": f"Speech requires {MIN_FREE_GPU_BYTES / 1024**3:.0f} GiB free; measured free plus idle Ariadne allocations is only {projected_free / 1024**3:.1f} GiB.",
+        }
+    return {
+        "ready": True,
+        "safe_to_submit": True,
+        "projected_free_bytes": projected_free,
+        "reclaimable_vram_bytes": reclaimable_bytes,
+        "reclaimable_model_count": len(loaded),
+        "detail": f"Ready after GPU handoff. Rust Host can reclaim {len(loaded)} idle Ariadne model(s), then will verify actual WDDM capacity before Speech starts.",
+    }
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -49,6 +130,7 @@ class SpeechStudio:
         gpu_status: Callable[[], dict[str, Any]],
         gpu_owner_status: Callable[[], dict[str, Any]],
         model_lock_path: Path | None = None,
+        handoff_status: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]] | None = None,
     ) -> None:
         self.runtime_root = runtime_root
         self.ffmpeg = ffmpeg
@@ -61,6 +143,7 @@ class SpeechStudio:
         self.verify_gpu = verify_gpu
         self.gpu_status = gpu_status
         self.gpu_owner_status = gpu_owner_status
+        self.handoff_status = handoff_status
         self.model_lock_path = model_lock_path or Path(__file__).with_name("speech-models.lock.json")
         try:
             self.model_lock = json.loads(self.model_lock_path.read_text(encoding="utf-8"))
@@ -164,27 +247,49 @@ class SpeechStudio:
         gpu_owner = self.gpu_owner_status()
         exclusive_owner = str(gpu_owner.get("current_gpu_owner") or "UNKNOWN").upper()
         free_bytes = int(gpu.get("free_bytes") or 0)
-        blocked = (
-            not gpu.get("available")
-            or free_bytes < MIN_FREE_GPU_BYTES
-            or exclusive_owner not in {"AI", "NONE", "SPEECH"}
-            or gpu_owner.get("transition_state") != "IDLE"
+        handoff = {"ready": False, "detail": ""}
+        telemetry_available = bool(gpu.get("available")) and free_bytes > 0
+        owner_available = (
+            exclusive_owner in {"AI", "NONE"}
+            and gpu_owner.get("transition_state") == "IDLE"
+            and gpu_owner.get("delegation_state", "ARIADNE_ACTIVE") == "ARIADNE_ACTIVE"
         )
+        if (runtime_ok and all(model["installed"] for model in models)
+                and telemetry_available and owner_available and not active and self.handoff_status):
+            try:
+                candidate = self.handoff_status(gpu, gpu_owner)
+                if isinstance(candidate, dict):
+                    handoff = candidate
+            except Exception as exc:
+                handoff = {
+                    "ready": False,
+                    "safe_to_submit": False,
+                    "detail": f"Could not safely assess GPU admission: {exc}",
+                }
         if not runtime_ok:
             state = "offline"
             detail = "The bundled Windows audio.cpp runtime is not installed."
         elif any(not model["installed"] for model in models):
             state = "provider_required"
             detail = "Install or restore the locked local speech models before opening Speech Studio."
-        elif gpu.get("available") and free_bytes < MIN_FREE_GPU_BYTES and not active:
-            state = "blocked"
-            detail = f"Speech inference requires {MIN_FREE_GPU_BYTES / 1024**3:.0f} GiB free WDDM memory; {gpu.get('free_gb', 0)} GiB is currently available."
-        elif blocked and not active:
-            state = "blocked"
-            detail = str(gpu.get("detail") or gpu_owner.get("detail") or "GPU ownership or WDDM telemetry is unavailable; inference is blocked.")
         elif active:
             state = "busy"
             detail = f"{active.get('operation', 'Speech job')} is {active.get('stage', 'running').lower()}."
+        elif not telemetry_available:
+            state = "blocked"
+            detail = str(gpu.get("detail") or "GPU WDDM telemetry is unavailable; inference is blocked.")
+        elif not owner_available:
+            state = "blocked"
+            detail = str(gpu_owner.get("detail") or "GPU ownership or an active lease prevents Speech admission.")
+        elif self.handoff_status and handoff.get("safe_to_submit") is not True:
+            state = "blocked"
+            detail = str(handoff.get("detail") or "An active Ariadne GPU or model lease prevents Speech admission.")
+        elif free_bytes < MIN_FREE_GPU_BYTES and handoff.get("ready") is True:
+            state = "ready_after_handoff"
+            detail = str(handoff.get("detail") or "Ready after GPU handoff. Rust Host will verify capacity before starting Speech.")
+        elif free_bytes < MIN_FREE_GPU_BYTES:
+            state = "blocked"
+            detail = str(handoff.get("detail") or f"Speech inference requires {MIN_FREE_GPU_BYTES / 1024**3:.0f} GiB free WDDM memory; {gpu.get('free_gb', 0)} GiB is currently available.")
         else:
             state = "ready"
             detail = "Local audio.cpp ASR and VoxCPM2 speech synthesis are installed."
@@ -199,6 +304,7 @@ class SpeechStudio:
             "models": models,
             "gpu": gpu,
             "gpu_owner": gpu_owner,
+            "gpu_handoff": handoff,
             "output_root": str(self.output_root),
             "voice_root": str(self.voice_root),
             "job": self.snapshot(str(active["id"])) if active else None,
@@ -275,6 +381,10 @@ class SpeechStudio:
                 return {"ok": False, "message": "The local VoxCPM2 model is not installed."}, 503
             if not self.ffmpeg or not self.ffmpeg.is_file():
                 return {"ok": False, "message": "FFmpeg is required for local audio conversion and MP3 export."}, 503
+            admission = self.status()
+            if admission.get("state") not in {"ready", "ready_after_handoff"}:
+                message = str(admission.get("detail") or "GPU admission is currently blocked.")
+                return {"ok": False, "message": message, "status": admission}, 409
             job_id = uuid.uuid4().hex
             job = {
                 "id": job_id,

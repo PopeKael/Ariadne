@@ -12,7 +12,7 @@ import wave
 from contextlib import nullcontext
 from unittest.mock import patch
 
-from speech_studio import SpeechStudio
+from speech_studio import SpeechStudio, assess_gpu_handoff
 
 
 class SpeechStudioTests(unittest.TestCase):
@@ -66,6 +66,102 @@ class SpeechStudioTests(unittest.TestCase):
             studio.gpu_owner_status = lambda: {"current_gpu_owner": "AI", "transition_state": "IDLE"}
             studio.gpu_status = lambda: {"available": True, "free_gb": 8.5, "free_bytes": int(8.5 * 1024**3)}
             self.assertEqual(studio.status()["state"], "blocked")
+
+    def test_status_allows_submit_when_idle_model_handoff_can_meet_capacity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            studio = self.make_studio(Path(directory), installed=True)
+            studio.gpu_status = lambda: {"available": True, "free_gb": 6.4, "free_bytes": int(6.4 * 1024**3), "total_gb": 15.8}
+            studio.handoff_status = lambda _gpu, _owner: {
+                "ready": True,
+                "safe_to_submit": True,
+                "reclaimable_model_count": 1,
+                "reclaimable_vram_bytes": int(6.6 * 1024**3),
+                "detail": "Ready after GPU handoff. Rust Host will verify actual WDDM capacity.",
+            }
+            status = studio.status()
+            self.assertEqual(status["state"], "ready_after_handoff")
+            self.assertTrue(status["gpu_handoff"]["ready"])
+            self.assertIn("Ready after GPU handoff", status["detail"])
+
+    def test_status_stays_blocked_when_idle_model_handoff_cannot_meet_capacity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            studio = self.make_studio(Path(directory), installed=True)
+            studio.gpu_status = lambda: {"available": True, "free_gb": 2.0, "free_bytes": 2 * 1024**3, "total_gb": 16.0}
+            studio.handoff_status = lambda _gpu, _owner: {
+                "ready": False,
+                "safe_to_submit": False,
+                "detail": "Speech requires 9 GiB free; measured free plus idle Ariadne allocations is only 7.0 GiB.",
+            }
+            status = studio.status()
+            self.assertEqual(status["state"], "blocked")
+            self.assertFalse(status["gpu_handoff"]["ready"])
+            self.assertIn("only 7.0 GiB", status["detail"])
+
+    def test_handoff_assessment_fails_closed_for_unsafe_owner_leases_or_capacity(self):
+        gpu = {"available": True, "free_bytes": int(6.4 * 1024**3)}
+        owner = {"current_gpu_owner": "AI", "transition_state": "IDLE", "delegation_state": "ARIADNE_ACTIVE"}
+        in_flight = {"busy": False, "admissions": 0, "local_models": {}, "vault_jobs": []}
+        catalog = {"available": True, "loaded_details": [{"name": "home", "size_vram": int(6.6 * 1024**3)}]}
+
+        ready = assess_gpu_handoff(gpu, owner, in_flight, catalog)
+        self.assertTrue(ready["ready"])
+        self.assertEqual(ready["reclaimable_model_count"], 1)
+        self.assertIn("Rust Host", ready["detail"])
+
+        unsafe = [
+            ({**gpu, "available": False}, owner, in_flight, catalog),
+            (gpu, {**owner, "current_gpu_owner": "IMAGE"}, in_flight, catalog),
+            (gpu, {**owner, "transition_state": "ACQUIRING"}, in_flight, catalog),
+            (gpu, {**owner, "delegation_state": "EXTERNAL"}, in_flight, catalog),
+            (gpu, owner, {**in_flight, "busy": True, "admissions": 1}, catalog),
+            ({"available": True, "free_bytes": 12 * 1024**3}, owner,
+             {**in_flight, "session_model_leases": 1}, {}),
+            (gpu, owner, in_flight, {"available": False, "loaded_details": []}),
+            (gpu, owner, in_flight, {"available": True, "loaded_details": [{"name": "home", "size_vram": None}]}),
+            ({**gpu, "free_bytes": 2 * 1024**3}, owner, in_flight, catalog),
+        ]
+        for values in unsafe:
+            with self.subTest(values=values):
+                self.assertFalse(assess_gpu_handoff(*values)["safe_to_submit"])
+
+    def test_status_blocks_active_model_lease_even_when_free_memory_is_sufficient(self):
+        with tempfile.TemporaryDirectory() as directory:
+            studio = self.make_studio(Path(directory), installed=True)
+            studio.handoff_status = lambda _gpu, _owner: {
+                "ready": False,
+                "safe_to_submit": False,
+                "detail": "An active Ariadne GPU or model lease prevents Speech handoff.",
+            }
+            status = studio.status()
+            self.assertEqual(status["state"], "blocked")
+            self.assertIn("active Ariadne GPU or model lease", status["detail"])
+
+    def test_submit_refuses_active_model_lease_even_when_free_memory_is_sufficient(self):
+        with tempfile.TemporaryDirectory() as directory:
+            studio = self.make_studio(Path(directory), installed=True)
+            studio.handoff_status = lambda _gpu, _owner: {
+                "ready": False,
+                "safe_to_submit": False,
+                "detail": "An active Ariadne GPU or model lease prevents Speech handoff.",
+            }
+            result, status = studio.submit_transcription("recording.wav", b"test audio")
+            self.assertEqual(status, 409)
+            self.assertFalse(result["ok"])
+            self.assertEqual(studio.list_jobs(), [])
+
+    def test_submit_refuses_when_gpu_handoff_is_not_safe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            studio = self.make_studio(Path(directory), installed=True)
+            studio.gpu_status = lambda: {"available": True, "free_gb": 6.0, "free_bytes": 6 * 1024**3, "total_gb": 16.0}
+            studio.handoff_status = lambda _gpu, _owner: {
+                "ready": False,
+                "detail": "An active Ariadne GPU or model lease prevents Speech handoff.",
+            }
+            result, status = studio.submit_transcription("recording.wav", b"test audio")
+            self.assertEqual(status, 409)
+            self.assertFalse(result["ok"])
+            self.assertIn("active Ariadne GPU or model lease", result["message"])
+            self.assertEqual(studio.list_jobs(), [])
 
     def test_model_hash_mismatch_is_not_reported_as_installed(self):
         with tempfile.TemporaryDirectory() as directory:

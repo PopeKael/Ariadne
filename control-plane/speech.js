@@ -14,21 +14,23 @@
   function escapeText(value) { return String(value || ""); }
   function setDisabled(id, disabled) { $(id).disabled = Boolean(disabled); }
   function capabilityReady(capability) {
-    return Boolean(status.capabilities?.[capability]) && status.state !== "blocked";
+    const state = String(status.state || "unknown").toLowerCase();
+    return Boolean(status.capabilities?.[capability]) && ["ready", "ready_after_handoff"].includes(state);
   }
   function renderStatus(payload) {
     status = payload || {};
     const state = String(status.state || "unknown").toLowerCase();
-    $("speech-runtime-state").textContent = state;
+    const stateLabel = state === "ready_after_handoff" ? "Ready after GPU handoff" : state;
+    $("speech-runtime-state").textContent = stateLabel;
     $("speech-runtime-detail").textContent = status.detail || "Speech runtime status unavailable.";
     const owner = status.gpu_owner?.current_gpu_owner || "UNKNOWN";
     const free = status.gpu?.available ? `${status.gpu.free_gb} GB free of ${status.gpu.total_gb} GB measured WDDM` : "WDDM measurement unavailable";
     $("speech-runtime-gpu").textContent = `GPU ownership: ${owner} · ${free}`;
-    $("speech-top-status").textContent = `${status.runtime || "Local runtime unavailable"} · ${state.toUpperCase()}`;
+    $("speech-top-status").textContent = `${status.runtime || "Local runtime unavailable"} · ${stateLabel.toUpperCase()}`;
     const asr = (status.models || []).find((model) => model.package === "qwen3_asr_0_6b_q8_0");
     const tts = (status.models || []).find((model) => model.package === "voxcpm2_q8_0");
     const modelDetail = [asr && `ASR ${asr.installed ? "ready" : "not installed"}`, tts && `VoxCPM2 ${tts.installed ? "ready" : "not installed"}`].filter(Boolean).join(" · ");
-    if (modelDetail && !["ready", "busy", "blocked"].includes(state)) $("speech-runtime-detail").textContent += ` ${modelDetail}.`;
+    if (modelDetail && !["ready", "busy", "blocked", "ready_after_handoff"].includes(state)) $("speech-runtime-detail").textContent += ` ${modelDetail}.`;
     const canTranscribe = capabilityReady("asr");
     const canSynthesize = capabilityReady("tts");
     setDisabled("speech-transcribe", !canTranscribe || !(recordingBlob || fileInput.files?.[0]) || Boolean(activeJob));

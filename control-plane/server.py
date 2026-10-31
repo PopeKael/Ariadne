@@ -130,7 +130,7 @@ from plugin_execution import PluginExecutionError, build_plugin_command, load_pl
 from plugin_registry import PLUGIN_REGISTRY
 from production_projects import ASSET_SCHEMA, ProductionProjectStore, utc_now
 from music_engine import AudioCppMiniMaxEngine, MusicRequest
-from speech_studio import SpeechStudio
+from speech_studio import MIN_FREE_GPU_BYTES, SpeechStudio, assess_gpu_handoff
 from plugins.cleanup.cleanup import PLUGIN_CAPABILITY, effective_configuration, normalize_configuration
 from signal_service_client import SignalServiceClient
 from news_briefing_cache import NewsBriefingCache
@@ -1488,6 +1488,21 @@ def media_gpu_lease(workload: str, *, min_free_bytes: int = 0):
         announce_media_lifecycle(label, "STOPPED", f"{label} GPU lease released; Ariadne can request its model when its page is active.")
 
 
+def speech_gpu_handoff_status(gpu: dict[str, object], gpu_owner: dict[str, object]) -> dict[str, object]:
+    """Estimate whether Rust Host can reclaim only idle Ariadne model VRAM for Speech."""
+    in_flight = ai_gpu_work_in_flight()
+    with SESSION_LOCK:
+        in_flight["session_model_leases"] = sum(
+            1 for session in SESSIONS.values() if session.get("host_model_lease_id")
+        )
+    try:
+        free_bytes = int(gpu.get("free_bytes") or 0)
+    except (TypeError, ValueError, OverflowError):
+        free_bytes = 0
+    catalog = ollama_catalog() if free_bytes < MIN_FREE_GPU_BYTES else {}
+    return assess_gpu_handoff(gpu, gpu_owner, in_flight, catalog)
+
+
 SPEECH_STUDIO = SpeechStudio(
     AUDIOCPP_RUNTIME_ROOT,
     LOCAL_MUSIC_ENGINE.ffmpeg,
@@ -1497,6 +1512,7 @@ SPEECH_STUDIO = SpeechStudio(
     lambda lease_id, minimum: host_verify_gpu_lease_capacity(lease_id, minimum, OLLAMA_URL),
     gpu_status,
     gpu_owner_status,
+    handoff_status=speech_gpu_handoff_status,
 )
 
 
