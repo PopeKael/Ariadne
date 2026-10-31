@@ -395,6 +395,18 @@ class SignalServiceTests(unittest.TestCase):
             )
             with urlopen(interaction_request, timeout=2) as response:
                 interaction = json.loads(response.read())
+            interest_id = interest_created["interest"]["interest_id"]
+            delete_interest_request = Request(base + f"/v1/interests/{interest_id}", method="DELETE")
+            with urlopen(delete_interest_request, timeout=2) as response:
+                interest_deleted = json.loads(response.read())
+            with urlopen(base + "/v1/interests", timeout=2) as response:
+                interests_after_delete = json.loads(response.read())
+            feedback_count_after_delete = self.service.store._connection.execute(
+                "SELECT COUNT(*) FROM signal_feedback"
+            ).fetchone()[0]
+            signal_count_after_delete = self.service.store._connection.execute(
+                "SELECT COUNT(*) FROM signals"
+            ).fetchone()[0]
             with patch("signal_service.service.fetch_feed", side_effect=RuntimeError("temporary outage")):
                 self.service.refresh()
             with urlopen(base + "/v1/briefing?limit=1", timeout=2) as response:
@@ -414,6 +426,10 @@ class SignalServiceTests(unittest.TestCase):
         self.assertEqual(watchlist_created["topic"]["topic"], "Thailand immigration")
         self.assertTrue(interest_created["ok"])
         self.assertEqual(interests["interests"][0]["name"], "Local AI hardware")
+        self.assertEqual(interest_deleted, {"ok": True, "removed": True})
+        self.assertEqual(interests_after_delete["interests"], [])
+        self.assertEqual(signal_count_after_delete, 1)
+        self.assertEqual(feedback_count_after_delete, 1)
         self.assertTrue(stale_briefing["stale"])
         self.assertEqual(stale_briefing["signals"][0]["url"], "https://example.test/story/1")
 

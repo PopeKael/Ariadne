@@ -37,7 +37,7 @@ class SignalServiceClientTests(unittest.TestCase):
             client.briefing()
         restarted = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path, cache_path=cache_path)
         self.assertEqual(restarted.cached_interests(), [interest])
-        disabled = {**interest, "enabled": False}
+        disabled = {**interest, "enabled": False, "priority": 0}
         with patch.object(restarted, "_post", return_value={"ok": True, "interest": disabled}):
             restarted.upsert_interest({"interest_id": "custom", "enabled": False})
         self.assertEqual(restarted.cached_interests(), [disabled])
@@ -52,6 +52,30 @@ class SignalServiceClientTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["signals"], [])
         self.assertEqual(result["state"], "offline")
+
+    def test_delete_interest_removes_it_from_the_persistent_client_cache(self):
+        cache_path = Path(self.temp.name) / "briefing.json"
+        client = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path, cache_path=cache_path)
+        retained = {"interest_id": "retained", "name": "Keep", "priority": 1}
+        removed = {"interest_id": "removed", "name": "Remove", "priority": 1}
+        client._cache_interests([retained, removed])
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self, _limit):
+                return b'{"ok":true,"removed":true}'
+
+        with patch("signal_service_client.urllib.request.urlopen", return_value=Response()) as request:
+            result = client.delete_interest("removed")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(client.cached_interests(), [retained])
+        request.assert_called_once()
 
     def test_populated_briefing_survives_timeout(self):
         client = SignalServiceClient("http://localhost:8788", diagnostics_path=self.diagnostics_path)

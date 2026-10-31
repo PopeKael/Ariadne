@@ -1,4 +1,4 @@
-const STORAGE_KEYS = ["knowledge_vault", "documents", "images", "music", "videos", "screenshots", "intake_root"];
+const STORAGE_KEYS = ["knowledge_vault", "documents", "images", "music", "speech", "videos", "screenshots", "intake_root"];
 const configurationParams = new URLSearchParams(window.location.search);
 const requestedPluginId = configurationParams.get("plugin")?.trim().toLowerCase() || "";
 const focusCleanupWorkflow = requestedPluginId === "cleanup" && configurationParams.get("focus") === "workflow";
@@ -27,6 +27,7 @@ const verifiedLocalContextRuns = {
 };
 let managedInterests = new Map();
 const interestPriorityEdits = new Map();
+const interestDetailEdits = new Map();
 const CleanupState = window.AriadneCleanupState;
 
 async function configurationJson(url, options) {
@@ -618,9 +619,17 @@ async function loadAdaptiveManagement({silent = true} = {}) {
 }
 
 function interestMarkup(item) {
-  const edit = interestPriorityEdits.get(item.interest_id);
-  const priority = Math.max(0, Math.min(5, Number(edit?.priority ?? item.priority ?? 1)));
-  return `<div class="managed-row" data-interest-id="${htmlEscape(item.interest_id)}"><div><strong>${htmlEscape(item.name)}</strong><small>${htmlEscape(item.description || "No description")}</small></div><div class="managed-row-actions interest-actions"><label class="interest-priority"><input type="range" min="0" max="5" step="0.1" value="${priority}" data-interest-priority="${htmlEscape(item.interest_id)}" aria-label="Priority for ${htmlEscape(item.name)}" ${edit?.saving ? "disabled" : ""}><output>${priority}</output></label><button type="button" class="secondary-button" data-interest-save="${htmlEscape(item.interest_id)}" ${edit ? "" : "hidden"} ${edit?.saving ? "disabled" : ""}>${edit?.saving ? "Saving…" : "Save"}</button><button type="button" class="secondary-button" data-interest-toggle="${htmlEscape(item.interest_id)}" data-interest-enabled="${item.enabled ? "true" : "false"}">${item.enabled ? "Disable" : "Enable"}</button></div><small class="interest-save-status" role="status">${htmlEscape(edit?.message || "")}</small></div>`;
+  const priorityEdit = interestPriorityEdits.get(item.interest_id);
+  const detailEdit = interestDetailEdits.get(item.interest_id);
+  const savedPriority = effectiveInterestPriority(item);
+  const priority = Math.max(0, Math.min(5, Number(priorityEdit?.priority ?? savedPriority)));
+  const busy = Boolean(priorityEdit?.saving || detailEdit?.saving);
+  const details = detailEdit ? `<form class="interest-detail-editor" data-interest-edit-form="${htmlEscape(item.interest_id)}"><label><span class="field-label">Interest name</span><input name="name" type="text" maxlength="200" required value="${htmlEscape(detailEdit.name ?? item.name)}" ${busy ? "disabled" : ""}></label><label><span class="field-label">Description</span><textarea name="description" rows="3" maxlength="2000" required ${busy ? "disabled" : ""}>${htmlEscape(detailEdit.description ?? item.description ?? "")}</textarea></label><div class="managed-row-actions"><button type="submit" class="secondary-button" ${busy ? "disabled" : ""}>${detailEdit.saving ? "Saving…" : "Save details"}</button><button type="button" class="secondary-button" data-interest-edit-cancel="${htmlEscape(item.interest_id)}" ${busy ? "disabled" : ""}>Cancel</button></div></form>` : `<div class="interest-details"><strong>${htmlEscape(item.name)}</strong><small>${htmlEscape(item.description || "No description")}</small></div>`;
+  return `<div class="managed-row" data-interest-id="${htmlEscape(item.interest_id)}">${details}<div class="managed-row-actions interest-actions"><label class="interest-priority"><input type="range" min="0" max="5" step="0.1" value="${priority}" data-interest-priority="${htmlEscape(item.interest_id)}" aria-label="Priority for ${htmlEscape(item.name)}" ${busy ? "disabled" : ""}><output>${priority}</output></label>${priority === 0 ? `<span class="interest-disabled">Disabled</span>` : ""}<button type="button" class="secondary-button" data-interest-save="${htmlEscape(item.interest_id)}" ${priorityEdit ? "" : "hidden"} ${busy ? "disabled" : ""}>${priorityEdit?.saving ? "Saving…" : "Save weight"}</button><button type="button" class="secondary-button" data-interest-edit="${htmlEscape(item.interest_id)}" ${busy || detailEdit ? "disabled" : ""}>Edit</button><button type="button" class="secondary-button" data-interest-delete="${htmlEscape(item.interest_id)}" ${busy ? "disabled" : ""}>Delete</button></div><small class="interest-save-status" role="status">${htmlEscape(priorityEdit?.message || detailEdit?.message || "")}</small></div>`;
+}
+
+function effectiveInterestPriority(item) {
+  return item?.enabled === false ? 0 : Number(item?.priority ?? 1);
 }
 
 function renderInterestRows() {
@@ -635,6 +644,21 @@ function ensureInterestVisible(interest) {
   if (!root || [...root.querySelectorAll("[data-interest-id]")].some(item => String(item.dataset.interestId) === String(interest.interest_id))) return;
   root.querySelector(".configuration-note")?.remove();
   root.insertAdjacentHTML("beforeend", interestMarkup(interest));
+}
+
+function normalizeInterestText(value) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+async function findSavedInterest({interestId = "", name, description}) {
+  const result = await configurationJson("/api/signals/interests");
+  const expectedName = normalizeInterestText(name).toLocaleLowerCase();
+  const expectedDescription = normalizeInterestText(description).slice(0, 2000);
+  return (result.interests || []).find(item =>
+    (interestId ? item.interest_id === interestId : normalizeInterestText(item.name).toLocaleLowerCase() === expectedName) &&
+    normalizeInterestText(item.name).toLocaleLowerCase() === expectedName &&
+    normalizeInterestText(item.description) === expectedDescription
+  ) || null;
 }
 
 function formInference() {
@@ -1024,18 +1048,11 @@ async function save(event) {
   }
 }
 
-async function updateInterest(interestId, enabled) {
-  try {
-    await configurationJson("/api/signals/interests", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({interest_id: interestId, enabled})});
-    await loadAdaptiveManagement();
-  } catch (error) { setStatus(`Interest update failed: ${error.message}`, "error"); }
-}
-
 document.querySelector("#interest-list")?.addEventListener("input", event => {
   const slider = event.target;
   if (!slider.matches("[data-interest-priority]")) return;
   const id = slider.dataset.interestPriority;
-  const changed = Number(slider.value) !== Number(managedInterests.get(id)?.priority ?? 1);
+  const changed = Number(slider.value) !== effectiveInterestPriority(managedInterests.get(id));
   if (changed) interestPriorityEdits.set(id, {priority: Number(slider.value), message: "Unsaved"});
   else interestPriorityEdits.delete(id);
   slider.parentElement.querySelector("output").textContent = slider.value;
@@ -1078,6 +1095,58 @@ async function saveInterestPriority(id) {
   }
 }
 
+async function saveInterestDetails(id) {
+  const edit = interestDetailEdits.get(id);
+  const interest = managedInterests.get(id);
+  if (!edit || edit.saving || !interest) return;
+  edit.saving = true;
+  edit.message = "Saving…";
+  renderInterestRows();
+  try {
+    let saved;
+    try {
+      const result = await configurationJson("/api/signals/interests", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({interest_id: id, name: edit.name, description: edit.description})});
+      saved = result.interest;
+      if (!saved || normalizeInterestText(saved.name) !== normalizeInterestText(edit.name) || normalizeInterestText(saved.description) !== normalizeInterestText(edit.description).slice(0, 2000)) throw new Error("Signal Service did not confirm the edited interest.");
+    } catch (writeError) {
+      try { saved = await findSavedInterest({interestId: id, name: edit.name, description: edit.description}); }
+      catch (_) { saved = null; }
+      if (!saved) throw writeError;
+    }
+    managedInterests.set(id, saved);
+    interestDetailEdits.delete(id);
+    setStatus("Interest details saved.", "success");
+  } catch (error) {
+    edit.saving = false;
+    edit.message = "Save not confirmed. Your edit is kept; retry Save.";
+    setStatus(`Interest update failed: ${error.message}`, "error");
+  } finally {
+    renderInterestRows();
+  }
+}
+
+async function deleteInterest(id) {
+  const interest = managedInterests.get(id);
+  if (!interest) return;
+  const approved = await showConfigurationDialog({title: "Delete interest?", message: `Delete “${interest.name}” from Ariadne's interest profile? Stored Signals and feedback history will remain.`, tone: "warning", confirmLabel: "Delete interest", requireConfirmation: true});
+  if (!approved) return;
+  try {
+    try {
+      await configurationJson(`/api/signals/interests/${encodeURIComponent(id)}`, {method: "DELETE"});
+    } catch (writeError) {
+      const result = await configurationJson("/api/signals/interests");
+      if ((result.interests || []).some(item => item.interest_id === id)) throw writeError;
+    }
+    managedInterests.delete(id);
+    interestPriorityEdits.delete(id);
+    interestDetailEdits.delete(id);
+    renderInterestRows();
+    setStatus("Interest deleted. Stored Signals and feedback history were retained.", "success");
+  } catch (error) {
+    setStatus(`Interest could not be deleted: ${error.message}`, "error");
+  }
+}
+
 async function updateSource(sourceId, enabled) {
   try {
     await configurationJson("/api/signals/sources", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({source_id: sourceId, enabled})});
@@ -1095,9 +1164,27 @@ async function removeSource(sourceId) {
 document.addEventListener("click", event => {
   const target = event.target;
   if (target.matches("[data-interest-save]")) { void saveInterestPriority(target.dataset.interestSave); return; }
-  if (target.matches("[data-interest-toggle]")) { updateInterest(target.dataset.interestToggle, target.dataset.interestEnabled !== "true"); return; }
+  if (target.matches("[data-interest-edit]")) {
+    const id = target.dataset.interestEdit;
+    const interest = managedInterests.get(id);
+    if (interest) { interestDetailEdits.set(id, {name: interest.name, description: interest.description || ""}); renderInterestRows(); }
+    return;
+  }
+  if (target.matches("[data-interest-edit-cancel]")) { interestDetailEdits.delete(target.dataset.interestEditCancel); renderInterestRows(); return; }
+  if (target.matches("[data-interest-delete]")) { void deleteInterest(target.dataset.interestDelete); return; }
   if (target.matches("[data-source-toggle]")) { updateSource(target.dataset.sourceToggle, target.dataset.sourceEnabled !== "true"); return; }
   if (target.matches("[data-source-remove]")) { removeSource(target.dataset.sourceRemove); }
+});
+
+document.querySelector("#interest-list")?.addEventListener("submit", event => {
+  const form = event.target;
+  if (!form.matches("[data-interest-edit-form]")) return;
+  event.preventDefault();
+  const edit = interestDetailEdits.get(form.dataset.interestEditForm);
+  if (!edit) return;
+  edit.name = form.elements.name.value.trim();
+  edit.description = form.elements.description.value.trim();
+  void saveInterestDetails(form.dataset.interestEditForm);
 });
 
 document.querySelector("#interest-form")?.addEventListener("submit", async event => {
@@ -1113,10 +1200,18 @@ document.querySelector("#interest-form")?.addEventListener("submit", async event
   if (button) { button.disabled = true; button.textContent = "Saving…"; }
   setInterestFormStatus("Saving interest…");
   try {
-    const payload = await configurationJson("/api/signals/interests", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, description})});
-    if (!payload.ok || !payload.interest) throw new Error(payload.message || "Signal Service did not confirm the saved interest.");
+    let saved;
+    try {
+      const payload = await configurationJson("/api/signals/interests", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, description})});
+      saved = payload.interest;
+      if (!payload.ok || !saved) throw new Error(payload.message || "Signal Service did not confirm the saved interest.");
+    } catch (writeError) {
+      try { saved = await findSavedInterest({name, description}); }
+      catch (_) { saved = null; }
+      if (!saved) throw writeError;
+    }
     await loadAdaptiveManagement();
-    ensureInterestVisible(payload.interest);
+    ensureInterestVisible(saved);
     form.reset();
     setInterestFormStatus("Interest saved.", "success");
     setStatus("Interest saved.", "success");

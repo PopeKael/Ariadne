@@ -11736,6 +11736,11 @@ class AriadneHandler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:  # noqa: N802
         _expire_sessions()
         path = urlparse(self.path).path
+        interest_match = re.fullmatch(r"/api/signals/interests/([^/]+)", path)
+        if interest_match:
+            result = SIGNAL_SERVICE_CLIENT.delete_interest(unquote(interest_match.group(1)))
+            self.send_json(result, 200 if result.get("ok") else 502)
+            return
         match = re.fullmatch(r"/api/signals/sources/([^/]+)", path)
         if not match:
             self.send_json({"ok": False, "message": "Not found."}, 404)

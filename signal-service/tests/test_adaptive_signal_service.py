@@ -66,9 +66,33 @@ class AdaptiveSignalServiceTests(unittest.TestCase):
                 self.assertEqual(scores, sorted(scores))
                 self.assertEqual(len(fake.calls), calls)
                 disabled = service.upsert_interest({"interest_id": interest["interest_id"], "enabled": False})
-                self.assertEqual(disabled["priority"], 5)
+                self.assertEqual(disabled["priority"], 0)
                 self.assertEqual(service.briefing(limit=10)["signals"][0]["semantic_matches"], [])
                 self.assertEqual(service.health()["active_interests"], [])
+            finally:
+                service.close()
+
+    def test_editing_interest_details_preserves_saved_priority_and_enabled_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            service = SignalService(Path(temporary) / "signals.sqlite3", feeds=[], inference=FakeInference())
+            try:
+                active = service.upsert_interest({
+                    "name": "Local AI hardware", "description": "GPU systems", "priority": 4,
+                })
+                edited_active = service.upsert_interest({
+                    "interest_id": active["interest_id"],
+                    "name": "Local AI hardware", "description": "Local inference systems",
+                })
+                self.assertEqual(edited_active["priority"], 4)
+                self.assertTrue(edited_active["enabled"])
+
+                service.upsert_interest({"interest_id": active["interest_id"], "priority": 0})
+                edited_disabled = service.upsert_interest({
+                    "interest_id": active["interest_id"],
+                    "name": "Local AI hardware", "description": "Still disabled",
+                })
+                self.assertEqual(edited_disabled["priority"], 0)
+                self.assertFalse(edited_disabled["enabled"])
             finally:
                 service.close()
 

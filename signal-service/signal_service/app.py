@@ -170,6 +170,11 @@ class SignalHandler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        interest_match = re.fullmatch(r"/v1/interests/([^/]+)", parsed.path)
+        if interest_match:
+            removed = self.server.service.delete_interest(interest_match.group(1))
+            self._send({"ok": removed, "removed": removed}, 200 if removed else 404)
+            return
         match = re.fullmatch(r"/v1/sources/([^/]+)", parsed.path)
         if not match:
             self._send({"ok": False, "message": "Not found."}, 404)

@@ -717,6 +717,13 @@ class SignalService:
         self._build_cached_briefing({"mode": "interest_updated", "interest_id": result["interest_id"]})
         return result
 
+    def delete_interest(self, interest_id: str) -> bool:
+        removed = self.store.delete_interest(interest_id)
+        if removed:
+            self._semantic_enrich()
+            self._build_cached_briefing({"mode": "interest_removed", "interest_id": interest_id})
+        return removed
+
     def sources(self) -> list[dict[str, Any]]:
         return self.store.list_sources()
 

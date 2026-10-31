@@ -299,6 +299,19 @@ class SignalServiceClient:
             self._cache_interests([*current, updated])
         return result
 
+    def delete_interest(self, interest_id: str) -> dict[str, Any]:
+        request = urllib.request.Request(self.base_url + "/v1/interests/" + urllib.parse.quote(interest_id, safe=""), headers={"Accept": "application/json"}, method="DELETE")
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                value = json.loads(response.read(200_000).decode("utf-8"))
+            if not isinstance(value, dict):
+                return {"ok": False, "message": "Signal Service returned a non-object response."}
+            if value.get("ok") and value.get("removed"):
+                self._cache_interests([item for item in self.cached_interests() if item.get("interest_id") != interest_id])
+            return value
+        except (OSError, urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            return {"ok": False, "message": f"Signal Service unavailable: {str(exc)[:180]}"}
+
     def upsert_source(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._post("/v1/sources", payload)
 

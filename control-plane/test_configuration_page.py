@@ -177,7 +177,7 @@ class ConfigurationPageTests(unittest.TestCase):
         self.assertIn("inferenceModelIdentity", javascript)
         self.assertIn('</form>\n      <section class="configuration-card adaptive-management-card">', html)
         self.assertIn("Describe the subject naturally", html)
-        self.assertIn('if (!payload.ok || !payload.interest)', javascript)
+        self.assertIn('if (!payload.ok || !saved)', javascript)
         self.assertIn('form.reset()', javascript)
         self.assertIn('Interest saved.', javascript)
         self.assertIn('Interest could not be saved:', javascript)

@@ -345,13 +345,15 @@ class SignalStore:
         with self._lock:
             query = "SELECT * FROM interests"
             if active_only:
-                query += " WHERE enabled=1 AND semantic_enabled=1"
+                query += " WHERE enabled=1 AND semantic_enabled=1 AND priority>0"
             query += " ORDER BY priority DESC, name COLLATE NOCASE"
             rows = self._connection.execute(query).fetchall()
             return [{"interest_id": row["interest_id"], "name": row["name"], "description": row["description"], "enabled": bool(row["enabled"]), "priority": float(row["priority"]), "aliases": json.loads(row["aliases_json"]), "semantic_enabled": bool(row["semantic_enabled"]), "created_at": row["created_at"], "updated_at": row["updated_at"]} for row in rows]
 
     def upsert_interest(self, value: dict[str, Any]) -> dict[str, Any]:
         # Page toggles are partial edits; preserve the other settings.
+        priority_supplied = "priority" in value
+        enabled_supplied = "enabled" in value
         with self._lock:
             existing = next((item for item in self.list_interests()
                              if item["interest_id"] == value.get("interest_id")), {})
@@ -363,16 +365,40 @@ class SignalStore:
         interest_id = str(value.get("interest_id") or "interest-" + hashlib.sha256(name.casefold().encode("utf-8")).hexdigest()[:24])
         aliases = value.get("aliases") if isinstance(value.get("aliases"), list) else []
         aliases = [" ".join(str(item).split()).strip()[:120] for item in aliases if str(item).strip()][:30]
+        try:
+            priority = max(0.0, min(float(value.get("priority", 1.0)), 5.0))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Interest priority must be a number between 0 and 5") from exc
+        if priority_supplied:
+            # Priority is the user-facing enable control: zero disables an
+            # interest, while any positive weight makes it active again.
+            enabled = priority > 0
+        elif enabled_supplied:
+            # Keep older API callers compatible with the former Enable toggle.
+            enabled = bool(value["enabled"])
+            if not enabled:
+                priority = 0.0
+            elif priority == 0:
+                priority = 1.0
+        else:
+            enabled = bool(value.get("enabled", True)) and priority > 0
         stamp = utc_now()
         with self._lock:
             self._connection.execute(
                 """INSERT INTO interests (interest_id,name,description,enabled,priority,aliases_json,semantic_enabled,created_at,updated_at)
                    VALUES (?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(interest_id) DO UPDATE SET name=excluded.name,description=excluded.description,enabled=excluded.enabled,priority=excluded.priority,aliases_json=excluded.aliases_json,semantic_enabled=excluded.semantic_enabled,updated_at=excluded.updated_at""",
-                (interest_id, name, description, 1 if value.get("enabled", True) else 0, max(0.0, min(float(value.get("priority", 1.0)), 5.0)), json.dumps(aliases, ensure_ascii=False), 1 if value.get("semantic_enabled", True) else 0, stamp, stamp),
+                (interest_id, name, description, 1 if enabled else 0, priority, json.dumps(aliases, ensure_ascii=False), 1 if value.get("semantic_enabled", True) else 0, stamp, stamp),
             )
             self._connection.commit()
             return next(item for item in self.list_interests() if item["interest_id"] == interest_id)
+
+    def delete_interest(self, interest_id: str) -> bool:
+        """Remove a configured interest while retaining signals and feedback history."""
+        with self._lock:
+            cursor = self._connection.execute("DELETE FROM interests WHERE interest_id=?", (interest_id,))
+            self._connection.commit()
+            return cursor.rowcount > 0
 
     def learned_preferences(self) -> dict[str, Any]:
         with self._lock:
