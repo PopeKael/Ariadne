@@ -64,7 +64,7 @@ released, GPU ownership returned to `NONE`, and free memory rose to about
 residency; after closing that session, the normal Home preloader restored the
 idle model. At final inspection the model was resident, the AI lease was idle,
 and there were no in-flight jobs. Speech status remained safely blocked while
-Home consumed enough memory to leave only 7.2 GiB free.
+Home consumed enough memory to leave about 7 GiB free.
 
 ASR then transcribed the generated clone output. The returned transcript matched
 the generated speech and was saved as
