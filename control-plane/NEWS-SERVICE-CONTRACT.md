@@ -1,0 +1,9 @@
+# News Service integration boundary — Stage 1
+
+No inbound n8n endpoint, polling, Discord delivery, or external publishing is enabled in this stage. The registry and publication cache are separate from the existing Discovery, Signal and Hera news stores.
+
+A future integration should authenticate with a dedicated secret held server-side, enforce TLS and narrowly scoped network access, and accept a versioned, validated publication object: `source_id`, stable publication `id`, `original_url`, `creator`, `title`, UTC `published_at`, optional `summary` and `image_url`, destination identifier, and collection time. Its response should distinguish inserted, duplicate and rejected records. The source must be enabled and the destination taken from the registry; callers must not supply webhook URLs. Preserve per-destination delivery state and commit it only after confirmed delivery. Define retry, concurrent delivery, initial baseline and reconciliation semantics before enabling it. Do not expose credentials to browsers or logs. This document is a proposal, not an active interface.
+
+For YouTube, `source_id` is the verified canonical `UC...` channel ID and must be used for subscription lookup, monitoring and deduplication. Display names, friendly names and handles are mutable metadata and must never replace the channel ID. Resolve feeds using the channel ID; a missing or changed handle must not remove a subscription. Metadata refresh can try a known handle, but must verify that it still resolves to the stored ID and fall back to the canonical channel-ID URL.
+
+The standalone page is `/news-service` on the existing HTTPS origin. Registry changes use same-origin browser requests; no model or network service is started. Channel registration makes an on-demand request to YouTube to verify the canonical channel ID. Source removal leaves cached publications intact.

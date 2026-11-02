@@ -16,6 +16,9 @@ _TARGETS = {
     "GOOGLE_API_KEY": "Ariadne/GoogleGemini/API_KEY",
     "ARIADNE_MCP_BEARER_TOKEN": "Ariadne/KnowledgeVault/MCP_BEARER_TOKEN",
     "OPENAI_TUNNEL_API_KEY": "Ariadne/KnowledgeVault/OpenAI_TUNNEL_API_KEY",
+    "ARIADNE_DISCORD_THAILAND_NEWS": "Ariadne/NewsService/Discord/ThailandNews",
+    "ARIADNE_DISCORD_AI_NOISE": "Ariadne/NewsService/Discord/AINoise",
+    "ARIADNE_NEWS_ADMIN": "Ariadne/NewsService/AdminPasswordVerifier",
 }
 
 
@@ -33,15 +36,18 @@ class _CREDENTIAL(ctypes.Structure):
 def _target(reference: str) -> str:
     if reference in _TARGETS:
         return _TARGETS[reference]
+    news = re.fullmatch(r"ARIADNE_NEWS_WEBHOOK_([a-f0-9]{24})", reference)
+    if news:
+        return f"Ariadne/NewsService/Discord/Custom/{news.group(1)}"
     match = re.fullmatch(r"ARIADNE_EXTERNAL_([a-f0-9]{12})_API_KEY", reference)
     if match:
         return f"Ariadne/ExternalProviders/{match.group(1)}/API_KEY"
     raise ValueError("Unknown Ariadne credential reference.")
 
 
-def get_credential(reference: str) -> str:
+def get_credential(reference: str, *, allow_environment: bool = True) -> str:
     """Resolve an environment override first, then this user's Windows vault."""
-    override = os.environ.get(reference, "").strip()
+    override = os.environ.get(reference, "").strip() if allow_environment else ""
     try:
         target = _target(reference)
     except ValueError:
@@ -62,6 +68,27 @@ def get_credential(reference: str) -> str:
         return ctypes.string_at(item.CredentialBlob, item.CredentialBlobSize).decode("utf-8")
     finally:
         advapi.CredFree(ctypes.cast(credential, ctypes.c_void_p))
+
+
+def credential_exists(reference: str) -> bool:
+    """Check the Windows vault directly; distinguish not-found from access errors."""
+    target = _target(reference)
+    if os.name != 'nt':
+        raise OSError('Windows Credential Manager is available only on Windows.')
+    advapi = ctypes.WinDLL('Advapi32', use_last_error=True)
+    read = advapi.CredReadW
+    read.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.POINTER(_CREDENTIAL))]
+    read.restype = wintypes.BOOL
+    advapi.CredFree.argtypes = [ctypes.c_void_p]
+    advapi.CredFree.restype = None
+    credential = ctypes.POINTER(_CREDENTIAL)()
+    if not read(target, _CRED_TYPE_GENERIC, 0, ctypes.byref(credential)):
+        error = ctypes.get_last_error()
+        if error == 1168:
+            return False
+        raise OSError(error, 'Windows Credential Manager could not check this credential.')
+    advapi.CredFree(ctypes.cast(credential, ctypes.c_void_p))
+    return True
 
 
 def save_credential(reference: str, secret: str) -> None:

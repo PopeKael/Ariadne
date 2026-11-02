@@ -9785,6 +9785,16 @@ class AriadneHandler(BaseHTTPRequestHandler):
     def send_asset(self, filename: str, content_type: str) -> None:
         try:
             payload = (ROOT / filename).read_bytes()
+            if filename == 'news-service.html':
+                self.send_response(200)
+                self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(len(payload)))
+                self.send_header('Cache-Control', 'no-store')
+                self.send_header('Content-Security-Policy', "frame-ancestors 'none'")
+                self.send_header('X-Frame-Options', 'DENY')
+                self.end_headers()
+                self.wfile.write(payload)
+                return
             self.send_bytes(payload, content_type)
         except OSError as exc:
             self.log_message("asset failure for %s: %s", filename, exc)
@@ -9850,6 +9860,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
+        if path.startswith('/api/news-admin/'):
+            from news_discord_admin import handle
+            handle(self, path, ROOT / 'runtime' / 'news-service.sqlite3')
+            return
         if path == "/code-lab.js" or path == "/api/code-lab" or (path.startswith("/api/code-lab/") and path != "/api/code-lab/runner/status"):
             self.send_json({"ok": False, "state": "retired", "message": "The legacy 14B Chat Lab workflow has been retired. Use the coding capability in Chat."}, 410)
             return
@@ -9920,11 +9934,34 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         # Browser entry points must retain the canonical secure origin. The
         # owned TLS gateway marks its loopback requests to avoid a redirect loop.
-        if (path in {"/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/watchlist", "/create", "/image", "/system", "/system-details", "/details", "/knowledge-vault", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html", "/about"}
+        if (path in {"/news-service", "/", "/home", "/chat", "/configuration", "/setup", "/plugins", "/rabbit-hole", "/watchlist", "/create", "/image", "/system", "/system-details", "/details", "/knowledge-vault", "/music", "/sequence", "/configuration/avatar", "/workshop", "/model-lab", "/index.html", "/about"}
                 and self.headers.get("X-Forwarded-Proto") != "https"):
             self.send_redirect(PUBLIC_ORIGIN + self.path)
             return
         if self.workspace_request():
+            return
+        # NEWS_SERVICE_STAGE1: independent registry and read-only publication cache.
+        if path in {"/news-service", "/news-service.css", "/news-service.js"}:
+            name = "news-service.html" if path == "/news-service" else path[1:]
+            content_type = "text/html" if name.endswith(".html") else "text/css" if name.endswith(".css") else "text/javascript"
+            self.send_asset(name, content_type + "; charset=utf-8")
+            return
+        if path in {"/api/news-service/sources", "/api/news-service/publications", "/api/news-service/destinations"}:
+            try:
+                from news_service import NewsService
+                service = NewsService(ROOT / "runtime" / "news-service.sqlite3")
+                if path.endswith("/destinations"):
+                    from news_destinations import list_destinations
+                    self.send_json({"ok": True, "destinations": list_destinations(ROOT / "runtime" / "news-service.sqlite3")})
+                elif path.endswith("/sources"):
+                    self.send_json({"ok": True, "sources": service.sources()})
+                else:
+                    category = parse_qs(parsed.query).get("category", ["all"])[0]
+                    self.send_json({"ok": True, "publications": service.publications(category)})
+            except ValueError as exc:
+                self.send_json({"ok": False, "message": str(exc)}, 400)
+            except (OSError, sqlite3.Error):
+                self.send_json({"ok": False, "message": "News Service storage is unavailable."}, 503)
             return
         if path == "/api/news/briefing-snapshot":
             snapshot = _news_snapshot_with_cached_images(NEWS_BRIEFING_CACHE.snapshot())
@@ -10476,6 +10513,10 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         if self.workspace_request():
             return
+        if path.startswith('/api/news-admin/'):
+            from news_discord_admin import handle
+            handle(self, path, ROOT / 'runtime' / 'news-service.sqlite3')
+            return
         _expire_sessions()
         if (path.startswith("/api/code-lab/") and path != "/api/code-lab/runner/status") or path in {"/api/home/chat/lab-run"}:
             self.send_json({"ok": False, "state": "retired", "message": "The legacy 14B Chat Lab workflow has been retired. Use the coding capability in Chat."}, 410)
@@ -10493,6 +10534,36 @@ class AriadneHandler(BaseHTTPRequestHandler):
             return
         try:
             body = self.read_json()
+            if path == "/api/news-service/sources":
+                origin = urlsplit(self.headers.get("Origin", ""))
+                public = urlsplit(PUBLIC_ORIGIN)
+                if (origin.scheme.casefold(), origin.netloc.casefold()) != (public.scheme.casefold(), public.netloc.casefold()) or self.headers.get("Sec-Fetch-Site", "") != "same-origin":
+                    self.send_json({"ok": False, "message": "Source changes require the Ariadne page on its secure origin."}, 403)
+                    return
+                try:
+                    from news_service import NewsService
+                    service = NewsService(ROOT / "runtime" / "news-service.sqlite3")
+                    action = body.get("action")
+                    if action == "add":
+                        source_id = service.add(body.get("url"), body.get("destination"))
+                        self.send_json({"ok": True, "id": source_id})
+                    elif action == "baseline":
+                        from news_baseline import baseline
+                        if not isinstance(body.get("id"), str) or not body.get("id"):
+                            raise ValueError("Source identifier required.")
+                        report = baseline(ROOT / "runtime" / "news-service.sqlite3", source_id=body.get("id"))
+                        self.send_json({"ok": True, "report": report})
+                    elif action == "refresh_identity":
+                        service.refresh_identity(body.get("id"))
+                        self.send_json({"ok": True})
+                    else:
+                        service.update(body.get("id"), action, body.get("destination"), body.get("friendly_name"))
+                        self.send_json({"ok": True})
+                except ValueError as exc:
+                    self.send_json({"ok": False, "message": str(exc)}, 400)
+                except (OSError, sqlite3.Error):
+                    self.send_json({"ok": False, "message": "News Service storage is unavailable."}, 503)
+                return
             if path == "/api/speech/generate":
                 result, status = SPEECH_STUDIO.submit_synthesis(body)
                 self.send_json(result, status)
