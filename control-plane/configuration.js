@@ -126,7 +126,7 @@ function renderVaultRuntime(payload) {
   const values = {
     "vault-ingestion-model": "gpt-oss:20b",
     "vault-ingestion-context": 8192,
-    "vault-ingestion-output": runtime.ingestion_output_tokens || 2048,
+    "vault-ingestion-output": runtime.ingestion_output_tokens || 4096,
     "vault-embedding-model": runtime.embedding_model || "nomic-embed-text",
     "vault-embedding-context": runtime.embedding_context_tokens || 2048,
     "vault-temperature": runtime.temperature ?? 0,

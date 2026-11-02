@@ -23,7 +23,7 @@ LOCAL_GPT_OSS_20B_CONTEXT_TOKENS = 8_192
 DEFAULT_VAULT_RUNTIME = {
     "ingestion_model": "gpt-oss:20b",
     "ingestion_context_tokens": LOCAL_GPT_OSS_20B_CONTEXT_TOKENS,
-    "ingestion_output_tokens": 2_048,
+    "ingestion_output_tokens": 4_096,
     "embedding_model": "nomic-embed-text",
     "embedding_context_tokens": 2_048,
     "temperature": 0,
