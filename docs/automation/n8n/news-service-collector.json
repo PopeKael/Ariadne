@@ -1,0 +1,323 @@
+{
+  "name": "News Service - manual collector (draft)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bb6fe72c-ba91-4f55-a70a-3a58b7f86893",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "const snapshot = $input.first()?.json;\nif (snapshot?.version !== 1 || !Array.isArray(snapshot.sources)) throw new Error('Ariadne registry snapshot was invalid');\nconst sources = snapshot.sources.filter(source => typeof source.id === 'string' && typeof source.video_id === 'string' && typeof source.published_at === 'string');\nreturn sources.map(source => ({json:{source_id:source.id}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        96
+      ],
+      "id": "1a291702-fb74-4934-8af6-364987d43392",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.youtube.com/feeds/videos.xml?channel_id={{ $json.source_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "4bdbf61a-7570-4ddb-b1ca-c116ccf6788f",
+      "name": "RSS Read",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().flatMap((item, i) => {\n  const source_id = $('Code in JavaScript').itemMatching(i)?.json?.source_id;\n  const video_id = String(item.json?.id || '').replace(/^yt:video:/, '');\n  if (!/^UC[A-Za-z0-9_-]{22}$/.test(source_id || '') || !/^[A-Za-z0-9_-]{11}$/.test(video_id) || !item.json?.title || !item.json?.isoDate) return [];\n  return [{json:{source_id, video_id, title:item.json.title, published_at:item.json.isoDate, summary:''}}];\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "54687aac-fc43-4b4e-bf87-0c81c785a032",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "98mOtm9lNtrKWrPE",
+          "mode": "list",
+          "cachedResultName": "News Service Publications",
+          "cachedResultUrl": "/projects/cGBB45XJB9GOS7VX/datatables/98mOtm9lNtrKWrPE"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "video_id",
+              "keyValue": "={{ $json.video_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "video_id",
+              "displayName": "video_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source_id",
+              "displayName": "source_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "published_at",
+              "displayName": "published_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "691bd925-19e1-485d-b754-a7b7820dd102",
+      "name": "Upsert row(s)"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        192
+      ],
+      "id": "be7011ba-5a94-44c9-b376-34ca3a9632de",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://ariadne.dia.net.au:18765/api/news-service/n8n/registry",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        96
+      ],
+      "id": "9148bdec-bc78-4163-b769-fb80517afc6f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(({json})=>({source_id:json.source_id,video_id:json.video_id,title:json.title,published_at:json.published_at,summary:json.summary||''})).filter(r=>Number.isFinite(Date.parse(r.published_at))); rows.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||a.source_id.localeCompare(b.source_id)||a.video_id.localeCompare(b.video_id)); return [{json:{version:1,publications:rows}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        192
+      ],
+      "id": "847c8425-8427-451c-a82b-77405e55c455",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ariadne.dia.net.au:18765/api/news-service/n8n/publications",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        192
+      ],
+      "id": "d16b801a-2ce2-4274-a881-14d311b15329",
+      "name": "HTTP Request1"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert row(s)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9baa6194-cfa7-4904-98c9-3b0680e47865",
+  "meta": {
+    "instanceId": "256f479ccc098615a16e3f21bc5aba22619c6c5f341e8dfa33480e3f47803a01"
+  },
+  "nodeGroups": [],
+  "id": "VP0Bro3F98I523YD",
+  "tags": []
+}

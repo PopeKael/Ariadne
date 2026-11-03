@@ -1,5 +1,9 @@
 """Narrow authenticated n8n bridge for the existing News Service cache."""
 import hmac
+import sqlite3
+import tempfile
+from contextlib import closing
+from pathlib import Path
 
 import credential_store
 from news_publication_sync import import_snapshot, registry_snapshot
@@ -19,6 +23,25 @@ def _authorized(handler):
 
 def _send(handler, payload, status=200):
     handler.send_json(payload, status)
+
+
+def _apply_snapshot(db_path, snapshot, dry_run):
+    # Source state is authoritative at ingest time. Drop records for sources
+    # disabled or removed after collection, then let the transactional
+    # importer revalidate the remaining records and preserve delivery state.
+    registry = registry_snapshot(db_path)
+    enabled = {source["id"] for source in registry["sources"]}
+    items = snapshot["publications"]
+    active = [item for item in items if not isinstance(item, dict)
+              or not isinstance(item.get("source_id"), str)
+              or item["source_id"] in enabled]
+    result = import_snapshot(db_path, {
+        "version": snapshot.get("version"), "publications": active,
+    })
+    from news_discord_auto import deliver_sync
+    delivery = deliver_sync(db_path, result.pop('inserted_ids', []), dry_run=dry_run)
+    return {"ok": True, "dry_run": dry_run, **result,
+            "inactive_sources_skipped": len(items) - len(active), "discord_delivery": delivery}
 
 
 def handle_get(handler, path, db_path):
@@ -53,20 +76,17 @@ def handle_post(handler, path, db_path):
         if not isinstance(snapshot.get("publications"), list):
             raise ValueError("Invalid publication list.")
 
-        # Source state is authoritative at ingest time. Drop records for sources
-        # disabled or removed after collection, then let the transactional
-        # importer revalidate the remaining records and preserve delivery state.
-        registry = registry_snapshot(db_path)
-        enabled = {source["id"] for source in registry["sources"]}
-        items = snapshot["publications"]
-        active = [item for item in items if not isinstance(item, dict)
-                  or not isinstance(item.get("source_id"), str)
-                  or item["source_id"] in enabled]
-        skipped = len(items) - len(active)
-        result = import_snapshot(db_path, {
-            "version": snapshot.get("version"), "publications": active,
-        })
-        _send(handler, {"ok": True, **result, "inactive_sources_skipped": skipped})
+        dry_run = handler.headers.get("X-Ariadne-Dry-Run", "").strip().casefold() == "true"
+        if not dry_run:
+            _send(handler, _apply_snapshot(db_path, snapshot, False))
+        else:
+            # Exercise the exact importer and eligibility logic against a
+            # consistent copy, without changing the live cache or calling Discord.
+            with tempfile.TemporaryDirectory(prefix="ariadne-news-sync-dry-run-") as temporary:
+                target_db = Path(temporary) / "news-service.sqlite3"
+                with closing(sqlite3.connect(db_path, timeout=10)) as source, closing(sqlite3.connect(target_db, timeout=10)) as copy:
+                    source.backup(copy)
+                _send(handler, _apply_snapshot(target_db, snapshot, True))
     except ValueError as exc:
         _send(handler, {"ok": False, "message": str(exc)}, 400)
     except Exception:

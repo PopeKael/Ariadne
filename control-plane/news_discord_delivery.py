@@ -44,6 +44,10 @@ class DeliveryStore:
             for column,kind in (('http_status','INTEGER'),('discord_channel_id','TEXT'),('discord_timestamp','TEXT')):
                 if column not in columns:db.execute(f'ALTER TABLE discord_delivery_attempts ADD COLUMN {column} {kind}')
             row=db.execute('SELECT * FROM publications WHERE id=?',(publication_id,)).fetchone()
+            table='publications'
+            if not row:
+                row=db.execute('SELECT * FROM publication_archive WHERE id=?',(publication_id,)).fetchone()
+                table='publication_archive'
             if not row:raise Blocked('Publication not found')
             publication=dict(row);destination=publication['destination']
             if destination not in DESTINATIONS and not destination_reference(self.path, destination):raise Blocked('Destination is not allowed')
@@ -95,8 +99,8 @@ class DeliveryStore:
         try:
             db.execute('BEGIN IMMEDIATE')
             db.execute('UPDATE discord_delivery_attempts SET status=?,finished_at=?,discord_message_id=?,retry_after=?,http_status=?,discord_channel_id=?,discord_timestamp=? WHERE id=?',(status,self.clock(),message_id,retry_after,code if isinstance(code,int) else None,discord_channel,discord_timestamp,attempt))
-            if status=='sent':db.execute("UPDATE publications SET discord_status='sent' WHERE id=?",(publication_id,))
-            else:db.execute("UPDATE publications SET discord_status=? WHERE id=? AND discord_status!='sent'",(status,publication_id))
+            if status=='sent':db.execute(f"UPDATE {table} SET discord_status='sent' WHERE id=?",(publication_id,))
+            else:db.execute(f"UPDATE {table} SET discord_status=? WHERE id=? AND discord_status!='sent'",(status,publication_id))
             db.commit()
         finally:db.close()
         return {'status':status,'message_id':message_id,'attempt_id':attempt,'retry_after':retry_after}

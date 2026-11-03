@@ -81,6 +81,10 @@ def registry_snapshot(path):
     db = sqlite3.connect(path, timeout=10)
     db.row_factory = sqlite3.Row
     try:
+        db.execute('CREATE TABLE IF NOT EXISTS news_settings (key TEXT PRIMARY KEY,value TEXT NOT NULL)')
+        db.execute("INSERT OR IGNORE INTO news_settings(key,value) VALUES('stage3_activated_at',?)",
+                   (datetime.now(timezone.utc).isoformat(),))
+        db.commit()
         rows = db.execute('''SELECT s.id,s.name,s.friendly_name,s.destination,
             c.video_id,c.published_at FROM sources s LEFT JOIN news_checkpoints c
             ON c.source_id=s.id WHERE s.enabled=1 AND s.kind='youtube' ORDER BY s.id''')
@@ -122,7 +126,7 @@ def import_snapshot(path, snapshot):
         validated.append((cid, vid, title.strip(), summary, stamp))
     db = sqlite3.connect(path, timeout=10)
     db.row_factory = sqlite3.Row
-    result = {'inserted': 0, 'duplicates': 0, 'baseline_skipped': 0}
+    result = {'inserted': 0, 'duplicates': 0, 'baseline_skipped': 0, 'inserted_ids': []}
     try:
         db.execute('BEGIN IMMEDIATE')
         now = datetime.now(timezone.utc).isoformat()
@@ -135,6 +139,8 @@ def import_snapshot(path, snapshot):
             identity = 'youtube:' + vid
             url = 'https://www.youtube.com/watch?v=' + vid
             prior = db.execute('SELECT source_id,original_url FROM publications WHERE id=?', (identity,)).fetchone()
+            if not prior and db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='publication_archive'").fetchone():
+                prior = db.execute('SELECT source_id,original_url FROM publication_archive WHERE id=?', (identity,)).fetchone()
             if prior:
                 if prior['source_id'] != cid or prior['original_url'] != url:
                     raise ValueError('Publication identity conflict')
@@ -148,6 +154,23 @@ def import_snapshot(path, snapshot):
                 VALUES (?,?,?,?,?,?,?,?,?,?)''', (identity,cid,url,source['friendly_name'] or source['name'],
                 title,stamp.isoformat(),summary,'https://i.ytimg.com/vi/'+vid+'/hqdefault.jpg',source['destination'],now))
             result['inserted'] += 1
+            result['inserted_ids'].append(identity)
+        # Keep a two-row active window per canonical channel. Archive every
+        # evicted row first so delivery history and recovery data remain intact.
+        db.execute('CREATE TABLE IF NOT EXISTS publication_archive AS SELECT * FROM publications WHERE 0')
+        live_columns = [row['name'] for row in db.execute('PRAGMA table_info(publications)')]
+        archive_columns = {row['name'] for row in db.execute('PRAGMA table_info(publication_archive)')}
+        for name in live_columns:
+            if name not in archive_columns:
+                declared = next(row['type'] for row in db.execute('PRAGMA table_info(publications)') if row['name'] == name)
+                db.execute(f'ALTER TABLE publication_archive ADD COLUMN "{name.replace(chr(34), chr(34)*2)}" {declared}')
+        fields = ','.join('"' + name.replace('"', '""') + '"' for name in live_columns)
+        evicted = db.execute('''SELECT id FROM (SELECT id,ROW_NUMBER() OVER (
+            PARTITION BY source_id ORDER BY julianday(published_at) DESC,id DESC) AS position
+            FROM publications) WHERE position>2''').fetchall()
+        for row in evicted:
+            db.execute(f'INSERT OR IGNORE INTO publication_archive ({fields}) SELECT {fields} FROM publications WHERE id=?', (row['id'],))
+            db.execute('DELETE FROM publications WHERE id=?', (row['id'],))
         db.commit()
         return result
     except Exception:

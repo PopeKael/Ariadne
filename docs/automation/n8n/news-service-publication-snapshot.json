@@ -1,0 +1,95 @@
+{
+  "name": "News Service - LAN snapshot (draft)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "news-service-publications-v1",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {
+          "ipWhitelist": "172.17.0.1, 192.168.1.100"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b3b1e7f8-dfe6-49db-93e9-7f752cb0020d",
+      "name": "Webhook",
+      "webhookId": "12172077-f188-4375-bf47-d2a3912af476"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "98mOtm9lNtrKWrPE",
+          "mode": "list",
+          "cachedResultName": "News Service Publications",
+          "cachedResultUrl": "/projects/cGBB45XJB9GOS7VX/datatables/98mOtm9lNtrKWrPE"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "057ffa42-b887-410d-9582-8cfd6f2f55e6",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const publications = $input.all().map(({json:r})=>({source_id:r.source_id,video_id:r.video_id,title:r.title,published_at:r.published_at,summary:r.summary||''})).filter(r=>Number.isFinite(Date.parse(r.published_at))); publications.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||a.source_id.localeCompare(b.source_id)||a.video_id.localeCompare(b.video_id)); const counts=new Map(); const active=publications.filter(r=>{const count=counts.get(r.source_id)||0;if(count>=2)return false;counts.set(r.source_id,count+1);return true;}); return [{json:{version:1,publications:active}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "bf3a73da-4ec8-4017-b363-4d216204c75d",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "11d6db2d-1b75-4a54-8af4-dc11822e643b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "256f479ccc098615a16e3f21bc5aba22619c6c5f341e8dfa33480e3f47803a01"
+  },
+  "nodeGroups": [],
+  "id": "HGKHZh3Uuw88fJrl",
+  "tags": []
+}

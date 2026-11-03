@@ -95,6 +95,9 @@ class NewsService:
           summary TEXT NOT NULL DEFAULT '', image_url TEXT NOT NULL DEFAULT '', destination TEXT NOT NULL,
           collected_at TEXT NOT NULL, discord_status TEXT NOT NULL DEFAULT 'pending',
           external_status TEXT NOT NULL DEFAULT 'not_published', UNIQUE(source_id, original_url));
+        CREATE TABLE IF NOT EXISTS news_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS publication_archive AS SELECT * FROM publications WHERE 0;
+        CREATE UNIQUE INDEX IF NOT EXISTS publication_archive_id ON publication_archive(id);
         CREATE INDEX IF NOT EXISTS publications_date ON publications(published_at DESC);
         ''')
         try:
@@ -194,9 +197,9 @@ class NewsService:
             raise ValueError('Invalid category.')
         with self.connect() as db:
             if destination == 'all':
-                rows = db.execute('SELECT * FROM publications ORDER BY published_at DESC, id DESC LIMIT 500')
+                rows = db.execute('SELECT * FROM publications ORDER BY julianday(published_at) DESC, id DESC LIMIT 500')
             else:
-                rows = db.execute('SELECT * FROM publications WHERE destination=? ORDER BY published_at DESC, id DESC LIMIT 500', (destination,))
+                rows = db.execute('SELECT * FROM publications WHERE destination=? ORDER BY julianday(published_at) DESC, id DESC LIMIT 500', (destination,))
             return [dict(row) for row in rows]
 
     def cache_publication(self, item):
@@ -236,3 +239,25 @@ class NewsService:
             except sqlite3.IntegrityError:
                 return False
         return True
+
+    def prune_publications(self, limit=2):
+        """Keep the newest rows active; archive full rows before removing older ones."""
+        if limit != 2:
+            raise ValueError('Only the two-publication window is supported.')
+        with self.connect() as db:
+            old = db.execute('''SELECT p.* FROM publications p WHERE p.id IN (
+                SELECT id FROM (SELECT id, ROW_NUMBER() OVER (
+                    PARTITION BY source_id ORDER BY julianday(published_at) DESC, id DESC) AS position
+                    FROM publications) WHERE position > 2)''').fetchall()
+            live = {r['name'] for r in db.execute('PRAGMA table_info(publications)')}
+            archived = {r['name'] for r in db.execute('PRAGMA table_info(publication_archive)')}
+            common = [r['name'] for r in db.execute('PRAGMA table_info(publications)') if r['name'] in archived]
+            for column in sorted(live - archived):
+                kind = next(r['type'] for r in db.execute('PRAGMA table_info(publications)') if r['name'] == column)
+                db.execute(f'ALTER TABLE publication_archive ADD COLUMN {column} {kind}')
+                common.append(column)
+            fields = ','.join('"' + name.replace('"', '""') + '"' for name in common)
+            for row in old:
+                db.execute(f'INSERT OR IGNORE INTO publication_archive ({fields}) SELECT {fields} FROM publications WHERE id=?', (row['id'],))
+                db.execute('DELETE FROM publications WHERE id=?', (row['id'],))
+            return len(old)

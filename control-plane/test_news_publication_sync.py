@@ -7,6 +7,7 @@ from contextlib import closing
 from pathlib import Path
 
 from news_publication_sync import import_snapshot, registry_snapshot, pull_snapshot
+from news_service import NewsService
 
 CID = 'UC' + 'a' * 22
 
@@ -40,7 +41,7 @@ class SyncTests(unittest.TestCase):
         batch = {'version': 1, 'publications': [self.item('abcdefghijk','2026-01-01T00:00:00Z'),
                  self.item('ABCDEFGHIJK','2026-01-02T00:00:00Z'), self.item('01234567890','2025-12-01T00:00:00Z')]}
         self.assertEqual(registry_snapshot(self.path)['sources'][0]['video_id'], 'abcdefghijk')
-        self.assertEqual(import_snapshot(self.path,batch), {'inserted':1,'duplicates':1,'baseline_skipped':1})
+        self.assertEqual(import_snapshot(self.path,batch), {'inserted':1,'duplicates':1,'baseline_skipped':1,'inserted_ids':['youtube:ABCDEFGHIJK']})
         self.assertEqual(import_snapshot(self.path,batch)['inserted'], 0)
         with closing(sqlite3.connect(self.path)) as db:
             self.assertEqual(db.execute("SELECT discord_status FROM publications WHERE id='youtube:abcdefghijk'").fetchone()[0], 'sent')
@@ -95,6 +96,38 @@ class SyncTests(unittest.TestCase):
             )
         self.assertEqual(result['inserted'], 1)
         self.assertEqual(result['inactive_sources_skipped'], 1)
+
+    def test_active_window_orders_by_publication_time_and_archives_oldest(self):
+        batch = {'version': 1, 'publications': [
+            {**self.item('ABCDEFGHIJK', '2026-01-02T01:00:00+02:00'), 'title':'Older regular video'},
+            self.item('01234567890', '2026-01-01T23:30:00Z'),
+            {**self.item('abcdefghijK', '2026-01-02T00:00:00Z'), 'title':'Newer YouTube Short'},
+        ]}
+        result = import_snapshot(self.path, batch)
+        self.assertEqual(result['inserted'], 3)
+        service = NewsService(self.path)
+        self.assertEqual([x['id'] for x in service.publications()],
+                         ['youtube:abcdefghijK', 'youtube:01234567890'])
+        self.assertEqual(service.publications()[0]['title'], 'Newer YouTube Short')
+        self.assertEqual([x['id'] for x in service.publications('ai_noise')],
+                         ['youtube:abcdefghijK', 'youtube:01234567890'])
+        with closing(sqlite3.connect(self.path)) as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM publications WHERE source_id=?', (CID,)).fetchone()[0], 2)
+            self.assertEqual(db.execute('SELECT id FROM publication_archive').fetchone()[0], 'youtube:ABCDEFGHIJK')
+            self.assertEqual(db.execute('SELECT discord_status FROM publication_archive WHERE id=?',
+                                        ('youtube:ABCDEFGHIJK',)).fetchone()[0], 'pending')
+        replay = import_snapshot(self.path, {'version':1, 'publications':[self.item('ABCDEFGHIJK','2026-01-02T01:00:00+02:00')]})
+        self.assertEqual(replay['duplicates'], 1)
+        self.assertEqual(replay['inserted'], 0)
+
+    def test_equal_publication_times_use_id_as_deterministic_tiebreaker(self):
+        batch = {'version': 1, 'publications': [
+            self.item('AAAAAAAAAAA', '2026-01-02T00:00:00Z'),
+            self.item('ZZZZZZZZZZZ', '2026-01-02T00:00:00Z'),
+        ]}
+        import_snapshot(self.path, batch)
+        self.assertEqual([x['id'] for x in NewsService(self.path).publications()],
+                         ['youtube:ZZZZZZZZZZZ', 'youtube:AAAAAAAAAAA'])
 
 
 if __name__ == '__main__':

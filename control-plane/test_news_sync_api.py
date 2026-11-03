@@ -74,6 +74,25 @@ class NewsSyncApiTests(unittest.TestCase):
             handle_post(handler, "/api/news-service/n8n/publications", self.path)
         self.assertEqual(handler.response[0]["inactive_sources_skipped"], 1)
 
+    def test_sync_dry_run_uses_a_copy_and_never_persists_or_delivers(self):
+        body = {"version": 1, "publications": [
+            {"source_id": CID, "video_id": "ABCDEFGHIJK", "title": "New", "published_at": "2026-01-02T00:00:00Z"},
+        ]}
+        headers = {"Authorization": "Bearer sync-secret", "Content-Type": "application/json",
+                   "Content-Length": str(len(json.dumps(body))), "X-Ariadne-Dry-Run": "true"}
+        handler = Handler(self.path, headers, body)
+        with patch("news_sync_api.credential_store.get_credential", return_value="sync-secret"):
+            handle_post(handler, "/api/news-service/n8n/publications", self.path)
+        payload, status = handler.response
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["dry_run"])
+        self.assertEqual(payload["inserted"], 1)
+        self.assertEqual(payload["discord_delivery"]["sent"], 0)
+        with closing(sqlite3.connect(self.path)) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM publications").fetchone()[0], 0)
+            self.assertIsNone(db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='news_settings'").fetchone())
+            self.assertIsNone(db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='publication_archive'").fetchone())
+
 
 if __name__ == "__main__":
     unittest.main()
