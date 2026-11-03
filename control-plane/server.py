@@ -9860,6 +9860,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
+        from news_sync_api import handle_get
+        if handle_get(self, path, ROOT / "runtime" / "news-service.sqlite3"):
+            return
         if path.startswith('/api/news-admin/'):
             from news_discord_admin import handle
             handle(self, path, ROOT / 'runtime' / 'news-service.sqlite3')
@@ -10512,6 +10515,9 @@ class AriadneHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": False, "state": "stopping", "message": "Ariadne is shutting down; new work is not being accepted."}, 503)
             return
         if self.workspace_request():
+            return
+        from news_sync_api import handle_post
+        if handle_post(self, path, ROOT / "runtime" / "news-service.sqlite3"):
             return
         if path.startswith('/api/news-admin/'):
             from news_discord_admin import handle

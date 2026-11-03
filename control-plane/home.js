@@ -1,8 +1,10 @@
 const ARTICLE_FETCH_WATCHDOG_MS = 240000;
 const TLDR_PROMPT = "Give me a clear, plain-English summary of this article in 200 to 300 words. Focus on what happened, why it matters, and any important uncertainty.";
 const CHAT_PAGE = document.body.classList.contains("chat-page");
-const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, lastActivitySequence: 0, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), coordinates: null};
+const state = {sessionId: null, chatId: null, messages: [], attachments: [], tools: [], selectedToolIds: new Set(), heartbeat: null, requestTimer: null, activityTimer: null, lastActivitySequence: 0, requestAbortController: null, requestStarted: 0, processing: false, contextMutationInFlight: false, articleTldrPending: false, addArticleMode: false, signalArticleBusy: new Set(), signalArticlePollers: new Map(), signalExpandedSections: new Set(), signalView: "discover", coordinates: null};
 const responseFeedbackQueues = new Map();
+let discoverViewSnapshot = null;
+let followingRequestSequence = 0;
 
 function chatUrl({chatId = "", prompt = "", signalId = "", tldrStartedAt = "", articleId = "", articleAction = "", articleStartedAt = "", vaultMode = "", toolIds = []} = {}) {
   const url = new URL("/chat", window.location.origin);
@@ -788,6 +790,7 @@ function renderSignalCard(item) {
 
 function renderToday(items) {
   if (typeof state !== "undefined" && state.newsHistoryView && !state.renderingHistory) return;
+  if (state.signalView === "following") return;
   const root = document.querySelector("#today-list");
   const count = document.querySelector("#signal-count");
   const scrollTop = root.scrollTop;
@@ -822,6 +825,119 @@ function renderToday(items) {
   });
   if (count) count.textContent = `${grid.children.length} cached articles`;
   root.scrollTop = Math.min(scrollTop, Math.max(0, root.scrollHeight - root.clientHeight));
+}
+
+function renderFollowingPublication(item, destinationNames) {
+  const card = el("article", "signal-card following-card");
+  const imageUrl = item.image_url && /^https:\/\//i.test(item.image_url) ? item.image_url : "";
+  const image = imageUrl ? el("img", "signal-image") : el("div", "signal-image signal-image-placeholder", "✦");
+  if (imageUrl) {
+    image.src = imageUrl;
+    image.alt = "";
+    image.loading = "lazy";
+    image.referrerPolicy = "no-referrer";
+    image.addEventListener("error", () => image.replaceWith(el("div", "signal-image signal-image-placeholder", "✦")), {once: true});
+  }
+  const body = el("div", "signal-card-body");
+  const title = el("h3", "signal-card-title", item.title || "Untitled video");
+  const destination = destinationNames.get(item.destination) || item.destination || "News Service";
+  const creator = item.creator || "YouTube creator";
+  const summary = item.summary || "";
+  const meta = el("p", "following-publication-meta", `${creator} · ${destination}`);
+  body.append(title, meta);
+  if (summary) body.append(el("p", "signal-summary", summary));
+  const date = item.published_at ? new Date(item.published_at) : null;
+  if (date && !Number.isNaN(date.getTime())) {
+    body.append(el("p", "following-publication-date", date.toLocaleString([], {month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit"})));
+  }
+  if (item.original_url && /^https:\/\//i.test(item.original_url)) {
+    const link = el("a", "signal-source-link", "Watch on YouTube ↗");
+    link.href = item.original_url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.title = "Open original YouTube video";
+    body.append(link);
+  }
+  if (item.discord_status) body.append(el("p", "following-publication-status", `Discord: ${item.discord_status}`));
+  card.append(image, body);
+  return card;
+}
+
+async function renderFollowingPublications() {
+  const requestSequence = ++followingRequestSequence;
+  const root = document.querySelector("#today-list");
+  const count = document.querySelector("#signal-count");
+  const select = document.querySelector("#following-destination");
+  root.replaceChildren(el("div", "loading-row", "Reading cached publications…"));
+  try {
+    const destinationResult = await getJson("/api/news-service/destinations");
+    if (state.signalView !== "following" || requestSequence !== followingRequestSequence) return;
+    const destinationNames = new Map((destinationResult.destinations || []).map(item => [item.id, item.name]));
+    const previous = select.value || "all";
+    select.replaceChildren(el("option", "", "All destinations"));
+    select.options[0].value = "all";
+    for (const item of destinationResult.destinations || []) {
+      const option = el("option", "", item.name || item.id);
+      option.value = item.id;
+      select.append(option);
+    }
+    select.value = Array.from(select.options).some(option => option.value === previous) ? previous : "all";
+    const result = await getJson("/api/news-service/publications?category=" + encodeURIComponent(select.value));
+    if (state.signalView !== "following" || requestSequence !== followingRequestSequence) return;
+    const publications = Array.isArray(result.publications) ? result.publications : [];
+    const list = el("div", "following-publication-list");
+    if (publications.length) {
+      publications.forEach(item => list.append(renderFollowingPublication(item, destinationNames)));
+      count.textContent = `${publications.length} cached videos`;
+    } else {
+      list.append(el("p", "signal-section-empty", "No cached videos for this destination yet."));
+      count.textContent = "0 cached videos";
+    }
+    root.replaceChildren(list);
+  } catch (error) {
+    if (state.signalView !== "following" || requestSequence !== followingRequestSequence) return;
+    root.replaceChildren(el("p", "signal-section-empty", `Cached publications are unavailable: ${error.message}`));
+    count.textContent = "Cache unavailable";
+  }
+}
+
+async function switchSignalView(view) {
+  if (view === state.signalView) return;
+  const root = document.querySelector("#today-list");
+  const heading = document.querySelector("#today-heading");
+  const description = document.querySelector("#signal-description");
+  const count = document.querySelector("#signal-count");
+  const discoverButton = document.querySelector("#signal-view-discover");
+  const followingButton = document.querySelector("#signal-view-following");
+  const following = view === "following";
+  if (following) {
+    const content = document.createDocumentFragment();
+    while (root.firstChild) content.append(root.firstChild);
+    discoverViewSnapshot = {content, heading: heading.textContent, description: description.textContent, count: count.textContent, scrollTop: root.scrollTop};
+  }
+  state.signalView = following ? "following" : "discover";
+  if (!following) followingRequestSequence += 1;
+  discoverButton.classList.toggle("selected", !following);
+  discoverButton.setAttribute("aria-pressed", String(!following));
+  followingButton.classList.toggle("selected", following);
+  followingButton.setAttribute("aria-pressed", String(following));
+  document.querySelector("#news-seen").hidden = following;
+  document.querySelector("#following-destination-wrap").hidden = !following;
+  document.querySelector("#following-manage").hidden = !following;
+  if (following) {
+    heading.textContent = "Following";
+    description.textContent = "Latest videos collected from your followed YouTube sources. These cards are read from Ariadne’s local News Service cache.";
+    await renderFollowingPublications();
+    return;
+  }
+  heading.textContent = discoverViewSnapshot?.heading || "Discover";
+  description.textContent = discoverViewSnapshot?.description || "Curated from your connected sources. Click any article to open a full analysis in a new chat.";
+  count.textContent = discoverViewSnapshot?.count || count.textContent;
+  if (discoverViewSnapshot) {
+    root.replaceChildren(discoverViewSnapshot.content);
+    root.scrollTop = discoverViewSnapshot.scrollTop;
+  }
+  discoverViewSnapshot = null;
 }
 function renderAdaptive(payload) {
   const root = document.querySelector("#adaptive-summary");
@@ -2721,6 +2837,11 @@ if (exportButton) exportButton.addEventListener("click", exportCurrentChat);
 const purgeButton = document.querySelector("#purge-chat");
 if (purgeButton) purgeButton.addEventListener("click", purgeCurrentChat);
 const informationRefresh = document.querySelector("#information-refresh");
+document.querySelector("#signal-view-discover")?.addEventListener("click", () => { void switchSignalView("discover"); });
+document.querySelector("#signal-view-following")?.addEventListener("click", () => { void switchSignalView("following"); });
+document.querySelector("#following-destination")?.addEventListener("change", () => {
+  if (state.signalView === "following") void renderFollowingPublications();
+});
 const newsSeenButton = document.querySelector("#news-seen");
 if (newsSeenButton) newsSeenButton.addEventListener("click", async () => {
   newsSeenButton.disabled = true;
@@ -2739,7 +2860,10 @@ if (newsSeenButton) newsSeenButton.addEventListener("click", async () => {
   } catch (error) { newsSeenButton.title = error.message; }
   finally { state.renderingHistory = false; newsSeenButton.disabled = false; }
 });
-document.querySelector("#news-refresh")?.addEventListener("click", () => window.location.reload());
+document.querySelector("#news-refresh")?.addEventListener("click", () => {
+  if (state.signalView === "following") void renderFollowingPublications();
+  else window.location.reload();
+});
 if (informationRefresh) informationRefresh.addEventListener("click", () => loadInformation(true));
 window.addEventListener("beforeunload", closeSession);
 loadTools();

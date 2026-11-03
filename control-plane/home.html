@@ -39,7 +39,21 @@
           </section>
         </aside>
         <div class="home-main-column">
-          <section class="panel signals-panel" aria-labelledby="today-heading"><div class="panel-heading signals-heading"><div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Discover</h2><p>Curated from your connected sources. Click any article to open a full analysis in a new chat.</p></div><div class="signals-heading-meta"><span id="signal-count" class="signal-count">Loading signals…</span><button id="news-seen" class="feedback-button" type="button" aria-pressed="false">Seen</button><button id="news-refresh" class="feedback-button" type="button" title="Reload and apply current recommendations">Refresh</button></div></div><div id="today-list" class="signal-feed"><div class="loading-row">Reading local signals…</div></div></section>
+          <section class="panel signals-panel" aria-labelledby="today-heading">
+            <div class="panel-heading signals-heading">
+              <div><span class="eyebrow">LOCAL SIGNALS</span><h2 id="today-heading">Discover</h2><p id="signal-description">Curated from your connected sources. Click any article to open a full analysis in a new chat.</p></div>
+              <div class="signals-heading-tools">
+                <div id="signal-view-selector" class="signal-view-selector" role="group" aria-label="Local Signals view">
+                  <button id="signal-view-discover" class="feedback-button signal-view-button selected" type="button" aria-pressed="true">Discover</button>
+                  <button id="signal-view-following" class="feedback-button signal-view-button" type="button" aria-pressed="false">Following</button>
+                </div>
+                <label id="following-destination-wrap" class="following-destination-wrap" hidden>Destination<select id="following-destination"><option value="all">All destinations</option></select></label>
+                <a id="following-manage" class="following-manage" href="/news-service" hidden>Manage sources &amp; Discord ↗</a>
+                <div class="signals-heading-meta"><span id="signal-count" class="signal-count">Loading signals…</span><button id="news-seen" class="feedback-button" type="button" aria-pressed="false">Seen</button><button id="news-refresh" class="feedback-button" type="button" title="Reload and apply current recommendations">Refresh</button></div>
+              </div>
+            </div>
+            <div id="today-list" class="signal-feed"><div class="loading-row">Reading local signals…</div></div>
+          </section>
         </div>
         <aside class="live-column" aria-label="Live information">
           <section class="panel live-module weather-module" aria-labelledby="weather-heading">

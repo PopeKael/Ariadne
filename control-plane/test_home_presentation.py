@@ -27,7 +27,7 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("Discover", html)
         js = Path(__file__).with_name("home.js").read_text(encoding="utf-8")
         self.assertIn("Coverage", js)
-        render_today = js.split("function renderToday(items) {", 1)[1].split("\nfunction renderAdaptive", 1)[0]
+        render_today = js.split("function renderToday(items) {", 1)[1].split("\nfunction renderFollowingPublication", 1)[0]
         self.assertIn("grid.append(card)", render_today)
         self.assertIn("seen.has(key)", render_today)
         self.assertNotIn("root.replaceChildren", render_today)
@@ -105,6 +105,16 @@ class HomePresentationTests(unittest.TestCase):
         self.assertIn("position:fixed", css)
         self.assertIn("const scrollTop = root.scrollTop", js)
         self.assertIn("root.scrollTop = Math.min(scrollTop", js)
+        following = js.split("function renderFollowingPublication", 1)[1].split("\nfunction renderAdaptive", 1)[0]
+        self.assertIn("/api/news-service/destinations", following)
+        self.assertIn("/api/news-service/publications?category=", following)
+        self.assertIn("function switchSignalView", following)
+        self.assertIn("state.signalView === \"following\"", render_today)
+        self.assertIn('id="signal-view-discover"', html)
+        self.assertIn('id="signal-view-following"', html)
+        self.assertIn('id="following-destination"', html)
+        self.assertIn('href="/news-service"', html)
+        self.assertNotIn("youtube.com/feeds", following)
         self.assertIn('signal_id: ""', render_today)
         self.assertIn('article_context: item.article_id ? "news"', render_today)
         self.assertIn("article_id: item.article_id || \"\"", render_today)

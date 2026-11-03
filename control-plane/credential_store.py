@@ -19,6 +19,7 @@ _TARGETS = {
     "ARIADNE_DISCORD_THAILAND_NEWS": "Ariadne/NewsService/Discord/ThailandNews",
     "ARIADNE_DISCORD_AI_NOISE": "Ariadne/NewsService/Discord/AINoise",
     "ARIADNE_NEWS_ADMIN": "Ariadne/NewsService/AdminPasswordVerifier",
+    "ARIADNE_NEWS_N8N_SYNC_TOKEN": "Ariadne/NewsService/N8nSyncToken",
 }
 
 
