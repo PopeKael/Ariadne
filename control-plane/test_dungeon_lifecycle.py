@@ -31,6 +31,7 @@ class DungeonLifecycleTests(unittest.TestCase):
         server.ACTIVE_PROFILE = "DEV"
         server.GPU_VAULT_RESERVATION = None
         server.MODEL_IN_FLIGHT.clear()
+        server.ARIADNE_DELEGATION.pop("suspended_home_sessions", None)
         server.ARIADNE_DELEGATION.update(state="ARIADNE_ACTIVE", operation_id=None, models=[], detail="Ariadne is active.")
 
     def tearDown(self):
@@ -152,6 +153,53 @@ class DungeonLifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Rust host has an exclusive GPU workload lease"):
                 with server.ai_gpu_admission():
                     self.fail("AI admission must not proceed during Dungeon ownership")
+
+    def test_transition_blocks_new_ai_before_host_admission(self):
+        server.GPU_OWNER = "TRANSITION"
+        with patch.object(server, "host_gpu_lease") as host_lease:
+            with self.assertRaisesRegex(RuntimeError, "GPU work is paused"):
+                with server.ai_gpu_admission():
+                    self.fail("AI work must not enter while Dungeon handoff is draining")
+        host_lease.assert_not_called()
+
+    def test_handoff_releases_idle_home_session_lease_before_exclusive_lease(self):
+        order = []
+        session = {"surface": "home", "host_model_lease_id": "home-lease", "last_seen": 1}
+        with patch.dict(server.SESSIONS, {"home-test": session}, clear=True), \
+             patch.object(server, "ollama_catalog", return_value={"available": True, "loaded": [server.HOME_CHAT_MODEL]}), \
+             patch.object(server, "host_release_model_lease", side_effect=lambda lease, *_args: order.append(f"release:{lease}")), \
+             patch.object(server, "host_acquire_gpu_lease", side_effect=lambda *_args, **_kwargs: (order.append("gpu") or "dungeon-test-lease")), \
+             patch.object(server, "_stop_gods_eye_view"), \
+             patch.object(server, "gods_eye_view_status", return_value={"state": "Stopped", "managed": True}), \
+             patch.object(server, "release_workloads"), \
+             patch.object(server, "host_suspend_for_external_workload", return_value={"ok": True}), \
+             patch.object(server, "emit", return_value=True):
+            result = server.begin_dungeon_handoff()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(order, ["release:home-lease", "gpu"])
+        self.assertIsNone(session["host_model_lease_id"])
+        self.assertEqual(server.ARIADNE_DELEGATION["suspended_home_sessions"][0]["session_id"], "home-test")
+
+    def test_normal_exit_reattaches_still_live_home_session_before_returning(self):
+        server.ARIADNE_DELEGATION.update(
+            state="DUNGEON_ACTIVE", operation_id="c" * 32, models=[], profile="RUN",
+            suspended_home_sessions=[{"session_id": "home-test", "lease_id": "old", "model": server.HOME_CHAT_MODEL,
+                                     "context_length": server.HOME_CONTEXT_TOKENS}],
+        )
+        server.GPU_OWNER = "DUNGEON"
+        session = {"surface": "home", "host_model_lease_id": None}
+        with patch.dict(server.SESSIONS, {"home-test": session}, clear=True), \
+             patch.object(server, "host_resume_after_external_workload"), \
+             patch.object(server, "host_acquire_model_lease", return_value="restored-home-lease") as acquire, \
+             patch.object(server, "set_profile"):
+            result = server.report_dungeon_handoff({"operation_id": "c" * 32, "state": "CLOSED"})
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(session["host_model_lease_id"], "restored-home-lease")
+        acquire.assert_called_once_with(server.HOME_CHAT_MODEL, server.OLLAMA_URL,
+                                        context_length=server.HOME_CONTEXT_TOKENS, allow_calibration=True)
+        self.assertNotIn("suspended_home_sessions", server.ARIADNE_DELEGATION)
 
     def test_crash_recovery_is_idempotent_and_restores_stopped_home_model(self):
         server.ARIADNE_DELEGATION.update(state="DUNGEON_ACTIVE", operation_id="b" * 32, models=[server.HOME_CHAT_MODEL])

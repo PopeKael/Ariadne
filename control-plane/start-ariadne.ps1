@@ -24,8 +24,7 @@ if (-not (Test-Path -LiteralPath $vaultSystem -PathType Container)) {
 }
 if ($explicitVaultRoot) { $env:ARIADNE_VAULT_ROOT = $vaultRoot } else { Remove-Item Env:ARIADNE_VAULT_ROOT -ErrorAction SilentlyContinue }
 $catalogueCount = 0
-$embeddingDocuments = 0
-$embeddingChunks = 0
+$embeddingIndexBytes = 0L
 $cataloguePath = Join-Path $vaultSystem 'library.json'
 $embeddingPath = Join-Path $vaultSystem 'Data\embedding-index.json'
 if (Test-Path -LiteralPath $cataloguePath) {
@@ -33,13 +32,10 @@ if (Test-Path -LiteralPath $cataloguePath) {
     if ($catalogue -is [array]) { $catalogueCount = $catalogue.Count }
 }
 if (Test-Path -LiteralPath $embeddingPath) {
-    $embedding = Get-Content -LiteralPath $embeddingPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $entries = @($embedding.entries.PSObject.Properties)
-    $embeddingChunks = $entries.Count
-    $embeddingDocuments = @($entries | ForEach-Object { $_.Value.path } | Sort-Object -Unique).Count
+    $embeddingIndexBytes = (Get-Item -LiteralPath $embeddingPath).Length
 }
 Write-Host "Ariadne Vault root: $vaultRoot" -ForegroundColor Cyan
-Write-Host ("Catalogue: {0:N0} records | Embeddings: {1:N0} documents / {2:N0} chunks" -f $catalogueCount, $embeddingDocuments, $embeddingChunks) -ForegroundColor Cyan
+Write-Host ("Catalogue: {0:N0} records | Embedding index: {1:N1} MiB (not loaded during startup)" -f $catalogueCount, ($embeddingIndexBytes / 1MB)) -ForegroundColor Cyan
 $hostExe = Join-Path $controlPlane 'host\target-msvc\release\ariadne-host.exe'
 $tray = Join-Path $controlPlane 'tray.py'
 $url = 'https://ariadne.dia.net.au/'

@@ -16,6 +16,29 @@ workload transitions unrelated to model residency remain coordinated by the
 existing Python services. Home emits optional presentation hints through
 `avatar_events.py`; transport failure is deliberately ignored by the core.
 
+## Dungeon exclusive-workload handoff
+
+The System page calls the Python Core's `/api/dungeon/start` boundary. Core
+blocks new AI admissions, drains active work, suspends Home model leases and
+asks this Host for the exclusive `dungeon` GPU lease before sending the launch
+message. The Host starts the configured `ARIADNE_DUNGEON_EXECUTABLE` (default
+`F:\AI\DungeonCrawler\DungeonCrawler.exe`) and waits for Dungeon's local HTTP
+health endpoint.
+
+Dungeon's tray is single-instance. A second launcher may signal the existing
+tray and exit with code 0 before the application becomes healthy. The Host
+therefore continues the readiness check after a successful early launcher
+exit; once healthy, it reports `ACTIVE` and supervises the service endpoint
+through normal tray-managed shutdown. After health stays unavailable for the
+shutdown grace period, the Host reports `CLOSED`, reconciles GPU use, and
+resumes Ariadne's runtime. Failed launches and failed restoration remain
+reported as failures. Python restores still-live Home session model leases;
+idle Home preload runs only when no session lease was restored.
+
+The startup script reports the embedding-index file size without loading the
+large JSON index into PowerShell memory. Vault retrieval remains owned by the
+Python Core after startup.
+
 ## Build and manual run
 
 From the repository root, with Rust installed:

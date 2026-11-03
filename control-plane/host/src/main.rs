@@ -2583,9 +2583,15 @@ fn launch_dungeon(message: HostMessage, avatar: &mut AvatarOverlay, queue: &UiQu
             thread::spawn(move || {
                 let startup_deadline = Instant::now() + Duration::from_secs(300);
                 let mut ready = false;
+                let mut launcher_exit_ok: Option<bool> = None;
                 loop {
                     match child.try_wait() {
-                        Ok(Some(exit)) => { log_line(format!("Dungeon launcher exited before readiness: operation_id={}, result={:?}", op, exit)); break; }
+                        Ok(Some(exit)) => {
+                            if launcher_exit_ok.is_none() {
+                                launcher_exit_ok = Some(exit.success());
+                                log_line(format!("Dungeon launcher handed off or exited during startup: operation_id={}, result={:?}; waiting for service readiness", op, exit));
+                            }
+                        }
                         Err(error) => { log_line(format!("Dungeon launcher status failed during startup: {}", error)); break; }
                         Ok(None) => {}
                     }
@@ -2600,25 +2606,34 @@ fn launch_dungeon(message: HostMessage, avatar: &mut AvatarOverlay, queue: &UiQu
                 if ready { let _ = report_dungeon(&op, "ACTIVE"); }
                 else { unsafe { let _ = TerminateJobObject(windows::Win32::Foundation::HANDLE(job as *mut c_void), 1); } }
                 let mut service_healthy = ready;
+                let mut service_closed_normally = false;
                 let mut unhealthy_since: Option<Instant> = None;
                 let mut last_gpu_sample = Instant::now();
                 if ready {
                     loop {
-                        match child.try_wait() {
-                            Ok(Some(_)) => break,
-                            Err(error) => { log_line(format!("Dungeon launcher wait failed: {error}")); service_healthy = false; break; }
-                            Ok(None) => {}
+                        if launcher_exit_ok.is_none() {
+                            match child.try_wait() {
+                                Ok(Some(exit)) => { launcher_exit_ok = Some(exit.success()); log_line(format!("Dungeon launcher exited after readiness: operation_id={}, result={:?}; continuing to monitor service health", op, exit)); }
+                                Err(error) => { log_line(format!("Dungeon launcher wait failed: {error}")); service_healthy = false; break; }
+                                Ok(None) => {}
+                            }
                         }
                         match runner_job_processes(job) {
-                            Ok(0) => { log_line("Dungeon process Job Object became empty while its launcher was still active."); service_healthy = false; break; }
+                            Ok(0) if launcher_exit_ok.is_none() => { log_line("Dungeon process Job Object became empty while its launcher was still active."); service_healthy = false; break; }
+                            Ok(0) => {}
                             Ok(_) => {}
                             Err(error) => { log_line(format!("Dungeon process-tree monitoring failed: {error}")); service_healthy = false; break; }
                         }
                         if dungeon_http_ready() { unhealthy_since = None; }
                         else if unhealthy_since.is_none() { unhealthy_since = Some(Instant::now()); }
                         if unhealthy_since.is_some_and(|since| since.elapsed() >= Duration::from_secs(30)) {
-                            log_line("Dungeon web health remained unavailable for 30 seconds; recovering the supervised process tree.");
-                            service_healthy = false;
+                            if launcher_exit_ok == Some(true) {
+                                log_line("Dungeon web service closed after launcher handoff; treating the normal tray-managed shutdown as complete.");
+                                service_closed_normally = true;
+                            } else {
+                                log_line("Dungeon web health remained unavailable for 30 seconds; recovering the supervised process tree.");
+                                service_healthy = false;
+                            }
                             break;
                         }
                         if last_gpu_sample.elapsed() >= Duration::from_secs(15) {
@@ -2635,7 +2650,7 @@ fn launch_dungeon(message: HostMessage, avatar: &mut AvatarOverlay, queue: &UiQu
                 let exit = child.wait();
                 log_line(format!("Dungeon launcher exited: operation_id={}, result={:?}, descendants={:?}", op, exit, runner_job_processes(job)));
                 if service_healthy { unsafe { let _ = TerminateJobObject(windows::Win32::Foundation::HANDLE(job as *mut c_void), 1); } }
-                let launcher_exit_ok = exit.as_ref().is_ok_and(|status| status.success());
+                let launcher_exit_ok = launcher_exit_ok.unwrap_or_else(|| exit.as_ref().is_ok_and(|status| status.success()));
                 let deadline = Instant::now() + Duration::from_secs(10);
                 let mut tree_clear = false;
                 while Instant::now() < deadline {
@@ -2652,7 +2667,7 @@ fn launch_dungeon(message: HostMessage, avatar: &mut AvatarOverlay, queue: &UiQu
                 }
                 let restored = runtime.resume_external_workload();
                 log_line(format!("Ariadne runtime restoration after Dungeon: ok={}, detail={}", restored.ok, restored.detail));
-                let state = if ready && service_healthy && launcher_exit_ok && tree_clear && gpu.is_ok() && restored.ok { "CLOSED" } else { "FAILED" };
+                let state = if ready && (service_healthy || service_closed_normally) && launcher_exit_ok && tree_clear && gpu.is_ok() && restored.ok { "CLOSED" } else { "FAILED" };
                 let _ = report_dungeon(&op, state);
                 DUNGEON_ACTIVE.store(false, Ordering::Release);
                 unsafe { let _ = CloseHandle(windows::Win32::Foundation::HANDLE(job as *mut c_void)); }

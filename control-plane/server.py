@@ -1617,17 +1617,21 @@ def ai_gpu_work_in_flight() -> dict[str, object]:
 def ai_gpu_admission():
     """Hold the Rust-host GPU workload lease across a complete Ariadne operation."""
     global GPU_AI_ADMISSIONS, GPU_OWNER
-    lease = host_gpu_lease("ai", OLLAMA_URL)
     with GPU_ARBITRATION_LOCK:
+        if GPU_OWNER not in {"NONE", "AI"}:
+            raise RuntimeError(f"Ariadne GPU work is paused while {GPU_OWNER.lower()} owns or transitions the GPU.")
         GPU_AI_ADMISSIONS += 1
         if GPU_OWNER == "NONE":
             GPU_OWNER = "AI"
     try:
+        lease = host_gpu_lease("ai", OLLAMA_URL)
         with lease:
             yield
     finally:
         with GPU_ARBITRATION_LOCK:
             GPU_AI_ADMISSIONS = max(0, GPU_AI_ADMISSIONS - 1)
+            if GPU_AI_ADMISSIONS == 0 and GPU_OWNER == "AI":
+                GPU_OWNER = "NONE"
 
 
 @contextmanager
@@ -4531,6 +4535,61 @@ def log_dungeon_handoff(event: str, *, status: str = "info", operation_id: str |
         pass
 
 
+def suspend_home_session_model_leases(operation_id: str) -> list[dict[str, object]]:
+    """Release idle Home residency pins through Rust Host before exclusive handoff."""
+    suspended: list[dict[str, object]] = []
+    with SESSION_LOCK:
+        for session_id, session in SESSIONS.items():
+            lease_id = str(session.get("host_model_lease_id") or "")
+            if session.get("surface", "home") != "home" or not lease_id:
+                continue
+            suspended.append({
+                "session_id": str(session_id),
+                "lease_id": lease_id,
+                "model": HOME_CHAT_MODEL,
+                "context_length": HOME_CONTEXT_TOKENS,
+            })
+            session["host_model_lease_id"] = None
+    ARIADNE_DELEGATION["suspended_home_sessions"] = suspended
+    released: list[dict[str, object]] = []
+    for item in suspended:
+        host_release_model_lease(str(item["lease_id"]), OLLAMA_URL)
+        released.append(item)
+        log_dungeon_handoff("home_model_lease_released", status="ready", operation_id=operation_id,
+                            session_id=item["session_id"], model=item["model"])
+    return suspended
+
+
+def restore_home_session_model_leases(operation_id: str | None = None) -> int:
+    """Reattach still-live Home sessions to Rust Host after external GPU work."""
+    suspended = list(ARIADNE_DELEGATION.get("suspended_home_sessions") or [])
+    restored = 0
+    for item in suspended:
+        session_id = str(item.get("session_id") or "")
+        model = str(item.get("model") or HOME_CHAT_MODEL)
+        context_length = int(item.get("context_length") or HOME_CONTEXT_TOKENS)
+        with SESSION_LOCK:
+            session = SESSIONS.get(session_id)
+            if not session or session.get("surface", "home") != "home" or session.get("host_model_lease_id"):
+                continue
+        lease_id = host_acquire_model_lease(
+            model, OLLAMA_URL, context_length=context_length, allow_calibration=True,
+        )
+        with SESSION_LOCK:
+            session = SESSIONS.get(session_id)
+            if session and session.get("surface", "home") == "home" and not session.get("host_model_lease_id"):
+                session["host_model_lease_id"] = lease_id
+                restored += 1
+                lease_id = ""
+        if lease_id:
+            host_release_model_lease(lease_id, OLLAMA_URL)
+    ARIADNE_DELEGATION.pop("suspended_home_sessions", None)
+    if operation_id:
+        log_dungeon_handoff("home_model_leases_restored", status="ready", operation_id=operation_id,
+                            restored_sessions=restored)
+    return restored
+
+
 def begin_dungeon_handoff() -> dict[str, object]:
     """Quiesce Ariadne, suspend its host-owned runtime, then ask Rust to launch Dungeon."""
     global GPU_OWNER, GPU_TRANSITION_STATE, GPU_TRANSITION_DETAIL, GPU_TRANSITION_OPERATION, GPU_TRANSITION_STARTED_AT
@@ -4567,6 +4626,16 @@ def begin_dungeon_handoff() -> dict[str, object]:
             GPU_TRANSITION_DETAIL = "Releasing Ariadne workloads and resident models for Dungeon."
             GPU_TRANSITION_OPERATION = operation_id
             GPU_TRANSITION_STARTED_AT = time.monotonic()
+        drain_deadline = time.monotonic() + 120.0
+        while True:
+            with GPU_ARBITRATION_LOCK:
+                admitted = GPU_AI_ADMISSIONS
+            if admitted == 0:
+                break
+            if time.monotonic() >= drain_deadline:
+                raise RuntimeError(f"Ariadne still has {admitted} active AI operation(s); Dungeon handoff was cancelled without interrupting them.")
+            time.sleep(0.1)
+        suspend_home_session_model_leases(operation_id)
         ARIADNE_DELEGATION.update(state="DRAINING", operation_id=operation_id, models=prior_models,
                                   profile=prior_profile, detail=GPU_TRANSITION_DETAIL)
         log_dungeon_handoff("draining", status="started", operation_id=operation_id,
@@ -4655,6 +4724,13 @@ def begin_dungeon_handoff() -> dict[str, object]:
                 recovery_errors.append(f"GPU lease: {release_error}")
                 log_dungeon_handoff("gpu_lease_recovery", status="error", operation_id=operation_id,
                                     error_type=type(release_error).__name__, error=str(release_error)[:500])
+        if not recovery_errors:
+            try:
+                restore_home_session_model_leases(operation_id)
+            except Exception as restore_error:
+                recovery_errors.append(f"Home model leases: {restore_error}")
+                log_dungeon_handoff("home_model_lease_recovery", status="error", operation_id=operation_id,
+                                    error_type=type(restore_error).__name__, error=str(restore_error)[:1000])
         with GPU_ARBITRATION_LOCK:
             renderer_restarting = RENDERER_START_THREAD is not None and RENDERER_START_THREAD.is_alive()
             remaining_media_owner = "IMAGE" if IMAGE_GPU_LEASE_ID else "RENDERER" if RENDERER_GPU_LEASE_ID else "MUSIC" if MUSIC_GENERATION_ACTIVE else "TRANSITION" if renderer_restarting else "NONE"
@@ -4710,6 +4786,7 @@ def report_dungeon_handoff(body: dict[str, object]) -> dict[str, object]:
         if gpu_lease_id:
             host_release_gpu_lease(gpu_lease_id, OLLAMA_URL)
             ARIADNE_DELEGATION.pop("gpu_lease_id", None)
+        restored_sessions = restore_home_session_model_leases(operation_id)
         set_profile(str(ARIADNE_DELEGATION.get("profile") or "RUN"))
         with GPU_ARBITRATION_LOCK:
             GPU_OWNER = "NONE"
@@ -4721,7 +4798,7 @@ def report_dungeon_handoff(body: dict[str, object]) -> dict[str, object]:
         ARIADNE_DELEGATION.update(state="ARIADNE_ACTIVE", operation_id=None, detail="Ariadne is active.")
         log_dungeon_handoff("recovered", status="ready", operation_id=operation_id,
                             terminal_state=state)
-        if HOME_CHAT_MODEL in ARIADNE_DELEGATION.get("models", []):
+        if HOME_CHAT_MODEL in ARIADNE_DELEGATION.get("models", []) and not restored_sessions:
             start_home_chat_model_preload()
         return {"ok": True, "state": "ARIADNE_ACTIVE"}
     except Exception as exc:
