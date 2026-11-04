@@ -32,7 +32,7 @@ peer. `discordWebhookApi` is supplied by n8n and is not bundled.
 
 ## Synology installation
 
-**Current checkpoint:** the package builds and its five local tests pass. The
+**Current checkpoint:** the package builds and its six local tests pass. The
 Synology SSH key is present but this execution context is denied read access
 to it (`Permission denied`), and there is no interactive SSH client session
 available to install or restart the NAS container. The deployed workflow has
