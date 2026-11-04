@@ -113,7 +113,7 @@ const vm=require('node:vm'); const f=JSON.parse(process.argv[1]);
 const refs={
  'Prepare Registry Context':{first:()=>({json:f.context})},
  'Code in JavaScript1':{all:()=>f.items.map(json=>({json}))}
-}; const $=name=>refs[name]; const $execution={mode:'manual'};
+}; const $=name=>refs[name]; const $execution={mode:f.mode||'manual'};
 const result=vm.runInNewContext('(function(){'+f.code+'\n})()',
   { $, $execution, Date, Map, Set, Number, String, Math, JSON });
 process.stdout.write(JSON.stringify(result));
@@ -127,6 +127,13 @@ process.stdout.write(JSON.stringify(result));
     assert [row["json"]["video_id"] for row in rows] == [eligible["video_id"]]
     assert rows[0]["json"]["dry_run"] is True
     assert rows[0]["json"]["state_json"]
+
+    production = subprocess.run(
+        [shutil.which("node"), "-e", harness, json.dumps({"code": code, "context": context,
+         "items": [eligible], "mode": "production"})],
+        check=True, capture_output=True, text=True, timeout=10,
+    )
+    assert json.loads(production.stdout)[0]["json"]["dry_run"] is False
 
 
 def test_retention_and_feed_sort_keep_two_per_source_and_newest_first():
