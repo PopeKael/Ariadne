@@ -24,12 +24,17 @@ def run_node_js(name, code, inputs):
     harness = r"""
 const vm=require('node:vm');
 const fixtures=JSON.parse(process.argv[1]);
-const refs=fixtures.refs;
+const refs=fixtures.refs||{};
+if (fixtures.candidate) refs['Prepare Discord Candidates']={
+ itemMatching:()=>({json:fixtures.candidate}), all:()=>[{json:fixtures.candidate}]
+};
 const $=name=>refs[name];
 const $input={all:()=>fixtures.input||[],first:()=>fixtures.input?.[0]};
 const $execution={mode:fixtures.mode||'manual'};
+const $json=fixtures.output||{};
+const $itemIndex=0;
 const outputs=vm.runInNewContext('(function(){'+fixtures.code+'\n})()',
-  { $, $input, $execution, Date, Map, Set, Number, String, Math, JSON });
+  { $, $input, $execution, $json, $itemIndex, Date, Map, Set, Number, String, Math, JSON });
 process.stdout.write(JSON.stringify(outputs));
 """
     fixture = {"code": code, **inputs}
@@ -46,6 +51,9 @@ process.stdout.write(JSON.stringify(outputs));
 def test_export_keeps_schedule_and_active_table_schema():
     data = workflow()
     assert data["id"] == "VP0Bro3F98I523YD"
+    exported = json.dumps(data)
+    assert "discord.com/api/webhooks" not in exported
+    assert "webhookUri" not in exported
     trigger = node("Schedule Trigger")
     assert trigger["parameters"]["rule"]["interval"]
     upsert = node("Upsert row(s)")["parameters"]["columns"]
@@ -54,8 +62,35 @@ def test_export_keeps_schedule_and_active_table_schema():
     assert node("Prepare Active Publication Window")
     assert node("Persist Publication Deduplication")
     assert node("Prune Retired Publications")["parameters"]["operation"] == "deleteRows"
-    assert node("Post Discord Card")["credentials"]["discordBotApi"]["name"] == "Ariadne Integration"
-    assert node("HTTP Request1")["parameters"]["headerParameters"]["parameters"][0]["name"] == "X-Ariadne-Dry-Run"
+    assert "Post Discord Card" not in {item["name"] for item in workflow()["nodes"]}
+    switch = node("Switch")
+    assert switch["typeVersion"] == 3.4
+    rules = switch["parameters"]["rules"]["values"]
+    assert [rule["conditions"]["conditions"][0]["rightValue"] for rule in rules] == [
+        "ai_noise", "thailand_news", "news_3cf8b10043ab9e794da82060"
+    ]
+    assert all(rule["conditions"]["conditions"][0]["leftValue"] == "={{$json.destination}}" for rule in rules)
+    assert all(rule["conditions"]["options"]["version"] == 3 for rule in rules)
+    connections = workflow()["connections"]
+    assert connections["Mark Delivery Inflight"]["main"][0][0]["node"] == "Code in JavaScript4"
+    extractor = node("Code in JavaScript4")["parameters"]["jsCode"]
+    assert "JSON.parse(json.state_json)" in extractor
+    assert "json: { ...json, destination }" in extractor
+    assert connections["Code in JavaScript4"]["main"][0][0]["node"] == "Switch"
+    for name, credential in (
+        ("Ariadne Discord Webhook", "Discord Webhook account 3"),
+        ("Ariadne Discord Webhook1", "Discord Webhook account 2"),
+        ("Ariadne Discord Webhook2", "Discord Webhook account 4"),
+    ):
+        sender = node(name)
+        assert sender["type"] == "n8n-nodes-ariadne-discord.ariadneDiscordWebhook"
+        assert sender["credentials"]["discordWebhookApi"]["name"] == credential
+        assert "id" not in sender["credentials"]["discordWebhookApi"]
+        assert connections[name]["main"][0][0]["node"] == "Build Delivery Receipt"
+    assert connections["Build Delivery Receipt"]["main"][0][0]["node"] == "Persist Delivery Receipt"
+    sync_header = node("HTTP Request1")["parameters"]["headerParameters"]["parameters"][0]
+    assert sync_header["name"] == "X-Ariadne-Dry-Run"
+    assert sync_header["value"] == "=  {{$execution.mode !== 'production' ? 'true' : 'false'}}"
 
 
 def test_candidate_gate_excludes_activation_history_disabled_and_prior_delivery():
@@ -85,7 +120,7 @@ def test_candidate_gate_excludes_activation_history_disabled_and_prior_delivery(
     # YouTube IDs are 11 characters; the fixtures remain valid for the workflow.
     eligible["video_id"] = "NewShort01A"
     historic = item("OldVideo01A", "2027-01-14T23:00:00.000Z")
-    disabled = item("Disabled001", "2027-01-16T01:00:00.000Z", enabled=False)
+    disabled = item("Disabled001", "2027-01-16T01:00:00.000Z", source_id="UC" + "B" * 22, enabled=False)
     sent_video = "SentVideo001"
     sent_video = sent_video[:11]
     sent = item(sent_video, "2027-01-16T02:00:00.000Z")
@@ -97,9 +132,16 @@ def test_candidate_gate_excludes_activation_history_disabled_and_prior_delivery(
     }
     uncertain = item("Uncertain001"[:11], "2027-01-16T03:00:00.000Z")
     uncertain_key = f"{uncertain['video_id']}:{uncertain['destination']}:{uncertain['discord_channel_id']}"
+    failed = item("Failed001"[:11], "2027-01-16T04:00:00.000Z")
+    failed["checkpoint_published_at"] = "2027-01-17T00:00:00.000Z"
+    failed_key = f"{failed['video_id']}:{failed['destination']}:{failed['discord_channel_id']}"
+    exhausted = item("FailedToo01"[:11], "2027-01-16T05:00:00.000Z")
+    exhausted_key = f"{exhausted['video_id']}:{exhausted['destination']}:{exhausted['discord_channel_id']}"
     history = [
         sent_other_destination,
         {"delivery_key": uncertain_key, "video_id": uncertain["video_id"], "status": "uncertain", "attempts": 1},
+        {"delivery_key": failed_key, "video_id": failed["video_id"], "status": "failed", "attempts": 1},
+        {"delivery_key": exhausted_key, "video_id": exhausted["video_id"], "status": "failed", "attempts": 3},
     ]
     # Use an activation instant immediately before the synthetic publication dates.
     context = {
@@ -112,6 +154,9 @@ def test_candidate_gate_excludes_activation_history_disabled_and_prior_delivery(
 const vm=require('node:vm'); const f=JSON.parse(process.argv[1]);
 const refs={
  'Prepare Registry Context':{first:()=>({json:f.context})},
+ 'Get Existing Publications':{all:()=> (f.cached||[]).map(json=>({json}))},
+ 'Code in JavaScript':{all:()=> (f.sources||[]).map(json=>({json}))},
+ 'Code in JavaScript3':{all:()=>{throw new Error('node did not execute')}},
  'Code in JavaScript1':{all:()=>f.items.map(json=>({json}))}
 }; const $=name=>refs[name]; const $execution={mode:f.mode||'manual'};
 const result=vm.runInNewContext('(function(){'+f.code+'\n})()',
@@ -120,20 +165,52 @@ process.stdout.write(JSON.stringify(result));
 """
     result = subprocess.run(
         [shutil.which("node"), "-e", harness, json.dumps({"code": code, "context": context,
-         "items": [eligible, historic, disabled, sent, uncertain]})],
+         "items": [eligible, historic, disabled, sent, uncertain, failed, exhausted],
+         "cached": [failed], "sources": [eligible, historic, disabled, sent, uncertain, failed, exhausted]})],
         check=True, capture_output=True, text=True, timeout=10,
     )
     rows = json.loads(result.stdout)
-    assert [row["json"]["video_id"] for row in rows] == [eligible["video_id"]]
-    assert rows[0]["json"]["dry_run"] is True
-    assert rows[0]["json"]["state_json"]
+    assert [row["json"]["video_id"] for row in rows] == [failed["video_id"], eligible["video_id"]]
+    assert rows[1]["json"]["dry_run"] is True
+    assert rows[1]["json"]["state_json"]
+    assert json.loads(rows[1]["json"]["state_json"])["payload"] == rows[1]["json"]["payload"]
+    assert rows[0]["json"]["attempt"] == 2
+
+    cached_retry = subprocess.run(
+        [shutil.which("node"), "-e", harness, json.dumps({"code": code, "context": context,
+         "items": [], "cached": [failed], "sources": [failed]})],
+        check=True, capture_output=True, text=True, timeout=10,
+    )
+    cached_rows = json.loads(cached_retry.stdout)
+    assert [row["json"]["video_id"] for row in cached_rows] == [failed["video_id"]]
+    assert cached_rows[0]["json"]["attempt"] == 2
 
     production = subprocess.run(
         [shutil.which("node"), "-e", harness, json.dumps({"code": code, "context": context,
-         "items": [eligible], "mode": "production"})],
+         "items": [eligible], "sources": [eligible], "mode": "production"})],
         check=True, capture_output=True, text=True, timeout=10,
     )
     assert json.loads(production.stdout)[0]["json"]["dry_run"] is False
+
+
+def test_receipt_retries_only_known_preflight_failures():
+    code = node("Build Delivery Receipt")["parameters"]["jsCode"]
+    candidate = {"delivery_key": "video:news:123456789012345678", "video_id": "video", "destination": "news",
+                 "source_id": "UC" + "A" * 22, "published_at": "2027-01-16T00:00:00Z",
+                 "discord_channel_id": "123456789012345678", "payload": {"components": []},
+                 "attempt": 1, "started_at": "2027-01-16T00:00:00Z"}
+    preflight = run_node_js("Build Delivery Receipt", code, {"candidate": candidate,
+        "output": {"error": 'The value in the "JSON Body" field is not valid JSON'}})
+    assert json.loads(preflight["json"]["state_json"])["status"] == "failed"
+    ambiguous = run_node_js("Build Delivery Receipt", code, {"candidate": candidate,
+        "output": {"error": {"message": "socket timed out"}}})
+    assert json.loads(ambiguous["json"]["state_json"])["status"] == "uncertain"
+    sent = run_node_js("Build Delivery Receipt", code, {"candidate": candidate,
+        "output": {"statusCode": 200, "body": {"id": "discord-message-1", "timestamp": "2027-01-16T00:00:01Z"}}})
+    sent_state = json.loads(sent["json"]["state_json"])
+    assert sent_state["status"] == "sent"
+    assert sent_state["discord_message_id"] == "discord-message-1"
+    assert sent_state["payload"] == candidate["payload"]
 
 
 def test_retention_and_feed_sort_keep_two_per_source_and_newest_first():
@@ -211,12 +288,20 @@ process.stdout.write(JSON.stringify(result));
     sort_harness = r"""
 const vm=require('node:vm');const f=JSON.parse(process.argv[1]);
 const refs={'Code in JavaScript1':{all:()=>f.feed.map(json=>({json}))},
- 'Prepare Registry Context':{first:()=>({json:{delivery_history:[]}})}};
+     'Get Existing Publications':{all:()=> (f.existing||[]).map(json=>({json}))},
+ 'Prepare Registry Context':{first:()=>({json:{delivery_history:f.delivery_history||[]}})}};
 const $=name=>refs[name];const result=vm.runInNewContext('(function(){'+f.code+'\n})()',
-  {$,Date,Map,Number,String});process.stdout.write(JSON.stringify(result));
+  {$,Date,Map,Number,String,Set});process.stdout.write(JSON.stringify(result));
 """
     sorted = subprocess.run([shutil.which("node"), "-e", sort_harness,
-        json.dumps({"code": sort_code, "feed": feed})], check=True,
+        json.dumps({"code": sort_code, "feed": feed, "existing": [], "delivery_history": [
+            {"delivery_id":"legacy#1","video_id":"nHf-JZVXDxM","destination":"thailand_news","status":"failed","started_at":"2026-11-04T03:01:16.867Z"},
+            {"delivery_id":"valid#1","video_id":"NewShort01A","destination":"news","status":"sent","started_at":"2026-11-04T03:02:16.867Z"},
+            {"delivery_id":"rejected#2","video_id":"OldVideo001","destination":"news","status":"rejected","started_at":"2026-11-04T03:02:17.867Z"},
+            {"delivery_id":"bad-timestamp","video_id":"NewShort01A","destination":"news","status":"sent","started_at":"2026-11-04T03:02:16.867"}
+        ]})], check=True,
         capture_output=True, text=True, timeout=10)
     publications = json.loads(sorted.stdout)[0]["json"]["publications"]
     assert [x["video_id"] for x in publications] == ["OtherVid001", "ShortVideo1", "RegularVid1"]
+    receipts = json.loads(sorted.stdout)[0]["json"]["delivery_history"]
+    assert [x["delivery_id"] for x in receipts] == ["valid#1", "rejected#2"]

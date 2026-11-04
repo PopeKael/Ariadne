@@ -145,7 +145,8 @@
         2448
       ],
       "id": "34ba296b-cfe6-4618-b54e-deb852c83eee",
-      "name": "Upsert row(s)"
+      "name": "Upsert row(s)",
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -192,7 +193,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const all=$('Code in JavaScript1').all().map(({json})=>({source_id:json.source_id,video_id:json.video_id,title:json.title,published_at:json.published_at,summary:json.summary||''})).filter(r=>Number.isFinite(Date.parse(r.published_at)));\nconst bySource=new Map(); for(const row of all){const list=bySource.get(row.source_id)||[];list.push(row);bySource.set(row.source_id,list)}\nconst rows=[]; for(const list of bySource.values()){list.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||b.video_id.localeCompare(a.video_id));rows.push(...list.slice(0,2))}\nrows.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||a.source_id.localeCompare(b.source_id)||b.video_id.localeCompare(a.video_id));\nconst delivery_history=$('Prepare Registry Context').first()?.json?.delivery_history||[];\nreturn [{json:{version:1,publications:rows,delivery_history}}];"
+        "jsCode": "const cached=$('Get Existing Publications').all().map(({json})=>json||{});\nlet collected=[]; try { collected=$('Code in JavaScript1').all().map(({json})=>json||{}); } catch {}\nconst byId=new Map();\nfor(const row of [...cached,...collected]){if(!row.source_id||!row.video_id||!Number.isFinite(Date.parse(row.published_at)))continue;const old=byId.get(row.video_id);if(!old||Date.parse(row.published_at)>Date.parse(old.published_at))byId.set(row.video_id,{source_id:row.source_id,video_id:row.video_id,title:row.title||'',published_at:row.published_at,summary:row.summary||''})}\nconst bySource=new Map();for(const row of byId.values()){const list=bySource.get(row.source_id)||[];list.push(row);bySource.set(row.source_id,list)}\nconst rows=[];for(const list of bySource.values()){list.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||b.video_id.localeCompare(a.video_id));rows.push(...list.slice(0,2))}\nrows.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||a.source_id.localeCompare(b.source_id)||b.video_id.localeCompare(a.video_id));\nconst allowedDeliveryStatuses=new Set(['inflight','uncertain','sent','rate_limited','rejected','pending']);\nconst context=$('Prepare Registry Context').first()?.json||{};\nconst delivery_history=(context.delivery_history||[]).filter(record=>record&&allowedDeliveryStatuses.has(record.status)&&/^[A-Za-z0-9_-]{11}$/.test(record.video_id||'')&&/^[A-Za-z0-9_-]{1,128}$/.test(record.destination||'')&&typeof record.delivery_id==='string'&&record.delivery_id&&typeof record.started_at==='string'&&/(?:Z|[+-]\\d{2}:\\d{2})$/.test(record.started_at)&&Number.isFinite(Date.parse(record.started_at)));\nreturn [{json:{version:1,publications:rows,delivery_history}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -214,7 +215,7 @@
           "parameters": [
             {
               "name": "X-Ariadne-Dry-Run",
-              "value": "={{$execution.mode !== 'trigger' ? 'true' : 'false'}}"
+              "value": "=  {{$execution.mode !== 'production' ? 'true' : 'false'}}"
             }
           ]
         },
@@ -237,156 +238,6 @@
         }
       },
       "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "operation": "upsert",
-        "dataTableId": {
-          "__rl": true,
-          "value": "1pwK3p2P9Gdqo1Ek",
-          "mode": "id"
-        },
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "source_id",
-              "keyValue": "__registry__"
-            }
-          ]
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "source_id": "__registry__",
-            "state_json": "={{ JSON.stringify($json) }}",
-            "registry_refreshed_at": "={{ $now.toISO() }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "source_id",
-              "displayName": "source_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "name",
-              "displayName": "name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "friendly_name",
-              "displayName": "friendly_name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "destination",
-              "displayName": "destination",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "enabled",
-              "displayName": "enabled",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "checkpoint_video_id",
-              "displayName": "checkpoint_video_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "checkpoint_published_at",
-              "displayName": "checkpoint_published_at",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "discord_channel_id",
-              "displayName": "discord_channel_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "stage3_activated_at",
-              "displayName": "stage3_activated_at",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "registry_refreshed_at",
-              "displayName": "registry_refreshed_at",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "state_json",
-              "displayName": "state_json",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1.1,
-      "position": [
-        4208,
-        2784
-      ],
-      "id": "aace76bd-c880-4a1f-9393-7423b240558f",
-      "name": "Upsert row(s)1"
     },
     {
       "parameters": {
@@ -490,7 +341,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const context = $('Prepare Registry Context').first()?.json || {};\nconst activationMs = Date.parse(context.stage4_activated_at);\nconst existing = new Set(context.publication_ids || []);\nconst history = new Map();\nfor (const record of context.delivery_history || []) { if (!record || typeof record.delivery_key !== 'string') continue; const old=history.get(record.delivery_key); if (!old || Number(record.attempts||0)>=Number(old.attempts||0)) history.set(record.delivery_key,record); }\nconst sentVideoIds = new Set((context.delivery_history || []).filter(x => x.status === 'sent' && x.video_id).map(x => x.video_id));\nconst escape = value => String(value ?? '').replace(/[\\u0000-\\u001f\\u007f]/g,' ').replace(/\\s+/g,' ').trim().replace(/[\\\\`*_~|\\[\\]<>]/g,'\\\\$&');\nconst out=[];\nfor (const item of $('Code in JavaScript1').all().map(x=>x.json)) {\n  if (item.enabled !== true || !item.source_id || !item.destination || !/^\\d{15,22}$/.test(String(item.discord_channel_id || ''))) continue;\n  const published=Date.parse(item.published_at), activation=Date.parse(item.stage3_activated_at), checkpoint=Date.parse(item.checkpoint_published_at);\n  if (!Number.isFinite(activationMs) || !Number.isFinite(published) || !Number.isFinite(activation) || !Number.isFinite(checkpoint) || published <= activationMs || published <= activation || published <= checkpoint) continue;\n  if (sentVideoIds.has(item.video_id)) continue;\n  const delivery_key=`${item.video_id}:${item.destination}:${item.discord_channel_id}`;\n  const prior=history.get(delivery_key);\n  if (prior && ['sent','inflight','uncertain','rejected','pending'].includes(prior.status)) continue;\n  const attempts=Number(prior?.attempts || 0);\n  if (prior?.status === 'rate_limited' && (attempts >= 3 || Number(prior.retry_after || 0) > Date.now()/1000)) continue;\n  if (!prior && existing.has(item.video_id) && published <= activationMs) continue;\n  const components=[];\n  if (/^https:\\/\\/i\\.ytimg\\.com\\//.test(item.image_url || '')) components.push({type:12,items:[{media:{url:item.image_url}}]});\n  components.push({type:10,content:`**${escape(item.title).slice(0,300)}**`},{type:10,content:`By ${escape(item.creator).slice(0,200)}`});\n  const summary=escape(item.summary).slice(0,420); if(summary) components.push({type:10,content:summary});\n  components.push({type:10,content:item.original_url});\n  const started_at=new Date().toISOString(), attempt=attempts+1;\n  const payload={flags:32768,allowed_mentions:{parse:[]},components};\n  const state={delivery_key,delivery_id:`${delivery_key}#${attempt}`,video_id:item.video_id,destination:item.destination,discord_channel_id:String(item.discord_channel_id),status:'inflight',attempts:attempt,started_at,finished_at:null,http_status:null,discord_message_id:null,discord_timestamp:null,retry_after:null};\n  out.push({json:{...item,delivery_key,dry_run:$execution.mode !== 'production',attempt,payload,state_json:JSON.stringify(state),started_at}});\n}\nreturn out;"
+        "jsCode": "const context = $('Prepare Registry Context').first()?.json || {};\nconst activationMs = Date.parse(context.stage4_activated_at);\nconst existing = new Set(context.publication_ids || []);\nconst history = new Map();\nfor (const record of context.delivery_history || []) { if (!record || typeof record.delivery_key !== 'string') continue; const old=history.get(record.delivery_key); if (!old || Number(record.attempts||0)>=Number(old.attempts||0)) history.set(record.delivery_key,record); }\nconst sentVideoIds = new Set((context.delivery_history || []).filter(x => x.status === 'sent' && x.video_id).map(x => x.video_id));\nconst retryableVideoIds = new Set([...history.values()].filter(x => ['failed','rate_limited'].includes(x.status) && Number(x.attempts||0)<3).map(x => x.video_id).filter(Boolean));\nlet sourceRows=[]; try { sourceRows.push(...$('Code in JavaScript3').all().map(x=>x.json)); } catch {} sourceRows.push(...$('Code in JavaScript').all().map(x=>x.json));\nconst sources=new Map(sourceRows.filter(x=>x?.source_id).map(x=>[x.source_id,x]));\nconst fresh=$('Code in JavaScript1').all().map(x=>x.json);\nconst cached=$('Get Existing Publications').all().map(x=>x.json).filter(x=>retryableVideoIds.has(x.video_id));\nconst ledgerRetries=(context.delivery_history||[]).filter(x=>retryableVideoIds.has(x.video_id)&&x.source_id&&x.payload);\nconst publications=new Map(); for(const item of [...cached,...ledgerRetries,...fresh]){const old=publications.get(item.video_id);if(!old||Date.parse(item.published_at)>Date.parse(old.published_at)||fresh.includes(item))publications.set(item.video_id,item);}\nconst escape = value => String(value ?? '').replace(/[\\u0000-\\u001f\\u007f]/g,' ').replace(/\\s+/g,' ').trim().replace(/[\\\\`*_~|\\[\\]<>]/g,'\\\\$&');\nconst out=[];\nfor (const raw of [...publications.values()].sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||String(b.video_id).localeCompare(String(a.video_id)))) {\n  const source=sources.get(raw.source_id);\n  if (!source || source.enabled !== true || !source.destination || !/^\\d{15,22}$/.test(String(source.discord_channel_id || ''))) continue;\n  const item={...raw,...source,source_id:raw.source_id,video_id:raw.video_id,published_at:raw.published_at,title:raw.title,summary:raw.summary||'',original_url:raw.original_url||`https://www.youtube.com/watch?v=${raw.video_id}`,image_url:raw.image_url||`https://i.ytimg.com/vi/${raw.video_id}/hqdefault.jpg`};\n  const published=Date.parse(item.published_at), activation=Date.parse(item.stage3_activated_at), checkpoint=Date.parse(item.checkpoint_published_at);\n  if (!Number.isFinite(activationMs) || !Number.isFinite(published) || !Number.isFinite(activation) || !Number.isFinite(checkpoint) || published <= activationMs || published <= activation) continue;\n  if (sentVideoIds.has(item.video_id)) continue;\n  const delivery_key=`${item.video_id}:${item.destination}:${item.discord_channel_id}`;\n  const prior=history.get(delivery_key);\n  if (prior && ['sent','inflight','uncertain','rejected','pending'].includes(prior.status)) continue;\n  const attempts=Number(prior?.attempts || 0);\n  const retryable=retryableVideoIds.has(item.video_id);\n  if (!prior && !retryable && published <= checkpoint) continue;\n  if (prior?.status === 'rate_limited' && (attempts >= 3 || Number(prior.retry_after || 0) > Date.now()/1000)) continue;\n  if (prior?.status === 'failed' && attempts >= 3) continue;\n  if (!prior && !retryableVideoIds.has(item.video_id) && existing.has(item.video_id) && published <= activationMs) continue;\n  const components=[];\n  if (/^https:\\/\\/i\\.ytimg\\.com\\//.test(item.image_url || '')) components.push({type:12,items:[{media:{url:item.image_url}}]});\n  components.push({type:10,content:`**${escape(item.title).slice(0,300)}**`},{type:10,content:`By ${escape(item.creator).slice(0,200)}`});\n  const summary=escape(item.summary).slice(0,420); if(summary) components.push({type:10,content:summary});\n  components.push({type:10,content:item.original_url});\n  const started_at=new Date().toISOString(), attempt=attempts+1;\n  const payload=raw.payload||{flags:32768,allowed_mentions:{parse:[]},components};\n  const state={delivery_key,delivery_id:`${delivery_key}#${attempt}`,video_id:item.video_id,source_id:item.source_id,published_at:item.published_at,destination:item.destination,discord_channel_id:String(item.discord_channel_id),payload,status:'inflight',attempts:attempt,started_at,finished_at:null,http_status:null,discord_message_id:null,discord_timestamp:null,retry_after:null};\n  out.push({json:{...item,delivery_key,dry_run:$execution.mode !== 'production',attempt,payload,state_json:JSON.stringify(state),started_at}});\n}\nreturn out;"
       },
       "id": "ee197060-4e9d-4b4f-8345-8e9a2affda7f",
       "name": "Prepare Discord Candidates",
@@ -654,42 +505,8 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://discord.com/api/v10/channels/{{$json.discord_channel_id}}/messages?wait=true&with_components=true",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "discordBotApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{$json.payload}}",
-        "options": {
-          "response": {
-            "response": {
-              "fullResponse": true,
-              "neverError": true
-            }
-          },
-          "timeout": 10000
-        }
-      },
-      "id": "086be302-e767-409d-85ff-05201fd00ba9",
-      "name": "Post Discord Card",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        5488,
-        3216
-      ],
-      "credentials": {
-        "discordBotApi": {
-          "name": "Ariadne Integration"
-        }
-      },
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const candidate=$('Prepare Discord Candidates').itemMatching($itemIndex)?.json || $('Prepare Discord Candidates').all()[$itemIndex]?.json || {};\nconst response=$json?.body && typeof $json.body === 'object' ? $json.body : $json;\nconst status=Number($json?.statusCode || $json?.status || (response?.id ? 200 : 0));\nconst finished_at=new Date().toISOString();\nlet result='uncertain', retry_after=null;\nif(status >= 200 && status < 300 && response?.id) result='sent';\nelse if(status === 429) { result='rate_limited'; const seconds=Number(response?.retry_after || 1); retry_after=Date.now()/1000 + (Number.isFinite(seconds) ? Math.max(1,seconds) : 1); }\nelse if(status >= 400 && status < 500) result='rejected';\nconst state={delivery_key:candidate.delivery_key,delivery_id:`${candidate.delivery_key}#${candidate.attempt}`,video_id:candidate.video_id,destination:candidate.destination,discord_channel_id:String(candidate.discord_channel_id),status:result,attempts:candidate.attempt,started_at:candidate.started_at,finished_at,http_status:status || null,discord_message_id:response?.id ? String(response.id) : null,discord_timestamp:response?.timestamp || null,retry_after};\nreturn {json:{delivery_key:candidate.delivery_key,state_json:JSON.stringify(state)}};"
+        "jsCode": "const candidate=$('Prepare Discord Candidates').itemMatching($itemIndex)?.json || $('Prepare Discord Candidates').all()[$itemIndex]?.json || {};\nconst response=$json?.body && typeof $json.body === 'object' ? $json.body : $json;\nconst status=Number($json?.statusCode || $json?.status || (response?.id ? 200 : 0));\nconst errorText=typeof $json?.error === 'string' ? $json.error : String($json?.error?.message || $json?.message || '');\nconst finished_at=new Date().toISOString();\nlet result='uncertain', retry_after=null;\nif (errorText.includes('The value in the \"JSON Body\" field is not valid JSON')) result='failed';\nelse if(status >= 200 && status < 300 && response?.id) result='sent';\nelse if(status === 429) { result='rate_limited'; const seconds=Number(response?.retry_after || 1); retry_after=Date.now()/1000 + (Number.isFinite(seconds) ? Math.max(1,seconds) : 1); }\nelse if(status >= 400 && status < 500) result='rejected';\nconst state={delivery_key:candidate.delivery_key,delivery_id:`${candidate.delivery_key}#${candidate.attempt}`,video_id:candidate.video_id,source_id:candidate.source_id,published_at:candidate.published_at,payload:candidate.payload,destination:candidate.destination,discord_channel_id:String(candidate.discord_channel_id),status:result,attempts:candidate.attempt,started_at:candidate.started_at,finished_at,http_status:status || null,discord_message_id:response?.id ? String(response.id) : null,discord_timestamp:response?.timestamp || null,retry_after};\nreturn {json:{delivery_key:candidate.delivery_key,state_json:JSON.stringify(state)}};"
       },
       "id": "8cadd70a-cc16-43a9-86be-0653f715d4c5",
       "name": "Build Delivery Receipt",
@@ -885,8 +702,193 @@
         4272,
         2880
       ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        4640,
+        2960
+      ],
+      "typeVersion": 1,
+      "id": "4ebe1fee-992c-4309-9896-1bad4a0eda32",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.destination}}",
+                    "rightValue": "ai_noise",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cce3a682-bc36-4c36-b4c3-fd2bd58ba316"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c63b3161-a34b-4fe5-81bc-a33ef30bdacf",
+                    "leftValue": "={{$json.destination}}",
+                    "rightValue": "thailand_news",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4c13be02-c5b2-482f-a189-193964df79ff",
+                    "leftValue": "={{$json.destination}}",
+                    "rightValue": "news_3cf8b10043ab9e794da82060",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        3328,
+        2336
+      ],
+      "id": "63d220fc-92db-4a36-9248-ea93b9eec15c",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "destination": "ai_noise"
+      },
+      "type": "n8n-nodes-ariadne-discord.ariadneDiscordWebhook",
+      "typeVersion": 1,
+      "position": [
+        3552,
+        2336
+      ],
+      "id": "bbf741f2-b844-462c-943b-0c8a171ace5e",
+      "name": "Ariadne Discord Webhook",
+      "credentials": {
+        "discordWebhookApi": {
+          "name": "Discord Webhook account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "destination": "thailand_news"
+      },
+      "type": "n8n-nodes-ariadne-discord.ariadneDiscordWebhook",
+      "typeVersion": 1,
+      "position": [
+        3952,
+        2336
+      ],
+      "id": "8fbb5dcb-51b4-4cfa-a775-85bed79b7475",
+      "name": "Ariadne Discord Webhook1",
+      "credentials": {
+        "discordWebhookApi": {
+          "name": "Discord Webhook account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "destination": "news_3cf8b10043ab9e794da82060"
+      },
+      "type": "n8n-nodes-ariadne-discord.ariadneDiscordWebhook",
+      "typeVersion": 1,
+      "position": [
+        4592,
+        2560
+      ],
+      "id": "7ac7abf8-808b-4b7e-81a9-cfe4f36c5e03",
+      "name": "Ariadne Discord Webhook2",
+      "credentials": {
+        "discordWebhookApi": {
+          "name": "Discord Webhook account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(({json}) => {\n  let state;\n  try { state = JSON.parse(json.state_json); } catch { throw new Error('Delivery state is not valid JSON'); }\n  const destination = state?.destination;\n  if (!['ai_noise', 'thailand_news', 'news_3cf8b10043ab9e794da82060'].includes(destination)) throw new Error('Unknown delivery destination');\n  return { json: { ...json, destination } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5456,
+        3216
+      ],
+      "id": "8772583f-0e51-4126-9001-ad66dd281ee5",
+      "name": "Code in JavaScript4"
     }
   ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-11-03T07:32:03.181+07:00",
+          "Readable date": "November 2nd 2026, 7:32:03 pm",
+          "Readable time": "7:32:03 pm",
+          "Day of week": "Monday",
+          "Year": "2026",
+          "Month": "November",
+          "Day of month": "02",
+          "Hour": "19",
+          "Minute": "32",
+          "Second": "03",
+          "Timezone": "America/New_York (UTC-05:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "connections": {
     "When clicking â€˜Execute workflowâ€™": {
       "main": [
@@ -953,11 +955,6 @@
         [
           {
             "node": "Code in JavaScript",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Upsert row(s)1",
             "type": "main",
             "index": 0
           }
@@ -1060,6 +1057,11 @@
             "node": "Persist Stage 4 Activation",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -1101,18 +1103,7 @@
       "main": [
         [
           {
-            "node": "Post Discord Card",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Post Discord Card": {
-      "main": [
-        [
-          {
-            "node": "Build Delivery Receipt",
+            "node": "Code in JavaScript4",
             "type": "main",
             "index": 0
           }
@@ -1173,6 +1164,75 @@
           }
         ]
       ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Ariadne Discord Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ariadne Discord Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ariadne Discord Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ariadne Discord Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Delivery Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ariadne Discord Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Build Delivery Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ariadne Discord Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Build Delivery Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -1180,10 +1240,8 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "9344ed09-2a8f-4234-9831-eb30347ec29c",
-  "meta": {
-    "instanceId": "256f479ccc098615a16e3f21bc5aba22619c6c5f341e8dfa33480e3f47803a01"
-  },
+  "versionId": "f5e117a9-726b-4b6b-a5bc-d04b75b68f94",
+  "meta": {},
   "nodeGroups": [],
   "id": "VP0Bro3F98I523YD",
   "tags": []
