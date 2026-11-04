@@ -6,23 +6,23 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        3520,
+        2448
       ],
-      "id": "bb6fe72c-ba91-4f55-a70a-3a58b7f86893",
-      "name": "When clicking ‘Execute workflow’"
+      "id": "b90ae2fc-96c8-48dd-809f-613d9fd6dae5",
+      "name": "When clicking â€˜Execute workflowâ€™"
     },
     {
       "parameters": {
-        "jsCode": "const snapshot = $input.first()?.json;\nif (snapshot?.version !== 1 || !Array.isArray(snapshot.sources)) throw new Error('Ariadne registry snapshot was invalid');\nconst sources = snapshot.sources.filter(source => typeof source.id === 'string' && typeof source.video_id === 'string' && typeof source.published_at === 'string');\nreturn sources.map(source => ({json:{source_id:source.id}}));"
+        "jsCode": "const snapshot = $input.first()?.json;\nif (snapshot?.version !== 1 || !Array.isArray(snapshot.sources) || typeof snapshot.stage3_activated_at !== 'string') throw new Error('Ariadne registry snapshot was invalid');\nreturn snapshot.sources\n  .filter(source => source.enabled === true && typeof source.id === 'string' && typeof source.video_id === 'string' && typeof source.published_at === 'string')\n  .map(source => ({json:{source_id:source.id, destination:source.destination, enabled:true, creator:source.friendly_name || source.name, discord_channel_id:source.discord_channel_id, checkpoint_video_id:source.video_id, checkpoint_published_at:source.published_at, stage3_activated_at:snapshot.stage3_activated_at}}));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        448,
-        96
+        3968,
+        2544
       ],
-      "id": "1a291702-fb74-4934-8af6-364987d43392",
+      "id": "a2e5b039-725c-4c83-a0ca-7a888a5c6aac",
       "name": "Code in JavaScript"
     },
     {
@@ -33,24 +33,24 @@
       "type": "n8n-nodes-base.rssFeedRead",
       "typeVersion": 1.2,
       "position": [
-        672,
-        0
+        4192,
+        2448
       ],
-      "id": "4bdbf61a-7570-4ddb-b1ca-c116ccf6788f",
+      "id": "3107584e-9a1b-41e5-8a1f-75cfb273400b",
       "name": "RSS Read",
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().flatMap((item, i) => {\n  const source_id = $('Code in JavaScript').itemMatching(i)?.json?.source_id;\n  const video_id = String(item.json?.id || '').replace(/^yt:video:/, '');\n  if (!/^UC[A-Za-z0-9_-]{22}$/.test(source_id || '') || !/^[A-Za-z0-9_-]{11}$/.test(video_id) || !item.json?.title || !item.json?.isoDate) return [];\n  return [{json:{source_id, video_id, title:item.json.title, published_at:item.json.isoDate, summary:''}}];\n});"
+        "jsCode": "return $input.all().flatMap((item, i) => {\n  let source;\n  try { source = $('Code in JavaScript').itemMatching(i)?.json; } catch {}\n  if (!source) { try { source = $('Code in JavaScript3').itemMatching(i)?.json; } catch {} }\n  const source_id = source?.source_id;\n  const video_id = String(item.json?.id || '').replace(/^yt:video:/, '');\n  const published_at = item.json?.isoDate;\n  if (!/^UC[A-Za-z0-9_-]{22}$/.test(source_id || '') || !/^[A-Za-z0-9_-]{11}$/.test(video_id) || !item.json?.title || !published_at) return [];\n  return [{json:{source_id, video_id, title:item.json.title, published_at, summary:'', creator:source.creator || source.source_id, destination:source.destination, enabled:source.enabled === true, discord_channel_id:source.discord_channel_id, checkpoint_video_id:source.checkpoint_video_id, checkpoint_published_at:source.checkpoint_published_at, stage3_activated_at:source.stage3_activated_at, original_url:`https://www.youtube.com/watch?v=${video_id}`, image_url:`https://i.ytimg.com/vi/${video_id}/hqdefault.jpg`}}];\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        0
+        4416,
+        2448
       ],
-      "id": "54687aac-fc43-4b4e-bf87-0c81c785a032",
+      "id": "df965a1a-e8e0-4ca5-85d5-3a157d6db9f1",
       "name": "Code in JavaScript1"
     },
     {
@@ -72,8 +72,14 @@
           ]
         },
         "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {},
+          "mappingMode": "defineBelow",
+          "value": {
+            "video_id": "={{$json.video_id}}",
+            "source_id": "={{$json.source_id}}",
+            "title": "={{$json.title}}",
+            "published_at": "={{$json.published_at}}",
+            "summary": "={{$json.summary}}"
+          },
           "matchingColumns": [],
           "schema": [
             {
@@ -135,10 +141,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        1120,
-        0
+        4640,
+        2448
       ],
-      "id": "691bd925-19e1-485d-b754-a7b7820dd102",
+      "id": "34ba296b-cfe6-4618-b54e-deb852c83eee",
       "name": "Upsert row(s)"
     },
     {
@@ -154,10 +160,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.4,
       "position": [
-        0,
-        192
+        3520,
+        2640
       ],
-      "id": "be7011ba-5a94-44c9-b376-34ca3a9632de",
+      "id": "cd38bca5-bafe-4112-84ee-ae39f9bfd258",
       "name": "Schedule Trigger"
     },
     {
@@ -172,23 +178,29 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        224,
-        96
+        3744,
+        2544
       ],
-      "id": "9148bdec-bc78-4163-b769-fb80517afc6f",
-      "name": "HTTP Request"
+      "id": "d9c1bb38-5dc5-4b56-b2b1-10d0a4de83e4",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "const rows=$input.all().map(({json})=>({source_id:json.source_id,video_id:json.video_id,title:json.title,published_at:json.published_at,summary:json.summary||''})).filter(r=>Number.isFinite(Date.parse(r.published_at))); rows.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||a.source_id.localeCompare(b.source_id)||a.video_id.localeCompare(b.video_id)); return [{json:{version:1,publications:rows}}];"
+        "jsCode": "const all=$('Code in JavaScript1').all().map(({json})=>({source_id:json.source_id,video_id:json.video_id,title:json.title,published_at:json.published_at,summary:json.summary||''})).filter(r=>Number.isFinite(Date.parse(r.published_at)));\nconst bySource=new Map(); for(const row of all){const list=bySource.get(row.source_id)||[];list.push(row);bySource.set(row.source_id,list)}\nconst rows=[]; for(const list of bySource.values()){list.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||b.video_id.localeCompare(a.video_id));rows.push(...list.slice(0,2))}\nrows.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||a.source_id.localeCompare(b.source_id)||b.video_id.localeCompare(a.video_id));\nconst delivery_history=$('Prepare Registry Context').first()?.json?.delivery_history||[];\nreturn [{json:{version:1,publications:rows,delivery_history}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        192
+        4192,
+        2640
       ],
-      "id": "847c8425-8427-451c-a82b-77405e55c455",
+      "id": "9195c637-b57f-4cc7-8ede-36ef3ea963f3",
       "name": "Code in JavaScript2"
     },
     {
@@ -200,7 +212,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {}
+            {
+              "name": "X-Ariadne-Dry-Run",
+              "value": "={{$execution.mode !== 'trigger' ? 'true' : 'false'}}"
+            }
           ]
         },
         "sendBody": true,
@@ -211,19 +226,673 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        896,
-        192
+        4416,
+        2640
       ],
-      "id": "d16b801a-2ce2-4274-a881-14d311b15329",
-      "name": "HTTP Request1"
+      "id": "1efb12cf-210a-4e07-b59b-2fb119562fc7",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "1pwK3p2P9Gdqo1Ek",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "source_id",
+              "keyValue": "__registry__"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "source_id": "__registry__",
+            "state_json": "={{ JSON.stringify($json) }}",
+            "registry_refreshed_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "source_id",
+              "displayName": "source_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "friendly_name",
+              "displayName": "friendly_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "destination",
+              "displayName": "destination",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "enabled",
+              "displayName": "enabled",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "checkpoint_video_id",
+              "displayName": "checkpoint_video_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "checkpoint_published_at",
+              "displayName": "checkpoint_published_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "discord_channel_id",
+              "displayName": "discord_channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "stage3_activated_at",
+              "displayName": "stage3_activated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "registry_refreshed_at",
+              "displayName": "registry_refreshed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "state_json",
+              "displayName": "state_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4208,
+        2784
+      ],
+      "id": "aace76bd-c880-4a1f-9393-7423b240558f",
+      "name": "Upsert row(s)1"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "1pwK3p2P9Gdqo1Ek",
+          "mode": "id"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4432,
+        2784
+      ],
+      "id": "4e543541-e460-445c-bb90-64fc72145766",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.all().map(item => item.json).find(value => value.source_id === '__registry__' && typeof value.state_json === 'string');\nif (!row) throw new Error('No last-known source registry is available');\nconst snapshot = JSON.parse(row.state_json.replace(/^=/, ''));\nif (snapshot?.version !== 1 || !Array.isArray(snapshot.sources) || typeof snapshot.stage3_activated_at !== 'string') throw new Error('Cached source registry is invalid');\nreturn snapshot.sources\n  .filter(source => source.enabled === true && typeof source.id === 'string' && typeof source.video_id === 'string' && typeof source.published_at === 'string')\n  .map(source => ({json:{source_id:source.id, destination:source.destination, enabled:true, creator:source.friendly_name || source.name, discord_channel_id:source.discord_channel_id, checkpoint_video_id:source.video_id, checkpoint_published_at:source.published_at, stage3_activated_at:snapshot.stage3_activated_at}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4656,
+        2784
+      ],
+      "id": "c8da5398-964a-47c0-b4ce-8124972ce466",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ids = [...new Set($input.all().map(x => x.json?.video_id).filter(x => typeof x === 'string' && /^[A-Za-z0-9_-]{11}$/.test(x)))];\nreturn [{json:{publication_ids:ids}}];"
+      },
+      "id": "7c5b8d8d-58a9-4e50-bad7-cff03f131f6c",
+      "name": "Aggregate Existing Publication IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4032,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const publicationIds = $('Aggregate Existing Publication IDs').first()?.json?.publication_ids || [];\nconst deliveryHistory = $input.all().flatMap(({json:r}) => {\n  if (typeof r?.state_json !== 'string' || typeof r?.delivery_key !== 'string') return [];\n  try { const value = JSON.parse(r.state_json.replace(/^=/, '')); return value && typeof value === 'object' ? [value] : []; } catch { return []; }\n});\nconst publicationHistory=deliveryHistory.find(x=>x.delivery_key==='__system_publication_history__');\nconst activationKey='__system_stage4_activation__';\nconst priorActivation=deliveryHistory.find(x=>x.delivery_key===activationKey && typeof x.stage4_activated_at==='string');\nconst stage4_activated_at=priorActivation?.stage4_activated_at || new Date().toISOString();\nconst activationState={delivery_key:activationKey,stage4_activated_at};\nreturn [{json:{publication_ids:[...new Set([...publicationIds,...(publicationHistory?.video_ids||[])])],delivery_history:deliveryHistory.filter(x=>!['__system_stage4_activation__','__system_publication_history__'].includes(x.delivery_key)),stage4_activated_at,activation_key:activationKey,activation_state_json:JSON.stringify(activationState)}}];"
+      },
+      "id": "0b640963-79da-4f46-b2db-0bb16f09c89f",
+      "name": "Prepare Registry Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4432,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "98mOtm9lNtrKWrPE",
+          "mode": "list",
+          "cachedResultName": "News Service Publications",
+          "cachedResultUrl": "/projects/cGBB45XJB9GOS7VX/datatables/98mOtm9lNtrKWrPE"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3792,
+        3216
+      ],
+      "id": "bb50ebfa-bac9-4f6f-9301-0427d8fff6f6",
+      "name": "Get Existing Publications",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kJEf5T1mIGM0FGTg",
+          "mode": "id"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4224,
+        3216
+      ],
+      "id": "085c4fbb-6d9d-4f46-b267-fadddb976736",
+      "name": "Get Delivery Ledger",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Prepare Registry Context').first()?.json || {};\nconst activationMs = Date.parse(context.stage4_activated_at);\nconst existing = new Set(context.publication_ids || []);\nconst history = new Map();\nfor (const record of context.delivery_history || []) { if (!record || typeof record.delivery_key !== 'string') continue; const old=history.get(record.delivery_key); if (!old || Number(record.attempts||0)>=Number(old.attempts||0)) history.set(record.delivery_key,record); }\nconst sentVideoIds = new Set((context.delivery_history || []).filter(x => x.status === 'sent' && x.video_id).map(x => x.video_id));\nconst escape = value => String(value ?? '').replace(/[\\u0000-\\u001f\\u007f]/g,' ').replace(/\\s+/g,' ').trim().replace(/[\\\\`*_~|\\[\\]<>]/g,'\\\\$&');\nconst out=[];\nfor (const item of $('Code in JavaScript1').all().map(x=>x.json)) {\n  if (item.enabled !== true || !item.source_id || !item.destination || !/^\\d{15,22}$/.test(String(item.discord_channel_id || ''))) continue;\n  const published=Date.parse(item.published_at), activation=Date.parse(item.stage3_activated_at), checkpoint=Date.parse(item.checkpoint_published_at);\n  if (!Number.isFinite(activationMs) || !Number.isFinite(published) || !Number.isFinite(activation) || !Number.isFinite(checkpoint) || published <= activationMs || published <= activation || published <= checkpoint) continue;\n  if (sentVideoIds.has(item.video_id)) continue;\n  const delivery_key=`${item.video_id}:${item.destination}:${item.discord_channel_id}`;\n  const prior=history.get(delivery_key);\n  if (prior && ['sent','inflight','uncertain','rejected','pending'].includes(prior.status)) continue;\n  const attempts=Number(prior?.attempts || 0);\n  if (prior?.status === 'rate_limited' && (attempts >= 3 || Number(prior.retry_after || 0) > Date.now()/1000)) continue;\n  if (!prior && existing.has(item.video_id) && published <= activationMs) continue;\n  const components=[];\n  if (/^https:\\/\\/i\\.ytimg\\.com\\//.test(item.image_url || '')) components.push({type:12,items:[{media:{url:item.image_url}}]});\n  components.push({type:10,content:`**${escape(item.title).slice(0,300)}**`},{type:10,content:`By ${escape(item.creator).slice(0,200)}`});\n  const summary=escape(item.summary).slice(0,420); if(summary) components.push({type:10,content:summary});\n  components.push({type:10,content:item.original_url});\n  const started_at=new Date().toISOString(), attempt=attempts+1;\n  const payload={flags:32768,allowed_mentions:{parse:[]},components};\n  const state={delivery_key,delivery_id:`${delivery_key}#${attempt}`,video_id:item.video_id,destination:item.destination,discord_channel_id:String(item.discord_channel_id),status:'inflight',attempts:attempt,started_at,finished_at:null,http_status:null,discord_message_id:null,discord_timestamp:null,retry_after:null};\n  out.push({json:{...item,delivery_key,dry_run:$execution.mode !== 'trigger',attempt,payload,state_json:JSON.stringify(state),started_at}});\n}\nreturn out;"
+      },
+      "id": "ee197060-4e9d-4b4f-8345-8e9a2affda7f",
+      "name": "Prepare Discord Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4752,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "81391767-782c-4921-b957-abfbac8c5456",
+              "leftValue": "={{$json.dry_run}}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8ae50a06-0d9c-4119-9f18-bf8d9157b811",
+      "name": "Production Delivery Guard",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4992,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kJEf5T1mIGM0FGTg",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "delivery_key",
+              "keyValue": "={{JSON.parse($json.state_json).delivery_id}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "delivery_key": "={{JSON.parse($json.state_json).delivery_id}}",
+            "state_json": "={{$json.state_json}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "delivery_key",
+              "required": false,
+              "readOnly": false,
+              "displayName": "delivery_key",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            },
+            {
+              "id": "state_json",
+              "required": false,
+              "readOnly": false,
+              "displayName": "state_json",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "94ddd7c3-3695-4744-b6af-68470e02bd45",
+      "name": "Mark Delivery Inflight",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        5232,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kJEf5T1mIGM0FGTg",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "delivery_key",
+              "keyValue": "__system_stage4_activation__"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "delivery_key": "__system_stage4_activation__",
+            "state_json": "={{$json.activation_state_json}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "delivery_key",
+              "required": false,
+              "readOnly": false,
+              "displayName": "delivery_key",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            },
+            {
+              "id": "state_json",
+              "required": false,
+              "readOnly": false,
+              "displayName": "state_json",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "26e89781-42bb-456e-b847-6540fd3ffe69",
+      "name": "Persist Stage 4 Activation",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        4640,
+        3376
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{$json.discord_channel_id}}/messages?wait=true&with_components=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "discordBotApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.payload}}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "086be302-e767-409d-85ff-05201fd00ba9",
+      "name": "Post Discord Card",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5488,
+        3216
+      ],
+      "credentials": {
+        "discordBotApi": {
+          "name": "Ariadne Integration"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const candidate=$('Prepare Discord Candidates').itemMatching($itemIndex)?.json || $('Prepare Discord Candidates').all()[$itemIndex]?.json || {};\nconst response=$json?.body && typeof $json.body === 'object' ? $json.body : $json;\nconst status=Number($json?.statusCode || $json?.status || (response?.id ? 200 : 0));\nconst finished_at=new Date().toISOString();\nlet result='uncertain', retry_after=null;\nif(status >= 200 && status < 300 && response?.id) result='sent';\nelse if(status === 429) { result='rate_limited'; const seconds=Number(response?.retry_after || 1); retry_after=Date.now()/1000 + (Number.isFinite(seconds) ? Math.max(1,seconds) : 1); }\nelse if(status >= 400 && status < 500) result='rejected';\nconst state={delivery_key:candidate.delivery_key,delivery_id:`${candidate.delivery_key}#${candidate.attempt}`,video_id:candidate.video_id,destination:candidate.destination,discord_channel_id:String(candidate.discord_channel_id),status:result,attempts:candidate.attempt,started_at:candidate.started_at,finished_at,http_status:status || null,discord_message_id:response?.id ? String(response.id) : null,discord_timestamp:response?.timestamp || null,retry_after};\nreturn {json:{delivery_key:candidate.delivery_key,state_json:JSON.stringify(state)}};"
+      },
+      "id": "8cadd70a-cc16-43a9-86be-0653f715d4c5",
+      "name": "Build Delivery Receipt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5728,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kJEf5T1mIGM0FGTg",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "delivery_key",
+              "keyValue": "={{JSON.parse($json.state_json).delivery_id}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "delivery_key": "={{JSON.parse($json.state_json).delivery_id}}",
+            "state_json": "={{$json.state_json}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "delivery_key",
+              "required": false,
+              "readOnly": false,
+              "displayName": "delivery_key",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            },
+            {
+              "id": "state_json",
+              "required": false,
+              "readOnly": false,
+              "displayName": "state_json",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "740dc09e-57f5-4694-b6cd-029a9e3a2f7c",
+      "name": "Persist Delivery Receipt",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        5984,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prior=$('Get Existing Publications').all().map(x=>x.json).filter(x=>x?.video_id && x?.source_id);\nconst current=$('Prepare Active Publication Window').all().map(x=>x.json).filter(x=>x?.video_id && x?.source_id);\nconst collected=$('Code in JavaScript1').all().map(x=>x.json).filter(x=>x?.video_id && x?.source_id);\nconst context=$('Prepare Registry Context').first()?.json||{};\nconst unresolved=new Set((context.delivery_history||[]).filter(x=>['inflight','uncertain','pending','rate_limited','rejected'].includes(x.status)).map(x=>x.video_id));\nconst byId=new Map(); for(const x of [...prior,...current]) { const old=byId.get(x.video_id); if(!old || Date.parse(x.published_at)>Date.parse(old.published_at)) byId.set(x.video_id,x); }\nconst bySource=new Map(); for(const x of byId.values()){const a=bySource.get(x.source_id)||[];a.push(x);bySource.set(x.source_id,a)}\nconst keep=new Set(); for(const rows of bySource.values()){ rows.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||b.video_id.localeCompare(a.video_id)); for(const x of rows.slice(0,2)) keep.add(x.video_id); }\nconst stale=[...new Set([...byId.values()].filter(x=>!keep.has(x.video_id)&&!unresolved.has(x.video_id)).map(x=>x.video_id))];\nconst video_ids=[...new Set([...(context.publication_ids||[]),...prior.map(x=>x.video_id),...collected.map(x=>x.video_id)])];\nreturn [{json:{stale_video_ids:stale,video_ids}}];"
+      },
+      "id": "bea1d93a-29da-4f97-b072-b104301bd3ef",
+      "name": "Prepare Publication Retention",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4464,
+        3536
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kJEf5T1mIGM0FGTg",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "delivery_key",
+              "keyValue": "__system_publication_history__"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "delivery_key": "__system_publication_history__",
+            "state_json": "={{ JSON.stringify({delivery_key:\"__system_publication_history__\",video_ids:$(\"Prepare Publication Retention\").first().json.video_ids}) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "displayName": "delivery_key",
+              "type": "string",
+              "display": true,
+              "id": "delivery_key",
+              "required": false
+            },
+            {
+              "readOnly": false,
+              "removed": false,
+              "defaultMatch": false,
+              "displayName": "state_json",
+              "type": "string",
+              "display": true,
+              "id": "state_json",
+              "required": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d5600e9c-427a-4968-83ae-bc9e69d22133",
+      "name": "Persist Publication Deduplication",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        4720,
+        3536
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return ($('Prepare Publication Retention').first()?.json?.stale_video_ids||[]).map(video_id=>({json:{video_id}}));"
+      },
+      "id": "cde05f6b-6980-418b-99f2-3bfa4f3af76d",
+      "name": "Split Prunable Publications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4960,
+        3536
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "value": "98mOtm9lNtrKWrPE",
+          "mode": "list",
+          "cachedResultName": "News Service Publications",
+          "cachedResultUrl": "/projects/cGBB45XJB9GOS7VX/datatables/98mOtm9lNtrKWrPE"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "video_id",
+              "keyValue": "={{$json.video_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9c0b49e9-5e6c-40de-a739-580adf087530",
+      "name": "Prune Retired Publications",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        5200,
+        3536
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$('Code in JavaScript1').all().map(x=>x.json).filter(x=>Number.isFinite(Date.parse(x.published_at)));\nconst bySource=new Map(); for(const row of rows){const list=bySource.get(row.source_id)||[];list.push(row);bySource.set(row.source_id,list)}\nconst out=[]; for(const list of bySource.values()){list.sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||b.video_id.localeCompare(a.video_id));out.push(...list.slice(0,2))}\nreturn out.map(json=>({json}));"
+      },
+      "id": "ee03dfec-1f32-45c1-ac7b-9cb92b3b3b0e",
+      "name": "Prepare Active Publication Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4272,
+        2880
+      ]
     }
   ],
   "connections": {
-    "When clicking ‘Execute workflow’": {
+    "When clicking â€˜Execute workflowâ€™": {
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Get Existing Publications",
             "type": "main",
             "index": 0
           }
@@ -256,7 +925,12 @@
       "main": [
         [
           {
-            "node": "Upsert row(s)",
+            "node": "Prepare Active Publication Window",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Discord Candidates",
             "type": "main",
             "index": 0
           }
@@ -267,7 +941,7 @@
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Get Existing Publications",
             "type": "main",
             "index": 0
           }
@@ -281,6 +955,18 @@
             "node": "Code in JavaScript",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Upsert row(s)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -290,6 +976,11 @@
         [
           {
             "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Publication Retention",
             "type": "main",
             "index": 0
           }
@@ -306,6 +997,182 @@
           }
         ]
       ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Publications": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Existing Publication IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Existing Publication IDs": {
+      "main": [
+        [
+          {
+            "node": "Get Delivery Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Delivery Ledger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Registry Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Registry Context": {
+      "main": [
+        [
+          {
+            "node": "Persist Stage 4 Activation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Stage 4 Activation": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Discord Candidates": {
+      "main": [
+        [
+          {
+            "node": "Production Delivery Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Production Delivery Guard": {
+      "main": [
+        [
+          {
+            "node": "Mark Delivery Inflight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Delivery Inflight": {
+      "main": [
+        [
+          {
+            "node": "Post Discord Card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Discord Card": {
+      "main": [
+        [
+          {
+            "node": "Build Delivery Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Delivery Receipt": {
+      "main": [
+        [
+          {
+            "node": "Persist Delivery Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Publication Retention": {
+      "main": [
+        [
+          {
+            "node": "Persist Publication Deduplication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Publication Deduplication": {
+      "main": [
+        [
+          {
+            "node": "Split Prunable Publications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Prunable Publications": {
+      "main": [
+        [
+          {
+            "node": "Prune Retired Publications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Active Publication Window": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -313,7 +1180,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "9baa6194-cfa7-4904-98c9-3b0680e47865",
+  "versionId": "6e001f4d-28d4-4073-be7b-99520244e61c",
   "meta": {
     "instanceId": "256f479ccc098615a16e3f21bc5aba22619c6c5f341e8dfa33480e3f47803a01"
   },

@@ -77,7 +77,7 @@ def _timestamp(value):
 
 
 def registry_snapshot(path):
-    """Return enabled canonical channels with their existing baseline checkpoints."""
+    """Return canonical channel state and checkpoints for the n8n last-known mirror."""
     db = sqlite3.connect(path, timeout=10)
     db.row_factory = sqlite3.Row
     try:
@@ -85,10 +85,24 @@ def registry_snapshot(path):
         db.execute("INSERT OR IGNORE INTO news_settings(key,value) VALUES('stage3_activated_at',?)",
                    (datetime.now(timezone.utc).isoformat(),))
         db.commit()
-        rows = db.execute('''SELECT s.id,s.name,s.friendly_name,s.destination,
+        rows = db.execute('''SELECT s.id,s.name,s.friendly_name,s.destination,s.enabled,
             c.video_id,c.published_at FROM sources s LEFT JOIN news_checkpoints c
-            ON c.source_id=s.id WHERE s.enabled=1 AND s.kind='youtube' ORDER BY s.id''')
-        return {'version': 1, 'sources': [dict(row) for row in rows]}
+            ON c.source_id=s.id WHERE s.kind='youtube' ORDER BY s.id''')
+        sources = [dict(row) for row in rows]
+        channel_ids = {}
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='discord_delivery_attempts'").fetchone():
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(discord_delivery_attempts)')}
+            if 'discord_channel_id' in columns:
+                for row in db.execute('''SELECT destination,discord_channel_id FROM discord_delivery_attempts
+                    WHERE status='sent' AND discord_channel_id IS NOT NULL
+                    ORDER BY started_at DESC,rowid DESC'''):
+                    channel_ids.setdefault(row['destination'], row['discord_channel_id'])
+        for source in sources:
+            source['enabled'] = bool(source['enabled'])
+            source['discord_channel_id'] = channel_ids.get(source['destination'])
+        activated = db.execute("SELECT value FROM news_settings WHERE key='stage3_activated_at'").fetchone()
+        return {'version': 1, 'stage3_activated_at': activated['value'] if activated else None,
+                'sources': sources}
     finally:
         db.close()
 
