@@ -28,10 +28,14 @@ Three components have distinct responsibilities:
 model reasoning, and generated output all consume that same budget. The
 worker retains the existing bounded overlapping source spans, reasoning,
 validation, embedding handoff, and checkpoint rules. It subtracts the output
-budget and a prompt margin before choosing source spans. Output configuration
-is limited to 4,096 tokens so it cannot consume the whole window. Requests
-above the local model limit fail before transport or Host admission; they are
-not silently truncated or resized.
+budget and a prompt margin before choosing source spans. The default generated
+output reserve is 4,096 tokens, which is also the local maximum. The earlier
+2,048-token default could truncate a long structured response even when the
+source-span budget was calculated correctly. The larger reserve leaves less
+room for source text, so long sources may use more, smaller spans. A response
+that still ends at the output cap remains a processing failure; a truncated
+proposal is not accepted as complete. Requests above the local model limit fail
+before transport or Host admission; they are not silently resized.
 
 Saved legacy 16K context values are presented as 8K in the runtime snapshot.
 The next ordinary configuration save persists the fixed model/context. An
