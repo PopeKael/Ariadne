@@ -58,7 +58,9 @@ def test_export_keeps_schedule_and_active_table_schema():
     assert "discord.com/api/webhooks" not in exported
     assert "webhookUri" not in exported
     trigger = node("Schedule Trigger")
-    assert trigger["parameters"]["rule"]["interval"]
+    assert trigger["parameters"]["rule"]["interval"] == [
+        {"field": "minutes", "minutesInterval": 15}
+    ]
     upsert = node("Upsert row(s)")["parameters"]["columns"]
     assert upsert["mappingMode"] == "defineBelow"
     assert set(upsert["value"]) == {"video_id", "source_id", "title", "published_at", "summary"}
@@ -188,6 +190,8 @@ process.stdout.write(JSON.stringify(result));
     skipped = {json.loads(row["state_json"])["video_id"]: json.loads(row["state_json"])
                for row in diagnostics if json.loads(row["state_json"])["decision"] == "skipped"}
     assert skipped[disabled["video_id"]]["reason"] == "source_disabled"
+
+
     assert skipped[uncertain["video_id"]]["reason"] == "prior_uncertain"
 
     cached_retry = subprocess.run(
@@ -208,6 +212,53 @@ process.stdout.write(JSON.stringify(result));
     production_rows = json.loads(production.stdout)
     production_candidates = [row["json"] for row in production_rows if row["json"]["record_type"] == "candidate"]
     assert production_candidates[0]["dry_run"] is False
+
+
+def test_candidate_gate_uses_cached_registry_when_live_registry_node_did_not_run():
+    code = node("Prepare Discord Candidates")["parameters"]["jsCode"]
+    source = {
+        "source_id": "UC" + "C" * 22,
+        "destination": "thailand_news",
+        "enabled": True,
+        "creator": "News source",
+        "discord_channel_id": "123456789012345678",
+        "stage3_activated_at": "2027-01-01T00:00:00Z",
+        "checkpoint_published_at": "2027-01-14T00:00:00Z",
+    }
+    item = {
+        "source_id": source["source_id"],
+        "video_id": "NewShort01A",
+        "title": "New item",
+        "published_at": "2027-01-16T00:00:00Z",
+    }
+    harness = r"""
+const vm=require('node:vm');const f=JSON.parse(process.argv[1]);
+const refs={
+ 'Prepare Registry Context':{first:()=>({json:f.context})},
+ 'Get Existing Publications':{all:()=>[]},
+ 'Code in JavaScript3':{all:()=>[{json:f.source}]},
+ 'Code in JavaScript':{all:()=>{throw new Error('primary registry branch did not run')}},
+ 'Code in JavaScript1':{all:()=>[{json:f.item}]}
+};const $=name=>refs[name];const $execution={id:1,mode:'production'};
+const result=vm.runInNewContext('(function(){'+f.code+'\n})()',
+ {$,$execution,Date,Map,Set,Number,String,Math,JSON});
+process.stdout.write(JSON.stringify(result));
+"""
+    context = {
+        "stage4_activated_at": "2027-01-01T00:00:00Z",
+        "publication_ids": [],
+        "delivery_history": [],
+    }
+    result = subprocess.run(
+        [shutil.which("node"), "-e", harness,
+         json.dumps({"code": code, "context": context, "source": source, "item": item})],
+        check=True, capture_output=True, text=True, timeout=10,
+    )
+    outputs = json.loads(result.stdout)
+    candidates = [row["json"] for row in outputs if row["json"]["record_type"] == "candidate"]
+    assert len(candidates) == 1
+    assert candidates[0]["destination"] == "thailand_news"
+    assert candidates[0]["discord_channel_id"] == source["discord_channel_id"]
 
 
 def test_receipt_retries_only_known_preflight_failures():
