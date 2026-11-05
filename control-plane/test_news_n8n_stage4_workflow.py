@@ -51,6 +51,9 @@ process.stdout.write(JSON.stringify(outputs));
 def test_export_keeps_schedule_and_active_table_schema():
     data = workflow()
     assert data["id"] == "VP0Bro3F98I523YD"
+    assert data["settings"]["saveDataSuccessExecution"] == "all"
+    assert data["settings"]["saveDataErrorExecution"] == "all"
+    assert data["settings"]["saveManualExecutions"] is True
     exported = json.dumps(data)
     assert "discord.com/api/webhooks" not in exported
     assert "webhookUri" not in exported
@@ -88,6 +91,11 @@ def test_export_keeps_schedule_and_active_table_schema():
         assert "id" not in sender["credentials"]["discordWebhookApi"]
         assert connections[name]["main"][0][0]["node"] == "Build Delivery Receipt"
     assert connections["Build Delivery Receipt"]["main"][0][0]["node"] == "Persist Delivery Receipt"
+    assert connections["RSS Read"]["main"][0][1]["node"] == "Build Feed Diagnostics"
+    assert connections["Build Feed Diagnostics"]["main"][0][0]["node"] == "Persist Feed Diagnostics"
+    assert connections["Prepare Discord Candidates"]["main"][0][0]["node"] == "Route Candidate Diagnostics"
+    assert connections["Route Candidate Diagnostics"]["main"][0][0]["node"] == "Production Delivery Guard"
+    assert connections["Route Candidate Diagnostics"]["main"][1][0]["node"] == "Persist Candidate Diagnostics"
     sync_header = node("HTTP Request1")["parameters"]["headerParameters"]["parameters"][0]
     assert sync_header["name"] == "X-Ariadne-Dry-Run"
     assert sync_header["value"] == "=  {{$execution.mode !== 'production' ? 'true' : 'false'}}"
@@ -170,11 +178,17 @@ process.stdout.write(JSON.stringify(result));
         check=True, capture_output=True, text=True, timeout=10,
     )
     rows = json.loads(result.stdout)
-    assert [row["json"]["video_id"] for row in rows] == [failed["video_id"], eligible["video_id"]]
-    assert rows[1]["json"]["dry_run"] is True
-    assert rows[1]["json"]["state_json"]
-    assert json.loads(rows[1]["json"]["state_json"])["payload"] == rows[1]["json"]["payload"]
-    assert rows[0]["json"]["attempt"] == 2
+    candidates = [row["json"] for row in rows if row["json"]["record_type"] == "candidate"]
+    diagnostics = [row["json"] for row in rows if row["json"]["record_type"] == "diagnostic"]
+    assert [row["video_id"] for row in candidates] == [failed["video_id"], eligible["video_id"]]
+    assert candidates[1]["dry_run"] is True
+    assert candidates[1]["state_json"]
+    assert json.loads(candidates[1]["state_json"])["payload"] == candidates[1]["payload"]
+    assert candidates[0]["attempt"] == 2
+    skipped = {json.loads(row["state_json"])["video_id"]: json.loads(row["state_json"])
+               for row in diagnostics if json.loads(row["state_json"])["decision"] == "skipped"}
+    assert skipped[disabled["video_id"]]["reason"] == "source_disabled"
+    assert skipped[uncertain["video_id"]]["reason"] == "prior_uncertain"
 
     cached_retry = subprocess.run(
         [shutil.which("node"), "-e", harness, json.dumps({"code": code, "context": context,
@@ -182,15 +196,18 @@ process.stdout.write(JSON.stringify(result));
         check=True, capture_output=True, text=True, timeout=10,
     )
     cached_rows = json.loads(cached_retry.stdout)
-    assert [row["json"]["video_id"] for row in cached_rows] == [failed["video_id"]]
-    assert cached_rows[0]["json"]["attempt"] == 2
+    cached_candidates = [row["json"] for row in cached_rows if row["json"]["record_type"] == "candidate"]
+    assert [row["video_id"] for row in cached_candidates] == [failed["video_id"]]
+    assert cached_candidates[0]["attempt"] == 2
 
     production = subprocess.run(
         [shutil.which("node"), "-e", harness, json.dumps({"code": code, "context": context,
          "items": [eligible], "sources": [eligible], "mode": "production"})],
         check=True, capture_output=True, text=True, timeout=10,
     )
-    assert json.loads(production.stdout)[0]["json"]["dry_run"] is False
+    production_rows = json.loads(production.stdout)
+    production_candidates = [row["json"] for row in production_rows if row["json"]["record_type"] == "candidate"]
+    assert production_candidates[0]["dry_run"] is False
 
 
 def test_receipt_retries_only_known_preflight_failures():
@@ -211,6 +228,43 @@ def test_receipt_retries_only_known_preflight_failures():
     assert sent_state["status"] == "sent"
     assert sent_state["discord_message_id"] == "discord-message-1"
     assert sent_state["payload"] == candidate["payload"]
+
+
+def test_feed_diagnostics_keep_source_level_errors_and_empty_feeds():
+    code = node("Build Feed Diagnostics")["parameters"]["jsCode"]
+    channel_a = "UC" + "A" * 22
+    channel_b = "UC" + "B" * 22
+    sources = [
+        {"source_id": channel_a, "name": "Channel A", "creator": "Channel A"},
+        {"source_id": channel_b, "name": "Channel B", "creator": "Channel B"},
+    ]
+    harness = r"""
+const vm=require('node:vm');const f=JSON.parse(process.argv[1]);
+const refs={
+ 'Code in JavaScript':{all:()=>f.sources.map(json=>({json})),itemMatching:()=>({json:f.sources[0]})},
+ 'Code in JavaScript3':{all:()=>{throw new Error('fallback not used')}},
+ 'Get Delivery Ledger':{all:()=>f.previous.map(json=>({json}))}
+}; const $=name=>refs[name];const $input={all:()=>f.items.map(json=>({json}))};
+const $execution={id:'run-123',mode:'production'};
+const result=vm.runInNewContext('(function(){'+f.code+'\n})()',{$,$input,$execution,Date,Map,Set,Number,String,Array,JSON});
+process.stdout.write(JSON.stringify(result));
+"""
+    entries = [{"id": "yt:video:abcdefghijk", "title": "New video", "isoDate": "2027-01-16T00:00:00Z"},
+               {"error": {"message": "HTTP 503"}}]
+    result = subprocess.run(
+        [shutil.which("node"), "-e", harness,
+         json.dumps({"code": code, "sources": sources, "items": entries, "previous": []})],
+        check=True, capture_output=True, text=True, timeout=10,
+    )
+    rows = {json.loads(row["json"]["state_json"])["source_id"]:
+            json.loads(row["json"]["state_json"]) for row in json.loads(result.stdout)}
+    assert rows[channel_a]["status"] == "feed_error"
+    assert rows[channel_a]["entry_count"] == 1
+    assert rows[channel_a]["error_count"] == 1
+    assert rows[channel_a]["newest_video_id"] == "abcdefghijk"
+    assert rows[channel_b]["status"] == "empty_feed"
+    assert rows[channel_b]["entry_count"] == 0
+    assert rows[channel_a]["execution_id"] == "run-123"
 
 
 def test_retention_and_feed_sort_keep_two_per_source_and_newest_first():

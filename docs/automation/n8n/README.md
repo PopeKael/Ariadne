@@ -5,6 +5,14 @@ These sanitized workflow definitions mirror the published Synology workflows. Wo
 - `news-service-collector.json` — `VP0Bro3F98I523YD`, **News Service - manual collector (draft)**, published revision `f5e117a9-726b-4b6b-a5bc-d04b75b68f94`. Its active hourly workflow collects enabled YouTube sources, maintains the publication cache in **News Service Publications**, keeps the newest two per source, synchronizes the card window and receipt history to Ariadne, and posts eligible cards through the saved destination webhooks.
 - `news-service-publication-snapshot.json` — `HGKHZh3Uuw88fJrl`, **News Service - LAN snapshot (draft)**. Reads the publication table, sorts newest first, and returns the newest two per source.
 
+## Feed and candidate diagnostics
+
+The collector now saves successful and failed production executions, including manual runs, in n8n. The RSS node's execution output is therefore available when a source feed fails or returns no items. Instance-level execution pruning still controls how long these detailed node inputs and outputs remain available.
+
+`Build Feed Diagnostics` upserts one compact status row per channel in **News Service Delivery Ledger**. It records the check time and execution ID, entry/error counts, newest feed item, and the last feed error. Stable per-channel keys keep the table bounded as hourly checks continue. `Prepare Discord Candidates` also records a stable per-video decision row when a feed item is newer than its source checkpoint, including whether it was skipped and the precise gate that skipped it, or whether it reached the delivery candidate stage. The existing inflight and delivery receipt rows remain authoritative for actual Discord attempts and outcomes. Diagnostic rows use separate key prefixes and are excluded from Ariadne's delivery-history sync.
+
+This lets an operator distinguish a missing/empty RSS result, a candidate rejected by a named eligibility rule, and a candidate that entered Discord delivery but received an error or no receipt. It does not change the collector schedule or send/retry rules.
+
 ## Discord delivery path
 
 `Prepare Discord Candidates` retains the established activation boundary, source rules, delivery-key deduplication and Components V2 formatter. `Production Delivery Guard` and `Mark Delivery Inflight` precede `Code in JavaScript4`, which parses the persisted `state_json` and exposes its validated `destination`. The three-rule `Switch` then routes on `$json.destination`: `ai_noise`, `thailand_news`, or `news_3cf8b10043ab9e794da82060`. Each branch uses the matching encrypted `discordWebhookApi` credential through `Ariadne Discord Webhook`. All three sender outputs pass through `Build Delivery Receipt` and `Persist Delivery Receipt`. The bot-based `Post Discord Card` node is removed from the active workflow. Manual Ariadne publishing controls and unrelated Discord bot workflows are unchanged.

@@ -38,7 +38,8 @@
       ],
       "id": "3107584e-9a1b-41e5-8a1f-75cfb273400b",
       "name": "RSS Read",
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -341,7 +342,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const context = $('Prepare Registry Context').first()?.json || {};\nconst activationMs = Date.parse(context.stage4_activated_at);\nconst existing = new Set(context.publication_ids || []);\nconst history = new Map();\nfor (const record of context.delivery_history || []) { if (!record || typeof record.delivery_key !== 'string') continue; const old=history.get(record.delivery_key); if (!old || Number(record.attempts||0)>=Number(old.attempts||0)) history.set(record.delivery_key,record); }\nconst sentVideoIds = new Set((context.delivery_history || []).filter(x => x.status === 'sent' && x.video_id).map(x => x.video_id));\nconst retryableVideoIds = new Set([...history.values()].filter(x => ['failed','rate_limited'].includes(x.status) && Number(x.attempts||0)<3).map(x => x.video_id).filter(Boolean));\nlet sourceRows=[]; try { sourceRows.push(...$('Code in JavaScript3').all().map(x=>x.json)); } catch {} sourceRows.push(...$('Code in JavaScript').all().map(x=>x.json));\nconst sources=new Map(sourceRows.filter(x=>x?.source_id).map(x=>[x.source_id,x]));\nconst fresh=$('Code in JavaScript1').all().map(x=>x.json);\nconst cached=$('Get Existing Publications').all().map(x=>x.json).filter(x=>retryableVideoIds.has(x.video_id));\nconst ledgerRetries=(context.delivery_history||[]).filter(x=>retryableVideoIds.has(x.video_id)&&x.source_id&&x.payload);\nconst publications=new Map(); for(const item of [...cached,...ledgerRetries,...fresh]){const old=publications.get(item.video_id);if(!old||Date.parse(item.published_at)>Date.parse(old.published_at)||fresh.includes(item))publications.set(item.video_id,item);}\nconst escape = value => String(value ?? '').replace(/[\\u0000-\\u001f\\u007f]/g,' ').replace(/\\s+/g,' ').trim().replace(/[\\\\`*_~|\\[\\]<>]/g,'\\\\$&');\nconst out=[];\nfor (const raw of [...publications.values()].sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||String(b.video_id).localeCompare(String(a.video_id)))) {\n  const source=sources.get(raw.source_id);\n  if (!source || source.enabled !== true || !source.destination || !/^\\d{15,22}$/.test(String(source.discord_channel_id || ''))) continue;\n  const item={...raw,...source,source_id:raw.source_id,video_id:raw.video_id,published_at:raw.published_at,title:raw.title,summary:raw.summary||'',original_url:raw.original_url||`https://www.youtube.com/watch?v=${raw.video_id}`,image_url:raw.image_url||`https://i.ytimg.com/vi/${raw.video_id}/hqdefault.jpg`};\n  const published=Date.parse(item.published_at), activation=Date.parse(item.stage3_activated_at), checkpoint=Date.parse(item.checkpoint_published_at);\n  if (!Number.isFinite(activationMs) || !Number.isFinite(published) || !Number.isFinite(activation) || !Number.isFinite(checkpoint) || published <= activationMs || published <= activation) continue;\n  if (sentVideoIds.has(item.video_id)) continue;\n  const delivery_key=`${item.video_id}:${item.destination}:${item.discord_channel_id}`;\n  const prior=history.get(delivery_key);\n  if (prior && ['sent','inflight','uncertain','rejected','pending'].includes(prior.status)) continue;\n  const attempts=Number(prior?.attempts || 0);\n  const retryable=retryableVideoIds.has(item.video_id);\n  if (!prior && !retryable && published <= checkpoint) continue;\n  if (prior?.status === 'rate_limited' && (attempts >= 3 || Number(prior.retry_after || 0) > Date.now()/1000)) continue;\n  if (prior?.status === 'failed' && attempts >= 3) continue;\n  if (!prior && !retryableVideoIds.has(item.video_id) && existing.has(item.video_id) && published <= activationMs) continue;\n  const components=[];\n  if (/^https:\\/\\/i\\.ytimg\\.com\\//.test(item.image_url || '')) components.push({type:12,items:[{media:{url:item.image_url}}]});\n  components.push({type:10,content:`**${escape(item.title).slice(0,300)}**`},{type:10,content:`By ${escape(item.creator).slice(0,200)}`});\n  const summary=escape(item.summary).slice(0,420); if(summary) components.push({type:10,content:summary});\n  components.push({type:10,content:item.original_url});\n  const started_at=new Date().toISOString(), attempt=attempts+1;\n  const payload=raw.payload||{flags:32768,allowed_mentions:{parse:[]},components};\n  const state={delivery_key,delivery_id:`${delivery_key}#${attempt}`,video_id:item.video_id,source_id:item.source_id,published_at:item.published_at,destination:item.destination,discord_channel_id:String(item.discord_channel_id),payload,status:'inflight',attempts:attempt,started_at,finished_at:null,http_status:null,discord_message_id:null,discord_timestamp:null,retry_after:null};\n  out.push({json:{...item,delivery_key,dry_run:$execution.mode !== 'production',attempt,payload,state_json:JSON.stringify(state),started_at}});\n}\nreturn out;"
+        "jsCode": "const context = $('Prepare Registry Context').first()?.json || {};\nconst activationMs = Date.parse(context.stage4_activated_at);\nconst existing = new Set(context.publication_ids || []);\nconst history = new Map();\nfor (const record of context.delivery_history || []) { if (!record || typeof record.delivery_key !== 'string') continue; const old=history.get(record.delivery_key); if (!old || Number(record.attempts||0)>=Number(old.attempts||0)) history.set(record.delivery_key,record); }\nconst sentVideoIds = new Set((context.delivery_history || []).filter(x => x.status === 'sent' && x.video_id).map(x => x.video_id));\nconst retryableVideoIds = new Set([...history.values()].filter(x => ['failed','rate_limited'].includes(x.status) && Number(x.attempts||0)<3).map(x => x.video_id).filter(Boolean));\nlet sourceRows=[]; try { sourceRows.push(...$('Code in JavaScript3').all().map(x=>x.json)); } catch {} sourceRows.push(...$('Code in JavaScript').all().map(x=>x.json));\nconst sources=new Map(sourceRows.filter(x=>x?.source_id).map(x=>[x.source_id,x]));\nconst fresh=$('Code in JavaScript1').all().map(x=>x.json);\nconst cached=$('Get Existing Publications').all().map(x=>x.json).filter(x=>retryableVideoIds.has(x.video_id));\nconst ledgerRetries=(context.delivery_history||[]).filter(x=>retryableVideoIds.has(x.video_id)&&x.source_id&&x.payload);\nconst publications=new Map(); for(const item of [...cached,...ledgerRetries,...fresh]){const old=publications.get(item.video_id);if(!old||Date.parse(item.published_at)>Date.parse(old.published_at)||fresh.includes(item))publications.set(item.video_id,item);}\nconst escape = value => String(value ?? '').replace(/[\\u0000-\\u001f\\u007f]/g,' ').replace(/\\s+/g,' ').trim().replace(/[\\\\`*_~|\\[\\]<>]/g,'\\\\$&');\nconst out=[], diagnostics=[];\nconst recordDecision=(item,decision,reason,checkpoint)=>{\n  const published=Date.parse(item?.published_at);\n  if (!item?.video_id || !/^[A-Za-z0-9_-]{11}$/.test(item.video_id)) return;\n  if (Number.isFinite(published) && Number.isFinite(checkpoint) && published <= checkpoint) return;\n  const audit_key=`__candidate__:${item.video_id}`;\n  const state={delivery_key:audit_key,audit_type:'candidate_decision',execution_id:String($execution.id || ''),execution_mode:$execution.mode,video_id:item.video_id,source_id:item.source_id||null,title:String(item.title||'').slice(0,300),published_at:item.published_at||null,decision,reason:reason||null,checked_at:new Date().toISOString()};\n  diagnostics.push({json:{record_type:'diagnostic',audit_key,state_json:JSON.stringify(state)}});\n};\nfor (const raw of [...publications.values()].sort((a,b)=>Date.parse(b.published_at)-Date.parse(a.published_at)||String(b.video_id).localeCompare(String(a.video_id)))) {\n  const source=sources.get(raw.source_id);\n  const item={...raw,...(source||{}),source_id:raw.source_id,video_id:raw.video_id,published_at:raw.published_at,title:raw.title,summary:raw.summary||'',original_url:raw.original_url||`https://www.youtube.com/watch?v=${raw.video_id}`,image_url:raw.image_url||`https://i.ytimg.com/vi/${raw.video_id}/hqdefault.jpg`};\n  const published=Date.parse(item.published_at), activation=Date.parse(item.stage3_activated_at), checkpoint=Date.parse(item.checkpoint_published_at);\n  const delivery_key=`${item.video_id}:${item.destination}:${item.discord_channel_id}`;\n  const prior=history.get(delivery_key);\n  const attempts=Number(prior?.attempts || 0);\n  const retryable=retryableVideoIds.has(item.video_id);\n  let reason=null;\n  if (!source) reason='source_missing_from_registry';\n  else if (source.enabled !== true) reason='source_disabled';\n  else if (!source.destination) reason='destination_missing';\n  else if (!/^\\d{15,22}$/.test(String(source.discord_channel_id || ''))) reason='discord_channel_id_missing_or_invalid';\n  else if (!Number.isFinite(activationMs)) reason='stage4_activation_missing';\n  else if (!Number.isFinite(published)) reason='published_at_invalid';\n  else if (!Number.isFinite(activation)) reason='stage3_activation_missing';\n  else if (!Number.isFinite(checkpoint)) reason='source_checkpoint_missing';\n  else if (published <= activationMs) reason='before_stage4_activation';\n  else if (published <= activation) reason='before_stage3_activation';\n  else if (sentVideoIds.has(item.video_id)) reason='already_sent';\n  else if (prior && ['sent','inflight','uncertain','rejected','pending'].includes(prior.status)) reason='prior_'+prior.status;\n  else if (!prior && !retryable && published <= checkpoint) reason='at_or_before_source_checkpoint';\n  else if (prior?.status === 'rate_limited' && (attempts >= 3 || Number(prior.retry_after || 0) > Date.now()/1000)) reason='rate_limited_or_retry_limit';\n  else if (prior?.status === 'failed' && attempts >= 3) reason='retry_limit_reached';\n  else if (!prior && !retryableVideoIds.has(item.video_id) && existing.has(item.video_id) && published <= activationMs) reason='already_in_publication_history_before_activation';\n  if (reason) { recordDecision(item,'skipped',reason,checkpoint); continue; }\n  const components=[];\n  if (/^https:\\/\\/i\\.ytimg\\.com\\//.test(item.image_url || '')) components.push({type:12,items:[{media:{url:item.image_url}}]});\n  components.push({type:10,content:`**${escape(item.title).slice(0,300)}**`},{type:10,content:`By ${escape(item.creator).slice(0,200)}`});\n  const summary=escape(item.summary).slice(0,420); if(summary) components.push({type:10,content:summary});\n  components.push({type:10,content:item.original_url});\n  const started_at=new Date().toISOString(), attempt=attempts+1;\n  const payload=raw.payload||{flags:32768,allowed_mentions:{parse:[]},components};\n  const state={delivery_key,delivery_id:`${delivery_key}#${attempt}`,video_id:item.video_id,source_id:item.source_id,published_at:item.published_at,destination:item.destination,discord_channel_id:String(item.discord_channel_id),payload,status:'inflight',attempts:attempt,started_at,finished_at:null,http_status:null,discord_message_id:null,discord_timestamp:null,retry_after:null};\n  recordDecision(item,'candidate_ready',null,checkpoint);\n  out.push({json:{...item,record_type:'candidate',delivery_key,dry_run:$execution.mode !== 'production',attempt,payload,state_json:JSON.stringify(state),started_at}});\n}\nreturn [...out,...diagnostics];"
       },
       "id": "ee197060-4e9d-4b4f-8345-8e9a2affda7f",
       "name": "Prepare Discord Candidates",
@@ -865,6 +866,173 @@
       ],
       "id": "8772583f-0e51-4126-9001-ad66dd281ee5",
       "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const sourceRows=[];\nfor (const name of ['Code in JavaScript3','Code in JavaScript']) { try { sourceRows.push(...$(name).all().map(x=>x.json)); } catch {} }\nconst sources=new Map(sourceRows.filter(x=>x?.source_id).map(x=>[x.source_id,x]));\nconst grouped=new Map();\nconst feedItems=$input.all().map(x=>x.json||{});\nfor (let i=0;i<feedItems.length;i++) {\n  let source;\n  for (const name of ['Code in JavaScript3','Code in JavaScript']) { try { source=$(name).itemMatching(i)?.json; if (source?.source_id) break; } catch {} }\n  if (!source?.source_id) continue;\n  const rows=grouped.get(source.source_id)||[]; rows.push(feedItems[i]); grouped.set(source.source_id,rows);\n}\nconst previous=new Map();\ntry { for (const row of $('Get Delivery Ledger').all().map(x=>x.json||{})) { if (!row.delivery_key?.startsWith('__feed__:') || typeof row.state_json!=='string') continue; try { previous.set(row.delivery_key,JSON.parse(row.state_json.replace(/^=/,''))); } catch {} } } catch {}\nconst checked_at=new Date().toISOString(), execution_id=String($execution.id||'');\nreturn [...sources.values()].map(source=>{\n  const rows=grouped.get(source.source_id)||[];\n  const errors=rows.filter(x=>x.error || x?.json?.error);\n  const entries=rows.filter(x=>/^[A-Za-z0-9_-]{11}$/.test(String(x.id||'').replace(/^yt:video:/,'')) && x.title && Number.isFinite(Date.parse(x.isoDate)));\n  entries.sort((a,b)=>Date.parse(b.isoDate)-Date.parse(a.isoDate));\n  const prior=previous.get(`__feed__:${source.source_id}`)||{};\n  const status=errors.length?'feed_error':entries.length?'ok':'empty_feed';\n  const state={delivery_key:`__feed__:${source.source_id}`,audit_type:'feed_check',execution_id,source_id:source.source_id,source_name:source.creator||source.name||source.source_id,status,checked_at,entry_count:entries.length,error_count:errors.length,newest_video_id:entries.length?String(entries[0].id).replace(/^yt:video:/,''):null,newest_published_at:entries[0]?.isoDate||null,last_error:errors.length?String(errors[0].error?.message||errors[0].error||'feed error').slice(0,300):(prior.last_error||null),last_error_at:errors.length?checked_at:(prior.last_error_at||null),consecutive_error_runs:errors.length?Number(prior.consecutive_error_runs||0)+1:0};\n  return {json:{audit_key:state.delivery_key,state_json:JSON.stringify(state)}};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4416,
+        2208
+      ],
+      "id": "b9692174-25f0-4b83-a66e-a5c3e6e4ab8e",
+      "name": "Build Feed Diagnostics"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kJEf5T1mIGM0FGTg",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "delivery_key",
+              "keyValue": "={{$json.audit_key}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "delivery_key": "={{$json.audit_key}}",
+            "state_json": "={{$json.state_json}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "delivery_key",
+              "required": false,
+              "readOnly": false,
+              "displayName": "delivery_key",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            },
+            {
+              "id": "state_json",
+              "required": false,
+              "readOnly": false,
+              "displayName": "state_json",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        4640,
+        2208
+      ],
+      "id": "c7ee5d73-f030-4318-bcb4-2ffa0d284761",
+      "name": "Persist Feed Diagnostics",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ca8324d8-e234-4707-bdaa-dd124220f6bd",
+              "leftValue": "={{$json.record_type}}",
+              "rightValue": "candidate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4992,
+        3408
+      ],
+      "id": "7ac84d40-ad68-41d7-be3d-e559426a96ff",
+      "name": "Route Candidate Diagnostics"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kJEf5T1mIGM0FGTg",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "delivery_key",
+              "keyValue": "={{$json.audit_key}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "delivery_key": "={{$json.audit_key}}",
+            "state_json": "={{$json.state_json}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "delivery_key",
+              "required": false,
+              "readOnly": false,
+              "displayName": "delivery_key",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            },
+            {
+              "id": "state_json",
+              "required": false,
+              "readOnly": false,
+              "displayName": "state_json",
+              "type": "string",
+              "removed": false,
+              "display": true,
+              "defaultMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        5232,
+        3408
+      ],
+      "id": "bd1f94a2-fa00-45e9-b131-1cd181899057",
+      "name": "Persist Candidate Diagnostics",
+      "alwaysOutputData": true
     }
   ],
   "pinData": {
@@ -917,6 +1085,11 @@
         [
           {
             "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Feed Diagnostics",
             "type": "main",
             "index": 0
           }
@@ -1081,7 +1254,7 @@
       "main": [
         [
           {
-            "node": "Production Delivery Guard",
+            "node": "Route Candidate Diagnostics",
             "type": "main",
             "index": 0
           }
@@ -1233,12 +1406,50 @@
           }
         ]
       ]
+    },
+    "Build Feed Diagnostics": {
+      "main": [
+        [
+          {
+            "node": "Persist Feed Diagnostics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Candidate Diagnostics": {
+      "main": [
+        [
+          {
+            "node": "Production Delivery Guard",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Persist Candidate Diagnostics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Candidate Diagnostics": {
+      "main": []
+    },
+    "Persist Feed Diagnostics": {
+      "main": []
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true
   },
   "versionId": "f5e117a9-726b-4b6b-a5bc-d04b75b68f94",
   "meta": {},
