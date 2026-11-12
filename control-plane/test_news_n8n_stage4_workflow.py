@@ -93,7 +93,21 @@ def test_export_keeps_schedule_and_active_table_schema():
         assert "id" not in sender["credentials"]["discordWebhookApi"]
         assert connections[name]["main"][0][0]["node"] == "Build Delivery Receipt"
     assert connections["Build Delivery Receipt"]["main"][0][0]["node"] == "Persist Delivery Receipt"
-    assert connections["RSS Read"]["main"][0][1]["node"] == "Build Feed Diagnostics"
+    assert node("RSS Read")["retryOnFail"] is True
+    assert node("RSS Read")["maxTries"] == 2
+    assert connections["RSS Read"]["main"][0][1]["node"] == "Prepare Fallback Tasks"
+    assert connections["Prepare Fallback Tasks"]["main"][0][0]["node"] == "HTTP Request - Channel Page"
+    assert connections["HTTP Request - Channel Page"]["main"][0][0]["node"] == "Parse Fallback Video IDs"
+    assert connections["Parse Fallback Video IDs"]["main"][0][0]["node"] == "HTTP Request - Video Page"
+    assert connections["HTTP Request - Video Page"]["main"][0][0]["node"] == "Parse Fallback Publications"
+    assert connections["Parse Fallback Publications"]["main"][0][0]["node"] == "Merge Collected Publications"
+    assert connections["Merge Collected Publications"]["main"][0][1]["node"] == "Prepare Discord Candidates"
+    assert "$('Merge Collected Publications')" in node("Prepare Discord Candidates")["parameters"]["jsCode"]
+    assert "fallback_status:'recovered'" in node("Parse Fallback Publications")["parameters"]["jsCode"]
+    assert "fallback_status:'failed'" in node("Parse Fallback Video IDs")["parameters"]["jsCode"]
+    assert "fallback_recovered_count" in node("Build Feed Diagnostics")["parameters"]["jsCode"]
+    assert "usable===0?'failed':rssBad?'degraded':'ok'" in node("Build Feed Diagnostics")["parameters"]["jsCode"]
+    assert connections["Parse Fallback Publications"]["main"][0][1]["node"] == "Build Feed Diagnostics"
     assert connections["Build Feed Diagnostics"]["main"][0][0]["node"] == "Persist Feed Diagnostics"
     assert connections["Prepare Discord Candidates"]["main"][0][0]["node"] == "Route Candidate Diagnostics"
     assert connections["Route Candidate Diagnostics"]["main"][0][0]["node"] == "Production Delivery Guard"
@@ -167,7 +181,7 @@ const refs={
  'Get Existing Publications':{all:()=> (f.cached||[]).map(json=>({json}))},
  'Code in JavaScript':{all:()=> (f.sources||[]).map(json=>({json}))},
  'Code in JavaScript3':{all:()=>{throw new Error('node did not execute')}},
- 'Code in JavaScript1':{all:()=>f.items.map(json=>({json}))}
+ 'Merge Collected Publications':{all:()=>f.items.map(json=>({json}))}
 }; const $=name=>refs[name]; const $execution={mode:f.mode||'manual'};
 const result=vm.runInNewContext('(function(){'+f.code+'\n})()',
   { $, $execution, Date, Map, Set, Number, String, Math, JSON });
@@ -238,7 +252,7 @@ const refs={
  'Get Existing Publications':{all:()=>[]},
  'Code in JavaScript3':{all:()=>[{json:f.source}]},
  'Code in JavaScript':{all:()=>{throw new Error('primary registry branch did not run')}},
- 'Code in JavaScript1':{all:()=>[{json:f.item}]}
+ 'Merge Collected Publications':{all:()=>[{json:f.item}]}
 };const $=name=>refs[name];const $execution={id:1,mode:'production'};
 const result=vm.runInNewContext('(function(){'+f.code+'\n})()',
  {$,$execution,Date,Map,Set,Number,String,Math,JSON});
@@ -286,14 +300,16 @@ def test_feed_diagnostics_keep_source_level_errors_and_empty_feeds():
     channel_a = "UC" + "A" * 22
     channel_b = "UC" + "B" * 22
     sources = [
-        {"source_id": channel_a, "name": "Channel A", "creator": "Channel A"},
-        {"source_id": channel_b, "name": "Channel B", "creator": "Channel B"},
+        {"source_id": channel_a, "name": "Channel A", "creator": "Channel A", "enabled": True},
+        {"source_id": channel_b, "name": "Channel B", "creator": "Channel B", "enabled": True},
     ]
     harness = r"""
 const vm=require('node:vm');const f=JSON.parse(process.argv[1]);
 const refs={
  'Code in JavaScript':{all:()=>f.sources.map(json=>({json})),itemMatching:()=>({json:f.sources[0]})},
  'Code in JavaScript3':{all:()=>{throw new Error('fallback not used')}},
+ 'RSS Read':{all:()=>f.items.map(json=>({json})),itemMatching:()=>({json:f.sources[0]})},
+ 'Parse Fallback Publications':{all:()=>f.fallback.map(json=>({json}))},
  'Get Delivery Ledger':{all:()=>f.previous.map(json=>({json}))}
 }; const $=name=>refs[name];const $input={all:()=>f.items.map(json=>({json}))};
 const $execution={id:'run-123',mode:'production'};
@@ -302,20 +318,103 @@ process.stdout.write(JSON.stringify(result));
 """
     entries = [{"id": "yt:video:abcdefghijk", "title": "New video", "isoDate": "2027-01-16T00:00:00Z"},
                {"error": {"message": "HTTP 503"}}]
+    fallback = [
+        {"source_id": channel_a, "video_id": "Fallback001", "published_at": "2027-01-17T00:00:00Z", "fallback_status": "recovered"},
+        {"source_id": channel_b, "fallback_status": "failed", "fallback_error": "Channel page unavailable"},
+    ]
     result = subprocess.run(
         [shutil.which("node"), "-e", harness,
-         json.dumps({"code": code, "sources": sources, "items": entries, "previous": []})],
+         json.dumps({"code": code, "sources": sources, "items": entries, "fallback": fallback, "previous": []})],
         check=True, capture_output=True, text=True, timeout=10,
     )
-    rows = {json.loads(row["json"]["state_json"])["source_id"]:
-            json.loads(row["json"]["state_json"]) for row in json.loads(result.stdout)}
-    assert rows[channel_a]["status"] == "feed_error"
-    assert rows[channel_a]["entry_count"] == 1
-    assert rows[channel_a]["error_count"] == 1
-    assert rows[channel_a]["newest_video_id"] == "abcdefghijk"
-    assert rows[channel_b]["status"] == "empty_feed"
-    assert rows[channel_b]["entry_count"] == 0
+    rows = {state["source_id"]: state for row in json.loads(result.stdout)
+            if "source_id" in (state := json.loads(row["json"]["state_json"]))}
+    assert rows[channel_a]["status"] == "degraded_recovered"
+    assert rows[channel_a]["rss_entry_count"] == 1
+    assert rows[channel_a]["rss_error_count"] == 1
+    assert rows[channel_a]["newest_video_id"] == "Fallback001"
+    assert rows[channel_b]["status"] == "failed"
+    assert rows[channel_b]["rss_entry_count"] == 0
     assert rows[channel_a]["execution_id"] == "run-123"
+    summary = json.loads(next(row["json"]["state_json"] for row in json.loads(result.stdout)
+                              if row["json"]["audit_key"] == "__feed__:__collection__"))
+    assert summary["status"] == "degraded"
+    assert summary["rss_failure_count"] == 2
+    assert summary["fallback_recovered_count"] == 1
+
+
+def test_page_fallback_parser_verifies_channel_video_and_publish_time():
+    channel_id = "UC" + "A" * 22
+    video_id = "PopeKael001"
+    task = {
+        "source_id": channel_id,
+        "creator": "Garage Alchemy",
+        "destination": "ai_noise",
+        "discord_channel_id": "1449203766069821561",
+        "enabled": True,
+        "checkpoint_video_id": "Previous001",
+        "checkpoint_published_at": "2026-11-01T00:00:00Z",
+        "stage3_activated_at": "2026-11-01T00:00:00Z",
+        "tab": "videos",
+    }
+    channel_page = {
+        "metadata": {"channelMetadataRenderer": {"externalId": channel_id}},
+        "contents": {"twoColumnBrowseResultsRenderer": {"tabs": [{
+            "tabRenderer": {
+                "selected": True,
+                "endpoint": {"commandMetadata": {"webCommandMetadata": {"url": "/videos"}}},
+                "content": {"richGridRenderer": {"contents": [{
+                    "richItemRenderer": {"content": {"videoRenderer": {"videoId": video_id}}}
+                }]}}
+            }
+        }]}}
+    }
+    player_page = {
+        "playabilityStatus": {"status": "OK"},
+        "videoDetails": {"channelId": channel_id, "videoId": video_id,
+                          "isPrivate": False, "isUpcoming": False, "isLive": False,
+                          "title": "A real public video", "shortDescription": "Page-parser summary"},
+        "microformat": {"playerMicroformatRenderer": {"isUnlisted": False,
+                          "publishDate": "2026-11-12T06:29:37Z"}},
+    }
+    ids_code = node("Parse Fallback Video IDs")["parameters"]["jsCode"]
+    video_code = node("Parse Fallback Publications")["parameters"]["jsCode"]
+    harness = r"""
+const vm=require('node:vm');const f=JSON.parse(process.argv[1]);
+const makeTask=()=>({json:f.task});
+const taskRef={all:()=>[makeTask()],itemMatching:()=>makeTask()};
+const pageInput={all:()=>[{json:{statusCode:200,body:'var ytInitialData = '+JSON.stringify(f.channelPage)+';'}}]};
+let refs={'Prepare Fallback Tasks':taskRef};let $=name=>refs[name];
+const ids=vm.runInNewContext('(function(){'+f.idsCode+'\n})()',{$,$input:pageInput,Map,Set,JSON,String,Number,Date});
+refs['Parse Fallback Video IDs']={all:()=>ids,itemMatching:i=>ids[i]};
+const watchInput={all:()=>[{json:{statusCode:200,body:'var ytInitialPlayerResponse = '+JSON.stringify(f.playerPage)+';'}}]};
+const result=vm.runInNewContext('(function(){'+f.videoCode+'\n})()',{$,$input:watchInput,Map,Set,JSON,String,Number,Date});
+const failedInput={all:()=>[{json:{statusCode:503,body:'temporary unavailable'}}]};
+const failedIds=vm.runInNewContext('(function(){'+f.idsCode+'\n})()',{$,$input:failedInput,Map,Set,JSON,String,Number,Date});
+process.stdout.write(JSON.stringify({ids,result,failedIds}));
+"""
+    result = subprocess.run(
+        [shutil.which("node"), "-e", harness,
+         json.dumps({"idsCode": ids_code, "videoCode": video_code, "task": task,
+                     "channelPage": channel_page, "playerPage": player_page})],
+        check=True, capture_output=True, text=True, timeout=10,
+    )
+    output = json.loads(result.stdout)
+    assert output["ids"][0]["json"]["video_id"] == video_id
+    publication = output["result"][0]["json"]
+    assert publication["fallback_status"] == "recovered"
+    assert publication["source_id"] == channel_id
+    assert publication["title"] == "A real public video"
+    assert publication["published_at"] == "2026-11-12T06:29:37.000Z"
+    assert output["failedIds"][0]["json"]["fallback_status"] == "failed"
+
+
+def test_empty_rss_normalization_keeps_publication_merge_alive():
+    code = node("Code in JavaScript1")["parameters"]["jsCode"]
+    result = run_node_js("Code in JavaScript1", code, {"input": []})
+    assert result == [{"json": {"collection_placeholder": True}}]
+    assert node("Merge Collected Publications")["parameters"]["mode"] == "append"
+    assert workflow()["connections"]["Code in JavaScript1"]["main"][0][0]["node"] == "Merge Collected Publications"
 
 
 def test_retention_and_feed_sort_keep_two_per_source_and_newest_first():
@@ -327,7 +426,7 @@ def test_retention_and_feed_sort_keep_two_per_source_and_newest_first():
     ]
     harness = r"""
 const vm=require('node:vm');const f=JSON.parse(process.argv[1]);
-const $=name=>({'Code in JavaScript1':{all:()=>f.rows.map(json=>({json}))}}[name]);
+const $=name=>({'Merge Collected Publications':{all:()=>f.rows.map(json=>({json}))}}[name]);
 const result=vm.runInNewContext('(function(){'+f.code+'\n})()',{ $, Date, Map, Set, Number, String });
 process.stdout.write(JSON.stringify(result));
 """
