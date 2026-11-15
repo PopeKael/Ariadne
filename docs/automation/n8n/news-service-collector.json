@@ -895,7 +895,7 @@
       "name": "Ariadne Discord Webhook Videos to Watch",
       "credentials": {
         "discordWebhookApi": {
-          "name": "Ariadne News - Videos to Watch"
+          "name": "Discord Webhook account 5"
         }
       }
     },

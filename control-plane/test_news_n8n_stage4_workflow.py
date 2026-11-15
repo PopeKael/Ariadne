@@ -88,7 +88,7 @@ def test_export_keeps_schedule_and_active_table_schema():
         ("Ariadne Discord Webhook", "Discord Webhook account 3"),
         ("Ariadne Discord Webhook1", "Discord Webhook account 2"),
         ("Ariadne Discord Webhook2", "Discord Webhook account 4"),
-        ("Ariadne Discord Webhook Videos to Watch", "Ariadne News - Videos to Watch"),
+        ("Ariadne Discord Webhook Videos to Watch", "Discord Webhook account 5"),
     ):
         sender = node(name)
         assert sender["type"] == "n8n-nodes-ariadne-discord.ariadneDiscordWebhook"

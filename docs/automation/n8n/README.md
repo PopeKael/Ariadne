@@ -94,7 +94,8 @@ Three such receipts remain in the n8n delivery ledger, from Nov 10, 14, and 15;
 none reached a sender. They need a controlled retry after the route is published.
 
 The local export now contains the fourth validator allowlist entry, Switch rule,
-and sender node, with the credential name `Ariadne News - Videos to Watch`.
+and sender node, bound to the new `Discord Webhook account 5` credential shown
+in the live n8n create form.
 The active workflow still requires that credential to be provisioned and the
 updated export to be published in n8n. Keep the webhook URL encrypted in the
 n8n credential store and out of workflow exports, logs, and Git.
@@ -104,10 +105,10 @@ n8n credential store and out of workflow exports, logs, and Git.
 The Ariadne Discord Settings **Add Destination** action stores the webhook URL
 in Windows Credential Manager and the destination ID/name/reference in
 `news-service.sqlite3`. It does not update n8n. For each new destination, create
-a matching n8n `discordWebhookApi` credential, add the destination ID to
+a new n8n `discordWebhookApi` credential, add the destination ID to
 `Code in JavaScript4`, add a Switch rule and sender node using that credential,
 then verify the receipt-ledger connection and publish the workflow. Never reuse
-the generic test webhook credential by guess. If a run failed after writing an
+the existing generic test webhook credential. If a run failed after writing an
 `inflight` row but before a sender ran, verify the failing node before resetting
 that receipt for retry.
 
