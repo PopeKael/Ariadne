@@ -2,18 +2,18 @@
 
 These sanitized workflow definitions document the Synology workflows. Workflow IDs, node parameters and connection topology are retained; credential IDs and execution pins are omitted. Credential names are mapping hints only. Webhook URLs and tokens remain encrypted in n8n and are never stored in these exports. The collector export describes the intended RSS retry, YouTube page fallback, collection status, and candidate diagnostics. Its live publication state is tracked in the dated audit below.
 
-- `news-service-collector.json` — `VP0Bro3F98I523YD`, **News Service - manual collector (draft)**. The live workflow is published as revision `50c07bf0-b88f-410b-a3e8-170af82d8040` and runs every 15 minutes. It collects enabled YouTube sources, maintains the publication cache in **News Service Publications**, keeps the newest two per source, synchronizes the card window and receipt history to Ariadne, and posts eligible cards through the saved destination webhooks.
+- `news-service-collector.json` — `VP0Bro3F98I523YD`, **News Service - manual collector (draft)**. The last confirmed live revision is `50c07bf0-b88f-410b-a3e8-170af82d8040`, verified on 2026-11-05 with a 15-minute schedule. Its current activation and execution state have not been verified. The intended workflow collects enabled YouTube sources, maintains the publication cache in **News Service Publications**, keeps the newest two per source, synchronizes the card window and receipt history to Ariadne, and posts eligible cards through the saved destination webhooks.
 - `news-service-publication-snapshot.json` — `HGKHZh3Uuw88fJrl`, **News Service - LAN snapshot (draft)**. Reads the publication table, sorts newest first, and returns the newest two per source.
 
 ## Feed recovery and diagnostics
 
-The collector retries RSS reads twice with a short delay. For each failed or empty YouTube feed it fetches the channel's videos, Shorts, and live tabs, then opens candidate watch pages and validates channel identity, video ID, publication time, and public availability before treating a result as a publication. The parser limits recovery to a small recent set per source. Normalized RSS and recovered publications rejoin the same cache, eligibility, and delivery path, so existing publication and Discord receipt keys continue to prevent duplicate posts. The HTTP fallback uses bounded retries and does not depend on the Ariadne sync endpoint.
+The local export retries RSS reads twice with a short delay. For each failed or empty YouTube feed it fetches the channel's videos, Shorts, and live tabs, then opens candidate watch pages and validates channel identity, video ID, publication time, and public availability before treating a result as a publication. The parser limits recovery to a small recent set per source. Normalized RSS and recovered publications rejoin the same cache, eligibility, and delivery path, so existing publication and Discord receipt keys continue to prevent duplicate posts. The HTTP fallback uses bounded retries and does not depend on the Ariadne sync endpoint. This fallback has not been confirmed in the live workflow.
 
-`Build Feed Diagnostics` upserts one compact status row per channel in **News Service Delivery Ledger**, plus a collection summary. A healthy RSS collection is `ok`; recoveries alongside RSS failures or empty feeds are `degraded`; and a run with no usable RSS or fallback results is `failed`. It records RSS errors, fallback outcome, latest recovered item, collection counts, and last error. This prevents a green n8n execution from being mistaken for a successful collection when every source failed.
+In the local export, `Build Feed Diagnostics` upserts one compact status row per channel in **News Service Delivery Ledger**, plus a collection summary. A healthy RSS collection is `ok`; recoveries alongside RSS failures or empty feeds are `degraded`; and a run with no usable RSS or fallback results is `failed`. It records RSS errors, fallback outcome, latest recovered item, collection counts, and last error. This prevents a green n8n execution from being mistaken for a successful collection when every source failed. Deployment of these diagnostic nodes has not been confirmed.
 
-`Build Feed Diagnostics` upserts one compact status row per channel in **News Service Delivery Ledger**. It records the check time and execution ID, entry/error counts, newest feed item, and the last feed error. Stable per-channel keys keep the table bounded as 15-minute checks continue. `Prepare Discord Candidates` also records a stable per-video decision row when a feed item is newer than its source checkpoint, including whether it was skipped and the precise gate that skipped it, or whether it reached the delivery candidate stage. The existing inflight and delivery receipt rows remain authoritative for actual Discord attempts and outcomes. Diagnostic rows use separate key prefixes and are excluded from Ariadne's delivery-history sync.
+The local export's `Build Feed Diagnostics` node records the check time and execution ID, entry/error counts, newest feed item, and the last feed error. Stable per-channel keys keep the table bounded as 15-minute checks continue. `Prepare Discord Candidates` also records a stable per-video decision row when a feed item is newer than its source checkpoint, including whether it was skipped and the precise gate that skipped it, or whether it reached the delivery candidate stage. The existing inflight and delivery receipt rows remain authoritative for actual Discord attempts and outcomes. Diagnostic rows use separate key prefixes and are excluded from Ariadne's delivery-history sync.
 
-This lets an operator distinguish an RSS outage recovered through channel pages, a source on which both collection methods failed, a candidate rejected by a named eligibility rule, and a candidate that entered Discord delivery but received an error or no receipt. The 15-minute Synology schedule drives collection and Discord delivery whether Ariadne is running or not. Ariadne synchronization remains a separate best-effort branch; an unavailable Ariadne service must not stop cache updates or Discord delivery.
+When deployed, these diagnostics let an operator distinguish an RSS outage recovered through channel pages, a source on which both collection methods failed, a candidate rejected by a named eligibility rule, and a candidate that entered Discord delivery but received an error or no receipt. The 15-minute Synology schedule was last confirmed on 2026-11-05. Ariadne synchronization is a separate best-effort branch; an unavailable Ariadne service should not stop cache updates or Discord delivery.
 
 ## Discord delivery path
 
@@ -59,6 +59,21 @@ nodes described by the local export.
 The authenticated n8n editor was used to publish the optional-node guard and
 15-minute trigger. Ariadne was not required for that scheduled run or its
 Discord delivery.
+
+## Live cache check — 2026-11-15
+
+The Ariadne Home Following view loaded 52 cached videos. Read-only inspection of
+`control-plane/runtime/news-service.sqlite3` found the latest `collected_at` at
+2026-11-14 23:45:58 UTC (2026-11-15 06:45:58 Bangkok) and the newest video's
+publication time at 2026-11-14 22:51:13 UTC (2026-11-15 05:51:13 Bangkok).
+At about 14:25 Bangkok, the Following cache was therefore nearly 7 hours and
+40 minutes behind. The n8n `/healthz` endpoint returned HTTP 200 on both
+documented ports, 5678 and 32770, confirming that the n8n service was reachable.
+Unauthenticated workflow and execution API requests returned HTTP 401, and the
+documented SMB data path was unavailable in that session. These checks confirm
+stale Ariadne synchronization but do not establish whether the collector was
+inactive or its Ariadne sync branch was failing. No workflow reactivation,
+manual run, or container restart was performed without execution evidence.
 
 ## RSS outage audit and fallback — 2026-11-12
 
