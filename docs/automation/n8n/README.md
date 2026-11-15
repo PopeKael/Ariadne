@@ -2,7 +2,7 @@
 
 These sanitized workflow definitions document the Synology workflows. Workflow IDs, node parameters and connection topology are retained; credential IDs and execution pins are omitted. Credential names are mapping hints only. Webhook URLs and tokens remain encrypted in n8n and are never stored in these exports. The collector export describes the intended RSS retry, YouTube page fallback, collection status, and candidate diagnostics. Its live publication state is tracked in the dated audit below.
 
-- `news-service-collector.json` — `VP0Bro3F98I523YD`, **News Service - manual collector (draft)**. Read-only inspection on 2026-11-15 confirmed the live workflow is active at version `f13814b4-d730-4374-b8fc-04e3078c363f` with its 15-minute schedule. Recent runs collect and synchronize publications, but fail later in Discord delivery on an unconfigured destination; see the live audit below. The intended workflow collects enabled YouTube sources, maintains the publication cache in **News Service Publications**, keeps the newest two per source, synchronizes the card window and receipt history to Ariadne, and posts eligible cards through the saved destination webhooks.
+- `news-service-collector.json` — `VP0Bro3F98I523YD`, **News Service - manual collector (draft)**. Read-only inspection on 2026-11-15 confirmed the live workflow is active at version `f13814b4-d730-4374-b8fc-04e3078c363f` with its 15-minute schedule. Ariadne can register custom destinations, but each destination also needs an n8n credential and route; the live collector had not been updated for **Videos to Watch**. The export below now includes that route, pending live credential provisioning and publication. The workflow collects enabled YouTube sources, maintains the publication cache in **News Service Publications**, keeps the newest two per source, synchronizes the card window and receipt history to Ariadne, and posts eligible cards through destination webhooks.
 - `news-service-publication-snapshot.json` — `HGKHZh3Uuw88fJrl`, **News Service - LAN snapshot (draft)**. Reads the publication table, sorts newest first, and returns the newest two per source.
 
 ## Feed recovery and diagnostics
@@ -17,9 +17,9 @@ These diagnostics let an operator distinguish an RSS outage recovered through ch
 
 ## Discord delivery path
 
-`Prepare Discord Candidates` retains the established activation boundary, source rules, delivery-key deduplication and Components V2 formatter. `Production Delivery Guard` and `Mark Delivery Inflight` precede `Code in JavaScript4`, which parses the persisted `state_json` and exposes its validated `destination`. The three-rule `Switch` then routes on `$json.destination`: `ai_noise`, `thailand_news`, or `news_3cf8b10043ab9e794da82060`. Each branch uses the matching encrypted `discordWebhookApi` credential through `Ariadne Discord Webhook`. All three sender outputs pass through `Build Delivery Receipt` and `Persist Delivery Receipt`. The bot-based `Post Discord Card` node is removed from the active workflow. Manual Ariadne publishing controls and unrelated Discord bot workflows are unchanged.
+`Prepare Discord Candidates` retains the established activation boundary, source rules, delivery-key deduplication and Components V2 formatter. `Production Delivery Guard` and `Mark Delivery Inflight` precede `Code in JavaScript4`, which parses the persisted `state_json` and exposes its validated `destination`. The four-rule `Switch` routes on `$json.destination`: `ai_noise`, `thailand_news`, `news_3cf8b10043ab9e794da82060`, and `news_d997167fc9cb243735d0fcc1` (**Videos to Watch**). Each branch uses its matching encrypted `discordWebhookApi` credential. All sender outputs pass through `Build Delivery Receipt` and `Persist Delivery Receipt`. The bot-based `Post Discord Card` node is removed from the active workflow. Manual Ariadne publishing controls and unrelated Discord bot workflows are unchanged.
 
-The sender returns Discord's message ID and safe response metadata to the existing ledger. The route extracts the validated destination from the persisted receipt, then sends through the destination's existing encrypted webhook credential. The Switch node was upgraded through the n8n editor to type version 3.4, and its three rules now evaluate the destination expression without a literal equals sign. All successful sender outputs still pass through the existing receipt ledger. Sent, inflight, uncertain, rejected and pending deliveries remain suppressed; rate-limited and known pre-send failures follow the existing bounded retry rules. Historical rows and the activation timestamp are preserved. Only production-mode executions send or synchronize live; editor/manual runs remain dry runs. Production execution #284 synchronized with `dry_run=false` (1 inserted, 41 duplicates, 8 baseline skips), then delivered two `ai_noise` cards through the saved webhook credential. Discord returned message IDs `1567554369748992194` and `1567554385129771181`; both successful responses were recorded as `sent` with HTTP 200 in the existing ledger. The Ariadne sync node runs before the send/receipt nodes, so those two receipt states are picked up by a later production synchronization. Manual execution #285 succeeded as a dry run, read the 21-row existing delivery ledger including both sent receipts, and did not execute any webhook sender; it produced no sender outputs and did not resend either card. At that time, the published revision was `f5e117a9-726b-4b6b-a5bc-d04b75b68f94`.
+The sender returns Discord's message ID and safe response metadata to the existing ledger. The route extracts the validated destination from the persisted receipt, then sends through that destination's encrypted webhook credential. The Switch node was upgraded through the n8n editor to type version 3.4, and its rules evaluate the destination expression without a literal equals sign. All successful sender outputs pass through the existing receipt ledger. Sent, inflight, uncertain, rejected and pending deliveries remain suppressed; rate-limited and known pre-send failures follow the existing bounded retry rules. Historical rows and the activation timestamp are preserved. Only production-mode executions send or synchronize live; editor/manual runs remain dry runs. Production execution #284 synchronized with `dry_run=false` (1 inserted, 41 duplicates, 8 baseline skips), then delivered two `ai_noise` cards through the saved webhook credential. Discord returned message IDs `1567554369748992194` and `1567554385129771181`; both successful responses were recorded as `sent` with HTTP 200 in the existing ledger. The Ariadne sync node runs before the send/receipt nodes, so those two receipt states are picked up by a later production synchronization. Manual execution #285 succeeded as a dry run, read the 21-row existing delivery ledger including both sent receipts, and did not execute any webhook sender; it produced no sender outputs and did not resend either card. At that time, the published revision was `f5e117a9-726b-4b6b-a5bc-d04b75b68f94`.
 
 ## Verification
 
@@ -75,19 +75,41 @@ maintenance, and the Ariadne sync node all completed. The sync returned
 `ok=true`, `inserted=0`, `duplicates=52`, and `baseline_skipped=2`; the existing
 Following set was synchronized, with no new publications found in that run.
 
-Execution #1270 then failed at `Code in JavaScript4` with
+Execution #1270 failed at `Code in JavaScript4` with
 `Unknown delivery destination`. Its five delivery candidates included one
 `news_d997167fc9cb243735d0fcc1` item, which is the Ariadne destination **Videos
-to Watch**. The active validator and Switch routes accept only `ai_noise`,
+to Watch**. The live validator and Switch accepted only `ai_noise`,
 `thailand_news`, and `news_3cf8b10043ab9e794da82060` (**Wazza's Video Blog**).
-Because the validation node maps the whole batch and throws on this destination,
-the run stops before any candidate reaches a sender. The latest 20 executions
-were marked `error`.
+The same error and failing node are recorded in executions #807 (2026-11-10),
+#1160 (2026-11-14), and #1270 (2026-11-15). The six subsequent executions
+#1271–#1276 reported success, but the live route remains absent and will fail
+again when an eligible **Videos to Watch** candidate reaches delivery.
 
-Therefore the publication collection and Following sync were running at this
-check; the failed stage was Discord delivery. The live workflow has no verified
-sender/credential mapping for **Videos to Watch**, so no route or credential was
-changed during this audit.
+The two enabled sources assigned to **Videos to Watch** are Maxinomics and
+Statrys. Their destination webhook is present in Ariadne's Windows Credential
+Manager, but creating the destination in Ariadne does not provision a matching
+n8n credential or update the collector's static route. As a result, each failed
+run persisted the affected receipt as `inflight` before the validator threw.
+Three such receipts remain in the n8n delivery ledger, from Nov 10, 14, and 15;
+none reached a sender. They need a controlled retry after the route is published.
+
+The local export now contains the fourth validator allowlist entry, Switch rule,
+and sender node, with the credential name `Ariadne News - Videos to Watch`.
+The active workflow still requires that credential to be provisioned and the
+updated export to be published in n8n. Keep the webhook URL encrypted in the
+n8n credential store and out of workflow exports, logs, and Git.
+
+### Adding a custom destination
+
+The Ariadne Discord Settings **Add Destination** action stores the webhook URL
+in Windows Credential Manager and the destination ID/name/reference in
+`news-service.sqlite3`. It does not update n8n. For each new destination, create
+a matching n8n `discordWebhookApi` credential, add the destination ID to
+`Code in JavaScript4`, add a Switch rule and sender node using that credential,
+then verify the receipt-ledger connection and publish the workflow. Never reuse
+the generic test webhook credential by guess. If a run failed after writing an
+`inflight` row but before a sender ran, verify the failing node before resetting
+that receipt for retry.
 
 ## RSS outage audit and fallback — 2026-11-12
 

@@ -72,7 +72,8 @@ def test_export_keeps_schedule_and_active_table_schema():
     assert switch["typeVersion"] == 3.4
     rules = switch["parameters"]["rules"]["values"]
     assert [rule["conditions"]["conditions"][0]["rightValue"] for rule in rules] == [
-        "ai_noise", "thailand_news", "news_3cf8b10043ab9e794da82060"
+        "ai_noise", "thailand_news", "news_3cf8b10043ab9e794da82060",
+        "news_d997167fc9cb243735d0fcc1",
     ]
     assert all(rule["conditions"]["conditions"][0]["leftValue"] == "={{$json.destination}}" for rule in rules)
     assert all(rule["conditions"]["options"]["version"] == 3 for rule in rules)
@@ -81,17 +82,20 @@ def test_export_keeps_schedule_and_active_table_schema():
     extractor = node("Code in JavaScript4")["parameters"]["jsCode"]
     assert "JSON.parse(json.state_json)" in extractor
     assert "json: { ...json, destination }" in extractor
+    assert "news_d997167fc9cb243735d0fcc1" in extractor
     assert connections["Code in JavaScript4"]["main"][0][0]["node"] == "Switch"
     for name, credential in (
         ("Ariadne Discord Webhook", "Discord Webhook account 3"),
         ("Ariadne Discord Webhook1", "Discord Webhook account 2"),
         ("Ariadne Discord Webhook2", "Discord Webhook account 4"),
+        ("Ariadne Discord Webhook Videos to Watch", "Ariadne News - Videos to Watch"),
     ):
         sender = node(name)
         assert sender["type"] == "n8n-nodes-ariadne-discord.ariadneDiscordWebhook"
         assert sender["credentials"]["discordWebhookApi"]["name"] == credential
         assert "id" not in sender["credentials"]["discordWebhookApi"]
         assert connections[name]["main"][0][0]["node"] == "Build Delivery Receipt"
+    assert connections["Switch"]["main"][3][0]["node"] == "Ariadne Discord Webhook Videos to Watch"
     assert connections["Build Delivery Receipt"]["main"][0][0]["node"] == "Persist Delivery Receipt"
     assert node("RSS Read")["retryOnFail"] is True
     assert node("RSS Read")["maxTries"] == 2
@@ -115,6 +119,15 @@ def test_export_keeps_schedule_and_active_table_schema():
     sync_header = node("HTTP Request1")["parameters"]["headerParameters"]["parameters"][0]
     assert sync_header["name"] == "X-Ariadne-Dry-Run"
     assert sync_header["value"] == "=  {{$execution.mode !== 'production' ? 'true' : 'false'}}"
+
+
+def test_route_validator_accepts_videos_to_watch_destination():
+    code = node("Code in JavaScript4")["parameters"]["jsCode"]
+    state = {"destination": "news_d997167fc9cb243735d0fcc1"}
+    result = run_node_js("Code in JavaScript4", code, {
+        "input": [{"json": {"state_json": json.dumps(state)}}],
+    })
+    assert result[0]["json"]["destination"] == state["destination"]
 
 
 def test_candidate_gate_excludes_activation_history_disabled_and_prior_delivery():

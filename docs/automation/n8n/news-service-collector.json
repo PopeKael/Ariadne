@@ -790,6 +790,29 @@
                 ],
                 "combinator": "and"
               }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.destination}}",
+                    "rightValue": "news_d997167fc9cb243735d0fcc1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    },
+                    "id": "7a4e3c7b-0a9f-41e4-baa1-280dc5052d36"
+                  }
+                ],
+                "combinator": "and"
+              }
             }
           ]
         },
@@ -860,7 +883,25 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(({json}) => {\n  let state;\n  try { state = JSON.parse(json.state_json); } catch { throw new Error('Delivery state is not valid JSON'); }\n  const destination = state?.destination;\n  if (!['ai_noise', 'thailand_news', 'news_3cf8b10043ab9e794da82060'].includes(destination)) throw new Error('Unknown delivery destination');\n  return { json: { ...json, destination } };\n});"
+        "destination": "news_d997167fc9cb243735d0fcc1"
+      },
+      "type": "n8n-nodes-ariadne-discord.ariadneDiscordWebhook",
+      "typeVersion": 1,
+      "position": [
+        4592,
+        2784
+      ],
+      "id": "3332c904-a746-4c2b-9dbf-d712859d87eb",
+      "name": "Ariadne Discord Webhook Videos to Watch",
+      "credentials": {
+        "discordWebhookApi": {
+          "name": "Ariadne News - Videos to Watch"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(({json}) => {\n  let state;\n  try { state = JSON.parse(json.state_json); } catch { throw new Error('Delivery state is not valid JSON'); }\n  const destination = state?.destination;\n  if (!['ai_noise', 'thailand_news', 'news_3cf8b10043ab9e794da82060', 'news_d997167fc9cb243735d0fcc1'].includes(destination)) throw new Error('Unknown delivery destination');\n  return { json: { ...json, destination } };\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1510,6 +1551,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Ariadne Discord Webhook Videos to Watch",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -1662,6 +1710,17 @@
           },
           {
             "node": "Prepare Discord Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ariadne Discord Webhook Videos to Watch": {
+      "main": [
+        [
+          {
+            "node": "Build Delivery Receipt",
             "type": "main",
             "index": 0
           }
