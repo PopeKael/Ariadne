@@ -36,7 +36,7 @@
       <div class="grid">
         <article class="card warning"><h3>Rebuild Embedding Index</h3><p>Discard and regenerate the local embedding index. It remains local and is not committed to Git.</p><button data-action="embedding_rebuild" data-confirm="Rebuild the local embedding index?">Rebuild index</button></article>
         <article class="card"><h3>Audit Failed Ingestion</h3><p>Create a read-only rebuild-v1 failure report from retained capture and rejection evidence.</p><button data-action="audit_failures">Run audit</button></article>
-        <article class="card warning"><h3>Organise Downloads</h3><p>Move top-level Downloads files using the previewed rules. It skips filename collisions and does not overwrite files.</p><button data-action="downloads_apply" data-confirm="Move the previewed Downloads files now? Markdown goes to KnowledgeVault Inbox; media and email files go to their configured Downloads folders.">Organise Downloads</button></article>
+        <article class="card warning"><h3>Organise Downloads</h3><p>Move top-level Downloads files using the previewed rules. Non-screenshot image filename conflicts get timestamped names; other conflicts are skipped. No files are overwritten.</p><button data-action="downloads_apply" data-confirm="Move the previewed Downloads files now? Markdown goes to KnowledgeVault Inbox; media and email files go to their configured Downloads folders. Non-screenshot image conflicts get timestamped names; other conflicts are skipped.">Organise Downloads</button></article>
       </div>
     </section>
   </main>

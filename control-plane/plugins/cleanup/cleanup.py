@@ -13,6 +13,8 @@ from pathlib import Path
 
 PLUGIN_ID = "cleanup"
 PLUGIN_CAPABILITY = "filesystem.organise"
+# The organiser timestamps Image collisions and skips conflicts for other
+# classes; `skip` remains the only selectable policy for those other classes.
 COLLISION_POLICIES = {"skip"}
 EXTENSION_RE = re.compile(r"^\.[A-Za-z0-9][A-Za-z0-9._+-]*$")
 DEFAULT_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".svg", ".heic", ".avif"]
@@ -98,7 +100,7 @@ def normalize_configuration(value: object, storage: dict[str, object]) -> dict[s
     if not isinstance(candidate.get("confirmation_required"), bool):
         errors["confirmation_required"] = "Confirmation required must be true or false."
     if candidate.get("collision_policy") not in COLLISION_POLICIES:
-        errors["collision_policy"] = "The only supported collision policy is skip."
+        errors["collision_policy"] = "The only supported policy is skip for non-image conflicts."
     if candidate.get("unmatched_policy", "leave_in_place") != "leave_in_place":
         errors["unmatched_policy"] = "Unmatched files must remain in their original location."
 

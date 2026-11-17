@@ -14,7 +14,7 @@ if ($ConfigPath) {
     if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { throw "Cleanup configuration file does not exist: $ConfigPath" }
     $configuration = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
     if (-not $configuration.sources -or -not $configuration.filing_classes) { throw 'Cleanup configuration must contain sources and filing_classes.' }
-    if ([string]$configuration.collision_policy -ne 'skip') { throw 'Only the skip collision policy is supported.' }
+    if ([string]$configuration.collision_policy -ne 'skip') { throw 'Only skip for non-image collisions is supported.' }
 }
 
 $imageExtensions = @('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tif', '.tiff', '.svg', '.heic', '.avif')
@@ -95,42 +95,85 @@ if (-not $WhatIfPreference) {
     foreach ($destination in $destinations.Values) { New-Item -ItemType Directory -Path $destination -Force | Out-Null }
 }
 foreach ($item in $plan) {
-    $targetPath = Join-Path $item.Target $item.Name
-    if (Test-Path -LiteralPath $targetPath) {
-        $collisions++
-        $results += [PSCustomObject]@{
-            status = 'duplicate'; file = $item.Name; source = $item.SourceRoot; destination = $item.Target
-            reason = 'Destination file already exists; existing file left untouched.'
-        }
-        Write-Output "SKIPPED collision [$($item.Kind)] $($item.Name)"
-        continue
-    }
+    $originalName = $item.Name
+    $sourcePath = $item.Source
+    $destinationName = $originalName
+    $renamedForCollision = $false
+    $collisionReason = $null
     try {
-        if ($PSCmdlet.ShouldProcess($item.Source, "Move to $($item.Target)")) {
-            Move-Item -LiteralPath $item.Source -Destination $item.Target -ErrorAction Stop
-            $counts[$item.Kind]++; $moved++
-            $results += [PSCustomObject]@{
-                status = 'moved'; file = $item.Name; source = $item.SourceRoot; destination = $item.Target
-                reason = $null
+        while ($true) {
+            $targetPath = Join-Path $item.Target $destinationName
+            if (Test-Path -LiteralPath $targetPath) {
+                if ($item.Kind -eq 'Image') {
+                    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($originalName)
+                    $extension = [System.IO.Path]::GetExtension($originalName)
+                    $timestamp = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
+                    $sourceDirectory = [System.IO.Path]::GetDirectoryName($sourcePath)
+                    $sequence = 1
+                    do {
+                        $suffix = if ($sequence -gt 1) { "_$sequence" } else { '' }
+                        $destinationName = '{0}_{1}{2}{3}' -f $baseName, $timestamp, $suffix, $extension
+                        $renamedSourcePath = Join-Path $sourceDirectory $destinationName
+                        $targetPath = Join-Path $item.Target $destinationName
+                        $sequence++
+                    } while ((Test-Path -LiteralPath $renamedSourcePath) -or (Test-Path -LiteralPath $targetPath))
+
+                    if ($PSCmdlet.ShouldProcess($sourcePath, "Rename in place to $destinationName")) {
+                        Move-Item -LiteralPath $sourcePath -Destination $renamedSourcePath -ErrorAction Stop
+                        $sourcePath = $renamedSourcePath
+                    } elseif ($WhatIfPreference) {
+                        # Simulate the rename so WhatIf can preview the retry destination.
+                        $sourcePath = $renamedSourcePath
+                    } else {
+                        $collisions++
+                        $results += [PSCustomObject]@{
+                            status = 'skipped'; file = $originalName; source = $item.SourceRoot; destination = $item.Target
+                            reason = 'The in-place rename was not approved.'
+                        }
+                        break
+                    }
+                    $renamedForCollision = $true
+                    $collisionReason = "Original name '$originalName' conflicted; renamed in place to '$destinationName' before retrying the move."
+                    if (-not $WhatIfPreference) { Write-Output "RENAMED collision [Image] $originalName -> $destinationName" }
+                    continue
+                }
+
+                $collisions++
+                $results += [PSCustomObject]@{
+                    status = 'duplicate'; file = $originalName; source = $item.SourceRoot; destination = $item.Target
+                    reason = 'Destination file already exists; existing file left untouched.'
+                }
+                Write-Output "SKIPPED collision [$($item.Kind)] $originalName"
+                break
             }
-        } elseif ($WhatIfPreference) {
-            $results += [PSCustomObject]@{
-                status = 'planned'; file = $item.Name; source = $item.SourceRoot; destination = $item.Target
-                reason = $null
+
+            if ($PSCmdlet.ShouldProcess($sourcePath, "Move to $targetPath")) {
+                Move-Item -LiteralPath $sourcePath -Destination $targetPath -ErrorAction Stop
+                $counts[$item.Kind]++; $moved++
+                $results += [PSCustomObject]@{
+                    status = 'moved'; file = $destinationName; source = $item.SourceRoot; destination = $item.Target
+                    reason = $collisionReason
+                }
+            } elseif ($WhatIfPreference) {
+                $results += [PSCustomObject]@{
+                    status = 'planned'; file = $destinationName; source = $item.SourceRoot; destination = $item.Target
+                    reason = $collisionReason
+                }
+            } else {
+                $results += [PSCustomObject]@{
+                    status = 'skipped'; file = $destinationName; source = $item.SourceRoot; destination = $item.Target
+                    reason = if ($renamedForCollision) { 'The move was not approved; the timestamped file remains in its source folder.' } else { 'The move was not approved.' }
+                }
             }
-        } else {
-            $results += [PSCustomObject]@{
-                status = 'skipped'; file = $item.Name; source = $item.SourceRoot; destination = $item.Target
-                reason = 'The move was not approved.'
-            }
+            break
         }
     } catch {
         $failed++
         $results += [PSCustomObject]@{
-            status = 'failed'; file = $item.Name; source = $item.SourceRoot; destination = $item.Target
+            status = 'failed'; file = $destinationName; source = $item.SourceRoot; destination = $item.Target
             reason = $_.Exception.Message
         }
-        Write-Output "FAILED [$($item.Kind)] $($item.Name): $($_.Exception.Message)"
+        Write-Output "FAILED [$($item.Kind)] $($originalName): $($_.Exception.Message)"
     }
 }
 $unmatched = 0
