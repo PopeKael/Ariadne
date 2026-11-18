@@ -14,6 +14,12 @@ The canonical product picture is:
 
 Evaluate every substantial architectural change against this North Star while implementing changes incrementally and testably.
 
+## Component discovery and documentation
+
+Before editing a named feature, start at [the Engineering Catalogue](docs/COMPONENT-CATALOGUE.md) and its component record. Then verify the **current active caller, adapter, code, tests, and deployment boundary** in source and runtime evidence. Repository search is a fallback when the map is incomplete, not proof that a found file is active. In particular, do not treat code after an unconditional exit or old forwarding wrappers as live.
+
+For a new or materially changed capability, add/update one component record (use [the template](docs/components/TEMPLATE.md)) in the same change as the code and tests. Keep exact repo-relative source/test links and the real call chain, configuration and safety contracts, rollback/verification instructions, and linked decisions or PRs. Mark anything not verified; never manufacture historical rationale. Preserve existing more detailed docs rather than duplicating them.
+
 ## Networking changes
 
 Map the complete request/service topology (browser, TLS edge, control plane,
